@@ -1,0 +1,86 @@
+security:
+    # https://symfony.com/doc/current/security.html#where-do-users-come-from-user-providers
+    #Une nouvelle sécurité expérimentale a été introduite dans Symfony 5.1,
+    #qui remplacera à terme la sécurité dans Symfony 6.0.
+    #Ce système est presque entièrement rétrocompatible avec la sécurité Symfony actuelle
+    providers:
+        #fournisseur d'utilisateurs
+#        user:
+#            entity: { class: App\Entity\User, property: username }
+        user:
+            entity:
+                class: App\Entity\Main\User
+                property: uid
+    role_hierarchy:
+        ROLE_GUEST: ~
+        ROLE_MEMBER: ROLE_GUEST
+        ROLE_REVIEWER: ROLE_MEMBER
+        ROLE_COPY_EDITOR: ROLE_MEMBER
+        ROLE_GUEST_EDITOR: ROLE_MEMBER
+        ROLE_WEBMASTER: ROLE_MEMBER
+        ROLE_EDITOR: ROLE_GUEST_EDITOR
+        ROLE_SECRETARY: ROLE_EDITOR
+        ROLE_ADMINISTRATOR: ROLE_SECRETARY
+        ROLE_CHIEF_EDITOR: ROLE_ADMINISTRATOR
+        ROLE_EPIADMIN: ROLE_CHIEF_EDITOR
+    encoders:
+        App\Entity\User:
+            algorithm: auto
+            #cost: 15
+    firewalls:
+        #faux pare-feu: il garantit que vous ne bloquez pas accidentellement les outils de développement de Symfony
+        #- qui vivent sous des URL comme /_profileret /_wdt.
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+        #Pour la route du login,
+        #on indique que notre route de login doit être accessible aux utilisateurs anonymes,
+        #on indique également que le bundle lexik jwt authentication doit s’occuper
+        #de gérer la vérification des informations utilisateurs avec ses propres méthodes
+#        login:
+#            pattern:  ^/api/login
+#            stateless: true
+#            anonymous: true
+#            json_login:
+#                #Le pare-feu interceptera toutes les demandes ( POST demandes uniquement, par défaut) adressées
+#                #à cette URL et traitera les informations de connexion soumises
+#                check_path: /api/login
+#                success_handler: lexik_jwt_authentication.handler.authentication_success
+#                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+
+        #Pour le reste de notre api - tout est stateless,
+        #chaque requête doit contenir des informations d'authentification,
+        #toutes les routes qui commencent par api seront protégées par l’authenticator JWT Lexik
+#        api:
+#            pattern: ^/api/
+#            methods: [POST, PUT, PATCH, DELETE]
+#            stateless: true
+#            guard:
+#                authenticators:
+#                    - lexik_jwt_authentication.jwt_token_authenticator
+        main:
+            anonymous: true
+            lazy: true
+            logout: ~
+
+            guard:
+                authenticators:
+                    - App\Security\TokenAuthenticator
+            # if you want, disable storing the user in the session
+            stateless: true
+
+            # activate different ways to authenticate
+            # https://symfony.com/doc/current/security.html#firewalls-authentication
+
+            # https://symfony.com/doc/current/security/impersonating_user.html
+            # switch_user: true
+
+    # Easy way to control access for large sections of your site
+    # Note: Only the *first* access control that matches will be used
+    access_control:
+        - { path: ^/api/login, roles: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/api,       roles: ROLE_SECRETARY }
+        # - { path: ^/admin, roles: ROLE_ADMIN }
+        # - { path: ^/profile, roles: ROLE_USER }
+
+

@@ -1,0 +1,29 @@
+api_platform:
+    #global configuration defaults applied to all resources and all operations (2.6 only)
+    defaults:
+        itemOperations: []
+        collectionOperations: []
+    # The title of the API.
+    title: 'Episciences API'
+    # The description of the API.
+    description: 'STATS'
+    # The version of the API.
+    version: '1.0.0'
+
+    # Set this to false if you want Webby to disappear.
+    show_webby: false
+    mapping:
+        # The list of paths with files or directories where the bundle will look for additional resource files.
+        paths: ['%kernel.project_dir%/src/Resource']
+
+        # The list of your resources class directories. Defaults to the directories of the mapping paths but might differ.
+    resource_class_directories:
+        - '%kernel.project_dir%/src/Entity'
+    patch_formats:
+        json: ['application/merge-patch+json']
+    swagger:
+        versions: [3]
+
+    exception_to_status:
+        # Custom mapping
+        App\Exception\StatResourceNotFoundException : 404

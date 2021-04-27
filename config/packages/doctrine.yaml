@@ -1,0 +1,86 @@
+doctrine:
+    dbal:
+        default_connection: default
+        connections:
+            default:
+                mapping_types:
+                    enum: string
+                # configure these for your database server
+                url: '%env(resolve:DATABASE_URL)%'
+                driver: 'pdo_mysql'
+                server_version: '5.7'
+                charset: utf8mb4
+            customer:
+                mapping_types:
+                    enum: string
+                # configure these for your database server
+                url: '%env(resolve:DATABASE_CUSTOMER_URL)%'
+                driver: 'pdo_mysql'
+                server_version: '5.7'
+                charset: utf8mb4
+
+        # IMPORTANT: You MUST configure your server version,
+        # either here or in the DATABASE_URL env var (see .env file)
+        #server_version: '13'
+    orm:
+        default_entity_manager: default
+        entity_managers:
+            default:
+                connection: default
+                mappings:
+                    App:
+                        is_bundle: false
+                        type: annotation
+                        dir: '%kernel.project_dir%/src/Entity'
+                        prefix: 'App\Entity'
+                        alias: App
+                dql:
+                    #see https://github.com/beberlei/DoctrineExtensions
+                    datetime_functions:
+                        addtime: DoctrineExtensions\Query\Mysql\AddTime
+                        convert_tz: DoctrineExtensions\Query\Mysql\ConvertTz
+                        date: DoctrineExtensions\Query\Mysql\Date
+                        date_format: DoctrineExtensions\Query\Mysql\DateFormat
+                        dateadd: DoctrineExtensions\Query\Mysql\DateAdd
+                        datesub: DoctrineExtensions\Query\Mysql\DateSub
+                        datediff: DoctrineExtensions\Query\Mysql\DateDiff
+                        day: DoctrineExtensions\Query\Mysql\Day
+                        dayname: DoctrineExtensions\Query\Mysql\DayName
+                        dayofweek: DoctrineExtensions\Query\Mysql\DayOfWeek
+                        dayofyear: DoctrineExtensions\Query\Mysql\DayOfYear
+                        div: DoctrineExtensions\Query\Mysql\Div
+                        from_unixtime: DoctrineExtensions\Query\Mysql\FromUnixtime
+                        hour: DoctrineExtensions\Query\Mysql\Hour
+                        last_day: DoctrineExtensions\Query\Mysql\LastDay
+                        makedate: DoctrineExtensions\Query\Mysql\MakeDate
+                        minute: DoctrineExtensions\Query\Mysql\Minute
+                        now: DoctrineExtensions\Query\Mysql\Now
+                        month: DoctrineExtensions\Query\Mysql\Month
+                        monthname: DoctrineExtensions\Query\Mysql\MonthName
+                        period_diff: DoctrineExtensions\Query\Mysql\PeriodDiff
+                        second: DoctrineExtensions\Query\Mysql\Second
+                        sectotime: DoctrineExtensions\Query\Mysql\SecToTime
+                        strtodate: DoctrineExtensions\Query\Mysql\StrToDate
+                        time: DoctrineExtensions\Query\Mysql\Time
+                        timediff: DoctrineExtensions\Query\Mysql\TimeDiff
+                        timestampadd: DoctrineExtensions\Query\Mysql\TimestampAdd
+                        timestampdiff: DoctrineExtensions\Query\Mysql\TimestampDiff
+                        timetosec: DoctrineExtensions\Query\Mysql\TimeToSec
+                        truncate: DoctrineExtensions\Query\Mysql\Truncate
+                        week: DoctrineExtensions\Query\Mysql\Week
+                        weekday: DoctrineExtensions\Query\Mysql\WeekDay
+                        year: DoctrineExtensions\Query\Mysql\Year
+                        yearmonth: DoctrineExtensions\Query\Mysql\YearMonth
+                        yearweek: DoctrineExtensions\Query\Mysql\YearWeek
+                        unix_timestamp: DoctrineExtensions\Query\Mysql\UnixTimestamp
+                        utc_timestamp: DoctrineExtensions\Query\Mysql\UtcTimestamp
+                        extract: DoctrineExtensions\Query\Mysql\Extract
+            customer:
+                connection: customer
+                mappings:
+                    Customer:
+                        is_bundle: false
+                        type: annotation
+                        dir: '%kernel.project_dir%/src/Entity/Customer'
+                        prefix: 'App\Entity\Customer'
+                        alias: Customer
