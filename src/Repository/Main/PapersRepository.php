@@ -40,16 +40,17 @@ class PapersRepository extends ServiceEntityRepository
      * Submissions query
      * @param array $filters
      * @param bool $excludeTmpVersions
+     * @param string $fieldDateToBeUsed (default = submissionDate): l'année prise en compte est l'année de la première soumission
      * @return QueryBuilder
      */
-    private function submissionsQuery(array $filters = [], bool $excludeTmpVersions = false): QueryBuilder
+    private function submissionsQuery(array $filters = [], bool $excludeTmpVersions = false, string $fieldDateToBeUsed = 'submissionDate'): QueryBuilder
     {
 
         $qb = $this
             ->createQueryBuilder(self::PAPERS_ALIAS)
             ->select('count(distinct(p.paperid))');
 
-        $qb = $this->addQueryFilters($qb, $filters, 'submissionDate'); // l'année prise en compte est l'année de la première soumission
+        $qb = $this->addQueryFilters($qb, $filters, $fieldDateToBeUsed );
 
         $qb->andWhere('p.status != :obsolete');
         $qb->setParameter('obsolete', Papers::STATUS_OBSOLETE);
@@ -174,6 +175,8 @@ class PapersRepository extends ServiceEntityRepository
                 foreach ($this->getAvailableSubmissionYears($rvId) as $year) { // pour le dashboard
                     try {
                         $details['submissionsByYear'][$year]['submissions'] = $this->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->getQuery()->getSingleScalarResult();
+                        $details['submissionsByYear'][$year]['publications'] = $this->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Papers::STATUS_PUBLISHED , 'submissionDate' => $year]], false, 'publicationDate')->getQuery()->getSingleScalarResult();
+
                         foreach ($repositories as $repoId){
                             $details['submissionsByRepo'][$year][$repoId]['submissions'] = $this->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year, 'repoid' => $repoId]])->getQuery()->getSingleScalarResult();
                         }
