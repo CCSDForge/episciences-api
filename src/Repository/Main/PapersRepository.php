@@ -52,8 +52,9 @@ class PapersRepository extends ServiceEntityRepository
 
         $qb = $this->addQueryFilters($qb, $filters, $fieldDateToBeUsed );
 
-        $qb->andWhere('p.status != :obsolete');
-        $qb->setParameter('obsolete', Papers::STATUS_OBSOLETE);
+        // Sinon, on va se retouver avec des années où le nombre de soumissions par année = 0, si toutes les premières soumissions sont obsolètes
+        //$qb->andWhere('p.status != :obsolete');
+        //$qb->setParameter('obsolete', Papers::STATUS_OBSOLETE);
 
         $qb->andWhere('p.status != :deleted');
         $qb->setParameter('deleted', Papers::STATUS_DELETED);
@@ -63,6 +64,7 @@ class PapersRepository extends ServiceEntityRepository
                 ->andWhere('p.repoid != :repoId')
                 ->setParameter('repoId', self::LOCAL_REPOSITORY);
         }
+
 
 
         return $qb;
@@ -97,8 +99,8 @@ class PapersRepository extends ServiceEntityRepository
         $qb->setParameter('deleted', Papers::STATUS_DELETED);
 
         //A previously submitted article that has been modified will be taken into account in the current submissions
-        $qb->andWhere('p.status IN (:statusToBeConsidered)');
-        $qb->setParameter('statusToBeConsidered', array_merge(Papers::ACCEPTED_SUBMISSIONS, (array)Papers::STATUS_PUBLISHED, (array)Papers::STATUS_REFUSED));
+        //$qb->andWhere('p.status IN (:statusToBeConsidered)');
+        //$qb->setParameter('statusToBeConsidered', array_merge(Papers::ACCEPTED_SUBMISSIONS, (array)Papers::STATUS_PUBLISHED, (array)Papers::STATUS_REFUSED));
 
         $qb->orderBy('year', 'ASC');
         $qb->addOrderBy('p.rvid', 'ASC');
