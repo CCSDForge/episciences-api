@@ -209,9 +209,16 @@ class Papers
     /**
      * @var string|null
      *
-     * @ORM\Column(name="DESCRIPTION", type="text", length=65535, nullable=true)
+     * @ORM\Column(name="CONCEPT_IDENTIFIER", type="string", length=500, nullable=true, options={"comment"="This identifier represents all versions"})
      */
-    private ?string $description;
+    private ?string $conceptIdentifier;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column(name="FLAG", type="string", length=0, nullable=false, options={"default"="submitted"})
+     */
+    private string $flag = 'submitted';
 
     /**
      * @var DateTime
@@ -404,14 +411,14 @@ class Papers
         return $this;
     }
 
-    public function getDescription(): ?string
+    public function getConceptIdentifier(): ?string
     {
-        return $this->description;
+        return $this->conceptIdentifier;
     }
 
-    public function setDescription(?string $description): self
+    public function setDescription(?string $conceptIdentifier): self
     {
-        $this->description = $description;
+        $this->conceptIdentifier = $conceptIdentifier;
 
         return $this;
     }
@@ -485,6 +492,24 @@ class Papers
     {
         $this->review = $review;
 
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getFlag(): string
+    {
+        return $this->flag;
+    }
+
+    /**
+     * @param string $flag
+     * @return Papers
+     */
+    public function setFlag(string $flag): self
+    {
+        $this->flag = $flag;
         return $this;
     }
 
