@@ -19,3 +19,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Updating 'Papers' entity:
 - Renaming 'description' field
 - Adding new field 'tag' (indicates whether the paper has been submitted or imported)
+- Remove unused code
+- Fixed: method 'fetchAllAssociative' not found in \Doctrine\DBAL\Statement.
