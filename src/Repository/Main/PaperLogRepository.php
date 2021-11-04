@@ -94,9 +94,8 @@ class PaperLogRepository extends ServiceEntityRepository
 
         try {
             $stmt = $conn->prepare($rawSql);
-            $stmt->execute([]);
 
-            $result = $stmt->fetchAllAssociative();
+            $result = $stmt->executeQuery()->fetchAllAssociative();
 
             if ($year && !$rvId) { // all platform by year
                 $yearResult = $this->applyFilterBy($result, 'year', $year);
