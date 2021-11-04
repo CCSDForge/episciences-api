@@ -28,6 +28,11 @@ class PapersRepository extends ServiceEntityRepository
     public const PAPERS_ALIAS = 'p';
     public const LOCAL_REPOSITORY = 0;
 
+    public const AVAILABLE_FLAG_VALUES = [
+        'imported' => 'imported',
+        'submitted' => 'submitted'
+    ];
+
     private LoggerInterface $logger;
 
     public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
@@ -41,9 +46,10 @@ class PapersRepository extends ServiceEntityRepository
      * @param array $filters
      * @param bool $excludeTmpVersions
      * @param string $fieldDateToBeUsed (default = submissionDate): l'année prise en compte est l'année de la première soumission
+     * @param bool $excludeImportedPapers
      * @return QueryBuilder
      */
-    private function submissionsQuery(array $filters = [], bool $excludeTmpVersions = false, string $fieldDateToBeUsed = 'submissionDate'): QueryBuilder
+    private function submissionsQuery(array $filters = [], bool $excludeTmpVersions = false, string $fieldDateToBeUsed = 'submissionDate', bool $excludeImportedPapers = true): QueryBuilder
     {
 
         $qb = $this
@@ -65,7 +71,11 @@ class PapersRepository extends ServiceEntityRepository
                 ->setParameter('repoId', self::LOCAL_REPOSITORY);
         }
 
-
+        if ($excludeImportedPapers) {
+            $qb
+                ->andWhere('p.flag = :flag')
+                ->setParameter('flag', self::AVAILABLE_FLAG_VALUES['submitted']);
+        }
 
         return $qb;
 
@@ -75,9 +85,10 @@ class PapersRepository extends ServiceEntityRepository
      * A previously submitted article that has been modified will be taken into account in the current submissions
      * @param array|null $filters
      * @param bool $excludeTmpVersions
+     * @param bool $excludeImportedPapers
      * @return QueryBuilder
      */
-    private function flexibleSubmissionsQueryDetails(array $filters = null, bool $excludeTmpVersions = false): QueryBuilder
+    private function flexibleSubmissionsQueryDetails(array $filters = null, bool $excludeTmpVersions = false, bool $excludeImportedPapers = true): QueryBuilder
     {
 
         $qb = $this
@@ -90,6 +101,12 @@ class PapersRepository extends ServiceEntityRepository
             $qb
                 ->andWhere('p.repoid != :repoId')
                 ->setParameter('repoId', self::LOCAL_REPOSITORY);
+        }
+
+        if ($excludeImportedPapers) {
+            $qb
+                ->andWhere('p.flag = :flag')
+                ->setParameter('flag', self::AVAILABLE_FLAG_VALUES['submitted']);
         }
 
         $qb->andWhere('p.status != :obsolete');

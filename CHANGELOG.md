@@ -21,3 +21,4 @@ Updating 'Papers' entity:
 - Adding new field 'tag' (indicates whether the paper has been submitted or imported)
 - Remove unused code
 - Fixed: method 'fetchAllAssociative' not found in \Doctrine\DBAL\Statement.
+- Avoid including imported articles in journal statistics.
