@@ -505,4 +505,14 @@ class User implements UserInterface
 
         return $roles;
     }
+
+    /**
+     * @param int $uid
+     * @return User
+     */
+    public function setUid(int $uid): User
+    {
+        $this->uid = $uid;
+        return $this;
+    }
 }
