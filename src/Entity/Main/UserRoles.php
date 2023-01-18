@@ -40,7 +40,7 @@ class UserRoles
     private $roleid;
 
     /**
-     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="roles")
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="userRoles")
      * @ORM\JoinColumn(name="UID", referencedColumnName="UID", nullable=true)
      */
     private ?User $user;
