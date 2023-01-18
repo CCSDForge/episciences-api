@@ -1,4 +1,6 @@
 security:
+    enable_authenticator_manager: true
+
     # https://symfony.com/doc/current/security.html#where-do-users-come-from-user-providers
     #Une nouvelle sécurité expérimentale a été introduite dans Symfony 5.1,
     #qui remplacera à terme la sécurité dans Symfony 6.0.
@@ -59,7 +61,6 @@ security:
 #                authenticators:
 #                    - lexik_jwt_authentication.jwt_token_authenticator
         main:
-            anonymous: true
             lazy: true
             logout: ~
 
@@ -78,7 +79,7 @@ security:
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
-        - { path: ^/api/login, roles: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api,       roles: ROLE_SECRETARY }
         # - { path: ^/admin, roles: ROLE_ADMIN }
         # - { path: ^/profile, roles: ROLE_USER }
