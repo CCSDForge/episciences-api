@@ -4,12 +4,21 @@ declare(strict_types=1);
 
 namespace App\Resource;
 
+use ApiPlatform\Core\Annotation\ApiResource;
 use Exception;
 use Symfony\Component\Serializer\Annotation\Groups;
 
-
+/**
+ * @ApiResource(
+ *      itemOperations={
+ *     "get",
+ *     }
+ * )
+ */
 final class StatResource
 {
+
+    private string $id = 'statResource';
     /** * @Groups({"papers_read"}) */
     private array $_availableFilters;
 
@@ -25,7 +34,7 @@ final class StatResource
     /** * @Groups({"papers_read"}) */
     private ?array $_details;
 
-    public function __construct(string $name = '', array $requestedFilters = [],  $availableFilters = [], float $value = null, $details = null)
+    public function __construct(string $name = '', array $requestedFilters = [], $availableFilters = [], float $value = null, $details = null)
     {
         $this->_availableFilters = $availableFilters;
         $this->_requestedFilters = $requestedFilters;
@@ -109,6 +118,14 @@ final class StatResource
     public function __toString(): string
     {
         return sprintf("The resource \"%s\" requested with the following filters: %s", $this->getName(), json_encode($this->getRequestedFilters(), JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @return string
+     */
+    public function getId(): string
+    {
+        return $this->id;
     }
 
 }
