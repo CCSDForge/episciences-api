@@ -25,7 +25,7 @@ security:
         ROLE_ADMINISTRATOR: ROLE_SECRETARY
         ROLE_CHIEF_EDITOR: ROLE_ADMINISTRATOR
         ROLE_EPIADMIN: ROLE_CHIEF_EDITOR
-    encoders:
+    password_hashers:
         App\Entity\User:
             algorithm: auto
             #cost: 15
