@@ -40,14 +40,24 @@ class TokenAuthenticator extends AbstractGuardAuthenticator
     public function supports(Request $request): bool
     {
 
-        if ($request->headers->has('X-AUTH-RVID') && !empty($request->headers->get('X-AUTH-RVID'))) {
-            $this->rvId = (int)$request->headers->get('X-AUTH-RVID');
+        $rvId = ($request->headers->has('X-AUTH-RVID') && !empty($request->headers->get('X-AUTH-RVID'))) ?
+            $request->headers->get('X-AUTH-RVID') : $request->get('rvid');
+
+        if (!empty($rvId)) {
+            $this->rvId = (int)$rvId;
         }
 
+        if (
+            !$request->headers->has('X-AUTH-TOKEN') ||
+            ($request->headers->get('X-AUTH-TOKEN') !== $this->parameterBag->get('episciences.auth.token'))
+        ) {
+            return true; // authentication required
+        }
+
+        // false : authentication not required
         return
-            $request->headers->has('X-AUTH-TOKEN') &&
-            $request->headers->has('X-AUTH-LOGIN') &&
-            ($request->headers->get('X-AUTH-TOKEN') === $this->parameterBag->get('episciences.auth.token'));
+            $request->headers->has('X-AUTH-LOGIN') && !empty($request->headers->get('X-AUTH-LOGIN'));
+
     }
 
     /**
@@ -58,26 +68,27 @@ class TokenAuthenticator extends AbstractGuardAuthenticator
      */
     public function getCredentials(Request $request): ?string
     {
-        return $request->headers->get('X-AUTH-LOGIN');
+        return $request->headers->get('X-AUTH-LOGIN') ?: false;
     }
 
     public function getUser($credentials, UserProviderInterface $userProvider): ?UserInterface
     {
-        if (null === $credentials) {
-            // The token header was empty, authentication fails with HTTP Status
+
+        if (empty($credentials)) {
+            // The credentials are empty, authentication fails with HTTP Status
             // Code 401 "Unauthorized"
             return null;
         }
 
         /** @var User $user */
-        return $this->em->getRepository(User::class)->findOneBy(['username'=> $credentials]);
+        return $this->em->getRepository(User::class)->findOneBy(['username' => $credentials]);
     }
 
     public function checkCredentials($credentials, UserInterface $user): bool
 
     {
-        /** @var User $user*/
-        return $this->isGranted($user,  $this->rvId);
+        /** @var User $user */
+        return $this->isGranted($user, $this->rvId);
     }
 
     /**
@@ -131,7 +142,7 @@ class TokenAuthenticator extends AbstractGuardAuthenticator
      */
     private function isGranted(User $user, ?int $rvId): bool
     {
-        if(!$rvId){
+        if (!$rvId) {
             return false;
         }
 
