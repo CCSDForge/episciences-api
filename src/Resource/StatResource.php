@@ -55,6 +55,11 @@ final class StatResource
 
     public function getRequestedFilters(): array
     {
+
+        if (array_key_exists('page', $this->_requestedFilters)) { // not yet available
+            unset($this->_requestedFilters['page']);
+        }
+
         return $this->_requestedFilters;
     }
 
