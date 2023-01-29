@@ -11,3 +11,6 @@ bin
 .idea
 composer.phar
 symfony.lock
+###> lexik/jwt-authentication-bundle ###
+/config/jwt/*.pem
+###< lexik/jwt-authentication-bundle ###

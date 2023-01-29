@@ -10,26 +10,51 @@ use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Lexik\Bundle\JWTAuthenticationBundle\Security\User\JWTUserInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use App\Resource\StatResource;
 use App\DataProvider\UsersStatsDataProvider;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
 use Symfony\Component\Serializer\Annotation\Groups;
+use App\Controller\MeController;
 
 /**
  * User
  *
  * @ApiResource(
  *     attributes={
- *          "denormalization_context"={"groups"={"user_write"}},
+ *          "denormalization_context"={"groups"={"write:user"}},
  *          "order"={"uid":"DESC"},
  *     },
  *     paginationItemsPerPage=10,
  *     collectionOperations={
+ *          "me"={
+ *                "normalization_context"={"groups"={"read:user"}},
+ *                "pagination_enabled"=false,
+ *                 "path"="/me",
+ *                 "method"="GET",
+ *                 "controller"=MeController::class,
+ *                 "read"=false,
+ *                 "openapi_context"={
+ *                 "summary"="My profile",
+ *                 "security"={
+ *                      {
+ *                          "bearerAuth"={"bearerAuth"= {}}
+ *                      }
+ *                  }
+ *                 }
+ *               },
  *          "get"={
  *          "security"="is_granted('ROLE_SECRETARY')",
- *          "normalization_context"={"groups"={"user_read"}},
+ *          "normalization_context"={"groups"={"read:user"}},
+ *          "openapi_context"={
+ *                  "security"={
+ *                      {
+ *                          "bearerAuth"={}
+ *                      }
+ *                  }
+ *           },
  *          },
  *          "get_stats_nb_users"={
  *              "method"="GET",
@@ -41,7 +66,19 @@ use Symfony\Component\Serializer\Annotation\Groups;
  *     itemOperations={
  *          "get"={
  *              "security"="is_granted('ROLE_SECRETARY') or object == user",
- *              "normalization_context"={"groups"={"user_details_read"}},
+ *              "normalization_context"={
+ *                  "groups"={
+ *                      "read:user:details"
+ *                  }
+ *              },
+ *               "openapi_context"={
+ *                  "security"={
+ *                      {
+ *                          "bearerAuth"={}
+ *                      }
+ *                  }
+ *              }
+ *
  *          },
  *     }
  *
@@ -55,8 +92,9 @@ use Symfony\Component\Serializer\Annotation\Groups;
  *      "userRoles.rvid": "exact",
  *     })
  *
+ *
  */
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUserInterface
 {
     /**
      * @var int
@@ -71,7 +109,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @var string
      *
      * @ORM\Column(name="LANGUEID", type="string", length=2, nullable=false, options={"default"="fr"})
-     * @Groups({"user_details_read"})
+     * @Groups({"read:user:details"})
      *
      */
     private string $langueid = 'fr';
@@ -80,18 +118,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @var string
      *
      * @ORM\Column(name="SCREEN_NAME", type="string", length=250, nullable=false)
-     * @Groups({"user_read", "user_details_read"})
+     * @Groups({"read:user", "read:user:details"})
      *
      */
     private string $screenName;
 
     /**
      * @ORM\Column(name="USERNAME", type="string", length=100, nullable=false)
-     * @Groups({"user_read", "user_details_read"})
+     * @Groups({"read:user", "read:user:details"})
      * @ApiProperty(security="is_granted('ROLE_SECRETARY') or object == user")
      *
      */
-    private ?string $username;
+    private ?string $username = '';
 
     /**
      * @ORM\Column(name="API_PASSWORD", type="string", length=255)
@@ -110,7 +148,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @var string|null
      *
      * @ORM\Column(name="CIV", type="string", length=255, nullable=true)
-     * @Groups({"user_details_read"})
+     * @Groups({"read:user:details"})
      */
     private $civ;
 
@@ -118,7 +156,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @var string
      *
      * @ORM\Column(name="LASTNAME", type="string", length=100, nullable=false)
-     * @Groups({"user_details_read"})
+     * @Groups({"read:user:details"})
      */
     private $lastname;
 
@@ -126,7 +164,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @var string|null
      *
      * @ORM\Column(name="FIRSTNAME", type="string", length=100, nullable=true)
-     * @Groups({"user_details_read"})
+     * @Groups({"read:user:details"})
      */
     private $firstname;
 
@@ -134,7 +172,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @var string|null
      *
      * @ORM\Column(name="MIDDLENAME", type="string", length=100, nullable=true)
-     * @Groups({"user_details_read"})
+     * @Groups({"read:user:details"})
      */
     private $middlename;
 
@@ -168,14 +206,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     /**
      * @ORM\OneToMany(targetEntity=Papers::class, mappedBy="author")
-     * @Groups({"user_details_read"})
+     * @Groups({"read:user:details"})
      *
      */
     private Collection $papers;
 
     /**
      * @ApiProperty(security="is_granted('ROLE_SECRETARY') or object == user")
-     * @Groups({"user_read", "user_details_read"})
+     * @Groups({"read:user", "read:user:details"})
      */
     private array $roles;
 
@@ -504,5 +542,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->uid = $uid;
         return $this;
+    }
+
+    public static function createFromPayload($uid, array $payload): User
+    {
+        $user = new User();
+        $user->setUid((int)$uid);
+        $user->setUsername($payload['username'] ?? '');
+        $user->setRoles($payload['roles'] ?? []);
+        return $user;
+    }
+
+    public function getUserIdentifier(): ?string
+    {
+        return $this->getUsername();
     }
 }

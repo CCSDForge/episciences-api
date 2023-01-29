@@ -7,12 +7,17 @@ security:
     #Ce système est presque entièrement rétrocompatible avec la sécurité Symfony actuelle
     providers:
         #fournisseur d'utilisateurs
-#        user:
-#            entity: { class: App\Entity\User, property: username }
+
         user:
             entity:
                 class: App\Entity\Main\User
-                property: uid
+                property: username
+
+        jwt:
+            lexik_jwt:
+                class: App\Entity\Main\User
+
+
     role_hierarchy:
         ROLE_GUEST: ~
         ROLE_MEMBER: ROLE_GUEST
@@ -26,47 +31,52 @@ security:
         ROLE_CHIEF_EDITOR: ROLE_ADMINISTRATOR
         ROLE_EPIADMIN: ROLE_CHIEF_EDITOR
     password_hashers:
-        App\Entity\User:
-            algorithm: auto
-            #cost: 15
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+
     firewalls:
+
         #faux pare-feu: il garantit que vous ne bloquez pas accidentellement les outils de développement de Symfony
         #- qui vivent sous des URL comme /_profileret /_wdt.
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
+
+        #Caution!
+        #Make sure the firewall login is place before api, and if main exists, put it after api, otherwise you will encounter /api/login_check route not found.
+
         #Pour la route du login,
         #on indique que notre route de login doit être accessible aux utilisateurs anonymes,
         #on indique également que le bundle lexik jwt authentication doit s’occuper
         #de gérer la vérification des informations utilisateurs avec ses propres méthodes
-#        login:
-#            pattern:  ^/api/login
-#            stateless: true
-#            anonymous: true
-#            json_login:
-#                #Le pare-feu interceptera toutes les demandes ( POST demandes uniquement, par défaut) adressées
-#                #à cette URL et traitera les informations de connexion soumises
-#                check_path: /api/login
-#                success_handler: lexik_jwt_authentication.handler.authentication_success
-#                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+        login:
+            # Le pare-feu interceptera toutes les demandes ( POST demandes uniquement, par défaut) adressées
+            # à cette URL et traitera les informations de connexion soumises
+            pattern: ^/api/login$
+            stateless: true
+            provider: user
+            json_login:
+                check_path: api_login_check
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
 
         #Pour le reste de notre api - tout est stateless,
         #chaque requête doit contenir des informations d'authentification,
         #toutes les routes qui commencent par api seront protégées par l’authenticator JWT Lexik
-#        api:
-#            pattern: ^/api/
-#            methods: [POST, PUT, PATCH, DELETE]
-#            stateless: true
-#            guard:
-#                authenticators:
-#                    - lexik_jwt_authentication.jwt_token_authenticator
-        main:
-            lazy: true
-            logout: ~
-
-            # if you want, disable storing the user in the session
+        api:
+            pattern: ^/api
             stateless: true
-            custom_authenticator: App\Security\TokenAuthenticator
+            provider: jwt
+            jwt: ~
+
+
+#        main:
+#            lazy: true
+#            logout: ~
+#
+#            # if you want, disable storing the user in the session
+#            stateless: true
+#           custom_authenticator: App\Security\TokenAuthenticator
+
 
             # activate different ways to authenticate
             # https://symfony.com/doc/current/security.html#firewalls-authentication
@@ -78,7 +88,9 @@ security:
     # Note: Only the *first* access control that matches will be used
     access_control:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
-        - { path: ^/api,       roles: PUBLIC_ACCESS }
+        - { path: ^/api/review/stats/dashboard, roles: PUBLIC_ACCESS }
+        - { path: ^/api/docs, roles: PUBLIC_ACCESS }
+        - { path: ^/api/,       roles: IS_AUTHENTICATED_FULLY }
         # - { path: ^/admin, roles: ROLE_ADMIN }
         # - { path: ^/profile, roles: ROLE_USER }
 

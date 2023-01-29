@@ -5,13 +5,21 @@ declare(strict_types=1);
 namespace App\Resource;
 
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Action\NotFoundAction;
 use Exception;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * @ApiResource(
  *      itemOperations={
- *     "get",
+ *          "get"={
+ *              "controller"=NotFoundAction::class,
+ *              "openapi_context"={
+ *               "summary"="hidden"
+ *              },
+ *              "read"=false,
+ *              "output"=false,
+ *          },
  *     }
  * )
  */
