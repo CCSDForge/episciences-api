@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
-## Unreleased
+## v1.0 2023-02-01
 Updating 'Papers' entity:
 - Renaming 'description' field
 - Adding new field 'tag' (indicates whether the paper has been submitted or imported)
