@@ -35,3 +35,7 @@ services:
         arguments: ['@App\OpenApi\OpenApiFactory.inner']
         autoconfigure: false
 
+    AppCustomJWTAuthenticator:
+        class: App\Security\AppCustomJWTAuthenticator
+        parent: lexik_jwt_authentication.security.jwt_authenticator
+

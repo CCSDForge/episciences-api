@@ -37,7 +37,7 @@ use App\Controller\MeController;
  *                 "controller"=MeController::class,
  *                 "read"=false,
  *                 "openapi_context"={
- *                 "summary"="My profile",
+ *                 "summary"="My Account",
  *                 "security"={
  *                      {
  *                          "bearerAuth"={"bearerAuth"= {}}

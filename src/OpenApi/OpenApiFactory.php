@@ -7,6 +7,7 @@ use ApiPlatform\OpenApi\Model\Operation;
 use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\OpenApi;
+use Symfony\Component\HttpFoundation\Response;
 
 class OpenApiFactory implements OpenApiFactoryInterface
 {
@@ -48,14 +49,24 @@ class OpenApiFactory implements OpenApiFactoryInterface
                 'properties' => [
                     'username' => [
                         'type' => 'string',
-                        'example' => 'Your login'
+                        'example' => 'Your login',
+                        'nullable' => false,
                     ],
 
                     'password' => [
                         'type' => 'string',
-                        'example' => 'Your API password'
+                        'example' => 'Your API password',
+                        'nullable' => false,
+                    ],
+
+                    'code' => [
+                        'type' => 'string',
+                        'example' => "Journal's code",
+                        'nullable' => true,
                     ]
-                ]
+
+                ],
+                'required' => ['username', 'password'],
             ]);
 
         $schemas['Token'] = new \ArrayObject([
@@ -78,7 +89,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
                 'postApiLogin',
                 ['Auth'],
                 [
-                    '200' => [
+                    Response::HTTP_OK => [
                         'description' => 'Token JWT',
                         'content' => [
                             'application/json' => [

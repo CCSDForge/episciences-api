@@ -6,7 +6,7 @@ api_platform:
     # The title of the API.
     title: 'Episciences API'
     # The description of the API.
-    description: 'STATS'
+    description: 'Search API'
     # The version of the API.
     version: '1.0.0'
 

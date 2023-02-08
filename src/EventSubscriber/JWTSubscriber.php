@@ -2,30 +2,56 @@
 
 namespace App\EventSubscriber;
 
+use App\Entity\Main\Review;
 use App\Entity\Main\User;
-use App\Entity\Main\UserRoles;
+use Doctrine\Persistence\ManagerRegistry;
 use Lexik\Bundle\JWTAuthenticationBundle\Event\JWTCreatedEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 class JWTSubscriber implements EventSubscriberInterface
 {
+
+    private RequestStack $requestStack;
+    private ManagerRegistry $doctrine;
+
+
+    public function __construct(RequestStack $requestStack, ManagerRegistry $doctrine)
+    {
+        $this->requestStack = $requestStack;
+        $this->doctrine = $doctrine;
+    }
+
+    /**
+     * @param JWTCreatedEvent $event
+     * @return void
+     * @throws \JsonException
+     */
     public function onLexikJwtAuthenticationOnJwtCreated(JWTCreatedEvent $event): void
     {
+
+        $currentReview = null;
+        $rvId = null;
+
+        $request = $this->requestStack->getCurrentRequest();
+        $postedContent = $request ? json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) : [];
+
+        $rvCode = $postedContent['code'] ?? null;
+
+        if ($rvCode) {
+            $currentReview = $this->doctrine->getRepository(Review::class)->findOneBy(['code' => $rvCode]);
+        }
+
+        if ($currentReview && $currentReview->getStatus()) {
+            $rvId = $currentReview->getRvid();
+        }
+
         $data = $event->getData();
-        $roles = [];
 
         /** @var User $user */
         $user = $event->getUser();
-
-//        /* @var UserRoles $userRole */
-//        foreach ($user->getUserRoles()->toArray() as $userRole) {
-//            $roles[$userRole->getRvid()][] = 'ROLE_' . strtoupper($userRole->getRoleid());
-//        }
-//
-//        $data['roles'] = $roles;
-
-
-        $data['username'] = $user->getUsername();
+        $data['roles'] = $user->getRoles($rvId);
+        $data['rvId'] = $rvId ? $currentReview->getRvid() : null;
         $event->setData($data);
     }
 
