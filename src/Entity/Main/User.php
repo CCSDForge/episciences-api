@@ -28,6 +28,7 @@ use App\Controller\MeController;
  *          "order"={"uid":"DESC"},
  *     },
  *     paginationItemsPerPage=10,
+ *     paginationMaximumItemsPerPage=10,
  *     collectionOperations={
  *          "me"={
  *                "normalization_context"={"groups"={"read:user"}},
