@@ -10,6 +10,7 @@ use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use App\Resource\StatResource;
 use App\DataProvider\UsersStatsDataProvider;
@@ -55,7 +56,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
  *     })
  *
  */
-class User implements UserInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     /**
      * @var int
@@ -219,7 +220,7 @@ class User implements UserInterface
         return $this->username;
     }
 
-    public function setUsername(string $username): self
+    public function setUsername(string $username = null): self
     {
         $this->username = $username;
 
@@ -393,8 +394,7 @@ class User implements UserInterface
 
     public function getSalt(): ?string
     {
-        // TODO: Implement getSalt() method.
-        return 'toDo';
+        return null;
     }
 
     public function eraseCredentials(): void
@@ -477,33 +477,23 @@ class User implements UserInterface
     private function rolesProcessing(int $rvId = null): array
     {
         $roles = [];
+
         $elements = $this->userRoles->toArray();
+
         /* @var UserRoles $userRole */
         foreach ($elements as $userRole) {
-            if (!$rvId) {
-
-                $roleStr = 'ROLE_' . strtoupper($userRole->getRoleid());
-
-                if (!in_array($roleStr, $roles, true)) {
-                    $roles[] = 'ROLE_' . strtoupper($userRole->getRoleid());
-                }
-
-            } else {
-                $roles[$userRole->getRvid()][] = 'ROLE_' . strtoupper($userRole->getRoleid());
-            }
+            $roles[$userRole->getRvid()][] = 'ROLE_' . strtoupper($userRole->getRoleid());
         }
 
-        if (!$rvId) {
-            return $roles;
-        }
+        return !$rvId ? ['ROLE_MEMBER'] : $roles[$rvId];
 
-        if (array_key_exists($rvId, $roles)) {
-            $roles = $roles[$rvId];
-        } else {
-            $roles = [];
-        }
+    }
 
-        return $roles;
+    public function setRoles(array $roles = []): self
+    {
+        $this->roles = $roles;
+        return $this;
+
     }
 
     /**

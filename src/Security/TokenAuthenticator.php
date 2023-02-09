@@ -3,6 +3,7 @@
 namespace App\Security;
 
 use App\Entity\Main\User;
+use App\Repository\Main\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -14,8 +15,13 @@ use Symfony\Component\Security\Core\Role\RoleHierarchyInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\UserProviderInterface;
 use Symfony\Component\Security\Guard\AbstractGuardAuthenticator;
+use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
+use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
+use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+use Symfony\Component\Security\Http\Authenticator\Passport\PassportInterface;
+use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
 
-class TokenAuthenticator extends AbstractGuardAuthenticator
+class TokenAuthenticator extends AbstractAuthenticator
 {
     private EntityManagerInterface $em;
     private ParameterBagInterface $parameterBag;
@@ -148,12 +154,22 @@ class TokenAuthenticator extends AbstractGuardAuthenticator
 
         $reachableRoles = $this->roleHierarchy->getReachableRoleNames($user->getRoles($rvId));
 
-        foreach ($reachableRoles as $reachableRole) {
-            if ($reachableRole === 'ROLE_SECRETARY') {
-                return true;
-            }
+        if (in_array('ROLE_SECRETARY', $reachableRoles, true)) {
+            return true;
         }
 
         return false;
+    }
+
+    public function authenticate(Request $request): Passport
+    {
+
+        $login = (string)$request->headers->get('X-AUTH-LOGIN');
+
+        return new SelfValidatingPassport(
+            new UserBadge($login, function (string $login) {
+                return $this->em->getRepository(User::class)->findOneBy(['username' => $login]);
+            })
+        );
     }
 }

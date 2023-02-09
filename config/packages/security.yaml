@@ -64,11 +64,9 @@ security:
             lazy: true
             logout: ~
 
-            guard:
-                authenticators:
-                    - App\Security\TokenAuthenticator
             # if you want, disable storing the user in the session
             stateless: true
+            custom_authenticator: App\Security\TokenAuthenticator
 
             # activate different ways to authenticate
             # https://symfony.com/doc/current/security.html#firewalls-authentication
