@@ -45,39 +45,41 @@ class OpenApiFactory implements OpenApiFactoryInterface
         $schemas = $openApi->getComponents()->getSchemas();
 
         $schemas['Credentials'] = new \ArrayObject([
-                'type' => 'object',
-                'properties' => [
-                    'username' => [
-                        'type' => 'string',
-                        'example' => 'Your login',
-                        'nullable' => false,
-                    ],
-
-                    'password' => [
-                        'type' => 'string',
-                        'example' => 'Your API password',
-                        'nullable' => false,
-                    ],
-
-                    'code' => [
-                        'type' => 'string',
-                        'example' => "Journal's code",
-                        'nullable' => true,
-                    ]
-
+            'type' => 'object',
+            'properties' => [
+                'username' => [
+                    'type' => 'string',
+                    'example' => 'Your login',
+                    'nullable' => false,
                 ],
-                'required' => ['username', 'password'],
-            ]);
+
+                'password' => [
+                    'type' => 'string',
+                    'example' => 'Your API password',
+                    'nullable' => false,
+                ],
+
+                'code' => [
+                    'type' => 'string',
+                    'example' => "Journal's code",
+                    'nullable' => true,
+                ]
+
+            ],
+            'required' => ['username', 'password'],
+        ]);
 
         $schemas['Token'] = new \ArrayObject([
-                'type' => 'object',
-                'properties' => [
-                    'token' => [
-                        'type' => 'string',
-                        'readOnly' => true,
-                    ]
+            'type' => 'object',
+            'properties' => [
+                'token' => [
+                    'type' => 'string',
+                    'readOnly' => true,
+                    'nullable' => false,
                 ]
-            ]);
+            ],
+            'required' => ['token'],
+        ]);
 
         $pathItem = new PathItem(
             null,
@@ -90,7 +92,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
                 ['Auth'],
                 [
                     Response::HTTP_OK => [
-                        'description' => 'Token JWT',
+                        'description' => 'User token created',
                         'content' => [
                             'application/json' => [
                                 'schema' => [
@@ -106,7 +108,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
                 null,
                 [],
                 new RequestBody(
-                    '',
+                    'The login data',
                     new \ArrayObject([
                             'application/json' => [
                                 'schema' => [
