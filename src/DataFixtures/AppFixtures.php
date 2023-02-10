@@ -2,19 +2,18 @@
 
 namespace App\DataFixtures;
 
-use App\Entity\Main\PaperRatingGrid;
 use App\Entity\Main\Papers;
 use App\Entity\Main\User;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
-use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class AppFixtures extends Fixture
 {
-    private $encoder;
+    private UserPasswordHasherInterface $passwordHasher;
 
-    public function __construct(UserPasswordEncoderInterface $encoder){
-        $this->encoder = $encoder;
+    public function __construct(UserPasswordHasherInterface $passwordHasher){
+        $this->passwordHasher = $passwordHasher;
     }
 
     public function load(ObjectManager $manager)
@@ -27,14 +26,29 @@ class AppFixtures extends Fixture
 
         $user = new User();
 
+        $plaintextPassword = 'plaintextPassword';
+
+        // hash the password (based on the security.yaml config for the $user class)
+        $hashedPassword = $this->passwordHasher->hashPassword(
+            $user,
+            $plaintextPassword
+        );
+
+
+
         $user
             ->setLangueid('en')
             ->setScreenName('djamel')
             ->setUsername('djamel')
             ->setEmail('djamel@episciences.org')
             ->setLastName('djamel')
-            ->setValid(1)
-            ->setPassword($this->encoder->encodePassword($user, 'admin'));
+            ->setValid(1);
+
+
+        $user->setPassword($hashedPassword);
+
+
+
 
         $paper = new Papers();
 

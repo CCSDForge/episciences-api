@@ -523,9 +523,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         foreach ($elements as $userRole) {
             $roles[$userRole->getRvid()][] = 'ROLE_' . strtoupper($userRole->getRoleid());
         }
-
-        return !$rvId ? ['ROLE_MEMBER'] : $roles[$rvId];
-
+        return ($rvId === null || !array_key_exists($rvId, $roles)) ? ['ROLE_USER'] : $roles[$rvId];
     }
 
     public function setRoles(array $roles = []): self
@@ -545,11 +543,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this;
     }
 
-    public static function createFromPayload($uid, array $payload): User
+    public static function createFromPayload($username, array $payload): User
     {
         $user = new User();
-        $user->setUid((int)$uid);
-        $user->setUsername($payload['username'] ?? '');
+        $user->setUid($payload['uid'] ?? null);
+        $user->setUsername($payload['username'] ??  null);
         $user->setRoles($payload['roles'] ?? []);
         return $user;
     }

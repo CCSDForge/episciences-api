@@ -3,7 +3,7 @@
 
 namespace App\EventSubscriber;
 
-use ApiPlatform\Core\EventListener\EventPriorities;
+use ApiPlatform\Symfony\EventListener\EventPriorities as EventPrioritiesAlias;
 use App\Exception\StatResourceNotFoundException;
 use App\Resource\StatResource;
 use App\Traits\CheckExistingResourceTrait;
@@ -21,7 +21,7 @@ final class StatResourceManager implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            KernelEvents::VIEW => ['checkStatResourceAvailability', EventPriorities::PRE_VALIDATE],
+            KernelEvents::VIEW => ['checkStatResourceAvailability', EventPrioritiesAlias::PRE_VALIDATE],
         ];
     }
 
