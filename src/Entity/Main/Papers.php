@@ -3,9 +3,9 @@ declare(strict_types=1);
 
 namespace App\Entity\Main;
 
-use ApiPlatform\Core\Annotation\ApiFilter;
-use ApiPlatform\Core\Annotation\ApiResource;
-use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use App\Filter\YearFilter;
 use DateTime;
 use Doctrine\ORM\Mapping as ORM;
@@ -17,49 +17,6 @@ use App\Resource\StatResource;
 /**
  * Papers
  *
- * @ApiResource(
- *     attributes={
- *          "normalization_context"={"groups"={"papers_read"}},
- *          "denormalization_context"={"groups"={"papers_write"}},
- *          "order"={"submissionDate":"DESC"},
- *     },
- *     paginationItemsPerPage=10,
- *     collectionOperations={
- *     "get",
- *      "get_stats_nb_submissions"={
- *            "method"="GET",
- *            "output"=StatResource::class,
- *            "path"="/papers/stats/nb-submissions",
- *            "dataProvider"=PapersStatsDataProvider::class,
- *        },
- *      "get_delay_between_submit_and_acceptance"={
- *            "method"="GET",
- *            "output"=StatResource::class,
- *            "path"="/papers/stats/delay-between-submit-and-acceptance",
- *            "dataProvider"=PapersStatsDataProvider::class,
- *        },
- *      "get_delay_between_submit_and_publication"={
- *            "method"="GET",
- *            "output"=StatResource::class,
- *            "path"="/papers/stats/delay-between-submit-and-publication",
- *            "dataProvider"=PapersStatsDataProvider::class,
- *        }
- *     },
- *     itemOperations={
- *     "get",
- *     }
- *     )
- * @ApiFilter(SearchFilter::class,
- *     properties={
- *     "rvid": "exact",
- *     "uid": "exact",
- *     "vid": "exact",
- *     "sid": "exact",
- *     "status": "exact",
- *     "repoid": "exact",
- *     },
- *
- *     )
  * @ORM\Table(name="PAPERS", indexes={@ORM\Index(name="FK_CONFID_idx", columns={"RVID"}), @ORM\Index(name="FK_REPOID_idx", columns={"REPOID"}), @ORM\Index(name="FK_VID_idx", columns={"VID"}), @ORM\Index(name="PAPERID", columns={"PAPERID"})})
  * @ORM\Entity(repositoryClass="App\Repository\Main\PapersRepository")
  */
@@ -247,7 +204,7 @@ class Papers
      *
      * @ORM\Column(name="SUBMISSION_DATE", type="datetime", nullable=false)
      *
-     * @ApiFilter(YearFilter::class)
+     *
      * @Groups({"papers_read"})
      */
     private DateTime $submissionDate;
@@ -522,7 +479,7 @@ class Papers
      * @param string $flag
      * @return Papers
      */
-    public function setFlag(string $flag): self
+    public function setFlag(string $flag): Papers
     {
         $this->flag = $flag;
         return $this;

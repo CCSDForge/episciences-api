@@ -19,6 +19,7 @@ use Psr\Log\LoggerInterface;
  * @method PaperLog[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
  */
+
 class PaperLogRepository extends ServiceEntityRepository
 {
     use ToolsTrait;
@@ -39,6 +40,7 @@ class PaperLogRepository extends ServiceEntityRepository
      * @param int $latestStatus
      * @return StatResource
      */
+
     public function getDelayBetweenSubmissionAndLatestStatus(array $filters = [], int $latestStatus = Papers::STATUS_ACCEPTED): StatResource
     {
 
@@ -167,7 +169,7 @@ class PaperLogRepository extends ServiceEntityRepository
      * @param string $key
      * @return float | null
      */
-    private function avg(array $array, string $key = 'delay'): ?float
+    private function avg(array $array, string $key = 'delay'): float
     {
 
         if (empty($array)) {

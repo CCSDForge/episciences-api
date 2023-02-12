@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\DataProvider;
 
-use ApiPlatform\Core\DataProvider\ContextAwareCollectionDataProviderInterface;
-use ApiPlatform\Core\DataProvider\RestrictedDataProviderInterface;
+
+use ApiPlatform\Metadata\Operation;
+Use ApiPlatform\State\ProviderInterface;
 use App\Entity\Main\Review;
 use App\Entity\Main\User;
 use App\Repository\Main\UserRepository;
@@ -13,7 +14,7 @@ use App\Resource\StatResource;
 use App\Traits\CheckExistingResourceTrait;
 use Doctrine\ORM\EntityManagerInterface;
 
-final class UsersStatsDataProvider implements ContextAwareCollectionDataProviderInterface, RestrictedDataProviderInterface
+final class UsersStatsDataProvider implements ProviderInterface
 {
 
     use CheckExistingResourceTrait;
@@ -51,5 +52,10 @@ final class UsersStatsDataProvider implements ContextAwareCollectionDataProvider
         if ($operationName === 'get_stats_nb_users') {
             yield $this->entityManagerInterface->getRepository(User::class)->getUserStats($filters['is']);
         }
+    }
+
+    public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
+    {
+        // TODO: Implement provide() method.
     }
 }

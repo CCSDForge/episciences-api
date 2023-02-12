@@ -3,9 +3,11 @@ declare(strict_types=1);
 
 namespace App\Entity\Main;
 
-use ApiPlatform\Core\Annotation\ApiFilter;
-use ApiPlatform\Core\Annotation\ApiProperty;
-use ApiPlatform\Core\Annotation\ApiResource;
+
+
+use ApiPlatform\Metadata\ApiProperty;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiResource;
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -15,83 +17,15 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use App\Resource\StatResource;
 use App\DataProvider\UsersStatsDataProvider;
-use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use Symfony\Component\Serializer\Annotation\Groups;
 use App\Controller\MeController;
 
 /**
  * User
  *
- * @ApiResource(
- *     attributes={
- *          "denormalization_context"={"groups"={"write:user"}},
- *          "order"={"uid":"DESC"},
- *     },
- *     paginationItemsPerPage=10,
- *     paginationMaximumItemsPerPage=10,
- *     collectionOperations={
- *          "me"={
- *                "normalization_context"={"groups"={"read:user"}},
- *                "pagination_enabled"=false,
- *                 "path"="/me",
- *                 "method"="GET",
- *                 "controller"=MeController::class,
- *                 "read"=false,
- *                 "openapi_context"={
- *                 "summary"="My Account",
- *                 "security"={
- *                      {
- *                          "bearerAuth"={"bearerAuth"= {}}
- *                      }
- *                  }
- *                 }
- *               },
- *          "get"={
- *          "security"="is_granted('ROLE_SECRETARY')",
- *          "normalization_context"={"groups"={"read:user"}},
- *          "openapi_context"={
- *                  "security"={
- *                      {
- *                          "bearerAuth"={}
- *                      }
- *                  }
- *           },
- *          },
- *          "get_stats_nb_users"={
- *              "method"="GET",
- *              "output"=StatResource::class,
- *              "path"="/users/stats/nb-users",
- *              "dataProvider"=UsersStatsDataProvider::class,
- *          },
- *     },
- *     itemOperations={
- *          "get"={
- *              "security"="is_granted('ROLE_SECRETARY') or object == user",
- *              "normalization_context"={
- *                  "groups"={
- *                      "read:user:details"
- *                  }
- *              },
- *               "openapi_context"={
- *                  "security"={
- *                      {
- *                          "bearerAuth"={}
- *                      }
- *                  }
- *              }
- *
- *          },
- *     }
- *
- *
- * )
  * @ORM\Table(name="USER")
  * @ORM\Entity(repositoryClass="App\Repository\Main\UserRepository")
- * @ApiFilter(SearchFilter::class,
- *     properties={
- *      "uid": "exact",
- *      "userRoles.rvid": "exact",
- *     })
  *
  *
  */
@@ -127,7 +61,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     /**
      * @ORM\Column(name="USERNAME", type="string", length=100, nullable=false)
      * @Groups({"read:user", "read:user:details"})
-     * @ApiProperty(security="is_granted('ROLE_SECRETARY') or object == user")
+     *
      *
      */
     private ?string $username = '';
@@ -141,7 +75,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @var string
      *
      * @ORM\Column(name="EMAIL", type="string", length=320, nullable=false, options={})
-     * @ApiProperty(security="is_granted('ROLE_SECRETARY') or object == user")
+     *
      */
     private $email;
 
@@ -181,7 +115,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @var DateTime|null
      *
      * @ORM\Column(name="REGISTRATION_DATE", type="datetime", nullable=true, options={"comment"="Date création du compte"})
-     * @ApiProperty(security="is_granted('ROLE_SECRETARY')")
+     *
      */
     private $registrationDate;
 
@@ -196,7 +130,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @var bool
      *
      * @ORM\Column(name="IS_VALID", type="boolean", nullable=false)
-     * @ApiProperty(security="is_granted('ROLE_SECRETARY')")
+     *
      */
     private bool $isValid = true;
 
@@ -213,7 +147,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     private Collection $papers;
 
     /**
-     * @ApiProperty(security="is_granted('ROLE_SECRETARY') or object == user")
+     *
      * @Groups({"read:user", "read:user:details"})
      */
     private array $roles;
@@ -290,7 +224,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @param string $email
      * @return User
      */
-    public function setEmail(string $email): self
+    public function setEmail(string $email): User
     {
         $this->email = $email;
         return $this;
@@ -308,7 +242,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @param string|null $civ
      * @return User
      */
-    public function setCiv(?string $civ): self
+    public function setCiv(?string $civ): User
     {
         $this->civ = $civ;
         return $this;
@@ -326,7 +260,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @param string $lastname
      * @return User
      */
-    public function setLastname(string $lastname): self
+    public function setLastname(string $lastname): User
     {
         $this->lastname = $lastname;
         return $this;
@@ -344,7 +278,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @param string|null $firstname
      * @return User
      */
-    public function setFirstname(?string $firstname): self
+    public function setFirstname(?string $firstname): User
     {
         $this->firstname = $firstname;
         return $this;
@@ -362,7 +296,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @param string|null $middlename
      * @return User
      */
-    public function setMiddlename(?string $middlename): self
+    public function setMiddlename(?string $middlename): User
     {
         $this->middlename = $middlename;
         return $this;
@@ -380,7 +314,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @param DateTime|null $registrationDate
      * @return User
      */
-    public function setRegistrationDate(?DateTime $registrationDate): self
+    public function setRegistrationDate(?DateTime $registrationDate): User
     {
         $this->registrationDate = $registrationDate;
         return $this;
@@ -389,7 +323,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     /**
      * @return DateTime|null
      */
-    public function getModificationDate()
+    public function getModificationDate(): ?DateTime
     {
         return $this->modificationDate;
     }
@@ -398,7 +332,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @param DateTime|null $modificationDate
      * @return User
      */
-    public function setModificationDate(?DateTime $modificationDate): self
+    public function setModificationDate(?DateTime $modificationDate): User
     {
         $this->modificationDate = $modificationDate;
         return $this;
@@ -416,7 +350,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @param bool $isValid
      * @return User
      */
-    public function setIsValid(bool $isValid): self
+    public function setIsValid(bool $isValid): User
     {
         $this->isValid = $isValid;
         return $this;
@@ -461,9 +395,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this;
     }
 
-    /**
-     * @return Collection|Papers[]
-     */
+
     public function getPapers(): Collection
     {
         return $this->papers;
@@ -552,7 +484,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $user;
     }
 
-    public function getUserIdentifier(): ?string
+    public function getUserIdentifier(): string
     {
         return $this->getUsername();
     }

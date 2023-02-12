@@ -2,7 +2,7 @@
 
 namespace App\Entity\Main;
 
-use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Metadata\ApiResource;
 use DateTimeInterface;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -10,30 +10,10 @@ use Doctrine\ORM\Mapping as ORM;
 use App\Resource\StatResource;
 use App\DataProvider\ReviewStatsDataProvider;
 
+
 /**
  * Review
  *
- * @ApiResource(
- *      attributes={
- *          "normalizationContext"={"groups"={"review_read"}},
- *          "denormalizationContext"={"groups"={"review_write"}},
- *          "order"={"creation":"DESC"},
- *     },
- *     paginationItemsPerPage=10,
- *     collectionOperations={
- *     "get",
- *      "get_dashboard_stats"={
- *            "method"="GET",
- *            "output"=StatResource::class,
- *            "path"="/review/stats/dashboard",
- *            "dataProvider"=ReviewStatsDataProvider::class,
- *        },
- *     },
- *     itemOperations={
- *     "get",
- *     }
- *
- * )
  * @ORM\Table(name="REVIEW", uniqueConstraints={@ORM\UniqueConstraint(name="U_CODE", columns={"CODE"})})
  * @ORM\Entity
  */

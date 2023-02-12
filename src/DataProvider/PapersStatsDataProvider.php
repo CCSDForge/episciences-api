@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\DataProvider;
 
-use ApiPlatform\Core\DataProvider\ContextAwareCollectionDataProviderInterface;
-use ApiPlatform\Core\DataProvider\RestrictedDataProviderInterface;
+use ApiPlatform\Metadata\Operation;
+use ApiPlatform\State\ProviderInterface;
 use App\Entity\Main\PaperLog;
 use App\Entity\Main\Papers;
 use App\Entity\Main\Review;
@@ -13,7 +13,7 @@ use App\Resource\StatResource;
 use App\Traits\CheckExistingResourceTrait;
 use Doctrine\ORM\EntityManagerInterface;
 
-final class PapersStatsDataProvider implements ContextAwareCollectionDataProviderInterface, RestrictedDataProviderInterface
+final class PapersStatsDataProvider implements ProviderInterface
 {
 
     use CheckExistingResourceTrait;
@@ -58,5 +58,10 @@ final class PapersStatsDataProvider implements ContextAwareCollectionDataProvide
         } elseif ($operationName === 'get_delay_between_submit_and_publication') {
             yield $this->entityManagerInterface->getRepository(PaperLog::class)->getDelayBetweenSubmissionAndLatestStatus($filters, Papers::STATUS_PUBLISHED);
         }
+    }
+
+    public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
+    {
+        // TODO: Implement provide() method.
     }
 }

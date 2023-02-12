@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\DataProvider;
 
-use ApiPlatform\Core\DataProvider\ContextAwareCollectionDataProviderInterface;
-use ApiPlatform\Core\DataProvider\RestrictedDataProviderInterface;
+
+use ApiPlatform\Metadata\Operation;
+use ApiPlatform\State\ProviderInterface;
 use App\Entity\Main\PaperLog;
 use App\Entity\Main\Papers;
 use App\Entity\Main\Review;
@@ -13,7 +14,7 @@ use App\Entity\Main\User;
 use App\Traits\CheckExistingResourceTrait;
 use Doctrine\ORM\EntityManagerInterface;
 
-final class ReviewStatsDataProvider implements ContextAwareCollectionDataProviderInterface, RestrictedDataProviderInterface
+final class ReviewStatsDataProvider implements ProviderInterface
 {
 
     use CheckExistingResourceTrait;
@@ -53,5 +54,10 @@ final class ReviewStatsDataProvider implements ContextAwareCollectionDataProvide
         }
 
         yield $dashboard;
+    }
+
+    public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
+    {
+        // TODO: Implement provide() method.
     }
 }

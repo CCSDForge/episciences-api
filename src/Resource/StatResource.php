@@ -111,7 +111,7 @@ final class StatResource
     /**
      * @return array
      */
-    public function getDetails(): ?array
+    public function getDetails(): array
     {
         return $this->_details;
     }

@@ -22,6 +22,7 @@ use Psr\Log\LoggerInterface;
  * @method User[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
  */
+
 class UserRepository extends ServiceEntityRepository
 {
     use ToolsTrait;

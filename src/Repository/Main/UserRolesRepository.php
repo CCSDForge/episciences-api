@@ -16,6 +16,7 @@ use Psr\Log\LoggerInterface;
  * @method UserRoles[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
  */
+
 class UserRolesRepository extends ServiceEntityRepository
 {
     public const AVAILABLE_FILTERS = ['rvid', 'uid', 'role'];
