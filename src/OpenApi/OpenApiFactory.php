@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 class OpenApiFactory implements OpenApiFactoryInterface
 {
     public const OAF_HIDDEN = 'hidden';
+    public const JWT_POST_LOGIN_OPERATION_ID = 'login_check_post';
 
     private OpenApiFactoryInterface $decorated;
 
@@ -29,6 +30,10 @@ class OpenApiFactory implements OpenApiFactoryInterface
 
             if ($path->getGet() && ($path->getGet()->getSummary() === self::OAF_HIDDEN)) {
                 $openApi->getPaths()->addPath($key, $path->withGet(null));
+            }
+
+            if ($path->getPost() && ($path->getPost()->getOperationId() === self::JWT_POST_LOGIN_OPERATION_ID)) {
+                $openApi->getPaths()->addPath($key, $path->withPost(null));
             }
 
         }
