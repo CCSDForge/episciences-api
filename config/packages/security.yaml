@@ -1,6 +1,4 @@
 security:
-    enable_authenticator_manager: true
-
     # https://symfony.com/doc/current/security.html#where-do-users-come-from-user-providers
     #Une nouvelle sécurité expérimentale a été introduite dans Symfony 5.1,
     #qui remplacera à terme la sécurité dans Symfony 6.0.

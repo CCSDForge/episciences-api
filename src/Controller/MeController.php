@@ -2,7 +2,7 @@
 
 namespace App\Controller;
 
-use Symfony\Component\Security\Core\Security;
+use Symfony\Bundle\SecurityBundle\Security;
 
 class MeController
 {
