@@ -4,76 +4,92 @@ declare(strict_types=1);
 
 namespace App\Resource;
 
-use ApiPlatform\Core\Annotation\ApiResource;
-use ApiPlatform\Core\Action\NotFoundAction;
+
+use ApiPlatform\Action\NotFoundAction;
+use ApiPlatform\Metadata\ApiProperty;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use App\AppConstants;
 use Exception;
 use Symfony\Component\Serializer\Annotation\Groups;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 
-/**
- * @ApiResource(
- *      itemOperations={
- *          "get"={
- *              "controller"=NotFoundAction::class,
- *              "openapi_context"={
- *               "summary"="hidden"
- *              },
- *              "read"=false,
- *              "output"=false,
- *          },
- *     }
- * )
- */
+
+
+#[ApiResource(
+    operations: [
+        new Get(
+            uriTemplate: '/review/stats/dashboard/{id}/',
+
+            controller: NotFoundAction::class,
+            openapi: new OpenApiOperation(
+                summary: 'hidden',
+            ),
+            normalizationContext: [
+                'groups' => ['read:StatResource']
+
+            ],
+            output: false,
+            read: false,
+
+        ),
+
+    ]
+
+
+)]
 final class StatResource
 {
+    private string $id;
+    #[Groups([AppConstants::APP_CONST['normalizationContext']['groups']['review']['read'][0]])]
+    private array $availableFilters;
 
-    private string $id = 'statResource';
-    /** * @Groups({"papers_read"}) */
-    private array $_availableFilters;
+    #[Groups([AppConstants::APP_CONST['normalizationContext']['groups']['review']['read'][0]])]
+    private array $requestedFilters;
 
-    /** * @Groups({"papers_read"}) */
-    private array $_requestedFilters;
+    #[Groups([AppConstants::APP_CONST['normalizationContext']['groups']['review']['read'][0]])]
+    private string $name;
 
-    /** * @Groups({"papers_read"}) */
-    private string $_name;
+    #[Groups([AppConstants::APP_CONST['normalizationContext']['groups']['review']['read'][0]])]
+    private float|array|null $value;
 
-    /** * @Groups({"papers_read"}) */
-    private ?float $_value;
-
-    /** * @Groups({"papers_read"}) */
-    private ?array $_details;
+    #[Groups([AppConstants::APP_CONST['normalizationContext']['groups']['review']['read'][0]])]
+    private ?array $details;
 
     public function __construct(string $name = '', array $requestedFilters = [], $availableFilters = [], float $value = null, $details = null)
     {
-        $this->_availableFilters = $availableFilters;
-        $this->_requestedFilters = $requestedFilters;
-        $this->_name = $name;
-        $this->_value = $value;
-        $this->_details = $details;
+        $this->availableFilters = $availableFilters;
+        $this->requestedFilters = $requestedFilters;
+        $this->name = $name;
+        $this->value = $value;
+        $this->details = $details;
     }
 
     public function getAvailableFilters(): array
     {
-        return $this->_availableFilters;
+        return $this->availableFilters;
     }
 
-    public function setAvailableFilters(array $availableFilters): void
+    public function setAvailableFilters(array $availableFilters): self
     {
-        $this->_availableFilters = $availableFilters;
+        $this->availableFilters = $availableFilters;
+        return $this;
     }
 
     public function getRequestedFilters(): array
     {
 
-        if (array_key_exists('page', $this->_requestedFilters)) { // not yet available
-            unset($this->_requestedFilters['page']);
+        if (array_key_exists('page', $this->requestedFilters)) { // not yet available
+            unset($this->requestedFilters['page']);
         }
 
-        return $this->_requestedFilters;
+        return $this->requestedFilters;
     }
 
-    public function setRequestedFilters(array $filters): void
+    public function setRequestedFilters(array $filters): self
     {
-        $this->_requestedFilters = $filters;
+        $this->requestedFilters = $filters;
+        return $this;
     }
 
     /**
@@ -81,31 +97,35 @@ final class StatResource
      */
     public function getName(): string
     {
-        return $this->_name;
+        return $this->name;
     }
 
     /**
      * @param string $name
+     * @return StatResource
      */
-    public function setName(string $name): void
+    public function setName(string $name): self
     {
-        $this->_name = $name;
+        $this->name = $name;
+        return $this;
     }
 
     /**
-     * @return float|null
+     * @return float|array|null
      */
-    public function getValue(): ?float
+    public function getValue(): float|array|null
     {
-        return $this->_value;
+        return $this->value;
     }
 
     /**
-     * @param float|null $value
+     * @param float|array|null $value
+     * @return StatResource
      */
-    public function setValue(?float $value): void
+    public function setValue(float|array|null $value): self
     {
-        $this->_value = $value;
+        $this->value = $value;
+        return $this;
     }
 
     /**
@@ -113,15 +133,17 @@ final class StatResource
      */
     public function getDetails(): array
     {
-        return $this->_details;
+        return $this->details;
     }
 
     /**
      * @param array|null $details
+     * @return StatResource
      */
-    public function setDetails(?array $details): void
+    public function setDetails(?array $details): self
     {
-        $this->_details = $details;
+        $this->details = $details;
+        return $this;
     }
 
     /**
@@ -139,6 +161,12 @@ final class StatResource
     public function getId(): string
     {
         return $this->id;
+    }
+
+    public function setId(string $id = ''): self
+    {
+        $this->id = $id;
+        return $this;
     }
 
 }

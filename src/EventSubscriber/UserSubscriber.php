@@ -1,16 +1,16 @@
 <?php
 
-namespace App\Listeners;
+namespace App\EventSubscriber;
 
 
 use ApiPlatform\Symfony\EventListener\EventPriorities;
 use App\Entity\Main\Papers;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\ViewEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Bundle\SecurityBundle\Security;
 
-class UserListener implements EventSubscriberInterface {
+class UserSubscriber implements EventSubscriberInterface {
 
     private Security $security;
 

@@ -56,7 +56,7 @@ class PapersRepository extends ServiceEntityRepository
             ->createQueryBuilder(self::PAPERS_ALIAS)
             ->select('count(distinct(p.paperid))');
 
-        $qb = $this->addQueryFilters($qb, $filters, $fieldDateToBeUsed );
+        $qb = $this->addQueryFilters($qb, $filters, $fieldDateToBeUsed);
 
         // Sinon, on va se retouver avec des années où le nombre de soumissions par année = 0, si toutes les premières soumissions sont obsolètes
         //$qb->andWhere('p.status != :obsolete');
@@ -139,18 +139,13 @@ class PapersRepository extends ServiceEntityRepository
     public function getSubmissionsStat(array $filters = [], bool $excludeTmpVersions = true): StatResource
     {
 
-        $rvId = array_key_exists('rvid', $filters['is']) ? (int)$filters['is']['rvid'] : null;
-        $status = array_key_exists('status', $filters['is']) ? (int)$filters['is']['status'] : null; // submitted: $status = 0
+        $rvId = $filters['is']['rvid'] ?? null;
+        $status = $filters['is']['status'] ?? null; // submitted: $status = 0
         $year = (array_key_exists('submissionDate', $filters['is']) && !empty($filters['is']['submissionDate'])) ? $filters['is']['submissionDate'] : null;
-        $repoId = array_key_exists('repoid', $filters['is']) ? (int)$filters['is']['repoid'] : null; // tmp version: $repoId = 0
+        $repoId = $filters['is']['repoid'] ?? null; // tmp version: $repoId = 0
         $withDetails = array_key_exists('withDetails', $filters['is']);
 
         $filters['is']['withDetails'] = $withDetails;
-
-        $statResource = new StatResource();
-        $statResource->setAvailableFilters(self::AVAILABLE_FILTERS);
-        $statResource->setRequestedFilters($filters['is']);
-        $statResource->setName('nbSubmissions');
 
         $details = null;
 
@@ -166,13 +161,12 @@ class PapersRepository extends ServiceEntityRepository
         try {
             $nbSubmissions = (int)$this->submissionsQuery($filters)->getQuery()->getSingleScalarResult();
             $allSubmissions = (int)$allSubmissionsQb->getQuery()->getSingleScalarResult();
-        } catch (NoResultException | NonUniqueResultException $e) {
+        } catch (NoResultException|NonUniqueResultException $e) {
             $nbSubmissions = null;
             $allSubmissions = null;
             $this->logger->error($e->getMessage());
         }
 
-        $statResource->setValue($nbSubmissions);
 
         if ($withDetails) {
 
@@ -180,114 +174,118 @@ class PapersRepository extends ServiceEntityRepository
             $details = ['allSubmissions' => $allSubmissions, 'percentage' => $percentage];
             $submissionsStats = $this->flexibleSubmissionsQueryDetails($filters, $excludeTmpVersions)->getQuery()->getArrayResult();
 
-            if (empty($submissionsStats)) {
-                $statResource->setDetails($details);
-                return $statResource;
-            }
+            if (!empty($submissionsStats)) {
 
+                if (null !== $rvId && !$year && null === $status && null === $repoId) { // by review
+                    $rvIdResult = $this->applyFilterBy($submissionsStats, 'rvid', $rvId);
+                    $details['moreDetails'] = $this->reformatData($rvIdResult[$rvId]);
+                    $repositories = $this->getAvailableRepositories((int)$rvId);
 
-            if (null !== $rvId && !$year && null === $status && null === $repoId) { // by review
-                $rvIdResult = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                $details['moreDetails'] = $this->reformatData($rvIdResult[$rvId]);
-                $repositories = $this->getAvailableRepositories($rvId);
+                    foreach ($this->getAvailableSubmissionYears((int)$rvId) as $year) { // pour le dashboard
+                        try {
+                            $details['submissionsByYear'][$year]['submissions'] = $this->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->getQuery()->getSingleScalarResult();
+                            $details['submissionsByYear'][$year]['publications'] = $this->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Papers::STATUS_PUBLISHED, 'submissionDate' => $year]], false, 'publicationDate')->getQuery()->getSingleScalarResult();
 
-                foreach ($this->getAvailableSubmissionYears($rvId) as $year) { // pour le dashboard
-                    try {
-                        $details['submissionsByYear'][$year]['submissions'] = $this->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->getQuery()->getSingleScalarResult();
-                        $details['submissionsByYear'][$year]['publications'] = $this->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Papers::STATUS_PUBLISHED , 'submissionDate' => $year]], false, 'publicationDate')->getQuery()->getSingleScalarResult();
-
-                        foreach ($repositories as $repoId){
-                            $details['submissionsByRepo'][$year][$repoId]['submissions'] = $this->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year, 'repoid' => $repoId]])->getQuery()->getSingleScalarResult();
+                            foreach ($repositories as $repoId) {
+                                $details['submissionsByRepo'][$year][$repoId]['submissions'] = $this->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year, 'repoid' => $repoId]])->getQuery()->getSingleScalarResult();
+                            }
+                        } catch (NoResultException|NonUniqueResultException $e) {
+                            $this->logger->error($e->getMessage());
                         }
-                    } catch (NoResultException | NonUniqueResultException $e) {
-                        $this->logger->error($e->getMessage());
                     }
+
+
+                } elseif (null === $rvId && $year && null === $status && $repoId === null) { // by year
+                    $yearResult = $this->applyFilterBy($submissionsStats, 'year', $year);
+                    $details['moreDetails'] = $yearResult;
+
+
+                } elseif (null === $rvId && !$year && null === $status && $repoId !== null) { // by $repoId
+                    $repoResult = $this->applyFilterBy($submissionsStats, 'repoid', (string)$repoId);
+                    $details['moreDetails'] = $repoResult;
+
+
+                } elseif (null === $rvId && !$year && null !== $status && $repoId === null) { // by $status
+                    $statusResult = $this->applyFilterBy($submissionsStats, 'status', (string)$status);
+                    $details['moreDetails'] = $statusResult;
+
+
+                } elseif ($year && $rvId && null === $status && $repoId === null) { // $review & $year
+                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
+                    $details['moreDetails'] = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
+
+
+                } elseif (!$year && $rvId && null === $status && $repoId !== null) { // $review & $repoId
+                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
+                    $details['moreDetails'] = $this->applyFilterBy($rvIdDetails[$rvId], 'repoid', (string)$repoId);
+
+
+                } elseif (!$year && $rvId && null !== $status && $repoId === null) { // $review & $status
+                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
+                    $details['moreDetails'] = $this->applyFilterBy($rvIdDetails[$rvId], 'status', (string)$status);
+
+
+                } elseif ($year && $rvId && null === $status && $repoId !== null) { // $review & $year & repoId
+                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
+                    $yearDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
+                    $details['moreDetails'] = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
+
+
+                } elseif ($year && $rvId && null !== $status && $repoId === null) { // $review & $year & $status
+                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
+                    $yearDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
+                    $details['moreDetails'] = $this->applyFilterBy($yearDetails[$year], 'status', (string)$status);
+
+
+                } elseif ($year && !$rvId && null !== $status && $repoId === null) { //$year & $status
+                    $yearDetails = $this->applyFilterBy($submissionsStats, 'year', (string)$year);
+                    $details['moreDetails'] = $this->applyFilterBy($yearDetails[$year], 'status', (string)$status);
+
+
+                } elseif ($year && !$rvId && null === $status && $repoId !== null) { //$year & $repoId
+                    $yearDetails = $this->applyFilterBy($submissionsStats, 'year', (string)$year);
+                    $details['moreDetails'] = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
+
+
+                } elseif (!$year && !$rvId && null !== $status && $repoId !== null) { //$repoId & $status
+                    $repoDetails = $this->applyFilterBy($submissionsStats, 'repoid', (string)$repoId);
+                    $details['moreDetails'] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
+
+
+                } elseif (!$year && $rvId && null !== $status && $repoId !== null) { //$repoId & $status & $rvId
+                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
+                    $repoDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'repoid', (string)$repoId);
+                    $details['moreDetails'] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
+
+
+                } elseif ($year && !$rvId && null !== $status && $repoId !== null) { // $year && $repoId && $status
+                    $yearDetails = $this->applyFilterBy($submissionsStats, 'year', (string)$year);
+                    $repoDetails = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
+                    $details['moreDetails'] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
+
+
+                } elseif ($year && $rvId && null !== $status && $repoId !== null) { // $year && $rvId && $repoId & $year
+                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
+                    $yearDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
+                    $repoDetails = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
+                    $details['moreDetails'] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
+
+
+                } else {
+                    $details['moreDetails'] = $this->reformatData($submissionsStats);
                 }
 
-
-            } elseif (null === $rvId && $year && null === $status && $repoId === null) { // by year
-                $yearResult = $this->applyFilterBy($submissionsStats, 'year', $year);
-                $details['moreDetails'] = $yearResult;
-
-
-            } elseif (null === $rvId && !$year && null === $status && $repoId !== null) { // by $repoId
-                $repoResult = $this->applyFilterBy($submissionsStats, 'repoid', (string)$repoId);
-                $details['moreDetails'] = $repoResult;
-
-
-            } elseif (null === $rvId && !$year && null !== $status && $repoId === null) { // by $status
-                $statusResult = $this->applyFilterBy($submissionsStats, 'status', (string)$status);
-                $details['moreDetails'] = $statusResult;
-
-
-            } elseif ($year && $rvId && null === $status && $repoId === null) { // $review & $year
-                $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                $details['moreDetails'] = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
-
-
-            } elseif (!$year && $rvId && null === $status && $repoId !== null) { // $review & $repoId
-                $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                $details['moreDetails'] = $this->applyFilterBy($rvIdDetails[$rvId], 'repoid', (string)$repoId);
-
-
-            } elseif (!$year && $rvId && null !== $status && $repoId === null) { // $review & $status
-                $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                $details['moreDetails'] = $this->applyFilterBy($rvIdDetails[$rvId], 'status', (string)$status);
-
-
-            } elseif ($year && $rvId && null === $status && $repoId !== null) { // $review & $year & repoId
-                $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                $yearDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
-                $details['moreDetails'] = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
-
-
-            } elseif ($year && $rvId && null !== $status && $repoId === null) { // $review & $year & $status
-                $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                $yearDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
-                $details['moreDetails'] = $this->applyFilterBy($yearDetails[$year], 'status', (string)$status);
-
-
-            } elseif ($year && !$rvId && null !== $status && $repoId === null) { //$year & $status
-                $yearDetails = $this->applyFilterBy($submissionsStats, 'year', (string)$year);
-                $details['moreDetails'] = $this->applyFilterBy($yearDetails[$year], 'status', (string)$status);
-
-
-            } elseif ($year && !$rvId && null === $status && $repoId !== null) { //$year & $repoId
-                $yearDetails = $this->applyFilterBy($submissionsStats, 'year', (string)$year);
-                $details['moreDetails'] = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
-
-
-            } elseif (!$year && !$rvId && null !== $status && $repoId !== null) { //$repoId & $status
-                $repoDetails = $this->applyFilterBy($submissionsStats, 'repoid', (string)$repoId);
-                $details['moreDetails'] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
-
-
-            } elseif (!$year && $rvId && null !== $status && $repoId !== null) { //$repoId & $status & $rvId
-                $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                $repoDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'repoid', (string)$repoId);
-                $details['moreDetails'] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
-
-
-            } elseif ($year && !$rvId && null !== $status && $repoId !== null) { // $year && $repoId && $status
-                $yearDetails = $this->applyFilterBy($submissionsStats, 'year', (string)$year);
-                $repoDetails = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
-                $details['moreDetails'] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
-
-
-            } elseif ($year && $rvId && null !== $status && $repoId !== null) { // $year && $rvId && $repoId & $year
-                $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                $yearDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
-                $repoDetails = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
-                $details['moreDetails'] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
-
-
-            } else {
-                $details['moreDetails'] = $this->reformatData($submissionsStats);
             }
+
         }
 
-        $statResource->setDetails($details);
-        return $statResource;
+        return (new StatResource())->
+        setId($filters['is']['code'])->
+        setAvailableFilters(self::AVAILABLE_FILTERS)->
+        setRequestedFilters($filters['is'])->
+        setName('nbSubmissions')->
+        setValue($nbSubmissions)->
+        setDetails($details);
     }
 
     private function reformatData(array $array): array

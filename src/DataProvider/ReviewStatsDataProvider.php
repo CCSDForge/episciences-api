@@ -7,20 +7,24 @@ namespace App\DataProvider;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
+use App\AppConstants;
 use App\Entity\Main\PaperLog;
 use App\Entity\Main\Papers;
 use App\Entity\Main\Review;
 use App\Entity\Main\User;
+use App\Repository\Main\PaperLogRepository;
+use App\Repository\Main\PapersRepository;
+use App\Repository\Main\UserRepository;
+use App\Resource\StatResource;
 use App\Traits\CheckExistingResourceTrait;
 use Doctrine\ORM\EntityManagerInterface;
 
-final class ReviewStatsDataProvider implements ProviderInterface
+final class ReviewStatsDataProvider implements StatsProviderInterface, ProviderInterface
 {
 
+    public const AVAILABLE_FILTERS = ['rvid', 'submissionDate', 'method', 'unit', 'withDetails', 'uid', 'role', 'repoid', 'status'];
+
     use CheckExistingResourceTrait;
-
-    public const OPERATIONS_NAME = ['get_dashboard_stats'];
-
 
     private EntityManagerInterface $entityManagerInterface;
 
@@ -29,35 +33,86 @@ final class ReviewStatsDataProvider implements ProviderInterface
         $this->entityManagerInterface = $entityManagerInterface;
     }
 
-    public function supports(string $resourceClass, string $operationName = null, array $context = []): bool
+    public function supports(Operation $operation = null): bool
     {
-        return ((Review::class === $resourceClass) && in_array($operationName, self::OPERATIONS_NAME, true));
+        return (
+            $operation &&
+            (Review::class === $operation->getClass()) &&
+            in_array($operation->getName(), AppConstants::APP_CONST['custom_operations'], true)
+        );
     }
 
-    public function getCollection(string $resourceClass, string $operationName = null, array $context = []): iterable
+    public function getCollection(Operation $operation, array $context = []): array | StatResource
     {
         $papersRepo = $this->entityManagerInterface->getRepository(Papers::class);
         $paperLogRepo = $this->entityManagerInterface->getRepository(PaperLog::class);
         $filters['is'] = $context['filters'] ?? [];
+        $filters['is'] = array_merge($context['uri_variables'], $filters['is']);
+        $withDetails = array_key_exists('withDetails', $filters['is']);
+        $filters['is']['withDetails'] = $withDetails;
 
-        $dashboard = [];
+        if (isset($context['uri_variables'])) {
+            $journal = $this->
+            entityManagerInterface->
+            getRepository(Review::class)->findOneBy($context['uri_variables']);
 
-        if ($operationName === 'get_dashboard_stats') {
-            // aggregate stats
-            $dashboard['submissions'] = $papersRepo->getSubmissionsStat($filters);
-            $dashboard ['submissionsDelay'] = $paperLogRepo->getDelayBetweenSubmissionAndLatestStatus($filters);
-            $dashboard ['publicationsDelay'] = $paperLogRepo->getDelayBetweenSubmissionAndLatestStatus($filters, Papers::STATUS_PUBLISHED);
-
-            if (!isset($filters['is']['year'])) {
-                $dashboard['users'] = $this->entityManagerInterface->getRepository(User::class)->getUserStats($filters['is']);
+            if ($journal) {
+                $filters['is']['rvid'] = (string)$journal->getRvid();
             }
+
         }
 
-        yield $dashboard;
+        $dashboard = new StatResource();
+
+        if ($operation->getName() === AppConstants::APP_CONST['custom_operations'][0]) {
+
+            $submissions = $papersRepo->getSubmissionsStat($filters);
+            $submissionsDelay = $paperLogRepo->getDelayBetweenSubmissionAndLatestStatus($filters);
+            $publicationsDelay = $paperLogRepo->getDelayBetweenSubmissionAndLatestStatus($filters, Papers::STATUS_PUBLISHED);
+
+            // aggregate stats
+            $values = [
+                $submissions->getName() => $submissions->getValue(),
+                $submissionsDelay->getName() => $submissionsDelay->getValue(),
+                $publicationsDelay->getName() => $publicationsDelay->getValue()
+            ];
+
+            if (!isset($filters['is']['year'])) {
+                $users = $this->entityManagerInterface->getRepository(User::class)->getUserStats($filters['is']);
+                $values[$users->getName()] = $users->getValue();
+            }
+
+            if ($withDetails) {
+
+                $details = [
+                    $submissions->getName() => $submissions->getDetails(),
+                    $submissionsDelay->getName() => $submissionsDelay->getDetails(),
+                    $publicationsDelay->getName() => $publicationsDelay->getDetails()
+                ];
+
+                if (isset($users)) {
+                    $details[$users->getName()] = $users->getDetails();
+                }
+
+                $dashboard->setDetails($details);
+
+            }
+
+            $dashboard->
+            setId($context['uri_variables']['code'])->
+            setAvailableFilters(self::AVAILABLE_FILTERS)->
+            setRequestedFilters($filters['is'])->
+            setName('dashboard')->
+            setValue($values);
+        }
+
+        return $dashboard;
     }
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
-        // TODO: Implement provide() method.
+        return $this->getCollection($operation, $context);
+
+
     }
 }

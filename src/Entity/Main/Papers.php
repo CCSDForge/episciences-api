@@ -6,13 +6,17 @@ namespace App\Entity\Main;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Filter\YearFilter;
 use DateTime;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Serializer\Annotation\Context;
 use Symfony\Component\Serializer\Annotation\Groups;
 use App\DataProvider\PapersStatsDataProvider;
 use App\Resource\StatResource;
+use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 
 /**
  * Papers
@@ -20,6 +24,29 @@ use App\Resource\StatResource;
  * @ORM\Table(name="PAPERS", indexes={@ORM\Index(name="FK_CONFID_idx", columns={"RVID"}), @ORM\Index(name="FK_REPOID_idx", columns={"REPOID"}), @ORM\Index(name="FK_VID_idx", columns={"VID"}), @ORM\Index(name="PAPERID", columns={"PAPERID"})})
  * @ORM\Entity(repositoryClass="App\Repository\Main\PapersRepository")
  */
+#[ApiResource(
+    operations: [
+        new Get(
+            normalizationContext: [
+                'groups' => ['read:Paper']
+            ],
+            denormalizationContext: [
+                'groups' => ['write:Paper']
+            ]
+        ),
+        new GetCollection(
+            normalizationContext: [
+                'groups' => ['read:Papers']
+            ],
+            denormalizationContext: [
+                'groups' => ['write:Papers']
+            ]
+        ),
+    ],
+    order: ['docid' => 'DESC'],
+
+)]
+#[ApiFilter(SearchFilter::class, properties: ['rvid' => 'exact', 'paperid' => 'exact', 'docid' => 'exact'])]
 class Papers
 {
     public const STATUS_SUBMITTED = 0;
@@ -80,52 +107,51 @@ class Papers
      * @ORM\Column(name="DOCID", type="integer", nullable=false, options={"unsigned"=true})
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="IDENTITY")
-     * @Groups({"papers_read"})
-     *
      */
+    #[groups(['read:Papers', 'read:Paper'])]
     private int $docid;
 
     /**
      * @var int|null
      *
      * @ORM\Column(name="PAPERID", type="integer", nullable=true, options={"unsigned"=true})
-     * @Groups({"papers_read"})
      *
      */
+    #[groups(['read:Papers', 'read:Paper'])]
     private ?int $paperid;
 
     /**
      * @var string|null
      *
      * @ORM\Column(name="DOI", type="string", length=250, nullable=true)
-     * @Groups({"papers_read"})
      *
      */
+    #[groups(['read:Paper'])]
     private ?string $doi;
 
     /**
      * @var int
      *
      * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     * @Groups({"papers_read"})
      */
+    #[groups(['read:Papers', 'read:Paper'])]
     private int $rvid;
 
     /**
      * @var int
      *
      * @ORM\Column(name="VID", type="integer", nullable=false, options={"unsigned"=true})
-     * @Groups({"papers_read"})
      *
      */
+    #[groups(['read:Paper'])]
     private int $vid = 0;
 
     /**
      * @var int
      *
      * @ORM\Column(name="SID", type="integer", nullable=false, options={"unsigned"=true})
-     * @Groups({"papers_read"})
      */
+    #[groups(['read:Paper'])]
     private int $sid = 0;
 
     /**
@@ -142,6 +168,7 @@ class Papers
      * @Groups({"papers_read"})
      *
      */
+    #[groups(['read:Paper'])]
     private int $status = 0;
 
     /**
@@ -151,6 +178,7 @@ class Papers
      * @Groups({"papers_read"})
      *
      */
+    #[groups(['read:Papers', 'read:Paper'])]
     private string $identifier;
 
     /**
@@ -160,6 +188,7 @@ class Papers
      * @Groups({"papers_read"})
      *
      */
+    #[groups(['read:Paper'])]
     private $version = 1;
 
     /**
@@ -169,6 +198,7 @@ class Papers
      * @Groups({"papers_read"})
      *
      */
+    #[groups(['read:Paper'])]
     private int $repoid;
 
     /**
@@ -176,6 +206,7 @@ class Papers
      *
      * @ORM\Column(name="RECORD", type="text", length=65535, nullable=false)
      */
+    #[groups(['read:Paper'])]
     private string $record;
 
     /**
@@ -190,6 +221,7 @@ class Papers
      *
      * @ORM\Column(name="FLAG", type="string", length=0, nullable=false, options={"default"="submitted"})
      */
+    #[groups(['read:Paper'])]
     private string $flag = 'submitted';
 
     /**
@@ -197,16 +229,17 @@ class Papers
      *
      * @ORM\Column(name="WHEN", type="datetime", nullable=false)
      */
+    #[groups(['read:Paper'])]
+    #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $when;
 
     /**
      * @var DateTime
      *
      * @ORM\Column(name="SUBMISSION_DATE", type="datetime", nullable=false)
-     *
-     *
-     * @Groups({"papers_read"})
      */
+    #[groups(['read:Paper'])]
+    #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $submissionDate;
 
     /**
@@ -214,22 +247,24 @@ class Papers
      *
      * @ORM\Column(name="MODIFICATION_DATE", type="datetime", nullable=true)
      */
+    #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private ?DateTime $modificationDate;
 
     /**
      * @var DateTime|null
      *
      * @ORM\Column(name="PUBLICATION_DATE", type="datetime", nullable=true)
-     * @Groups({"papers_read"})
      *
      */
+    #[groups(['read:Paper'])]
+    #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private ?DateTime $publicationDate;
 
     /**
      * @ORM\ManyToOne(targetEntity=User::class, inversedBy="papers")
      * @ORM\JoinColumn(name="UID", referencedColumnName="UID", nullable=false)
-     * @Groups({"papers_read"})
      */
+    #[groups(['read:Paper'])]
     private UserInterface $author;
 
     /**
@@ -237,6 +272,7 @@ class Papers
      * @ORM\JoinColumn(name="RVID", referencedColumnName="RVID", nullable=false)
      *
      */
+    #[groups(['read:Papers', 'read:Paper'])]
     private Review $review;
 
     public function __construct()
@@ -373,6 +409,7 @@ class Papers
 
     public function getRecord(): ?string
     {
+
         return $this->record;
     }
 
@@ -460,7 +497,7 @@ class Papers
         return $this->review;
     }
 
-    public function setReview(Review $review): self
+    public function setReview(Review $review = null): self
     {
         $this->review = $review;
 

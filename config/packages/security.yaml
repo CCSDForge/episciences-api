@@ -19,12 +19,13 @@ security:
     role_hierarchy:
         ROLE_GUEST: ~
         ROLE_MEMBER: ROLE_GUEST
+        ROLE_USER: ROLE_MEMBER
         ROLE_REVIEWER: ROLE_MEMBER
         ROLE_COPY_EDITOR: ROLE_MEMBER
-        ROLE_GUEST_EDITOR: ROLE_MEMBER
         ROLE_WEBMASTER: ROLE_MEMBER
+        ROLE_GUEST_EDITOR: ROLE_MEMBER
         ROLE_EDITOR: ROLE_GUEST_EDITOR
-        ROLE_SECRETARY: ROLE_EDITOR
+        ROLE_SECRETARY: [ROLE_EDITOR, ROLE_WEBMASTER]
         ROLE_ADMINISTRATOR: ROLE_SECRETARY
         ROLE_CHIEF_EDITOR: ROLE_ADMINISTRATOR
         ROLE_EPIADMIN: ROLE_CHIEF_EDITOR
@@ -92,7 +93,7 @@ security:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/review/stats/dashboard, roles: PUBLIC_ACCESS }
         - { path: ^/api/docs, roles: PUBLIC_ACCESS }
-        - { path: ^/api/,       roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/,       roles: PUBLIC_ACCESS  }
         # - { path: ^/admin, roles: ROLE_ADMIN }
         # - { path: ^/profile, roles: ROLE_USER }
 

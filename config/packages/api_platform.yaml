@@ -1,8 +1,11 @@
 api_platform:
     #global configuration defaults applied to all resources and all operations (2.6 only)
     defaults:
-        itemOperations: []
-        collectionOperations: []
+        item_Operations: ~
+        collection_Operations: ~
+        normalization_context:
+            # Default value to omit null values in conformance with the JSON Merge Patch RFC.
+            skip_null_values: true
     # The title of the API.
     title: 'Episciences API'
     # The description of the API.

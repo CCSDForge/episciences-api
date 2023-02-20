@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace App\Entity\Main;
 
-
-
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -18,8 +18,13 @@ use Symfony\Component\Security\Core\User\UserInterface;
 use App\Resource\StatResource;
 use App\DataProvider\UsersStatsDataProvider;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use Symfony\Component\Serializer\Annotation\Context;
 use Symfony\Component\Serializer\Annotation\Groups;
 use App\Controller\MeController;
+use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use App\OpenApi\OpenApiFactory;
+
 
 /**
  * User
@@ -29,8 +34,49 @@ use App\Controller\MeController;
  *
  *
  */
+#[ApiResource(
+    operations: [
+        new Get(
+            normalizationContext: [
+                'groups' => ['read:User']
+            ]
+        ),
+        new GetCollection(
+            normalizationContext: [
+                'groups' => ['read:Users']
+                ]
+        ),
+        new Get(
+            uriTemplate: '/me',
+            controller: MeController::class,
+            openapi: new OpenApiOperation(
+                tags:[OpenApiFactory::OAF_TAGS['auth']],
+                summary: 'My Account',
+                security: [
+                    ['bearerAuth' =>  []],
+                ]
+
+            ),
+            normalizationContext: [
+                'groups' => ['read:Me']
+            ],
+            security: "is_granted('ROLE_MEMBER')",
+            read: false
+
+        ),
+    ],
+
+    openapi: new OpenApiOperation(
+        security: [
+            ['bearerAuth' =>  []],
+        ]
+    ),
+
+
+)]
 class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUserInterface
 {
+    public const ROLE_ROOT = 'epiadmin';
     /**
      * @var int
      *
@@ -38,32 +84,33 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="IDENTITY")
      */
+    #[Groups(['read:User'])]
     private int $uid;
 
     /**
      * @var string
      *
      * @ORM\Column(name="LANGUEID", type="string", length=2, nullable=false, options={"default"="fr"})
-     * @Groups({"read:user:details"})
      *
      */
+    #[Groups(['read:User', 'read:Me'])]
     private string $langueid = 'fr';
 
     /**
      * @var string
      *
      * @ORM\Column(name="SCREEN_NAME", type="string", length=250, nullable=false)
-     * @Groups({"read:user", "read:user:details"})
      *
      */
+    #[Groups(['read:User', 'read:Me'])]
     private string $screenName;
 
     /**
      * @ORM\Column(name="USERNAME", type="string", length=100, nullable=false)
-     * @Groups({"read:user", "read:user:details"})
-     *
      *
      */
+    #[ApiProperty(security: "is_granted('ROLE_MEMBER')")]
+    #[Groups(['read:Me'])]
     private ?string $username = '';
 
     /**
@@ -77,38 +124,39 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @ORM\Column(name="EMAIL", type="string", length=320, nullable=false, options={})
      *
      */
+    #[Groups(['read:User', 'read:Me'])]
     private $email;
 
     /**
      * @var string|null
      *
      * @ORM\Column(name="CIV", type="string", length=255, nullable=true)
-     * @Groups({"read:user:details"})
      */
+    #[Groups(['read:User', 'read:Me'])]
     private $civ;
 
     /**
      * @var string
      *
      * @ORM\Column(name="LASTNAME", type="string", length=100, nullable=false)
-     * @Groups({"read:user:details"})
      */
+    #[Groups(['read:User', 'read:Me'])]
     private $lastname;
 
     /**
      * @var string|null
      *
      * @ORM\Column(name="FIRSTNAME", type="string", length=100, nullable=true)
-     * @Groups({"read:user:details"})
      */
+    #[Groups(['read:User', 'read:Me'])]
     private $firstname;
 
     /**
      * @var string|null
      *
      * @ORM\Column(name="MIDDLENAME", type="string", length=100, nullable=true)
-     * @Groups({"read:user:details"})
      */
+    #[Groups(['read:User', 'read:Me'])]
     private $middlename;
 
     /**
@@ -117,6 +165,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @ORM\Column(name="REGISTRATION_DATE", type="datetime", nullable=true, options={"comment"="Date création du compte"})
      *
      */
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
+    #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private $registrationDate;
 
     /**
@@ -124,7 +174,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      *
      * @ORM\Column(name="MODIFICATION_DATE", type="datetime", nullable=true, options={"default"="CURRENT_TIMESTAMP","comment"="Date modification du compte"})
      */
-    private $modificationDate = 'CURRENT_TIMESTAMP';
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
+    #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
+    private $modificationDate;
 
     /**
      * @var bool
@@ -132,24 +184,27 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @ORM\Column(name="IS_VALID", type="boolean", nullable=false)
      *
      */
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
+    #[Groups(['read:User', 'read:Me'])]
     private bool $isValid = true;
 
     /**
      * @ORM\OneToMany(targetEntity=UserRoles::class, mappedBy="user", orphanRemoval=true)
      */
+    #[Groups(['read:Me'])]
     private Collection $userRoles;
 
     /**
      * @ORM\OneToMany(targetEntity=Papers::class, mappedBy="author")
-     * @Groups({"read:user:details"})
      *
      */
+    #[Groups(['read:User', 'read:Me'])]
     private Collection $papers;
 
     /**
-     *
-     * @Groups({"read:user", "read:user:details"})
+     * @var array
      */
+    #[Groups(['read:User', 'read:Me'])]
     private array $roles;
 
     public function __construct()
@@ -341,7 +396,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     /**
      * @return bool
      */
-    public function isValid(): bool
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
+    #[Groups(['read:User', 'read:Me'])]
+    public function getIsValid(): bool
     {
         return $this->isValid;
     }
@@ -448,14 +505,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     private function rolesProcessing(int $rvId = null): array
     {
         $roles = [];
+        $prefix = 'ROLE_';
 
         $elements = $this->userRoles->toArray();
 
         /* @var UserRoles $userRole */
         foreach ($elements as $userRole) {
-            $roles[$userRole->getRvid()][] = 'ROLE_' . strtoupper($userRole->getRoleid());
+
+            $currentRole = $prefix . strtoupper($userRole->getRoleid());
+
+            if ($currentRole === $prefix . strtoupper(self::ROLE_ROOT)){
+                $roles[] = $currentRole;
+                return $roles;
+            }
+
+            $roles[$userRole->getRvid()][] = $currentRole;
         }
-        return ($rvId === null || !array_key_exists($rvId, $roles)) ? ['ROLE_USER'] : $roles[$rvId];
+        return ($rvId === null || !array_key_exists($rvId, $roles)) ? ['ROLE_MEMBER'] : $roles[$rvId];
     }
 
     public function setRoles(array $roles = []): self

@@ -69,33 +69,17 @@ class PaperLogRepository extends ServiceEntityRepository
         }
 
         $statResource = new StatResource();
+        $statResource->setId($filters['is']['code']);
         $statResource->setAvailableFilters(self::AVAILABLE_FILTERS);
         $statResource->setRequestedFilters($filters['is']);
         $statResourceName = $method . ucwords(strtolower($unit)) . 'sSubmission';
         $statResourceName .= $latestStatus === Papers::STATUS_PUBLISHED ? 'Publication' : 'Acceptation';
         $statResource->setName($statResourceName);
 
-
-        $rawSql = "
-             SELECT year, RVID AS rvid, ROUND(AVG(delay), 0) AS delay
-             FROM ( 
-                 SELECT YEAR(SUBMISSION_FROM_LOGS.DATE) AS year, SUBMISSION_FROM_LOGS.RVID, ABS(TIMESTAMPDIFF($unit, SUBMISSION_FROM_LOGS.DATE, JOINED_TABLE_ALIAS.DATE)) AS delay
-                 FROM ( 
-                      SELECT * 
-                      FROM PAPER_LOG WHERE ACTION LIKE 'status' AND (DETAIL LIKE '{\"status\":" . Papers::STATUS_SUBMITTED . "}' OR DETAIL LIKE '{\"status\":\"" . Papers::STATUS_SUBMITTED . "\"}' ) GROUP BY PAPERID 
-                      ) AS SUBMISSION_FROM_LOGS INNER JOIN (   
-                                                SELECT *
-                                                FROM PAPER_LOG 
-                                                WHERE ACTION LIKE 'status' AND (DETAIL LIKE '{\"status\":\"$latestStatus\"}' OR DETAIL LIKE '{\"status\":$latestStatus}') 
-                                                GROUP BY PAPERID ) AS JOINED_TABLE_ALIAS USING (PAPERID) 
-                 GROUP BY PAPERID ) AS DELAY_SUBMISSION_LATEST_STATUS
-             GROUP BY rvid, year 
-             ORDER BY year ASC, rvid ASC  ";
-
         $conn = $this->getEntityManager()->getConnection();
 
         try {
-            $stmt = $conn->prepare($rawSql);
+            $stmt = $conn->prepare($this->getRawSql($unit, $latestStatus));
 
             $result = $stmt->executeQuery()->fetchAllAssociative();
 
@@ -156,7 +140,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
             return $statResource;
 
-        } catch (Exception | \Doctrine\DBAL\Driver\Exception $e) {
+        } catch (Exception $e) {
             $this->logger->error($e->getMessage());
         }
 
@@ -169,7 +153,7 @@ class PaperLogRepository extends ServiceEntityRepository
      * @param string $key
      * @return float | null
      */
-    private function avg(array $array, string $key = 'delay'): float
+    private function avg(array $array, string $key = 'delay'): ?float
     {
 
         if (empty($array)) {
@@ -207,5 +191,26 @@ class PaperLogRepository extends ServiceEntityRepository
         }
 
         return $result;
+    }
+
+    public function getRawSql(string $unit, int $latestStatus): string
+    {
+
+        return "
+             SELECT year, RVID AS rvid, ROUND(AVG(delay), 0) AS delay
+             FROM ( 
+                 SELECT YEAR(SUBMISSION_FROM_LOGS.DATE) AS year, SUBMISSION_FROM_LOGS.RVID, ABS(TIMESTAMPDIFF($unit, SUBMISSION_FROM_LOGS.DATE, JOINED_TABLE_ALIAS.DATE)) AS delay
+                 FROM ( 
+                      SELECT * 
+                      FROM PAPER_LOG WHERE ACTION LIKE 'status' AND (DETAIL LIKE '{\"status\":" . Papers::STATUS_SUBMITTED . "}' OR DETAIL LIKE '{\"status\":\"" . Papers::STATUS_SUBMITTED . "\"}' ) GROUP BY PAPERID 
+                      ) AS SUBMISSION_FROM_LOGS INNER JOIN (   
+                                                SELECT *
+                                                FROM PAPER_LOG 
+                                                WHERE ACTION LIKE 'status' AND (DETAIL LIKE '{\"status\":\"$latestStatus\"}' OR DETAIL LIKE '{\"status\":$latestStatus}') 
+                                                GROUP BY PAPERID ) AS JOINED_TABLE_ALIAS USING (PAPERID) 
+                 GROUP BY PAPERID ) AS DELAY_SUBMISSION_LATEST_STATUS
+             GROUP BY rvid, year 
+             ORDER BY year ASC, rvid ASC  ";
+
     }
 }

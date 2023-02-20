@@ -2,6 +2,7 @@
 
 namespace App\Entity\Main;
 
+use ApiPlatform\Metadata\ApiResource;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
@@ -10,6 +11,15 @@ use Doctrine\ORM\Mapping as ORM;
  * @ORM\Table(name="USER_ROLES")
  * @ORM\Entity(repositoryClass="App\Repository\Main\UserRolesRepository")
  */
+#[ApiResource(
+    operations: [],
+    normalizationContext: [
+        'groups' => []
+    ],
+    denormalizationContext: [
+        'groups' => []
+    ]
+)]
 class UserRoles
 {
     /**
@@ -28,6 +38,7 @@ class UserRoles
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="NONE")
      */
+
     private $rvid;
 
     /**

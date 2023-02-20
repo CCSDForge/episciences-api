@@ -28,7 +28,7 @@ class UserRepository extends ServiceEntityRepository
     use ToolsTrait;
 
     public const AVAILABLE_FILTERS = ['uid', 'rvid', 'role', 'registrationDate', 'withDetails'];
-    public const User_ALIAS = 'u';
+    public const USER_ALIAS = 'u';
 
     private LoggerInterface $logger;
 
@@ -52,6 +52,7 @@ class UserRepository extends ServiceEntityRepository
         $withDetails = array_key_exists('withDetails', $filters);
 
         $statResource = new StatResource();
+        $statResource->setId($filters['code']);
         $statResource->setAvailableFilters(self::AVAILABLE_FILTERS);
         $statResource->setRequestedFilters($filters);
         $statResource->setName('nbUsers');
@@ -131,8 +132,8 @@ class UserRepository extends ServiceEntityRepository
      */
     public function countByReviewQuery(int $rvId = null, $uid = null, string $role = null, int $registrationYear = null): QueryBuilder
     {
-        $userAlias = self::User_ALIAS;
-        $userAlias1 = self::User_ALIAS . 1;
+        $userAlias = self::USER_ALIAS;
+        $userAlias1 = self::USER_ALIAS . 1;
         $userRolesAlias = UserRolesRepository::USER_ROLES_ALIAS;
 
         $qb = $this

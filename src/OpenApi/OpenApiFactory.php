@@ -12,6 +12,10 @@ use Symfony\Component\HttpFoundation\Response;
 class OpenApiFactory implements OpenApiFactoryInterface
 {
     public const OAF_HIDDEN = 'hidden';
+    public const OAF_TAGS = [
+        'auth' => 'Sign in - Myspace',
+        'stats' => 'Statistics',
+    ];
     public const JWT_POST_LOGIN_OPERATION_ID = 'login_check_post';
 
     private OpenApiFactoryInterface $decorated;
@@ -94,7 +98,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
             null,
             new Operation(
                 'postApiLogin',
-                ['Auth'],
+                [self::OAF_TAGS['auth']],
                 [
                     Response::HTTP_OK => [
                         'description' => 'User token created',
