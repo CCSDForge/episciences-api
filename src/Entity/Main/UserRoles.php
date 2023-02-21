@@ -3,7 +3,9 @@
 namespace App\Entity\Main;
 
 use ApiPlatform\Metadata\ApiResource;
+use App\AppConstants;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * UserRoles
@@ -39,6 +41,12 @@ class UserRoles
      * @ORM\GeneratedValue(strategy="NONE")
      */
 
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+            'read:Me',
+        ])]
     private $rvid;
 
     /**
@@ -48,12 +56,24 @@ class UserRoles
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="NONE")
      */
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+            'read:Me',
+        ])]
     private $roleid;
 
     /**
      * @ORM\ManyToOne(targetEntity=User::class, inversedBy="userRoles")
      * @ORM\JoinColumn(name="UID", referencedColumnName="UID", nullable=true)
      */
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+            'read:Me',
+        ])]
     private ?User $user;
 
     public function __construct($uid, $rvid, $roleid){

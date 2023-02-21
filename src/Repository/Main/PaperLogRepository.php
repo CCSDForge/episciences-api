@@ -3,9 +3,12 @@ declare(strict_types=1);
 
 namespace App\Repository\Main;
 
+use App\AppConstants;
 use App\Entity\Main\PaperLog;
 use App\Entity\Main\Papers;
-use App\Resource\StatResource;
+use App\Resource\AbstractStatResource;
+use App\Resource\SubmissionAcceptanceDelayOutput;
+use App\Resource\SubmissionPublicationDelayOutput;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Exception;
@@ -24,7 +27,7 @@ class PaperLogRepository extends ServiceEntityRepository
 {
     use ToolsTrait;
 
-    public const AVAILABLE_FILTERS = ['rvid', 'submissionDate', 'method', 'unit', 'withDetails'];
+    public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS];
 
     private LoggerInterface $logger;
 
@@ -38,10 +41,10 @@ class PaperLogRepository extends ServiceEntityRepository
      * Par annee, par revue, delai moyen, ou la valeur médiane en nombre de jours (ou mois) entre dépôt et acceptation
      * @param array $filters
      * @param int $latestStatus
-     * @return StatResource
+     * @return ToBeDeletedStatResource
      */
 
-    public function getDelayBetweenSubmissionAndLatestStatus(array $filters = [], int $latestStatus = Papers::STATUS_ACCEPTED): StatResource
+    public function getDelayBetweenSubmissionAndLatestStatus(array $filters = [], int $latestStatus = Papers::STATUS_ACCEPTED): AbstractStatResource
     {
 
         $year = null;
@@ -49,8 +52,8 @@ class PaperLogRepository extends ServiceEntityRepository
         $method = 'average';
         $unit = 'DAY';
 
-        $withDetails = array_key_exists('withDetails', $filters['is']);
-        $filters['is']['withDetails'] = $withDetails;
+        $withDetails = array_key_exists(AppConstants::WITH_DETAILS, $filters['is']);
+        $filters['is'][AppConstants::WITH_DETAILS] = $withDetails;
 
         if (array_key_exists('submissionDate', $filters['is']) && !empty($filters['is']['submissionDate'])) {
             $year = $filters['is']['submissionDate'];
@@ -68,8 +71,7 @@ class PaperLogRepository extends ServiceEntityRepository
             $unit = strtoupper($filters['is']['unit']);
         }
 
-        $statResource = new StatResource();
-        $statResource->setId($filters['is']['code']);
+        $statResource = $latestStatus ? new SubmissionPublicationDelayOutput() : new SubmissionAcceptanceDelayOutput();
         $statResource->setAvailableFilters(self::AVAILABLE_FILTERS);
         $statResource->setRequestedFilters($filters['is']);
         $statResourceName = $method . ucwords(strtolower($unit)) . 'sSubmission';
@@ -105,7 +107,7 @@ class PaperLogRepository extends ServiceEntityRepository
                 }
 
                 if ($withDetails) {
-                    $statResource->setDetails($this->reformatData($rvIdResult));
+                    $statResource->setDetails($this->reformatData($rvIdResult)[$rvId]);
                 }
 
                 return $statResource;

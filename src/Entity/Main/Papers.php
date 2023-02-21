@@ -4,18 +4,19 @@ declare(strict_types=1);
 namespace App\Entity\Main;
 
 use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
-use App\Filter\YearFilter;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use App\AppConstants;
+use App\Entity\UserOwnedInterface;
 use DateTime;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Annotation\Context;
 use Symfony\Component\Serializer\Annotation\Groups;
-use App\DataProvider\PapersStatsDataProvider;
-use App\Resource\StatResource;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 
 /**
@@ -27,14 +28,23 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 #[ApiResource(
     operations: [
         new Get(
+            openapi: new OpenApiOperation(
+                summary: 'Article',
+                security: [['bearerAuth' =>  []],]
+            ),
+
             normalizationContext: [
-                'groups' => ['read:Paper']
+                'groups' => AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0]
             ],
             denormalizationContext: [
                 'groups' => ['write:Paper']
             ]
         ),
         new GetCollection(
+            openapi: new OpenApiOperation(
+                summary: 'All Papers',
+                security: [['bearerAuth' =>  []],]
+            ),
             normalizationContext: [
                 'groups' => ['read:Papers']
             ],
@@ -42,12 +52,15 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                 'groups' => ['write:Papers']
             ]
         ),
+
+
+
     ],
-    order: ['docid' => 'DESC'],
+    order: ['rvid' => 'DESC'],
 
 )]
 #[ApiFilter(SearchFilter::class, properties: ['rvid' => 'exact', 'paperid' => 'exact', 'docid' => 'exact'])]
-class Papers
+class Papers implements UserOwnedInterface
 {
     public const STATUS_SUBMITTED = 0;
     public const STATUS_OK_FOR_REVIEWING = 1; // reviewers have been assigned, but did not start their reports
@@ -101,6 +114,7 @@ class Papers
         self::STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MAJOR_REVISION //31
     ];
 
+
     /**
      * @var int
      *
@@ -108,7 +122,13 @@ class Papers
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="IDENTITY")
      */
-    #[groups(['read:Papers', 'read:Paper'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+        ]
+    )]
+
     private int $docid;
 
     /**
@@ -117,7 +137,12 @@ class Papers
      * @ORM\Column(name="PAPERID", type="integer", nullable=true, options={"unsigned"=true})
      *
      */
-    #[groups(['read:Papers', 'read:Paper'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+        ]
+    )]
     private ?int $paperid;
 
     /**
@@ -126,7 +151,12 @@ class Papers
      * @ORM\Column(name="DOI", type="string", length=250, nullable=true)
      *
      */
-    #[groups(['read:Paper'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+        ]
+    )]
     private ?string $doi;
 
     /**
@@ -134,7 +164,12 @@ class Papers
      *
      * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
      */
-    #[groups(['read:Papers', 'read:Paper'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+        ]
+    )]
     private int $rvid;
 
     /**
@@ -143,7 +178,9 @@ class Papers
      * @ORM\Column(name="VID", type="integer", nullable=false, options={"unsigned"=true})
      *
      */
-    #[groups(['read:Paper'])]
+    #[groups(
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0]
+    )]
     private int $vid = 0;
 
     /**
@@ -151,7 +188,9 @@ class Papers
      *
      * @ORM\Column(name="SID", type="integer", nullable=false, options={"unsigned"=true})
      */
-    #[groups(['read:Paper'])]
+    #[groups(
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0]
+    )]
     private int $sid = 0;
 
     /**
@@ -168,7 +207,12 @@ class Papers
      * @Groups({"papers_read"})
      *
      */
-    #[groups(['read:Paper'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+        ]
+    )]
     private int $status = 0;
 
     /**
@@ -178,7 +222,11 @@ class Papers
      * @Groups({"papers_read"})
      *
      */
-    #[groups(['read:Papers', 'read:Paper'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+        ])]
     private string $identifier;
 
     /**
@@ -188,7 +236,10 @@ class Papers
      * @Groups({"papers_read"})
      *
      */
-    #[groups(['read:Paper'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        ])]
     private $version = 1;
 
     /**
@@ -198,7 +249,10 @@ class Papers
      * @Groups({"papers_read"})
      *
      */
-    #[groups(['read:Paper'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        ])]
     private int $repoid;
 
     /**
@@ -206,7 +260,9 @@ class Papers
      *
      * @ORM\Column(name="RECORD", type="text", length=65535, nullable=false)
      */
-    #[groups(['read:Paper'])]
+    #[groups(
+        [AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],]
+    )]
     private string $record;
 
     /**
@@ -221,7 +277,12 @@ class Papers
      *
      * @ORM\Column(name="FLAG", type="string", length=0, nullable=false, options={"default"="submitted"})
      */
-    #[groups(['read:Paper'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        ]
+    )]
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
     private string $flag = 'submitted';
 
     /**
@@ -229,7 +290,11 @@ class Papers
      *
      * @ORM\Column(name="WHEN", type="datetime", nullable=false)
      */
-    #[groups(['read:Paper'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        ]
+    )]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $when;
 
@@ -238,7 +303,10 @@ class Papers
      *
      * @ORM\Column(name="SUBMISSION_DATE", type="datetime", nullable=false)
      */
-    #[groups(['read:Paper'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        ])]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $submissionDate;
 
@@ -256,7 +324,11 @@ class Papers
      * @ORM\Column(name="PUBLICATION_DATE", type="datetime", nullable=true)
      *
      */
-    #[groups(['read:Paper'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+        ])]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private ?DateTime $publicationDate;
 
@@ -264,15 +336,23 @@ class Papers
      * @ORM\ManyToOne(targetEntity=User::class, inversedBy="papers")
      * @ORM\JoinColumn(name="UID", referencedColumnName="UID", nullable=false)
      */
-    #[groups(['read:Paper'])]
-    private UserInterface $author;
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        ])]
+    #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
+    private UserInterface $user;
 
     /**
      * @ORM\ManyToOne(targetEntity=Review::class, inversedBy="papers")
      * @ORM\JoinColumn(name="RVID", referencedColumnName="RVID", nullable=false)
      *
      */
-    #[groups(['read:Papers', 'read:Paper'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+        ])]
     private Review $review;
 
     public function __construct()
@@ -480,14 +560,14 @@ class Papers
         return $this;
     }
 
-    public function getAuthor(): ?UserInterface
+    public function getUser(): ?UserInterface
     {
-        return $this->author;
+        return $this->user;
     }
 
-    public function setAuthor(UserInterface $author): self
+    public function setUser(UserInterface $user): self
     {
-        $this->author = $author;
+        $this->user = $user;
 
         return $this;
     }

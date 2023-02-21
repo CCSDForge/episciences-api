@@ -3,8 +3,9 @@ declare(strict_types=1);
 
 namespace App\Repository\Main;
 
+use App\AppConstants;
 use App\Entity\Main\Papers;
-use App\Resource\StatResource;
+use App\Resource\SubmissionOutput;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\NonUniqueResultException;
@@ -24,7 +25,7 @@ class PapersRepository extends ServiceEntityRepository
 {
     use ToolsTrait;
 
-    public const AVAILABLE_FILTERS = ['rvid', 'repoid', 'status', 'submissionDate', 'withDetails'];
+    public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS];
     public const PAPERS_ALIAS = 'p';
     public const LOCAL_REPOSITORY = 0;
 
@@ -57,6 +58,7 @@ class PapersRepository extends ServiceEntityRepository
             ->select('count(distinct(p.paperid))');
 
         $qb = $this->addQueryFilters($qb, $filters, $fieldDateToBeUsed);
+
 
         // Sinon, on va se retouver avec des années où le nombre de soumissions par année = 0, si toutes les premières soumissions sont obsolètes
         //$qb->andWhere('p.status != :obsolete');
@@ -134,18 +136,19 @@ class PapersRepository extends ServiceEntityRepository
     /**
      * @param array $filters
      * @param bool $excludeTmpVersions
-     * @return StatResource
+     * @return SubmissionOutput
      */
-    public function getSubmissionsStat(array $filters = [], bool $excludeTmpVersions = true): StatResource
+    public function getSubmissionsStat(array $filters = [], bool $excludeTmpVersions = true): SubmissionOutput
     {
 
         $rvId = $filters['is']['rvid'] ?? null;
         $status = $filters['is']['status'] ?? null; // submitted: $status = 0
-        $year = (array_key_exists('submissionDate', $filters['is']) && !empty($filters['is']['submissionDate'])) ? $filters['is']['submissionDate'] : null;
+        $year = (array_key_exists('submissionDate', $filters['is']) && !empty($filters['is']['submissionDate'])) ?
+            $filters['is']['submissionDate'] : null;
         $repoId = $filters['is']['repoid'] ?? null; // tmp version: $repoId = 0
-        $withDetails = array_key_exists('withDetails', $filters['is']);
+        $withDetails = array_key_exists(AppConstants::WITH_DETAILS, $filters['is']);
 
-        $filters['is']['withDetails'] = $withDetails;
+        $filters['is'][AppConstants::WITH_DETAILS] = $withDetails;
 
         $details = null;
 
@@ -172,7 +175,8 @@ class PapersRepository extends ServiceEntityRepository
 
             $percentage = ($allSubmissions) ? round($nbSubmissions / $allSubmissions * 100, 2) : null;
             $details = ['allSubmissions' => $allSubmissions, 'percentage' => $percentage];
-            $submissionsStats = $this->flexibleSubmissionsQueryDetails($filters, $excludeTmpVersions)->getQuery()->getArrayResult();
+            $submissionsStats = $this->flexibleSubmissionsQueryDetails($filters, $excludeTmpVersions)->
+            getQuery()->getArrayResult();
 
             if (!empty($submissionsStats)) {
 
@@ -183,11 +187,28 @@ class PapersRepository extends ServiceEntityRepository
 
                     foreach ($this->getAvailableSubmissionYears((int)$rvId) as $year) { // pour le dashboard
                         try {
-                            $details['submissionsByYear'][$year]['submissions'] = $this->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->getQuery()->getSingleScalarResult();
-                            $details['submissionsByYear'][$year]['publications'] = $this->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Papers::STATUS_PUBLISHED, 'submissionDate' => $year]], false, 'publicationDate')->getQuery()->getSingleScalarResult();
+                            $details['submissionsByYear'][$year]['submissions'] = $this->
+                            submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->
+                            getQuery()->
+                            getSingleScalarResult();
+
+                            $details['submissionsByYear'][$year]['publications'] = $this->
+                            submissionsQuery(
+                                [
+                                    'is' => [
+                                        'rvid' => $rvId,
+                                        'status' => Papers::STATUS_PUBLISHED,
+                                        'submissionDate' => $year
+                                    ]
+                                ], false, 'publicationDate'
+                            )->
+                            getQuery()->getSingleScalarResult();
 
                             foreach ($repositories as $repoId) {
-                                $details['submissionsByRepo'][$year][$repoId]['submissions'] = $this->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year, 'repoid' => $repoId]])->getQuery()->getSingleScalarResult();
+                                $details['submissionsByRepo'][$year][$repoId]['submissions'] = $this->
+                                submissionsQuery(
+                                    ['is' => ['rvid' => $rvId, 'submissionDate' => $year, 'repoid' => $repoId]
+                                    ])->getQuery()->getSingleScalarResult();
                             }
                         } catch (NoResultException|NonUniqueResultException $e) {
                             $this->logger->error($e->getMessage());
@@ -279,8 +300,7 @@ class PapersRepository extends ServiceEntityRepository
 
         }
 
-        return (new StatResource())->
-        setId($filters['is']['code'])->
+        return (new SubmissionOutput())->
         setAvailableFilters(self::AVAILABLE_FILTERS)->
         setRequestedFilters($filters['is'])->
         setName('nbSubmissions')->
@@ -296,7 +316,7 @@ class PapersRepository extends ServiceEntityRepository
         $status = null;
         $result = [];
 
-        foreach ($array as $key => $value) {
+        foreach ($array as $value) {
             foreach ($value as $k => $v) {
                 if ($k === 'rvid' && $v !== $rvId) {
                     $rvId = $v;
@@ -337,16 +357,23 @@ class PapersRepository extends ServiceEntityRepository
     {
 
         if (array_key_exists('is', $filters) && !empty($filters['is'])) {
-            unset($filters['is']['withDetails']);
+
             foreach ($filters['is'] as $name => $value) {
-                if ((null === $value || '' === $value) || !in_array($name, self::AVAILABLE_FILTERS, true)) {
+
+                if ($name === AppConstants::WITH_DETAILS) {
+                    continue;
+                }
+                if (
+                    (null === $value || '' === $value) || // not use empty
+                    !in_array($name, AppConstants::AVAILABLE_FILTERS, true)
+                ) {
                     continue;
                 }
 
                 if ('submissionDate' === $name) {
                     $qb->andWhere('YEAR(' . self::PAPERS_ALIAS . '.' . $date . ') =:' . $name);
 
-                } else if (is_array($value)) {
+                } elseif (is_array($value)) {
                     $qb->andWhere(self::PAPERS_ALIAS . '.' . $name . ' IN (:' . $name . ')');
                 } else {
                     $qb->andWhere(self::PAPERS_ALIAS . '.' . $name . ' =:' . $name);

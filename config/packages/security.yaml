@@ -16,10 +16,11 @@ security:
                 class: App\Entity\Main\User
 
 
-    role_hierarchy:
+    role_hierarchy: # ROLE_MEMBER: already has a profil in journal (ROLE_USER : not)
         ROLE_GUEST: ~
-        ROLE_MEMBER: ROLE_GUEST
-        ROLE_USER: ROLE_MEMBER
+        ROLE_USER: ROLE_GUEST
+        ROLE_MEMBER: ROLE_USER
+        ROLE_AUTHOR: ROLE_MEMBER
         ROLE_REVIEWER: ROLE_MEMBER
         ROLE_COPY_EDITOR: ROLE_MEMBER
         ROLE_WEBMASTER: ROLE_MEMBER

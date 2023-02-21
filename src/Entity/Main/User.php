@@ -4,10 +4,10 @@ declare(strict_types=1);
 namespace App\Entity\Main;
 
 use ApiPlatform\Metadata\ApiProperty;
-use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use App\AppConstants;
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -15,9 +15,6 @@ use Doctrine\ORM\Mapping as ORM;
 use Lexik\Bundle\JWTAuthenticationBundle\Security\User\JWTUserInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
-use App\Resource\StatResource;
-use App\DataProvider\UsersStatsDataProvider;
-use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use Symfony\Component\Serializer\Annotation\Context;
 use Symfony\Component\Serializer\Annotation\Groups;
 use App\Controller\MeController;
@@ -29,6 +26,7 @@ use App\OpenApi\OpenApiFactory;
 /**
  * User
  *
+ * @property int $rvId
  * @ORM\Table(name="USER")
  * @ORM\Entity(repositoryClass="App\Repository\Main\UserRepository")
  *
@@ -39,7 +37,8 @@ use App\OpenApi\OpenApiFactory;
         new Get(
             normalizationContext: [
                 'groups' => ['read:User']
-            ]
+            ],
+            security: "is_granted('ROLE_SECRETARY') or (is_granted('ROLE_USER') and object.getUid() == user.getUid())"
         ),
         new GetCollection(
             normalizationContext: [
@@ -60,7 +59,7 @@ use App\OpenApi\OpenApiFactory;
             normalizationContext: [
                 'groups' => ['read:Me']
             ],
-            security: "is_granted('ROLE_MEMBER')",
+            security: "is_granted('ROLE_USER')",
             read: false
 
         ),
@@ -71,12 +70,14 @@ use App\OpenApi\OpenApiFactory;
             ['bearerAuth' =>  []],
         ]
     ),
-
+    order: ['uid' => 'DESC'],
+    security: "is_granted('ROLE_SECRETARY')",
 
 )]
 class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUserInterface
 {
     public const ROLE_ROOT = 'epiadmin';
+    public const EPISCIENCES_UID = 666;
     /**
      * @var int
      *
@@ -84,7 +85,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="IDENTITY")
      */
-    #[Groups(['read:User'])]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0]
+        ])]
     private int $uid;
 
     /**
@@ -93,7 +98,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @ORM\Column(name="LANGUEID", type="string", length=2, nullable=false, options={"default"="fr"})
      *
      */
-    #[Groups(['read:User', 'read:Me'])]
+    #[Groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+        'read:Me',
+    ])]
     private string $langueid = 'fr';
 
     /**
@@ -102,7 +111,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @ORM\Column(name="SCREEN_NAME", type="string", length=250, nullable=false)
      *
      */
-    #[Groups(['read:User', 'read:Me'])]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            'read:Me'
+        ])]
     private string $screenName;
 
     /**
@@ -124,7 +139,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @ORM\Column(name="EMAIL", type="string", length=320, nullable=false, options={})
      *
      */
-    #[Groups(['read:User', 'read:Me'])]
+    #[Groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+        'read:Me',
+    ])]
     private $email;
 
     /**
@@ -132,7 +151,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      *
      * @ORM\Column(name="CIV", type="string", length=255, nullable=true)
      */
-    #[Groups(['read:User', 'read:Me'])]
+    #[Groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+        'read:Me',
+    ])]
     private $civ;
 
     /**
@@ -191,11 +214,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     /**
      * @ORM\OneToMany(targetEntity=UserRoles::class, mappedBy="user", orphanRemoval=true)
      */
-    #[Groups(['read:Me'])]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+            'read:Me',
+        ])]
     private Collection $userRoles;
 
     /**
-     * @ORM\OneToMany(targetEntity=Papers::class, mappedBy="author")
+     * @ORM\OneToMany(targetEntity=Papers::class, mappedBy="user")
      *
      */
     #[Groups(['read:User', 'read:Me'])]
@@ -462,7 +490,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     {
         if (!$this->papers->contains($paper)) {
             $this->papers[] = $paper;
-            $paper->setAuthor($this);
+            $paper->setUser($this);
         }
 
         return $this;
@@ -471,8 +499,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public function removePaper(Papers $paper): self
     {
         // set the owning side to null (unless already changed)
-        if ($this->papers->removeElement($paper) && $paper->getAuthor() === $this) {
-            $paper->setAuthor(null);
+        if ($this->papers->removeElement($paper) && $paper->getUser() === $this) {
+            $paper->setUser(null);
         }
 
         return $this;
@@ -521,7 +549,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
 
             $roles[$userRole->getRvid()][] = $currentRole;
         }
-        return ($rvId === null || !array_key_exists($rvId, $roles)) ? ['ROLE_MEMBER'] : $roles[$rvId];
+        return ($rvId === null || !array_key_exists($rvId, $roles)) ? ['ROLE_USER'] : $roles[$rvId];
     }
 
     public function setRoles(array $roles = []): self
@@ -547,6 +575,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         $user->setUid($payload['uid'] ?? null);
         $user->setUsername($payload['username'] ??  null);
         $user->setRoles($payload['roles'] ?? []);
+        $user->rvId = $payload['rvId'];
         return $user;
     }
 

@@ -2,6 +2,10 @@
 
 namespace App\Entity\Main;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
@@ -10,6 +14,34 @@ use Doctrine\ORM\Mapping as ORM;
  * @ORM\Table(name="VOLUME", indexes={@ORM\Index(name="FK_CONFID_idx", columns={"RVID"})})
  * @ORM\Entity
  */
+#[ApiResource(
+    operations: [
+
+        new Get(
+            openapi: new OpenApiOperation(
+                summary: 'todo',
+
+            ),
+
+            normalizationContext: [
+                'groups' => ['read:Volume']
+            ],
+
+
+        ),
+        new GetCollection(
+            openapi: new OpenApiOperation(
+                summary: 'Volumes list',
+
+            ),
+            normalizationContext: [
+                'groups' => ['read:Volumes']
+            ],
+        ),
+
+
+    ]
+)]
 class Volume
 {
     /**
