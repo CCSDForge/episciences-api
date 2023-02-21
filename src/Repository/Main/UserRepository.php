@@ -3,9 +3,10 @@ declare(strict_types=1);
 
 namespace App\Repository\Main;
 
+use App\AppConstants;
 use App\Entity\Main\User;
 use App\Entity\Main\UserRoles;
-use App\Resource\StatResource;
+use App\Resource\UsersStatsOutput;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\NonUniqueResultException;
@@ -27,7 +28,7 @@ class UserRepository extends ServiceEntityRepository
 {
     use ToolsTrait;
 
-    public const AVAILABLE_FILTERS = ['uid', 'rvid', 'role', 'registrationDate', 'withDetails'];
+    public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS];
     public const USER_ALIAS = 'u';
 
     private LoggerInterface $logger;
@@ -38,7 +39,7 @@ class UserRepository extends ServiceEntityRepository
         $this->logger = $logger;
     }
 
-    public function getUserStats(array $filters): StatResource
+    public function getUserStats(array $filters): UsersStatsOutput
     {
         $rvId = null;
 
@@ -49,10 +50,9 @@ class UserRepository extends ServiceEntityRepository
         $uid = array_key_exists('uid', $filters) ? (int)$filters['uid'] : null;
         $role = (array_key_exists('role', $filters) && !empty($filters['role'])) ? $filters['role'] : null;
         $registrationYear = array_key_exists('registrationDate', $filters) ? (int)$filters['registrationDate'] : null;
-        $withDetails = array_key_exists('withDetails', $filters);
+        $withDetails = array_key_exists(AppConstants::WITH_DETAILS, $filters);
 
-        $statResource = new StatResource();
-        $statResource->setId($filters['code']);
+        $statResource = new UsersStatsOutput();
         $statResource->setAvailableFilters(self::AVAILABLE_FILTERS);
         $statResource->setRequestedFilters($filters);
         $statResource->setName('nbUsers');
@@ -97,7 +97,9 @@ class UserRepository extends ServiceEntityRepository
 
             }
 
-            $details = $this->reformatData($userStats);
+            $details = array_key_exists($rvId, $this->reformatData($userStats)) ?
+                $this->reformatData($userStats)[$rvId] :
+                $this->reformatData($userStats) ;
         }
 
         $statResource->setValue($nbUsers);

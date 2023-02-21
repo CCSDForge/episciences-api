@@ -35,7 +35,7 @@ class UserSubscriber implements EventSubscriberInterface {
         //$route = $event->getRequest()->getRequestUri();
 
         if ($paper instanceof Papers && $method === "POST"){
-            $paper->setAuthor($this->security->getUser());
+            $paper->setUser($this->security->getUser());
         }
     }
 }

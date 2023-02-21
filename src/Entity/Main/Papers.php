@@ -8,14 +8,13 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
-use App\Filter\YearFilter;
+use App\AppConstants;
+use App\Entity\UserOwnedInterface;
 use DateTime;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Annotation\Context;
 use Symfony\Component\Serializer\Annotation\Groups;
-use App\DataProvider\PapersStatsDataProvider;
-use App\Resource\StatResource;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 
 /**
@@ -28,7 +27,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
     operations: [
         new Get(
             normalizationContext: [
-                'groups' => ['read:Paper']
+                'groups' => AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0]
             ],
             denormalizationContext: [
                 'groups' => ['write:Paper']
@@ -42,12 +41,15 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                 'groups' => ['write:Papers']
             ]
         ),
+
+
+
     ],
     order: ['docid' => 'DESC'],
 
 )]
 #[ApiFilter(SearchFilter::class, properties: ['rvid' => 'exact', 'paperid' => 'exact', 'docid' => 'exact'])]
-class Papers
+class Papers implements UserOwnedInterface
 {
     public const STATUS_SUBMITTED = 0;
     public const STATUS_OK_FOR_REVIEWING = 1; // reviewers have been assigned, but did not start their reports
@@ -101,6 +103,7 @@ class Papers
         self::STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MAJOR_REVISION //31
     ];
 
+
     /**
      * @var int
      *
@@ -109,6 +112,7 @@ class Papers
      * @ORM\GeneratedValue(strategy="IDENTITY")
      */
     #[groups(['read:Papers', 'read:Paper'])]
+
     private int $docid;
 
     /**
@@ -265,7 +269,7 @@ class Papers
      * @ORM\JoinColumn(name="UID", referencedColumnName="UID", nullable=false)
      */
     #[groups(['read:Paper'])]
-    private UserInterface $author;
+    private UserInterface $user;
 
     /**
      * @ORM\ManyToOne(targetEntity=Review::class, inversedBy="papers")
@@ -480,14 +484,14 @@ class Papers
         return $this;
     }
 
-    public function getAuthor(): ?UserInterface
+    public function getUser(): ?UserInterface
     {
-        return $this->author;
+        return $this->user;
     }
 
-    public function setAuthor(UserInterface $author): self
+    public function setUser(UserInterface $user): self
     {
-        $this->author = $author;
+        $this->user = $user;
 
         return $this;
     }

@@ -5,7 +5,7 @@ namespace App\EventSubscriber;
 
 use ApiPlatform\Symfony\EventListener\EventPriorities as EventPrioritiesAlias;
 use App\Exception\StatResourceNotFoundException;
-use App\Resource\StatResource;
+use App\Resource\ToBeDeletedStatResource;
 use App\Traits\CheckExistingResourceTrait;
 use Generator;
 use Exception;
@@ -13,7 +13,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\ViewEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
-final class StatResourceManager implements EventSubscriberInterface
+final class StatResourceSubscriber implements EventSubscriberInterface
 {
 
     use CheckExistingResourceTrait;
@@ -41,7 +41,7 @@ final class StatResourceManager implements EventSubscriberInterface
 
         $statResource = $generator->current();
 
-        if (!$statResource instanceof StatResource || !$event->getRequest()->isMethodSafe()) {
+        if (!$statResource instanceof ToBeDeletedStatResource || !$event->getRequest()->isMethodSafe()) {
             return;
         }
 

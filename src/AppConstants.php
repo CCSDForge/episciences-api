@@ -4,18 +4,58 @@ namespace App;
 
 final class AppConstants
 {
+    public const AVAILABLE_FILTERS = ['rvid', 'repoid', 'status', 'submissionDate', 'withDetails'];
+    public const WITH_DETAILS = 'withDetails';
+    public const STATS_DASHBOARD_ITEM = 'get_stats_dashboard_item';
+    public const STATS_NB_SUBMISSIONS_ITEM = 'get_stats_nb_submissions_item';
+    public const STATS_DELAY_SUBMISSION_ACCEPTANCE = 'get_delay_between_submit_and_acceptance_item';
+    public const STATS_DELAY_SUBMISSION_PUBLICATION = 'get_delay_between_submit_and_publication_item';
+    public const STATS_NB_USERS = 'get_stats_nb_users_item';
     public const APP_CONST = [
-        'custom_operations' =>  [
-            'get_stats_dashboard_collection'
-        ],
-        'normalizationContext' => ['groups' => [
-            'review' => [
-                'read' => [
-                    'read:stats:Review',
+        'custom_operations' => [
+            'items' => [
+                'review' => [ // the order of the elements is important
+                    self::STATS_DASHBOARD_ITEM,
+                    self::STATS_NB_SUBMISSIONS_ITEM,
+                    self::STATS_DELAY_SUBMISSION_ACCEPTANCE,
+                    self::STATS_DELAY_SUBMISSION_PUBLICATION,
+                    self::STATS_NB_USERS
+
+                ],
+                'papers' => [ // the order of the elements is important
 
                 ]
+            ],
+            'uri_template' => [
+                self::STATS_DASHBOARD_ITEM => '/review/stats/dashboard/{code}',
+                self::STATS_NB_SUBMISSIONS_ITEM => '/review/stats/nb-submissions/{code}',
+                self::STATS_DELAY_SUBMISSION_ACCEPTANCE => '/review/stats/delay-submission-acceptance/{code}',
+                self::STATS_DELAY_SUBMISSION_PUBLICATION => '/review/stats/delay-submission-publication/{code}',
+                self::STATS_NB_USERS => '/review/stats/nb-users/{code}',
             ]
-        ]]
+
+        ],
+        'normalizationContext' => [
+            'groups' => [
+                'review' => [
+                    'item' => [
+                        'read' => [
+                            'read:stats:Review',
+                        ],
+                    ]
+
+                ],
+                'papers' => [
+                    'item' => [
+                        'read' => [
+                            'read:Paper'
+                        ]
+                    ],
+                    'collection' => [
+
+                    ]
+                ]
+            ]]
 
     ];
 

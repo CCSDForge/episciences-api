@@ -15,9 +15,6 @@ use Doctrine\ORM\Mapping as ORM;
 use Lexik\Bundle\JWTAuthenticationBundle\Security\User\JWTUserInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
-use App\Resource\StatResource;
-use App\DataProvider\UsersStatsDataProvider;
-use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use Symfony\Component\Serializer\Annotation\Context;
 use Symfony\Component\Serializer\Annotation\Groups;
 use App\Controller\MeController;
@@ -29,6 +26,7 @@ use App\OpenApi\OpenApiFactory;
 /**
  * User
  *
+ * @property int $rvId
  * @ORM\Table(name="USER")
  * @ORM\Entity(repositoryClass="App\Repository\Main\UserRepository")
  *
@@ -60,7 +58,7 @@ use App\OpenApi\OpenApiFactory;
             normalizationContext: [
                 'groups' => ['read:Me']
             ],
-            security: "is_granted('ROLE_MEMBER')",
+            security: "is_granted('ROLE_USER')",
             read: false
 
         ),
@@ -195,7 +193,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     private Collection $userRoles;
 
     /**
-     * @ORM\OneToMany(targetEntity=Papers::class, mappedBy="author")
+     * @ORM\OneToMany(targetEntity=Papers::class, mappedBy="user")
      *
      */
     #[Groups(['read:User', 'read:Me'])]
@@ -462,7 +460,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     {
         if (!$this->papers->contains($paper)) {
             $this->papers[] = $paper;
-            $paper->setAuthor($this);
+            $paper->setUser($this);
         }
 
         return $this;
@@ -471,8 +469,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public function removePaper(Papers $paper): self
     {
         // set the owning side to null (unless already changed)
-        if ($this->papers->removeElement($paper) && $paper->getAuthor() === $this) {
-            $paper->setAuthor(null);
+        if ($this->papers->removeElement($paper) && $paper->getUser() === $this) {
+            $paper->setUser(null);
         }
 
         return $this;
@@ -521,7 +519,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
 
             $roles[$userRole->getRvid()][] = $currentRole;
         }
-        return ($rvId === null || !array_key_exists($rvId, $roles)) ? ['ROLE_MEMBER'] : $roles[$rvId];
+        return ($rvId === null || !array_key_exists($rvId, $roles)) ? ['ROLE_USER'] : $roles[$rvId];
     }
 
     public function setRoles(array $roles = []): self
@@ -547,6 +545,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         $user->setUid($payload['uid'] ?? null);
         $user->setUsername($payload['username'] ??  null);
         $user->setRoles($payload['roles'] ?? []);
+        $user->rvId = $payload['rvId'];
         return $user;
     }
 

@@ -22,13 +22,21 @@ class MeController
     public function __invoke()
     {
         // User from payload: @see App\EventSubscriber::onLexikJwtAuthenticationOnJwtCreated
+        /** @var User $user */
         $user = $this->security->getUser();
-        return
-            $user ?
-                $this->
-                doctrine->
-                getRepository(User::class)->
-                findOneBy(['username' => $user->getUserIdentifier()])
-                : null;
+
+        if ($user) {
+            $refreshedUser  = $this->doctrine->
+            getRepository(User::class)->
+            findOneBy(['uid' => $user->getUid()]);
+
+            if ($refreshedUser) {
+                $refreshedUser->setRoles($refreshedUser->getRoles($user->rvId));
+                return $refreshedUser;
+            }
+
+        }
+
+        return null;
     }
 }
