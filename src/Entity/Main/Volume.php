@@ -6,7 +6,9 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use App\AppConstants;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * Volume
@@ -19,12 +21,12 @@ use Doctrine\ORM\Mapping as ORM;
 
         new Get(
             openapi: new OpenApiOperation(
-                summary: 'todo',
+                summary: 'Consult a particular volume',
 
             ),
 
             normalizationContext: [
-                'groups' => ['read:Volume']
+                'groups' => [AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0]],
             ],
 
 
@@ -35,7 +37,7 @@ use Doctrine\ORM\Mapping as ORM;
 
             ),
             normalizationContext: [
-                'groups' => ['read:Volumes']
+                'groups' => [AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]],
             ],
         ),
 
@@ -58,6 +60,13 @@ class Volume
      *
      * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
      */
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+        ]
+
+    )]
     private $rvid;
 
     /**
@@ -72,6 +81,13 @@ class Volume
      *
      * @ORM\Column(name="BIB_REFERENCE", type="string", length=255, nullable=true, options={"comment"="Volume's bibliographical reference"})
      */
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+        ]
+
+    )]
     private $bibReference;
 
     public function getVid(): ?int

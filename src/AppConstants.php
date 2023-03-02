@@ -82,6 +82,19 @@ final class AppConstants
                         ]
                     ]
 
+                ],
+                'volume' => [
+                    'item' => [
+                        'read' => [
+                            'read:Volume'
+                        ]
+                    ],
+                    'collection' => [
+                        'read' => [
+                            'read:Volumes'
+                        ]
+                    ]
+
                 ]
             ]]
 
