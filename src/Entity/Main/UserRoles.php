@@ -4,15 +4,13 @@ namespace App\Entity\Main;
 
 use ApiPlatform\Metadata\ApiResource;
 use App\AppConstants;
+use App\Repository\Main\UserRolesRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
-/**
- * UserRoles
- *
- * @ORM\Table(name="USER_ROLES")
- * @ORM\Entity(repositoryClass="App\Repository\Main\UserRolesRepository")
- */
+
+#[ORM\Table(name: self::TABLE)]
+#[ORM\Entity(repositoryClass: UserRolesRepository::class)]
 #[ApiResource(
     operations: [],
     normalizationContext: [
@@ -24,23 +22,18 @@ use Symfony\Component\Serializer\Annotation\Groups;
 )]
 class UserRoles
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="UID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
+    public const TABLE = 'USER_ROLES';
+
+    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     private $uid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
 
+
+    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
@@ -49,13 +42,10 @@ class UserRoles
         ])]
     private $rvid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="ROLEID", type="string", length=20, nullable=false)
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
+
+    #[ORM\Column(name: 'ROLEID', type: 'string', length: 20, nullable: false)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
@@ -64,10 +54,9 @@ class UserRoles
         ])]
     private $roleid;
 
-    /**
-     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="userRoles")
-     * @ORM\JoinColumn(name="UID", referencedColumnName="UID", nullable=true)
-     */
+
+   #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'userRoles')]
+   #[ORM\JoinColumn(name: 'UID', referencedColumnName: 'UID', nullable: true)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],

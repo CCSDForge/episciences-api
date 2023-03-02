@@ -25,12 +25,9 @@ use App\Repository\Main\ReviewRepository;
 use App\OpenApi\OpenApiFactory;
 
 
-/**
- * Review
- *
- * @ORM\Table(name="REVIEW", uniqueConstraints={@ORM\UniqueConstraint(name="U_CODE", columns={"CODE"})})
- * @ORM\Entity(repositoryClass=ReviewRepository::class)
- */
+#[ORM\Table(name: self::TABLE)]
+#[ORM\UniqueConstraint(name: 'U_CODE', columns: ['CODE'])]
+#[ORM\Entity(repositoryClass: ReviewRepository::class)]
 #[ApiResource(
     operations: [
         new Get(
@@ -159,66 +156,49 @@ use App\OpenApi\OpenApiFactory;
 )]
 class Review
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
+    public const TABLE = 'REVIEW';
+
+    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[Groups(['read:Reviews', 'read:Review'])]
     #[ApiProperty(identifier: false)]
     private int $rvid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="CODE", type="string", length=50, nullable=false)
-     */
+
+
+    #[ORM\Column(name: 'CODE', type: 'string', length: 50, nullable: false)]
     #[Groups(['read:Reviews', 'read:Review'])]
     #[ApiProperty(identifier: true)]
     private string $code;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="NAME", type="string", length=2000, nullable=false)
-     */
+
+    #[ORM\Column(name: 'NAME', type: 'string', length: 2000, nullable: false)]
     #[Groups(['read:Reviews', 'read:Review'])]
     private string $name;
 
-    /**
-     * @var int Property viewable and writable only by users with ROLE_ADMIN
-     *
-     * @ORM\Column(name="STATUS", type="smallint", nullable=false, options={"unsigned"=true})
-     */
+
+    #[ORM\Column(name: 'STATUS', type: 'smallint', nullable: false, options: ['unsigned' => true])]
     #[Groups(['read:Reviews'])]
-    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")] // Property viewable and writable only by users with ROLE_ADMIN
     private int $status;
 
-    /**
-     * @var DateTimeInterface
-     *
-     * @ORM\Column(name="CREATION", type="datetime", nullable=false)
-     */
+
+    #[ORM\Column(name: 'CREATION', type: 'datetime', nullable: false)]
     #[Groups(['read:Reviews'])]
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTimeInterface $creation;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="PIWIKID", type="integer", nullable=false, options={"unsigned"=true})
-     */
+
+   #[ORM\Column(name: 'PIWIKID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[Groups(['read:Reviews'])]
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
     private int $piwikid;
 
-    /**
-     * @ORM\OneToMany(targetEntity=Papers::class, mappedBy="review")
-     */
 
+
+    #[ORM\OneToMany(mappedBy: 'review', targetEntity: Papers::class)]
     #[Groups(['read:Review'])]
     private Collection $papers;
 

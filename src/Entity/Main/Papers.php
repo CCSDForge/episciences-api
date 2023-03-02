@@ -12,6 +12,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\AppConstants;
 use App\Entity\UserOwnedInterface;
+use App\Repository\Main\PapersRepository;
 use DateTime;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -19,12 +20,20 @@ use Symfony\Component\Serializer\Annotation\Context;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 
-/**
- * Papers
- *
- * @ORM\Table(name="PAPERS", indexes={@ORM\Index(name="FK_CONFID_idx", columns={"RVID"}), @ORM\Index(name="FK_REPOID_idx", columns={"REPOID"}), @ORM\Index(name="FK_VID_idx", columns={"VID"}), @ORM\Index(name="PAPERID", columns={"PAPERID"})})
- * @ORM\Entity(repositoryClass="App\Repository\Main\PapersRepository")
- */
+
+#[ORM\Table(name: self::TABLE)]
+#[ORM\Index(columns: ['REPOID'], name: 'FK_REPOID_idx')]
+#[ORM\Index(columns: ['VID'], name: 'FK_VID_idx')]
+#[ORM\Index(columns: ['RVID'], name: 'FK_RVID_idx')]
+#[ORM\Index(columns: ['STATUS'], name: 'STATUS')]
+#[ORM\Index(columns: ['PAPERID'], name: 'PAPERID')]
+#[ORM\Index(columns: ['SID'], name: 'SID')]
+#[ORM\Index(columns: ['UID'], name: 'UID')]
+#[ORM\Index(columns: ['SUBMISSION_DATE'], name: 'SUBMISSION_DATE')]
+#[ORM\Index(columns: ['PUBLICATION_DATE'], name: 'PUBLICATION_DATE')]
+#[ORM\Index(columns: ['FLAG'], name: 'FLAG')]
+#[ORM\Index(columns: ['RECORD'], name: 'RECORD')]
+#[ORM\Entity(repositoryClass: PapersRepository::class)]
 #[ApiResource(
     operations: [
         new Get(
@@ -62,6 +71,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 #[ApiFilter(SearchFilter::class, properties: ['rvid' => 'exact', 'paperid' => 'exact', 'docid' => 'exact'])]
 class Papers implements UserOwnedInterface
 {
+    public const TABLE = 'PAPERS';
     public const STATUS_SUBMITTED = 0;
     public const STATUS_OK_FOR_REVIEWING = 1; // reviewers have been assigned, but did not start their reports
     public const STATUS_BEING_REVIEWED = 2; // rating has begun (at least one reviewer has starter working on his rating report)
@@ -115,13 +125,9 @@ class Papers implements UserOwnedInterface
     ];
 
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="DOCID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
+    #[ORM\Column(name:'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -131,12 +137,8 @@ class Papers implements UserOwnedInterface
 
     private int $docid;
 
-    /**
-     * @var int|null
-     *
-     * @ORM\Column(name="PAPERID", type="integer", nullable=true, options={"unsigned"=true})
-     *
-     */
+
+    #[ORM\Column(name: 'PAPERID', type: 'integer', nullable: true, options: ['unsigned' => true])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -145,12 +147,8 @@ class Papers implements UserOwnedInterface
     )]
     private ?int $paperid;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="DOI", type="string", length=250, nullable=true)
-     *
-     */
+
+    #[ORM\Column(name: 'DOI', type: 'string', length: 250, nullable: true )]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -159,11 +157,8 @@ class Papers implements UserOwnedInterface
     )]
     private ?string $doi;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     */
+
+    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -172,41 +167,26 @@ class Papers implements UserOwnedInterface
     )]
     private int $rvid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="VID", type="integer", nullable=false, options={"unsigned"=true})
-     *
-     */
+
+    #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[groups(
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0]
     )]
     private int $vid = 0;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="SID", type="integer", nullable=false, options={"unsigned"=true})
-     */
+
+    #[ORM\Column(name: 'SID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[groups(
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0]
     )]
     private int $sid = 0;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="UID", type="integer", nullable=false, options={"unsigned"=true})
-     */
+
+    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private int $uid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="STATUS", type="integer", nullable=false, options={"unsigned"=true})
-     * @Groups({"papers_read"})
-     *
-     */
+
+    #[ORM\Column(name: 'STATUS', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -215,13 +195,8 @@ class Papers implements UserOwnedInterface
     )]
     private int $status = 0;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="IDENTIFIER", type="string", length=500, nullable=false)
-     * @Groups({"papers_read"})
-     *
-     */
+
+    #[ORM\Column(name:'IDENTIFIER', type: 'string', length: 500, nullable: false)]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -229,54 +204,32 @@ class Papers implements UserOwnedInterface
         ])]
     private string $identifier;
 
-    /**
-     * @var float
-     *
-     * @ORM\Column(name="VERSION", type="float", precision=10, scale=0, nullable=false, options={"default"="1"})
-     * @Groups({"papers_read"})
-     *
-     */
+
+    #[ORM\Column(name: 'VERSION', type: 'float', precision: 10, scale: 0, nullable: false, options: ['default' => 1])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         ])]
     private $version = 1;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="REPOID", type="integer", nullable=false, options={"unsigned"=true})
-     * @Groups({"papers_read"})
-     *
-     */
+
+    #[ORM\Column(name: 'REPOID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         ])]
     private int $repoid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="RECORD", type="text", length=65535, nullable=false)
-     */
+
+    #[ORM\Column(name: 'RECORD', type: 'text', length: 65535, nullable: false )]
     #[groups(
         [AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],]
     )]
     private string $record;
-
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="CONCEPT_IDENTIFIER", type="string", length=500, nullable=true, options={"comment"="This identifier represents all versions"})
-     */
+    #[ORM\Column(name: 'CONCEPT_IDENTIFIER', type: 'string', length: 500, nullable: true, options: ['comment' => 'This identifier represents all versions'])]
     private ?string $conceptIdentifier;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="FLAG", type="string", length=0, nullable=false, options={"default"="submitted"})
-     */
+    #[ORM\Column(name: 'FLAG', type: 'string', length: 0, nullable: false, options: ['default' => 'submitted'])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -285,11 +238,8 @@ class Papers implements UserOwnedInterface
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
     private string $flag = 'submitted';
 
-    /**
-     * @var DateTime
-     *
-     * @ORM\Column(name="WHEN", type="datetime", nullable=false)
-     */
+
+    #[ORM\Column(name: 'WHEN', type: 'datetime', nullable: false)]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -298,11 +248,8 @@ class Papers implements UserOwnedInterface
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $when;
 
-    /**
-     * @var DateTime
-     *
-     * @ORM\Column(name="SUBMISSION_DATE", type="datetime", nullable=false)
-     */
+
+    #[ORM\Column(name: 'SUBMISSION_DATE', type: 'datetime', nullable: false)]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -310,20 +257,13 @@ class Papers implements UserOwnedInterface
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $submissionDate;
 
-    /**
-     * @var DateTime|null
-     *
-     * @ORM\Column(name="MODIFICATION_DATE", type="datetime", nullable=true)
-     */
+
+    #[ORM\Column(name: 'MODIFICATION_DATE', type: 'datetime', nullable: true)]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private ?DateTime $modificationDate;
 
-    /**
-     * @var DateTime|null
-     *
-     * @ORM\Column(name="PUBLICATION_DATE", type="datetime", nullable=true)
-     *
-     */
+
+    #[ORM\Column(name: 'PUBLICATION_DATE', type: 'datetime', nullable: true)]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -332,10 +272,9 @@ class Papers implements UserOwnedInterface
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private ?DateTime $publicationDate;
 
-    /**
-     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="papers")
-     * @ORM\JoinColumn(name="UID", referencedColumnName="UID", nullable=false)
-     */
+
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'papers')]
+    #[ORM\JoinColumn(name: 'UID', referencedColumnName: 'UID', nullable: false)]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -343,11 +282,9 @@ class Papers implements UserOwnedInterface
     #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
     private UserInterface $user;
 
-    /**
-     * @ORM\ManyToOne(targetEntity=Review::class, inversedBy="papers")
-     * @ORM\JoinColumn(name="RVID", referencedColumnName="RVID", nullable=false)
-     *
-     */
+
+    #[ORM\ManyToOne(targetEntity: Review::class, inversedBy: 'papers')]
+    #[ORM\JoinColumn(name: 'RVID', referencedColumnName: 'RVID', nullable: false)]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],

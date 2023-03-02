@@ -10,12 +10,10 @@ use App\AppConstants;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
-/**
- * Volume
- *
- * @ORM\Table(name="VOLUME", indexes={@ORM\Index(name="FK_CONFID_idx", columns={"RVID"})})
- * @ORM\Entity
- */
+
+#[ORM\Table(name: self::TABLE)]
+#[ORM\Index(columns: ['RVID'], name: 'FK_CONFID_idx')]
+#[ORM\Entity]
 #[ApiResource(
     operations: [
 
@@ -46,20 +44,15 @@ use Symfony\Component\Serializer\Annotation\Groups;
 )]
 class Volume
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="VID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
+    public const TABLE = 'VOLUME';
+
+   #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+   #[ORM\Id]
+   #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $vid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     */
+
+    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -69,18 +62,12 @@ class Volume
     )]
     private $rvid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="POSITION", type="integer", nullable=false, options={"unsigned"=true})
-     */
+
+   #[ORM\Column(name: 'POSITION', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private $position;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="BIB_REFERENCE", type="string", length=255, nullable=true, options={"comment"="Volume's bibliographical reference"})
-     */
+
+    #[ORM\Column(name: 'BIB_REFERENCE', type: 'string', length: 255, nullable: true, options: ['comment' => "Volume's bibliographical reference"])]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],

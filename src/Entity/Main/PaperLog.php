@@ -2,79 +2,56 @@
 
 namespace App\Entity\Main;
 
+use App\Repository\Main\PaperLogRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-/**
- * PaperLog
- *
- * @ORM\Table(name="PAPER_LOG", indexes={@ORM\Index(name="fk_T_PAPER_MODIF_T_PAPERS_idx", columns={"DOCID"}), @ORM\Index(name="fk_T_PAPER_MODIF_T_USER_idx", columns={"UID"})})
- * @ORM\Entity(repositoryClass="App\Repository\Main\PaperLogRepository")
- */
+
+#[ORM\Table(name: self::TABLE)]
+#[ORM\Index(columns: ['DOCID'], name: 'fk_T_PAPER_MODIF_T_PAPERS_idx')]
+#[ORM\Index(columns: ['UID'], name: 'fk_T_PAPER_MODIF_T_USER_idx')]
+#[ORM\Entity(repositoryClass: PaperLogRepository::class)]
+
 class PaperLog
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="LOGID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
+
+    public const TABLE = 'PAPER_LOG';
+
+
+    #[ORM\Column(name: 'LOGID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $logid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="PAPERID", type="integer", nullable=false, options={"unsigned"=true})
-     */
+
+    #[ORM\Column(name: 'PAPERID', type: 'integer', nullable: false, options: ['unsigned' => true] )]
     private $paperid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="DOCID", type="integer", nullable=false, options={"unsigned"=true})
-     */
+
+    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private $docid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="UID", type="integer", nullable=false, options={"unsigned"=true})
-     */
+
+   #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private $uid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     */
+
+    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private $rvid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="ACTION", type="string", length=50, nullable=false)
-     */
+
+    #[ORM\Column(name: 'ACTION', type: 'string', length: 50, nullable: false)]
     private $action;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="DETAIL", type="text", length=65535, nullable=true)
-     */
+
+   #[ORM\Column(name: 'DETAIL', type: 'text', length: 65535, nullable: true)]
     private $detail;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="FILE", type="string", length=150, nullable=true)
-     */
+
+    #[ORM\Column(name: 'FILE', type: 'string', length: 150, nullable: true)]
     private $file;
 
-    /**
-     * @var \DateTime
-     *
-     * @ORM\Column(name="DATE", type="datetime", nullable=false)
-     */
+
+    #[ORM\Column(name: 'DATE', type: 'datetime', nullable: false)]
     private $date;
 
     public function getLogid(): ?int

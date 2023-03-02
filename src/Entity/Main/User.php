@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use App\AppConstants;
+use App\Repository\Main\UserRepository;
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -23,26 +24,20 @@ use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\OpenApi\OpenApiFactory;
 
 
-/**
- * User
- *
- * @property int $rvId
- * @ORM\Table(name="USER")
- * @ORM\Entity(repositoryClass="App\Repository\Main\UserRepository")
- *
- *
- */
+
+#[ORM\Table(name: self::TABLE)]
+#[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ApiResource(
     operations: [
         new Get(
             normalizationContext: [
-                'groups' => ['read:User']
+                'groups' => [AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0]]
             ],
             security: "is_granted('ROLE_SECRETARY') or (is_granted('ROLE_USER') and object.getUid() == user.getUid())"
         ),
         new GetCollection(
             normalizationContext: [
-                'groups' => ['read:Users']
+                'groups' => [AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0]]
                 ]
         ),
         new Get(
@@ -76,15 +71,13 @@ use App\OpenApi\OpenApiFactory;
 )]
 class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUserInterface
 {
+    public const TABLE = 'USER';
     public const ROLE_ROOT = 'epiadmin';
     public const EPISCIENCES_UID = 666;
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="UID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
+
+    #[ORM\Id]
+    #[ORM\Column(name: "UID", type: "integer", nullable: false, options: ['unsigned'=> true])]
+    #[ORM\GeneratedValue]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
@@ -92,25 +85,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         ])]
     private int $uid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="LANGUEID", type="string", length=2, nullable=false, options={"default"="fr"})
-     *
-     */
+
+    #[ORM\Column(name:"LANGUEID",type: "string", length: 2, nullable: false, options: ['default' => 'fr'])]
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
         'read:Me',
     ])]
     private string $langueid = 'fr';
-
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="SCREEN_NAME", type="string", length=250, nullable=false)
-     *
-     */
+    #[ORM\Column(name:"SCREEN_NAME", type: 'string', length: 250, nullable: false) ]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
@@ -120,25 +103,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         ])]
     private string $screenName;
 
-    /**
-     * @ORM\Column(name="USERNAME", type="string", length=100, nullable=false)
-     *
-     */
+
+    #[ORM\Column(name:"USERNAME", type: 'string', length: 100, nullable: false)]
     #[ApiProperty(security: "is_granted('ROLE_MEMBER')")]
     #[Groups(['read:Me'])]
     private ?string $username = '';
 
-    /**
-     * @ORM\Column(name="API_PASSWORD", type="string", length=255)
-     */
+
+    #[ORM\Column(name: "API_PASSWORD", type: 'string', length: 255)]
     private ?string $password;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="EMAIL", type="string", length=320, nullable=false, options={})
-     *
-     */
+
+    #[ORM\Column(name: "EMAIL", type: 'string', length: 320,  nullable: false, options: [])]
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
@@ -146,11 +122,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     ])]
     private $email;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="CIV", type="string", length=255, nullable=true)
-     */
+
+    #[ORM\Column(name: "CIV", type: 'string', length: 255, nullable: true)]
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
@@ -158,62 +131,43 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     ])]
     private $civ;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="LASTNAME", type="string", length=100, nullable=false)
-     */
+    #[ORM\Column(name: "LASTNAME", type: 'string', length: 100, nullable: false)]
     #[Groups(['read:User', 'read:Me'])]
     private $lastname;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="FIRSTNAME", type="string", length=100, nullable=true)
-     */
+
+    #[ORM\Column(name: "FIRSTNAME", type: 'string', length: 100, nullable: true)]
     #[Groups(['read:User', 'read:Me'])]
     private $firstname;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="MIDDLENAME", type="string", length=100, nullable=true)
-     */
+       #[ORM\Column(name: "MIDDLENAME", type: 'string', length: 100, nullable: true)]
     #[Groups(['read:User', 'read:Me'])]
     private $middlename;
 
-    /**
-     * @var DateTime|null
-     *
-     * @ORM\Column(name="REGISTRATION_DATE", type="datetime", nullable=true, options={"comment"="Date création du compte"})
-     *
-     */
+
+    #[ORM\Column(
+        name:"REGISTRATION_DATE", type: "datetime", nullable: true, options: ['comment' => 'Date de création du compte']
+    )]
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private $registrationDate;
 
-    /**
-     * @var DateTime|null
-     *
-     * @ORM\Column(name="MODIFICATION_DATE", type="datetime", nullable=true, options={"default"="CURRENT_TIMESTAMP","comment"="Date modification du compte"})
-     */
+
+    #[ORM\Column(name: "MODIFICATION_DATE", type: 'datetime', nullable: true, options: [
+        'default' => 'CURRENT_TIMESTAMP', 'comment' => 'Date de modification du compte'])
+    ]
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private $modificationDate;
 
-    /**
-     * @var bool
-     *
-     * @ORM\Column(name="IS_VALID", type="boolean", nullable=false)
-     *
-     */
+
+    #[ORM\Column(name: "IS_VALID", type: "boolean", nullable: false)]
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
     #[Groups(['read:User', 'read:Me'])]
     private bool $isValid = true;
 
-    /**
-     * @ORM\OneToMany(targetEntity=UserRoles::class, mappedBy="user", orphanRemoval=true)
-     */
+
+    #[ORM\OneToMany(mappedBy: "user", targetEntity: UserRoles::class, orphanRemoval: true)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
@@ -222,10 +176,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         ])]
     private Collection $userRoles;
 
-    /**
-     * @ORM\OneToMany(targetEntity=Papers::class, mappedBy="user")
-     *
-     */
+
+    #[ORM\OneToMany(mappedBy: "user", targetEntity: Papers::class)]
     #[Groups(['read:User', 'read:Me'])]
     private Collection $papers;
 

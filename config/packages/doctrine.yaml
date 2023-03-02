@@ -8,7 +8,7 @@ doctrine:
                 # configure these for your database server
                 url: '%env(resolve:DATABASE_URL)%'
                 driver: 'pdo_mysql'
-                server_version: '5.7'
+                server_version: '8.0'
                 charset: utf8mb4
             customer:
                 mapping_types:
@@ -16,7 +16,7 @@ doctrine:
                 # configure these for your database server
                 url: '%env(resolve:DATABASE_CUSTOMER_URL)%'
                 driver: 'pdo_mysql'
-                server_version: '5.7'
+                server_version: '8.0'
                 charset: utf8mb4
 
         # IMPORTANT: You MUST configure your server version,
@@ -30,9 +30,9 @@ doctrine:
                 mappings:
                     App:
                         is_bundle: false
-                        type: annotation
-                        dir: '%kernel.project_dir%/src/Entity'
-                        prefix: 'App\Entity'
+                        type: attribute
+                        dir: '%kernel.project_dir%/src/Entity/Main'
+                        prefix: 'App\Entity\Main'
                         alias: App
                 dql:
                     #see https://github.com/beberlei/DoctrineExtensions
@@ -80,7 +80,7 @@ doctrine:
                 mappings:
                     Customer:
                         is_bundle: false
-                        type: annotation
+                        type: attribute
                         dir: '%kernel.project_dir%/src/Entity/Customer'
                         prefix: 'App\Entity\Customer'
                         alias: Customer
