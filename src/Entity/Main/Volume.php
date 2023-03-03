@@ -7,13 +7,14 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\AppConstants;
+use App\Repository\Main\VolumeRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Index(columns: ['RVID'], name: 'FK_CONFID_idx')]
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: VolumeRepository::class)]
 #[ApiResource(
     operations: [
 
@@ -77,6 +78,36 @@ class Volume
     )]
     private $bibReference;
 
+
+    #[ORM\Column(name: 'titles', type: 'json', nullable: true)]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+        ]
+
+    )]
+    private array  $titles ;
+    #[ORM\Column(name: 'descriptions', type: 'json', nullable: true)]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+        ]
+
+    )]
+    private  array $descriptions;
+
+    #[ORM\Column(name: 'doi', type: 'string', nullable: true)]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+        ]
+
+    )]
+    private string $doi;
+
     public function getVid(): ?int
     {
         return $this->vid;
@@ -115,6 +146,60 @@ class Volume
     {
         $this->bibReference = $bibReference;
 
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getDescriptions(): array
+    {
+        return $this->descriptions;
+    }
+
+    /**
+     * @param array $descriptions
+     * @return Volume
+     */
+    public function setDescriptions(array $descriptions): self
+    {
+        $this->descriptions = $descriptions;
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getTitles(): array
+    {
+        return $this->titles;
+    }
+
+    /**
+     * @param array $titles
+     * @return Volume
+     */
+    public function setTitles(array $titles): self
+    {
+        $this->titles = $titles;
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getDoi(): string
+    {
+        return $this->doi;
+    }
+
+    /**
+     * @param string $doi
+     * @return Volume
+     */
+    public function setDoi(string $doi): self
+    {
+        $this->doi = $doi;
         return $this;
     }
 
