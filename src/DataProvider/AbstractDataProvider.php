@@ -4,10 +4,10 @@ namespace App\DataProvider;
 
 use ApiPlatform\Metadata\Operation;
 use App\AppConstants;
-use App\Entity\Main\PaperLog;
-use App\Entity\Main\Papers;
-use App\Entity\Main\Review;
-use App\Entity\Main\User;
+use App\Entity\PaperLog;
+use App\Entity\Papers;
+use App\Entity\Review;
+use App\Entity\User;
 use App\Resource\AbstractStatResource;
 use App\Resource\DashboardOutput;
 use App\Traits\CheckExistingResourceTrait;

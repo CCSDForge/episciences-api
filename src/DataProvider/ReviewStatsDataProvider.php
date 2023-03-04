@@ -8,7 +8,7 @@ namespace App\DataProvider;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\AppConstants;
-use App\Entity\Main\Review;
+use App\Entity\Review;
 
 final class ReviewStatsDataProvider extends AbstractDataProvider implements ProviderInterface
 {

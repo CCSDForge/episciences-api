@@ -8,12 +8,12 @@ security:
 
         user:
             entity:
-                class: App\Entity\Main\User
+                class: App\Entity\User
                 property: username
 
         jwt:
             lexik_jwt:
-                class: App\Entity\Main\User
+                class: App\Entity\User
 
 
     role_hierarchy: # ROLE_MEMBER: already has a profil in journal (ROLE_USER : not)

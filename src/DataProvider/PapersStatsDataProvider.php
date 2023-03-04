@@ -7,7 +7,7 @@ namespace App\DataProvider;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\AppConstants;
-use App\Entity\Main\Papers;
+use App\Entity\Papers;
 
 
 final class PapersStatsDataProvider extends AbstractDataProvider implements ProviderInterface

@@ -2,7 +2,7 @@
 
 namespace App\Controller;
 
-use App\Entity\Main\User;
+use App\Entity\User;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Bundle\SecurityBundle\Security;
 

@@ -5,7 +5,7 @@
 
 namespace App\Security;
 
-use App\Entity\Main\User;
+use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;

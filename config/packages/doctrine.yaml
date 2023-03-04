@@ -31,8 +31,8 @@ doctrine:
                     App:
                         is_bundle: false
                         type: attribute
-                        dir: '%kernel.project_dir%/src/Entity/Main'
-                        prefix: 'App\Entity\Main'
+                        dir: '%kernel.project_dir%/src/Entity'
+                        prefix: 'App\Entity'
                         alias: App
                 dql:
                     #see https://github.com/beberlei/DoctrineExtensions

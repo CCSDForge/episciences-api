@@ -2,8 +2,8 @@
 
 namespace App\EventSubscriber;
 
-use App\Entity\Main\Review;
-use App\Entity\Main\User;
+use App\Entity\Review;
+use App\Entity\User;
 use Doctrine\Persistence\ManagerRegistry;
 use Lexik\Bundle\JWTAuthenticationBundle\Event\JWTCreatedEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;

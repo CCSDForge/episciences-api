@@ -4,7 +4,7 @@ namespace App\EventSubscriber;
 
 
 use ApiPlatform\Symfony\EventListener\EventPriorities;
-use App\Entity\Main\Papers;
+use App\Entity\Papers;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\ViewEvent;
