@@ -2,40 +2,56 @@
 
 namespace App\Entity;
 
+use App\AppConstants;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
-/**
- * VolumeSetting
- *
- * @ORM\Table(name="VOLUME_SETTING", indexes={@ORM\Index(name="FK_RVID0_idx", columns={"VID"})})
- * @ORM\Entity
- */
+
+#[ORM\Table(name: self::TABLE)]
+#[ORM\Index(columns: ['VID'], name: 'FK_RVID0_idx')]
+#[ORM\Entity]
 class VolumeSetting
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="VID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
+
+    public const TABLE = 'VOLUME_SETTING';
+
+
+    #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy:'NONE')]
     private $vid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="SETTING", type="string", length=200, nullable=false)
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
+
+    #[ORM\Column(name: 'SETTING', type: 'string', length: 200, nullable: false)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
+
+        ]
+
+    )]
     private $setting;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="VALUE", type="text", length=65535, nullable=true)
-     */
+
+    #[ORM\Column(name: 'VALUE', type: 'text', length: 65535, nullable: true)]
+
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
+
+        ]
+
+    )]
     private $value;
+
+    #[ORM\ManyToOne(targetEntity: Volume::class, inversedBy: 'settings')]
+    #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID', nullable: false)]
+    private ?Volume $volume = null;
 
     public function getVid(): ?int
     {
@@ -55,6 +71,18 @@ class VolumeSetting
     public function setValue(?string $value): self
     {
         $this->value = $value;
+
+        return $this;
+    }
+
+    public function getVolume(): ?Volume
+    {
+        return $this->volume;
+    }
+
+    public function setVolume(?Volume $volume): self
+    {
+        $this->volume = $volume;
 
         return $this;
     }

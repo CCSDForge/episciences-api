@@ -74,6 +74,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
         $curentUser = $this->security->getUser();
 
 
+
         if ($curentUser) { // connected
 
             if ($resourceClass === User::class) {

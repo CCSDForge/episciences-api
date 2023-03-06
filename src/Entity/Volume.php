@@ -99,16 +99,6 @@ class Volume
     )]
     private  array $descriptions;
 
-    #[ORM\Column(name: 'doi', type: 'string', nullable: true)]
-    #[Groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
-        ]
-
-    )]
-    private string $doi;
-
     #[ORM\OneToMany(mappedBy: 'volume', targetEntity: Papers::class)]
     #[Groups(
         [
@@ -120,9 +110,22 @@ class Volume
     )]
     private Collection $papers;
 
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
+
+        ]
+
+    )]
+
+    #[ORM\OneToMany(mappedBy: 'volume', targetEntity: VolumeSetting::class)]
+    private Collection $settings;
+
     public function __construct()
     {
         $this->papers = new ArrayCollection();
+        $this->settings = new ArrayCollection();
     }
 
     public function getVid(): ?int
@@ -202,23 +205,7 @@ class Volume
         return $this;
     }
 
-    /**
-     * @return string
-     */
-    public function getDoi(): string
-    {
-        return $this->doi;
-    }
 
-    /**
-     * @param string $doi
-     * @return Volume
-     */
-    public function setDoi(string $doi): self
-    {
-        $this->doi = $doi;
-        return $this;
-    }
 
     /**
      * @return Collection<int, Papers>
@@ -244,6 +231,36 @@ class Volume
             // set the owning side to null (unless already changed)
             if ($paper->getVolume() === $this) {
                 $paper->setVolume(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, VolumeSetting>
+     */
+    public function getSettings(): Collection
+    {
+        return $this->settings;
+    }
+
+    public function addSetting(VolumeSetting $setting): self
+    {
+        if (!$this->settings->contains($setting)) {
+            $this->settings->add($setting);
+            $setting->setVolume($this);
+        }
+
+        return $this;
+    }
+
+    public function removeSetting(VolumeSetting $setting): self
+    {
+        if ($this->settings->removeElement($setting)) {
+            // set the owning side to null (unless already changed)
+            if ($setting->getVolume() === $this) {
+                $setting->setVolume(null);
             }
         }
 
