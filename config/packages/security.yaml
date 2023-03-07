@@ -48,8 +48,7 @@ security:
         #Make sure the firewall login is place before api, and if main exists, put it after api, otherwise you will encounter /api/login_check route not found.
 
         #Pour la route du login,
-        #on indique que notre route de login doit être accessible aux utilisateurs anonymes,
-        #on indique également que le bundle lexik jwt authentication doit s’occuper
+        #on indique que le bundle lexik jwt authentication doit s’occuper
         #de gérer la vérification des informations utilisateurs avec ses propres méthodes
         login:
             # Le pare-feu interceptera toutes les demandes ( POST demandes uniquement, par défaut) adressées
@@ -62,6 +61,8 @@ security:
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
 
+
+
         #Pour le reste de notre api - tout est stateless,
         #chaque requête doit contenir des informations d'authentification,
         #toutes les routes qui commencent par api seront protégées par l’authenticator JWT Lexik
@@ -71,6 +72,10 @@ security:
             provider: jwt
             jwt:
                 authenticator: AppCustomJWTAuthenticator
+            entry_point: jwt
+            refresh_jwt:
+                check_path: /api/token/refresh
+                provider: user
 
 
 #        main:
@@ -91,9 +96,6 @@ security:
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
-        - { path: ^/api/login, roles: PUBLIC_ACCESS }
-        - { path: ^/api/review/stats/dashboard, roles: PUBLIC_ACCESS }
-        - { path: ^/api/docs, roles: PUBLIC_ACCESS }
         - { path: ^/api/,       roles: PUBLIC_ACCESS  }
         # - { path: ^/admin, roles: ROLE_ADMIN }
         # - { path: ^/profile, roles: ROLE_USER }
