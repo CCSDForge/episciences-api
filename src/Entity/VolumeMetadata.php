@@ -4,49 +4,28 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 
-/**
- * VolumeMetadata
- *
- * @ORM\Table(name="VOLUME_METADATA", indexes={@ORM\Index(name="VID", columns={"VID"})})
- * @ORM\Entity
- */
+
+#[ORM\Table(name: 'VOLUME_METADATA')]
+#[ORM\Index(columns: ['VID'], name: 'VID')]
 class VolumeMetadata
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="ID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
+
+    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $id;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="VID", type="integer", nullable=false, options={"unsigned"=true})
-     */
+    #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private $vid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="POSITION", type="integer", nullable=false, options={"unsigned"=true})
-     */
+
+    #[ORM\Column(name: 'POSITION', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private $position;
 
-    /**
-     * @var bool
-     *
-     * @ORM\Column(name="CONTENT", type="boolean", nullable=false)
-     */
+    #[ORM\Column(name: 'CONTENT', type: 'boolean', nullable: false)]
     private $content;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="FILE", type="string", length=250, nullable=true)
-     */
+    #[ORM\Column(name: 'FILE', type: 'string', length: 250, nullable: true)]
     private $file;
 
     public function getId(): ?int

@@ -227,11 +227,9 @@ class Volume
 
     public function removePaper(Papers $paper): self
     {
-        if ($this->papers->removeElement($paper)) {
-            // set the owning side to null (unless already changed)
-            if ($paper->getVolume() === $this) {
-                $paper->setVolume(null);
-            }
+        // set the owning side to null (unless already changed)
+        if ($this->papers->removeElement($paper) && $paper->getVolume() === $this) {
+            $paper->setVolume(null);
         }
 
         return $this;
@@ -257,11 +255,9 @@ class Volume
 
     public function removeSetting(VolumeSetting $setting): self
     {
-        if ($this->settings->removeElement($setting)) {
-            // set the owning side to null (unless already changed)
-            if ($setting->getVolume() === $this) {
-                $setting->setVolume(null);
-            }
+        // set the owning side to null (unless already changed)
+        if ($this->settings->removeElement($setting) && $setting->getVolume() === $this) {
+            $setting->setVolume(null);
         }
 
         return $this;
