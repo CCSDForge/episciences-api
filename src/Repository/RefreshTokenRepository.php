@@ -7,12 +7,12 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<RefreshToken2>
+ * @extends ServiceEntityRepository<RefreshToken>
  *
- * @method RefreshToken2|null find($id, $lockMode = null, $lockVersion = null)
- * @method RefreshToken2|null findOneBy(array $criteria, array $orderBy = null)
- * @method RefreshToken2[]    findAll()
- * @method RefreshToken2[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+ * @method RefreshToken|null find($id, $lockMode = null, $lockVersion = null)
+ * @method RefreshToken|null findOneBy(array $criteria, array $orderBy = null)
+ * @method RefreshToken[]    findAll()
+ * @method RefreshToken[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  */
 class RefreshTokenRepository extends ServiceEntityRepository implements \Gesdinet\JWTRefreshTokenBundle\Doctrine\RefreshTokenRepositoryInterface
 {
@@ -21,7 +21,7 @@ class RefreshTokenRepository extends ServiceEntityRepository implements \Gesdine
         parent::__construct($registry, RefreshToken::class);
     }
 
-    public function save(RefreshToken2 $entity, bool $flush = false): void
+    public function save(RefreshToken $entity, bool $flush = false): void
     {
         $this->getEntityManager()->persist($entity);
 
@@ -39,32 +39,13 @@ class RefreshTokenRepository extends ServiceEntityRepository implements \Gesdine
         }
     }
 
-//    /**
-//     * @return RefreshToken2[] Returns an array of RefreshToken2 objects
-//     */
-//    public function findByExampleField($value): array
-//    {
-//        return $this->createQueryBuilder('r')
-//            ->andWhere('r.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->orderBy('r.id', 'ASC')
-//            ->setMaxResults(10)
-//            ->getQuery()
-//            ->getResult()
-//        ;
-//    }
 
-//    public function findOneBySomeField($value): ?RefreshToken2
-//    {
-//        return $this->createQueryBuilder('r')
-//            ->andWhere('r.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
-    public function findInvalid($datetime = null)
+    /**
+     * @param $datetime
+     * @return RefreshToken[]
+     */
+    public function findInvalid($datetime = null): array
     {
-        // TODO: Implement findInvalid() method.
+        return $datetime ? $this->findBy(['valid' => $datetime]) : [];
     }
 }
