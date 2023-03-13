@@ -130,7 +130,9 @@ class Papers implements UserOwnedInterface
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
         ]
     )]
 
@@ -141,7 +143,9 @@ class Papers implements UserOwnedInterface
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
         ]
     )]
     private ?int $paperid;
@@ -151,7 +155,10 @@ class Papers implements UserOwnedInterface
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
+
         ]
     )]
     private ?string $doi;
@@ -294,7 +301,7 @@ class Papers implements UserOwnedInterface
     private Review $review;
 
     #[ORM\ManyToOne(targetEntity: Volume::class, inversedBy: 'papers')]
-    #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID', nullable: false)]
+    #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID', nullable: true)]
     private ?Volume $volume = null;
 
     public function __construct()

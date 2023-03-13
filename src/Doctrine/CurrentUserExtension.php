@@ -5,12 +5,15 @@ namespace App\Doctrine;
 use ApiPlatform\Doctrine\Orm\Extension\QueryCollectionExtensionInterface;
 use ApiPlatform\Doctrine\Orm\Extension\QueryItemExtensionInterface;
 use ApiPlatform\Doctrine\Orm\Util\QueryNameGeneratorInterface;
+use ApiPlatform\Metadata\HttpOperation;
 use ApiPlatform\Metadata\Operation;
 use App\Entity\Papers;
 use App\Entity\User;
 use App\Entity\UserRoles;
 use App\Entity\UserOwnedInterface;
+use App\Entity\Volume;
 use Doctrine\ORM\QueryBuilder;
+use JetBrains\PhpStorm\NoReturn;
 use ReflectionException;
 use Symfony\Bundle\SecurityBundle\Security;
 
@@ -34,10 +37,16 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
      * @throws ReflectionException
      */
 
-    public function applyToCollection(QueryBuilder $queryBuilder, QueryNameGeneratorInterface $queryNameGenerator, string $resourceClass, Operation $operation = null, array $context = []): void
+    #[NoReturn]
+    public function applyToCollection(
+        QueryBuilder $queryBuilder,
+        QueryNameGeneratorInterface $queryNameGenerator,
+        string $resourceClass,
+        Operation $operation = null,
+        array $context = []
+    ): void
     {
-        $this->addWhere($queryBuilder, $resourceClass);
-
+        $this->addWhere($queryBuilder, $resourceClass, $operation);
     }
 
     /**
@@ -50,16 +59,23 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
      * @return void
      * @throws ReflectionException
      */
-    public function applyToItem(QueryBuilder $queryBuilder, QueryNameGeneratorInterface $queryNameGenerator, string $resourceClass, array $identifiers, Operation $operation = null, array $context = []): void
+    public function applyToItem(
+        QueryBuilder $queryBuilder,
+        QueryNameGeneratorInterface $queryNameGenerator,
+        string $resourceClass,
+        array $identifiers,
+        Operation $operation = null,
+        array $context = []
+    ): void
     {
-        $this->addWhere($queryBuilder, $resourceClass);
+        $this->addWhere($queryBuilder, $resourceClass, $operation);
 
     }
 
     /**
      * @throws ReflectionException
      */
-    private function addWhere(QueryBuilder $queryBuilder, string $resourceClass): void
+    private function addWhere(QueryBuilder $queryBuilder, string $resourceClass, HttpOperation $operation = null): void
     {
 
 
@@ -72,7 +88,6 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
         /** @var User $curentUser */
         $curentUser = $this->security->getUser();
-
 
 
         if ($curentUser) { // connected
@@ -89,16 +104,55 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
                 andWhere("$alias.user= :currentUser")->
                 setParameter('currentUser', $curentUser->getUid());
 
+            } elseif ($resourceClass === Volume::class) {
+
+                if ($curentUser->rvId && $this->security->isGranted('ROLE_EDITOR')) {
+
+                   if (str_starts_with($operation->getUriTemplate(), '/volumes{._format}')) {
+
+                       $queryBuilder
+                           ->where("$alias.rvid= :rvId")
+                           ->setParameter('rvId', $curentUser->rvId)
+                           ->addOrderBy("$alias.vid", 'DESC');
+                   }
+
+
+                } else {
+
+                    $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status');
+                }
+
             }
 
 
         } elseif ($resourceClass === Papers::class) {
-            $queryBuilder->
+
+            $this->adnWherePublishedOnly($queryBuilder, $alias . 'status')->
             andWhere("$alias.status= :publishedOnly")->
             setParameter('publishedOnly', Papers::STATUS_PUBLISHED);
 
+        } elseif ($resourceClass === Volume::class) {
+
+            $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status');
+
         }
 
+
+        if ($resourceClass === Volume::class) {
+
+            $queryBuilder
+                ->orderBy("$alias.rvid", 'DESC')
+                ->addOrderBy("$alias.vid", 'DESC');
+        }
+
+    }
+
+
+    private function adnWherePublishedOnly(QueryBuilder $queryBuilder, string $field): QueryBuilder
+    {
+        return $queryBuilder->
+        andWhere("$field= :published")->
+        setParameter('published', Papers::STATUS_PUBLISHED);
 
     }
 

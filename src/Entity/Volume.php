@@ -2,6 +2,9 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
@@ -15,13 +18,14 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Index(columns: ['RVID'], name: 'FK_CONFID_idx')]
-#[ORM\Entity()]
+#[ORM\Entity]
 #[ApiResource(
     operations: [
 
         new Get(
             openapi: new OpenApiOperation(
                 summary: 'Consult a particular volume',
+                security: [['bearerAuth' =>  []],]
 
             ),
 
@@ -34,6 +38,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
         new GetCollection(
             openapi: new OpenApiOperation(
                 summary: 'Volumes list',
+                security: [['bearerAuth' =>  []],]
 
             ),
             normalizationContext: [
@@ -44,6 +49,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
     ]
 )]
+#[ApiFilter(SearchFilter::class, properties: ['rvid' => 'exact', 'vid' => 'exact'])]
 class Volume
 {
     public const TABLE = 'VOLUME';
@@ -120,12 +126,25 @@ class Volume
     )]
 
     #[ORM\OneToMany(mappedBy: 'volume', targetEntity: VolumeSetting::class)]
+    #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
     private Collection $settings;
+
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+        ]
+
+    )]
+
+    #[ORM\OneToMany(mappedBy: 'volume', targetEntity: VolumeMetadata::class, orphanRemoval: true)]
+    private Collection $metadata;
 
     public function __construct()
     {
         $this->papers = new ArrayCollection();
         $this->settings = new ArrayCollection();
+        $this->metadata = new ArrayCollection();
     }
 
     public function getVid(): ?int
@@ -210,8 +229,13 @@ class Volume
     /**
      * @return Collection<int, Papers>
      */
+
     public function getPapers(): Collection
     {
+       /* $filteredPapers = $this->papers->filter(function (Papers $paper) {
+            return $paper;
+        });*/
+
         return $this->papers;
     }
 
@@ -258,6 +282,34 @@ class Volume
         // set the owning side to null (unless already changed)
         if ($this->settings->removeElement($setting) && $setting->getVolume() === $this) {
             $setting->setVolume(null);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, VolumeMetadata>
+     */
+    public function getMetadata(): Collection
+    {
+        return $this->metadata;
+    }
+
+    public function addMetadata(VolumeMetadata $metadata): self
+    {
+        if (!$this->metadata->contains($metadata)) {
+            $this->metadata->add($metadata);
+            $metadata->setVolume($this);
+        }
+
+        return $this;
+    }
+
+    public function removeMetadata(VolumeMetadata $metadata): self
+    {
+        // set the owning side to null (unless already changed)
+        if ($this->metadata->removeElement($metadata) && $metadata->getVolume() === $this) {
+            $metadata->setVolume(null);
         }
 
         return $this;
