@@ -95,8 +95,8 @@ use App\OpenApi\OpenApiFactory;
             uriTemplate: AppConstants::APP_CONST['custom_operations']['uri_template'][AppConstants::STATS_DELAY_SUBMISSION_ACCEPTANCE ],
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
-                summary: "todo",
-                description: "todo",
+                summary: "Average time in days between submission and acceptance",
+                description: "Average time in days between submission and acceptance",
             ),
             normalizationContext: [
                 'groups' => [
@@ -113,8 +113,8 @@ use App\OpenApi\OpenApiFactory;
             uriTemplate: AppConstants::APP_CONST['custom_operations']['uri_template'][AppConstants::STATS_DELAY_SUBMISSION_PUBLICATION],
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
-                summary: "todo",
-                description: "todo",
+                summary: "Average time in days between submission and publication",
+                description: "Average time in days between submission and publication",
             ),
             normalizationContext: [
                 'groups' => [
@@ -130,8 +130,8 @@ use App\OpenApi\OpenApiFactory;
             uriTemplate: AppConstants::APP_CONST['custom_operations']['uri_template'][AppConstants::STATS_NB_USERS ],
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
-                summary: "todo",
-                description: "todo",
+                summary: "Number of users by roles",
+                description: "Number of users by roles",
             ),
             normalizationContext: [
                 'groups' => [
