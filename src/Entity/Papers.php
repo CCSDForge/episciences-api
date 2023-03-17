@@ -67,9 +67,16 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
     order: ['rvid' => 'DESC'],
 
 )]
-#[ApiFilter(SearchFilter::class, properties: ['rvid' => 'exact', 'paperid' => 'exact', 'docid' => 'exact'])]
+#[ApiFilter(SearchFilter::class, properties: self::FILTERS)]
 class Papers implements UserOwnedInterface
 {
+    public const FILTERS = [
+        'rvid' => AppConstants::FILTER_TYPE_EXACT,
+        'paperid' => AppConstants::FILTER_TYPE_EXACT,
+        'docid' => AppConstants::FILTER_TYPE_EXACT,
+        'vid' => AppConstants::FILTER_TYPE_EXACT
+    ];
+
     public const TABLE = 'PAPERS';
     public const STATUS_SUBMITTED = 0;
     public const STATUS_OK_FOR_REVIEWING = 1; // reviewers have been assigned, but did not start their reports

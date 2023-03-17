@@ -11,6 +11,7 @@ final class AppConstants
     public const STATS_DELAY_SUBMISSION_ACCEPTANCE = 'get_delay_between_submit_and_acceptance_item';
     public const STATS_DELAY_SUBMISSION_PUBLICATION = 'get_delay_between_submit_and_publication_item';
     public const STATS_NB_USERS = 'get_stats_nb_users_item';
+    public const FILTER_TYPE_EXACT = 'exact';
     public const APP_CONST = [
         'custom_operations' => [
             'items' => [
