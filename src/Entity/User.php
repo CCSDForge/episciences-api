@@ -24,7 +24,9 @@ use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\OpenApi\OpenApiFactory;
 
 
-
+/**
+ * @property int $rvId
+ */
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ApiResource(
@@ -69,6 +71,7 @@ use App\OpenApi\OpenApiFactory;
     security: "is_granted('ROLE_SECRETARY')",
 
 )]
+
 class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUserInterface
 {
     public const TABLE = 'USER';

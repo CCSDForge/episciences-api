@@ -7,6 +7,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\Resource\DashboardOutput;
 use App\Resource\SubmissionAcceptanceDelayOutput;
@@ -61,6 +62,16 @@ use App\OpenApi\OpenApiFactory;
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Dashboard",
                 description: "",
+                parameters: [
+                    new Parameter(
+                        name: AppConstants::WITH_DETAILS,
+                        in: 'query',
+                        description: 'More details',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                    )
+                ]
             ),
             normalizationContext: [
                 'groups' => [
@@ -79,6 +90,16 @@ use App\OpenApi\OpenApiFactory;
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Total number of submissions",
                 description: "",
+                parameters: [
+                    new Parameter(
+                        name: AppConstants::WITH_DETAILS,
+                        in: 'query',
+                        description: 'More details',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                    )
+                ]
             ),
             normalizationContext: [
                 'groups' => [
@@ -97,6 +118,16 @@ use App\OpenApi\OpenApiFactory;
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Average time in days between submission and acceptance",
                 description: "Average time in days between submission and acceptance",
+                parameters: [
+                    new Parameter(
+                        name: AppConstants::WITH_DETAILS,
+                        in: 'query',
+                        description: 'More details',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                    )
+                ]
             ),
             normalizationContext: [
                 'groups' => [
@@ -115,6 +146,16 @@ use App\OpenApi\OpenApiFactory;
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Average time in days between submission and publication",
                 description: "Average time in days between submission and publication",
+                parameters: [
+                    new Parameter(
+                        name: AppConstants::WITH_DETAILS,
+                        in: 'query',
+                        description: 'More details',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                    )
+                ]
             ),
             normalizationContext: [
                 'groups' => [
@@ -132,6 +173,16 @@ use App\OpenApi\OpenApiFactory;
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Number of users by roles",
                 description: "Number of users by roles",
+                parameters: [
+                    new Parameter(
+                        name: AppConstants::WITH_DETAILS,
+                        in: 'query',
+                        description: 'More details',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                    )
+                ]
             ),
             normalizationContext: [
                 'groups' => [
@@ -157,6 +208,7 @@ use App\OpenApi\OpenApiFactory;
 class Review
 {
     public const TABLE = 'REVIEW';
+    public const STATUS_DISABLED = 0;
 
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]

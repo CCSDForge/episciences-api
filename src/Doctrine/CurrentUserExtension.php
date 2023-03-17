@@ -8,6 +8,7 @@ use ApiPlatform\Doctrine\Orm\Util\QueryNameGeneratorInterface;
 use ApiPlatform\Metadata\HttpOperation;
 use ApiPlatform\Metadata\Operation;
 use App\Entity\Papers;
+use App\Entity\Review;
 use App\Entity\User;
 use App\Entity\UserRoles;
 use App\Entity\UserOwnedInterface;
@@ -100,6 +101,11 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
                 andWhere("ur.rvid= :userVid")->setParameter('userVid', $curentUser->rvId);
             } elseif ((new \ReflectionClass($resourceClass))->implementsInterface(UserOwnedInterface::class)) {
 
+
+                if ($curentUser->rvId && $this->security->isGranted('ROLE_EDITOR')) {
+                    return;
+                }
+
                 $queryBuilder->
                 andWhere("$alias.user= :currentUser")->
                 setParameter('currentUser', $curentUser->getUid());
@@ -142,7 +148,10 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
             $queryBuilder
                 ->orderBy("$alias.rvid", 'DESC')
-                ->addOrderBy("$alias.vid", 'DESC');
+                ->addOrderBy("$alias.vid", 'DESC')
+                ->andWhere("$alias.status!= :status")
+                ->setParameter('status', Review::STATUS_DISABLED)
+            ;
         }
 
     }

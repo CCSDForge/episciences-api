@@ -2,86 +2,98 @@
 
 namespace App\Entity;
 
+use App\AppConstants;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
-/**
- * UserAssignment
- *
- * @ORM\Table(name="USER_ASSIGNMENT", indexes={@ORM\Index(name="FK_ITEMID_idx", columns={"ITEMID"}), @ORM\Index(name="FK_UID_idx", columns={"UID"})})
- * @ORM\Entity
- */
+
+#[ORM\Table(name: 'USER_ASSIGNMENT')]
+#[ORM\Index(columns: ['ITEMID"'], name: 'FK_ITEMID_idx')]
+#[ORM\Index(columns: ['UID"'], name: 'FK_UID_idx')]
+#[ORM\Entity]
+
 class UserAssignment
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="ID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
-    private $id;
 
-    /**
-     * @var int|null
-     *
-     * @ORM\Column(name="INVITATION_ID", type="integer", nullable=true, options={"unsigned"=true})
-     */
+    public const ITEM_PAPER = 'paper';
+    public const ITEM_SECTION = 'section';
+    public const ITEM_VOLUME = 'volume';
+
+
+    public const ROLE_REVIEWER = 'reviewer';
+    public const ROLE_EDITOR = 'editor';
+    public const ROLE_COPY_EDITOR = 'copyeditor';
+    public const ROLE_CO_AUTHOR = 'coauthor';
+
+
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_INACTIVE = 'inactive';
+    public const STATUS_EXPIRED = 'expired';
+    public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_DECLINED = 'declined';
+
+    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
+    private $id;
+    #[ORM\Column(name: 'INVITATION_ID', type: 'integer', nullable:true, options: ['unsigned' => true])]
+    #[groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+    ])]
+
     private $invitationId;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     */
+    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+    ])]
+
     private $rvid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="ITEMID", type="integer", nullable=false, options={"unsigned"=true})
-     */
+    #[ORM\Column(name: 'ITEMID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+    ])]
+
     private $itemid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="ITEM", type="string", length=50, nullable=false)
-     */
+    #[ORM\Column(name: 'ITEM', type: 'string', length: 50, nullable: false)]
+    #[groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+    ])]
+
     private $item;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="UID", type="integer", nullable=false, options={"unsigned"=true})
-     */
+    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private $uid;
+    #[ORM\Column(name: 'TMP_USER', type: 'boolean', nullable: false)]
+    #[groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+    ])]
 
-    /**
-     * @var bool
-     *
-     * @ORM\Column(name="TMP_USER", type="boolean", nullable=false)
-     */
     private $tmpUser;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="ROLEID", type="string", length=50, nullable=false)
-     */
+    #[ORM\Column(name: 'ROLEID', type: 'string', length: 50, nullable: false)]
     private $roleid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="STATUS", type="string", length=20, nullable=false)
-     */
+    #[ORM\Column(name: 'STATUS', type: 'string', length: 20, nullable: false)]
+    #[groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+    ])]
     private $status;
 
-    /**
-     * @var \DateTime
-     *
-     * @ORM\Column(name="WHEN", type="datetime", nullable=false)
-     */
+    #[ORM\Column(name: 'WHEN', type: 'datetime', nullable: false)]
+    #[groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+    ])]
     private $when;
 
     /**
@@ -89,7 +101,17 @@ class UserAssignment
      *
      * @ORM\Column(name="DEADLINE", type="datetime", nullable=true)
      */
+    #[ORM\Column(name: 'DEADLINE', type: 'datetime', nullable: true)]
+    #[groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+    ])]
+
     private $deadline;
+
+    #[ORM\ManyToOne(inversedBy: 'assignments')]
+    #[ORM\JoinColumn(name: 'ITEMID', referencedColumnName: 'DOCID', nullable: false)]
+    private ?Papers $papers = null;
 
     public function getId(): ?int
     {
@@ -212,6 +234,18 @@ class UserAssignment
     public function setDeadline(?\DateTimeInterface $deadline): self
     {
         $this->deadline = $deadline;
+
+        return $this;
+    }
+
+    public function getPapers(): ?Papers
+    {
+        return $this->papers;
+    }
+
+    public function setPapers(?Papers $papers): self
+    {
+        $this->papers = $papers;
 
         return $this;
     }

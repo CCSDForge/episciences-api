@@ -13,7 +13,10 @@ use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\AppConstants;
 use App\Repository\PapersRepository;
 use DateTime;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use JetBrains\PhpStorm\NoReturn;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Annotation\Context;
 use Symfony\Component\Serializer\Annotation\Groups;
@@ -72,9 +75,13 @@ class Papers implements UserOwnedInterface
 {
     public const FILTERS = [
         'rvid' => AppConstants::FILTER_TYPE_EXACT,
+        'doi' =>AppConstants::FILTER_TYPE_EXACT,
         'paperid' => AppConstants::FILTER_TYPE_EXACT,
         'docid' => AppConstants::FILTER_TYPE_EXACT,
-        'vid' => AppConstants::FILTER_TYPE_EXACT
+        'vid' => AppConstants::FILTER_TYPE_EXACT,
+        'sid' => AppConstants::FILTER_TYPE_EXACT,
+        'repoid' => AppConstants::FILTER_TYPE_EXACT,
+        'flag' => AppConstants::FILTER_TYPE_EXACT
     ];
 
     public const TABLE = 'PAPERS';
@@ -224,6 +231,7 @@ class Papers implements UserOwnedInterface
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
         ])]
     private $version = 1;
 
@@ -311,10 +319,47 @@ class Papers implements UserOwnedInterface
     #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID', nullable: true)]
     private ?Volume $volume = null;
 
+    #[ORM\OneToMany(mappedBy: 'papers', targetEntity: UserAssignment::class)]
+
+    private Collection $assignments;
+    #[groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+    ])]
+    private array $editors = [];
+
+    #[groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+    ])]
+    private array $reviewers = [];
+    #[groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+    ])]
+    private array $copyEditors = [];
+    #[groups([
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+    ])]
+    private array $coAuthors = [];
+
+    #[ORM\OneToMany(mappedBy: 'papers', targetEntity: PaperConflicts::class)]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+        ]
+    )]
+    private Collection $conflicts;
+
+    #[NoReturn]
     public function __construct()
     {
         $this->when = new DateTime();
         $this->submissionDate = new DateTime();
+        $this->assignments = new ArrayCollection();
+        $this->conflicts = new ArrayCollection();
     }
 
 
@@ -568,6 +613,204 @@ class Papers implements UserOwnedInterface
         $this->volume = $volume;
 
         return $this;
+    }
+
+    /**
+     * @return Collection<int, UserAssignment>
+     */
+    public function getAssignments(): Collection
+    {
+        return $this->assignments;
+    }
+
+    public function addAssignment(UserAssignment $assignment): self
+    {
+        if (!$this->assignments->contains($assignment)) {
+            $this->assignments->add($assignment);
+            $assignment->setPapers($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAssignment(UserAssignment $assignment): self
+    {
+        // set the owning side to null (unless already changed)
+        if ($this->assignments->removeElement($assignment) && $assignment->getPapers() === $this) {
+            $assignment->setPapers(null);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getEditors(): array
+    {
+
+        if (empty($this->editors)) {
+            $this->assignmentsProcess();
+        }
+
+        return $this->editors;
+    }
+
+    /**
+     * @param array $editors
+     * @return Papers
+     */
+    public function setEditors(array $editors): self
+    {
+
+        $this->editors = $editors;
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getReviewers(): array
+    {
+        if (empty($this->reviewers)) {
+            $this->assignmentsProcess();
+        }
+
+        return $this->reviewers;
+    }
+
+    /**
+     * @param array $reviewers
+     * @return Papers
+     */
+    public function setReviewers(array $reviewers): self
+    {
+        $this->reviewers = $reviewers;
+        return $this;
+    }
+
+
+
+    private function assignmentsProcess(): void
+    {
+        $editors = [];
+        $reviewers = [];
+        $coAuthors = [];
+        $copyEditors = [];
+
+        /** @var UserAssignment $assignment */
+
+        foreach ($this->assignments as $assignment) {
+
+            if ($assignment->getRoleid() === UserAssignment::ROLE_EDITOR) {
+                $editors[$assignment->getUid()][] = $assignment;
+            } elseif ($assignment->getRoleid() === UserAssignment::ROLE_COPY_EDITOR) {
+                $copyEditors[$assignment->getUid()][] = $assignment;
+
+            } elseif ($assignment->getRoleid() === UserAssignment::ROLE_REVIEWER) {
+                $reviewers[$assignment->getUid()][] = $assignment;
+
+            } elseif ($assignment->getRoleid() === UserAssignment::ROLE_CO_AUTHOR) {
+                $coAuthors[$assignment->getUid()][] = $assignment;
+            }
+
+        }
+
+        $this
+            ->setEditors($editors)
+            ->setReviewers($reviewers)
+            ->setCopyEditors($copyEditors)
+            ->setCoAuthors($coAuthors);
+    }
+
+    /**
+     * @return array
+     */
+    public function getCopyEditors(): array
+    {
+        if (empty($this->copyEditors)) {
+            $this->assignmentsProcess();
+        }
+
+        return $this->copyEditors;
+    }
+
+    /**
+     * @param array $copyEditors
+     * @return Papers
+     */
+    public function setCopyEditors(array $copyEditors): self
+    {
+        $this->copyEditors = $copyEditors;
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getCoAuthors(): array
+    {
+        if (empty($this->coAuthors)) {
+            $this->assignmentsProcess();
+        }
+
+        return $this->coAuthors;
+    }
+
+    /**
+     * @param array $coAuthors
+     * @return Papers
+     */
+    public function setCoAuthors(array $coAuthors): self
+    {
+        $this->coAuthors = $coAuthors;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, PaperConflicts>
+     */
+    public function getConflicts(): Collection
+    {
+
+        $this->conflictsProcess();
+        return $this->conflicts;
+    }
+
+    public function addConflict(PaperConflicts $conflict): self
+    {
+        if (!$this->conflicts->contains($conflict)) {
+            $this->conflicts->add($conflict);
+            $conflict->setPapers($this);
+        }
+
+        return $this;
+    }
+
+    public function removeConflict(PaperConflicts $conflict): self
+    {
+        // set the owning side to null (unless already changed)
+        if ($this->conflicts->removeElement($conflict) && $conflict->getPapers() === $this) {
+            $conflict->setPapers(null);
+        }
+
+        return $this;
+    }
+
+
+    private function conflictsProcess(): void
+    {
+        $conflicts = [];
+
+        /** @var PaperConflicts $conflict */
+
+        foreach ($this->conflicts as $conflict) {
+           $conflicts[$conflict->getBy()] = $conflict;
+        }
+
+        $this->conflicts = new ArrayCollection($conflicts);
+
+
     }
 
 }
