@@ -85,11 +85,31 @@ class OpenApiFactory implements OpenApiFactoryInterface
                     'type' => 'string',
                     'readOnly' => true,
                     'nullable' => false,
+                ],
+                'refresh_token' => [
+                    'type' => 'string',
+                    'readOnly' => true,
+                    'nullable' => false,
                 ]
             ],
             'required' => ['token'],
         ]);
 
+
+        $schemas['RefreshTokenCredential'] = new \ArrayObject([
+            'type' => 'object',
+            'properties' => [
+                'refresh_token' => [
+                    'type' => 'string',
+                    'example' => 'd50de0498e38b6489d7....',
+                    'nullable' => false,
+                ],
+            ],
+            'required' => ['refresh_token'],
+        ]);
+
+
+        // login path item
         $pathItem = new PathItem(
             null,
             '',
@@ -99,21 +119,9 @@ class OpenApiFactory implements OpenApiFactoryInterface
             new Operation(
                 'postApiLogin',
                 [self::OAF_TAGS['auth']],
-                [
-                    Response::HTTP_OK => [
-                        'description' => 'User token created',
-                        'content' => [
-                            'application/json' => [
-                                'schema' => [
-                                    '$ref' => '#components/schemas/Token'
-                                ]
-                            ]
-                        ]
-                    ]
-
-                ],
+                $this->outputToken('User token created'),
                 '',
-                '',
+                'The lifetime of the token is 1 hour',
                 null,
                 [],
                 new RequestBody(
@@ -130,9 +138,59 @@ class OpenApiFactory implements OpenApiFactoryInterface
             )
         );
 
-
         $openApi->getPaths()->addPath('/api/login', $pathItem);
 
+        // refresh token path item
+        $pathItem = new PathItem(
+            null,
+            '',
+            '',
+            null,
+            null,
+            new Operation(
+                'postApiRefreshToken',
+                [self::OAF_TAGS['auth']],
+                $this->outputToken('User token refreshed'),
+                '',
+                'The lifetime of the new token will be extended by one month',
+                null,
+                [],
+                new RequestBody(
+                    'The login data',
+                    new \ArrayObject([
+                            'application/json' => [
+                                'schema' => [
+                                    '$ref' => '#components/schemas/RefreshTokenCredential'
+                                ]
+                            ]
+                        ]
+                    )
+                ),
+                security: [
+                    ['bearerAuth' =>  []]
+                ]
+            )
+        );
+
+        $openApi->getPaths()->addPath('/api/token/refresh', $pathItem);
+
         return $openApi;
+    }
+
+
+    private function outputToken(string $description): array
+    {
+        return [
+            Response::HTTP_OK => [
+                'description' => $description,
+                'content' => [
+                    'application/json' => [
+                        'schema' => [
+                            '$ref' => '#components/schemas/Token'
+                        ]
+                    ]
+                ]
+            ]
+        ];
     }
 }
