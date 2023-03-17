@@ -127,7 +127,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
         } elseif ($resourceClass === Papers::class) {
 
-            $this->adnWherePublishedOnly($queryBuilder, $alias . 'status')->
+            $this->adnWherePublishedOnly($queryBuilder, "$alias.status")->
             andWhere("$alias.status= :publishedOnly")->
             setParameter('publishedOnly', Papers::STATUS_PUBLISHED);
 
