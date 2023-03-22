@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\User;
 use App\Entity\UserRoles;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
@@ -51,6 +52,9 @@ class UserRolesRepository extends ServiceEntityRepository
             $qb->select("COUNT($userRolesAlias.uid) as nbUsers");
         }
 
+        $qb->andWhere(sprintf('%s.roleid != :epiAdmin', self::USER_ROLES_ALIAS))
+            ->setParameter('epiAdmin', User::ROLE_ROOT);
+
         if ($rvId !== null) {
             $qb->andWhere("$userRolesAlias.rvid =:rvId");
             $qb->setParameter('rvId', $rvId);
@@ -75,7 +79,7 @@ class UserRolesRepository extends ServiceEntityRepository
                 ->setParameter('roleId', $role);
         }
 
-        if($withDetails){
+        if ($withDetails) {
             $qb->orderBy("$userRolesAlias.rvid", 'ASC');
             $qb->groupBy("$userRolesAlias.rvid");
             $qb->addGroupBy("$userRolesAlias.roleid");

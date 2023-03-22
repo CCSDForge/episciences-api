@@ -4,9 +4,11 @@ namespace App\OpenApi;
 
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
 use ApiPlatform\OpenApi\Model\Operation;
+use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\OpenApi;
+use App\Entity\User;
 use Symfony\Component\HttpFoundation\Response;
 
 class OpenApiFactory implements OpenApiFactoryInterface
@@ -17,6 +19,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
         'stats' => 'Statistics',
     ];
     public const JWT_POST_LOGIN_OPERATION_ID = 'login_check_post';
+    public const USER_GET_COLLECTION_PATH = '/api/users';
 
     private OpenApiFactoryInterface $decorated;
 
@@ -27,9 +30,40 @@ class OpenApiFactory implements OpenApiFactoryInterface
 
     public function __invoke(array $context = []): OpenApi
     {
-        $openApi = $this->decorated->__invoke($context);
-        /** @var PathItem $path */
+        return $this->applyToDefaultEndPoints(
+            $this->applyToCustomEndPoints(
+                $this->decorated->__invoke($context)
+            )
+        );
+    }
 
+
+    private function outputToken(string $description): array
+    {
+        return [
+            Response::HTTP_OK => [
+                'description' => $description,
+                'content' => [
+                    'application/json' => [
+                        'schema' => [
+                            '$ref' => '#components/schemas/Token'
+                        ]
+                    ]
+                ]
+            ]
+        ];
+    }
+
+
+    private function applyToDefaultEndPoints(OpenApi $openApi): OpenApi
+    {
+        //todo see how to rename this filter 'roles.rvid' in 'users' end point
+        return $openApi;
+    }
+
+
+    private function applyToCustomEndPoints(OpenApi $openApi): OpenApi
+    {
         foreach ($openApi->getPaths()->getPaths() as $key => $path) {
 
             if ($path->getGet() && ($path->getGet()->getSummary() === self::OAF_HIDDEN)) {
@@ -167,7 +201,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
                     )
                 ),
                 security: [
-                    ['bearerAuth' =>  []]
+                    ['bearerAuth' => []]
                 ]
             )
         );
@@ -175,22 +209,6 @@ class OpenApiFactory implements OpenApiFactoryInterface
         $openApi->getPaths()->addPath('/api/token/refresh', $pathItem);
 
         return $openApi;
-    }
 
-
-    private function outputToken(string $description): array
-    {
-        return [
-            Response::HTTP_OK => [
-                'description' => $description,
-                'content' => [
-                    'application/json' => [
-                        'schema' => [
-                            '$ref' => '#components/schemas/Token'
-                        ]
-                    ]
-                ]
-            ]
-        ];
     }
 }

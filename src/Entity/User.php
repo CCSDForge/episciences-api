@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
@@ -72,11 +74,14 @@ use App\OpenApi\OpenApiFactory;
 
 )]
 
+#[ApiFilter(SearchFilter::class, properties: self::FILTERS)]
 class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUserInterface
 {
     public const TABLE = 'USER';
     public const ROLE_ROOT = 'epiadmin';
     public const EPISCIENCES_UID = 666;
+    public const USERS_REVIEW_ID_FILTER = 'userRoles.rvid';
+    public const FILTERS = [self::USERS_REVIEW_ID_FILTER => 'exact'];
 
     #[ORM\Id]
     #[ORM\Column(name: "UID", type: "integer", nullable: false, options: ['unsigned'=> true])]

@@ -4,63 +4,39 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 
-/**
- * UserInvitation
- *
- * @ORM\Table(name="USER_INVITATION", indexes={@ORM\Index(name="TOKEN", columns={"TOKEN"})})
- * @ORM\Entity
- */
+
+#[ORM\Table(name: 'USER_INVITATION')]
+#[ORM\Index(columns: ['TOKEN'], name: 'TOKEN')]
 class UserInvitation
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="ID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
+
+    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $id;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="AID", type="integer", nullable=false, options={"unsigned"=true,"comment"="Assignment ID"})
-     */
+    #[ORM\Column(
+        name: 'AID', type: 'integer', nullable: false, options: ['unsigned' => true, 'comment' => 'Assignment ID']
+    )]
     private $aid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="STATUS", type="string", length=50, nullable=false, options={"default"="pending"})
-     */
+    #[ORM\Column(name: 'STATUS', type: 'string', length: 50, nullable: false, options: ['default' => 'pending'])]
     private $status = 'pending';
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="TOKEN", type="string", length=40, nullable=true)
-     */
+
+    #[ORM\Column(name: 'TOKEN', type: 'string', length: 40, nullable: true)]
     private $token;
 
-    /**
-     * @var int|null
-     *
-     * @ORM\Column(name="SENDER_UID", type="integer", nullable=true, options={"unsigned"=true})
-     */
+
+    #[ORM\Column(name: 'SENDER_UID', type: 'integer', nullable: true, options: ['unsigned' => true])]
     private $senderUid;
 
-    /**
-     * @var \DateTime
-     *
-     * @ORM\Column(name="SENDING_DATE", type="datetime", nullable=false)
-     */
+
+    #[ORM\Column(name: 'SENDING_DATE', type: 'datetime', nullable: false)]
     private $sendingDate;
 
-    /**
-     * @var \DateTime
-     *
-     * @ORM\Column(name="EXPIRATION_DATE", type="datetime", nullable=false)
-     */
+
+    #[ORM\Column(name: 'EXPIRATION_DATE', type: 'datetime', nullable: false)]
     private $expirationDate;
 
     public function getId(): ?int

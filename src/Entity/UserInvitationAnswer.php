@@ -4,35 +4,21 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 
-/**
- * UserInvitationAnswer
- *
- * @ORM\Table(name="USER_INVITATION_ANSWER")
- * @ORM\Entity
- */
+
+#[ORM\Table(name:'USER_INVITATION_ANSWER')]
+#[ORM\Entity]
 class UserInvitationAnswer
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="ID", type="integer", nullable=false, options={"unsigned"=true,"comment"="Invitation ID"})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
+
+    #[ORM\Column(
+        name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => 'true', 'comment' => 'Invitation ID']
+    )]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $id;
-
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="ANSWER", type="string", length=10, nullable=false)
-     */
+    #[ORM\Colmun(name:'ANSWER', type: 'string', length: 10, nullable: false)]
     private $answer;
-
-    /**
-     * @var \DateTime
-     *
-     * @ORM\Column(name="ANSWER_DATE", type="datetime", nullable=false)
-     */
+    #[ORM\Column(name: 'ANSWER_DATE', type: 'datetime', nullable: false)]
     private $answerDate;
 
     public function getId(): ?int

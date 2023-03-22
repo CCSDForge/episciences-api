@@ -208,6 +208,7 @@ use App\OpenApi\OpenApiFactory;
 class Review
 {
     public const TABLE = 'REVIEW';
+    public const PORTAL_ID = 0;
     public const STATUS_DISABLED = 0;
 
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]

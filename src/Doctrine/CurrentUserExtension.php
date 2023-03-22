@@ -40,11 +40,11 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
     #[NoReturn]
     public function applyToCollection(
-        QueryBuilder $queryBuilder,
+        QueryBuilder                $queryBuilder,
         QueryNameGeneratorInterface $queryNameGenerator,
-        string $resourceClass,
-        Operation $operation = null,
-        array $context = []
+        string                      $resourceClass,
+        Operation                   $operation = null,
+        array                       $context = []
     ): void
     {
         $this->addWhere($queryBuilder, $resourceClass, $operation);
@@ -61,12 +61,12 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
      * @throws ReflectionException
      */
     public function applyToItem(
-        QueryBuilder $queryBuilder,
+        QueryBuilder                $queryBuilder,
         QueryNameGeneratorInterface $queryNameGenerator,
-        string $resourceClass,
-        array $identifiers,
-        Operation $operation = null,
-        array $context = []
+        string                      $resourceClass,
+        array                       $identifiers,
+        Operation                   $operation = null,
+        array                       $context = []
     ): void
     {
         $this->addWhere($queryBuilder, $resourceClass, $operation);
@@ -90,48 +90,48 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
         /** @var User $curentUser */
         $curentUser = $this->security->getUser();
 
-
         if ($curentUser) { // connected
 
-            if ($resourceClass === User::class) {
-                $queryBuilder->
-                join(UserRoles::class, 'ur', 'WITH', "$alias.uid = ur.uid")->
-                andWhere("ur.roleid!= :epiAdminRole")->setParameter('epiAdminRole', User::ROLE_ROOT)->
-                andWhere("$alias.uid!= :systemUid")->setParameter('systemUid', User::EPISCIENCES_UID)->
-                andWhere("ur.rvid= :userVid")->setParameter('userVid', $curentUser->rvId);
-            } elseif ((new \ReflectionClass($resourceClass))->implementsInterface(UserOwnedInterface::class)) {
+            $this->privateAccessProcess($queryBuilder, $alias, $resourceClass, $operation, $curentUser);
+
+        } else {
+            $this->publicAccessProcess($queryBuilder, $alias, $resourceClass);
+        }
 
 
-                if ($curentUser->rvId && $this->security->isGranted('ROLE_EDITOR')) {
-                    return;
-                }
+        if ($resourceClass === Volume::class) {
 
-                $queryBuilder->
-                andWhere("$alias.user= :currentUser")->
-                setParameter('currentUser', $curentUser->getUid());
+            $queryBuilder
+                ->orderBy("$alias.rvid", 'DESC')
+                ->addOrderBy("$alias.vid", 'DESC');
 
-            } elseif ($resourceClass === Volume::class) {
+        } elseif ($resourceClass === Review::class) {
 
-                if ($curentUser->rvId && $this->security->isGranted('ROLE_EDITOR')) {
+            $queryBuilder
+                ->andWhere("$alias.rvid!= :portal")
+                ->setParameter('portal', Review::PORTAL_ID)
+                ->andWhere("$alias.status!= :status")
+                ->setParameter('status', Review::STATUS_DISABLED);
 
-                   if (str_starts_with($operation->getUriTemplate(), '/volumes{._format}')) {
-
-                       $queryBuilder
-                           ->where("$alias.rvid= :rvId")
-                           ->setParameter('rvId', $curentUser->rvId)
-                           ->addOrderBy("$alias.vid", 'DESC');
-                   }
+        }
 
 
-                } else {
-
-                    $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status');
-                }
-
-            }
+    }
 
 
-        } elseif ($resourceClass === Papers::class) {
+    private function adnWherePublishedOnly(QueryBuilder $queryBuilder, string $field): QueryBuilder
+    {
+        return $queryBuilder->
+        andWhere("$field= :published")->
+        setParameter('published', Papers::STATUS_PUBLISHED);
+
+    }
+
+
+    private function publicAccessProcess(QueryBuilder $queryBuilder, string $alias, string $resourceClass): void
+    {
+
+        if ($resourceClass === Papers::class) {
 
             $this->adnWherePublishedOnly($queryBuilder, "$alias.status")->
             andWhere("$alias.status= :publishedOnly")->
@@ -144,24 +144,55 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
         }
 
 
-        if ($resourceClass === Volume::class) {
-
-            $queryBuilder
-                ->orderBy("$alias.rvid", 'DESC')
-                ->addOrderBy("$alias.vid", 'DESC')
-                ->andWhere("$alias.status!= :status")
-                ->setParameter('status', Review::STATUS_DISABLED)
-            ;
-        }
-
     }
 
 
-    private function adnWherePublishedOnly(QueryBuilder $queryBuilder, string $field): QueryBuilder
+    private function privateAccessProcess(
+        QueryBuilder $queryBuilder,
+        string       $alias,
+        string       $resourceClass,
+        HttpOperation       $operation,
+        User         $curentUser
+    ): void
     {
-        return $queryBuilder->
-        andWhere("$field= :published")->
-        setParameter('published', Papers::STATUS_PUBLISHED);
+
+
+        if ($resourceClass === User::class) {
+            $queryBuilder->
+            join(UserRoles::class, 'ur', 'WITH', "$alias.uid = ur.uid")
+                ->andWhere("ur.roleid!= :epiAdminRole")->setParameter('epiAdminRole', User::ROLE_ROOT)
+                ->andWhere("$alias.uid!= :systemUid")->setParameter('systemUid', User::EPISCIENCES_UID)
+                ->andWhere("ur.rvid= :userVid")->setParameter('userVid', $curentUser->rvId);
+        } elseif ((new \ReflectionClass($resourceClass))->implementsInterface(UserOwnedInterface::class)) {
+
+
+            if ($curentUser->rvId && $this->security->isGranted('ROLE_EDITOR')) {
+                return;
+            }
+
+            $queryBuilder->
+            andWhere("$alias.user= :currentUser")->
+            setParameter('currentUser', $curentUser->getUid());
+
+        } elseif ($resourceClass === Volume::class) {
+
+            if ($curentUser->rvId && $this->security->isGranted('ROLE_EDITOR')) {
+
+                if (str_starts_with($operation->getUriTemplate(), '/volumes{._format}')) {
+
+                    $queryBuilder
+                        ->where("$alias.rvid= :rvId")
+                        ->setParameter('rvId', $curentUser->rvId)
+                        ->addOrderBy("$alias.vid", 'DESC');
+                }
+
+
+            } else {
+
+                $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status');
+            }
+
+        }
 
     }
 

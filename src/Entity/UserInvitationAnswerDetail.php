@@ -4,37 +4,24 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 
-/**
- * UserInvitationAnswerDetail
- *
- * @ORM\Table(name="USER_INVITATION_ANSWER_DETAIL")
- * @ORM\Entity
- */
+#[ORM\Table(name: 'USER_INVITATION_ANSWER_DETAIL')]
+#[ORM\Entity]
 class UserInvitationAnswerDetail
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="ID", type="integer", nullable=false, options={"unsigned"=true,"comment"="Invitation ID"})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
+
+    #[ORM\Column(
+        name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true, 'comment' => 'Invitation ID']
+    )]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $id;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="NAME", type="string", length=30, nullable=false)
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
+    #[ORM\Column(name:'NAME', type: 'string', length: 30, nullable: false)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     private $name;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="VALUE", type="string", length=500, nullable=true)
-     */
+    #[ORM\Column(name: 'VALUE', type: 'string', length: 500, nullable: true)]
     private $value;
 
     public function getId(): ?int
