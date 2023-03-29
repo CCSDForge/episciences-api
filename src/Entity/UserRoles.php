@@ -2,7 +2,6 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Metadata\ApiResource;
 use App\AppConstants;
 use App\Repository\UserRolesRepository;
 use Doctrine\ORM\Mapping as ORM;
@@ -11,15 +10,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Entity(repositoryClass: UserRolesRepository::class)]
-#[ApiResource(
-    operations: [],
-    normalizationContext: [
-        'groups' => []
-    ],
-    denormalizationContext: [
-        'groups' => []
-    ]
-)]
+
 class UserRoles
 {
     public const TABLE = 'USER_ROLES';
