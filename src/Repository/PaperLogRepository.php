@@ -12,6 +12,7 @@ use App\Resource\SubmissionPublicationDelayOutput;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Exception;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 
@@ -168,7 +169,7 @@ class PaperLogRepository extends ServiceEntityRepository
         return round($avg / count($array), 0);
     }
 
-    private function reformatData(array $array): array
+    private function reformatData(array $array, string $extractedField = 'delay'): array
     {
         $year = null;
         $result = [];
@@ -178,14 +179,13 @@ class PaperLogRepository extends ServiceEntityRepository
             foreach ($value as $v) {
 
                 foreach ($v as $kv => $vv) {
+
                     if ($kv === 'year') {
                         $year = $vv;
                     }
 
-                    if ($kv === 'delay') {
-
+                    if ($kv === $extractedField) {
                         $result[$rvId][$year][$kv] = $vv;
-
                     }
                 }
 
@@ -195,7 +195,7 @@ class PaperLogRepository extends ServiceEntityRepository
         return $result;
     }
 
-    public function getRawSql(string $unit, int $latestStatus): string
+    private function getRawSql(string $unit, int $latestStatus): string
     {
 
         return "
@@ -215,4 +215,54 @@ class PaperLogRepository extends ServiceEntityRepository
              ORDER BY year ASC, rvid ASC  ";
 
     }
+
+    public function getTotalNumberOfPapersByStatus($rvId = null, bool $isSubmittedSameYear = true, $as = PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = 4): array
+    {
+
+        $conn = $this->getEntityManager()->getConnection();
+
+        try {
+            $stmt = $conn->prepare($this->getTotalNumberOfPapersByStatusSql($isSubmittedSameYear, $as, $status));
+
+            if ($rvId) {
+
+                //before reformat data : [ 8 => [0 => ["year" => 2023, PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [], ... ]
+                return $this->reformatData(
+                    $this->applyFilterBy($stmt->executeQuery()->fetchAllAssociative(), 'rvid', $rvId),
+                    $as
+                );
+
+                //after: [8 => [ 2023 => [PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [2022 => ], .....
+
+
+            }
+
+        } catch (Exception $e) {
+            $this->logger->error($e->getMessage());
+        }
+
+        return [];
+
+
+
+    }
+
+
+
+    private function getTotalNumberOfPapersByStatusSql(bool $isSubmittedSameYear = true, $as = 'totalNumberOfPapersAccepted', int $status = 4): string
+    {
+        $papers = 'PAPERS';
+        $paperLog = 'PAPER_LOG';
+
+        $year = $isSubmittedSameYear  ? "$papers.SUBMISSION_DATE" : "$paperLog.DATE";
+
+
+        return "SELECT $papers.RVID AS rvid, YEAR($year) AS `year`, COUNT(DISTINCT($papers.PAPERID)) AS $as FROM $paperLog JOIN $papers ON $papers.DOCID = $paperLog.DOCID
+                WHERE ACTION LIKE 'status' AND(DETAIL LIKE '{\"status\":$status}' OR DETAIL LIKE '{\"status\":\"$status\"}') AND FLAG = 'submitted'
+                GROUP BY rvid, `year`
+                ORDER BY rvid, `year` DESC
+                ";
+
+    }
+
 }

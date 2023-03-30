@@ -32,7 +32,9 @@ use App\OpenApi\OpenApiFactory;
 #[ApiResource(
     operations: [
         new Get(
+            uriTemplate: self::URI_TEMPLATE . '{code}',
             openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['review']],
                 summary: 'Journal',
                 security: [['bearerAuth' =>  []],]
             ),
@@ -44,7 +46,9 @@ use App\OpenApi\OpenApiFactory;
             security: "is_granted('ROLE_SECRETARY')",
         ),
         new GetCollection(
+            uriTemplate: self::URI_TEMPLATE,
             openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['review']],
                 summary: 'All Journals',
                 security: [['bearerAuth' =>  []],]
             ),
@@ -210,6 +214,7 @@ class Review
     public const TABLE = 'REVIEW';
     public const PORTAL_ID = 0;
     public const STATUS_DISABLED = 0;
+    public const URI_TEMPLATE = '/journals/';
 
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]

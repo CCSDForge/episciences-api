@@ -2,6 +2,8 @@
 
 namespace App;
 
+use App\Entity\Review;
+
 final class AppConstants
 {
     public const AVAILABLE_FILTERS = ['rvid', 'repoid', 'status', 'submissionDate', 'withDetails'];
@@ -28,11 +30,11 @@ final class AppConstants
                 ]
             ],
             'uri_template' => [
-                self::STATS_DASHBOARD_ITEM => '/review/stats/dashboard/{code}',
-                self::STATS_NB_SUBMISSIONS_ITEM => '/review/stats/nb-submissions/{code}',
-                self::STATS_DELAY_SUBMISSION_ACCEPTANCE => '/review/stats/delay-submission-acceptance/{code}',
-                self::STATS_DELAY_SUBMISSION_PUBLICATION => '/review/stats/delay-submission-publication/{code}',
-                self::STATS_NB_USERS => '/review/stats/nb-users/{code}',
+                self::STATS_DASHBOARD_ITEM => Review::URI_TEMPLATE . 'stats/dashboard/{code}',
+                self::STATS_NB_SUBMISSIONS_ITEM => Review::URI_TEMPLATE . 'stats/nb-submissions/{code}',
+                self::STATS_DELAY_SUBMISSION_ACCEPTANCE => Review::URI_TEMPLATE . 'stats/delay-submission-acceptance/{code}',
+                self::STATS_DELAY_SUBMISSION_PUBLICATION => Review::URI_TEMPLATE . 'stats/delay-submission-publication/{code}',
+                self::STATS_NB_USERS => Review::URI_TEMPLATE . 'stats/nb-users/{code}',
             ]
 
         ],

@@ -118,6 +118,8 @@ class Papers implements UserOwnedInterface
     public const STATUS_TMP_VERSION_ACCEPTED_AFTER_AUTHOR_MODIFICATION = 29;
     public const STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MINOR_REVISION = 30;
     public const STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MAJOR_REVISION = 31;
+    public const STATUS_ACCEPTED_WAITING_FOR_AUTHOR_VALIDATION = 32;
+    public const STATUS_APPROVED_BY_AUTHOR_WAITING_FOR_FINAL_PUBLICATION = 33;
 
     public const ACCEPTED_SUBMISSIONS = [
         self::STATUS_ACCEPTED, // 4
@@ -136,6 +138,49 @@ class Papers implements UserOwnedInterface
         self::STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MINOR_REVISION, //30
         self::STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MAJOR_REVISION //31
     ];
+
+
+    public const STATUS_DICTIONARY = [
+    self::STATUS_SUBMITTED => 'submitted',
+    self::STATUS_OK_FOR_REVIEWING => 'waitingFor reviewing',
+    self::STATUS_BEING_REVIEWED => 'underReview',
+    self::STATUS_REVIEWED => 'reviewed',
+    self::STATUS_ACCEPTED => 'accepted',
+    self::STATUS_PUBLISHED => 'published',
+    self::STATUS_REFUSED => 'refused',
+    self::STATUS_OBSOLETE => 'obsolete',
+    self::STATUS_WAITING_FOR_MINOR_REVISION => 'pendingMinorRevision',
+    self::STATUS_WAITING_FOR_MAJOR_REVISION => 'pendingMajorRevision',
+    self::STATUS_WAITING_FOR_COMMENTS => 'pendingClarification',
+    self::STATUS_TMP_VERSION => 'temporaryVersion',
+    self::STATUS_NO_REVISION => 'revisionRequestAnswerWithoutAnyModifications',
+    self::STATUS_NEW_VERSION => 'answerToRevisionRequestNewVersion',
+    self::STATUS_DELETED => 'deleted',
+    self::STATUS_ABANDONED => 'abandoned',
+    self::STATUS_CE_WAITING_FOR_AUTHOR_SOURCES => "waitingForAuthorsSources",
+    self::STATUS_CE_AUTHOR_SOURCES_SUBMITTED => 'waitingForFormattingByTheJournal',
+    self::STATUS_CE_WAITING_AUTHOR_FINAL_VERSION => "waitingForAuthorsFinalVersion",
+    self::STATUS_CE_AUTHOR_FINAL_VERSION_SUBMITTED_WAITING_FOR_VALIDATION =>
+        'finalVersionSubmittedWaitingForValidation',
+    self::STATUS_CE_REVIEW_FORMATTING_SUBMITTED => 'formattingByJournalCompletedWaitingForAFinalVersion',
+    self::STATUS_CE_AUTHOR_FORMATTING_SUBMITTED_AND_VALIDATED => "formattingByAuthorCompletedWaitingForFinalVersion",
+    self::STATUS_CE_READY_TO_PUBLISH => 'readyToPublish',
+    self::STATUS_TMP_VERSION_ACCEPTED => "acceptedTemporaryVersionWaitingForAuthorsFinalVersion",
+    self::STATUS_ACCEPTED_WAITING_FOR_AUTHOR_FINAL_VERSION => "acceptedWaitingForAuthorsFinalVersion",
+    self::STATUS_ACCEPTED_WAITING_FOR_MAJOR_REVISION => 'acceptedWaitingForMajorRevision',
+    self::STATUS_ACCEPTED_FINAL_VERSION_SUBMITTED_WAITING_FOR_COPY_EDITORS_FORMATTING =>
+        'acceptedFinalVersionSubmittedWaitingForFormattingByCopyEditors',
+    self::STATUS_TMP_VERSION_ACCEPTED_AFTER_AUTHOR_MODIFICATION =>
+        "acceptedTemporaryVersionAfterAuthorsModifications",
+    self::STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MINOR_REVISION =>
+        'acceptedTemporaryVersionWaitingForMinorRevision',
+    self::STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MAJOR_REVISION =>
+        'acceptedTemporaryVersionWaitingForMajorRevision"',
+    self::STATUS_ACCEPTED_WAITING_FOR_AUTHOR_VALIDATION => "AcceptedWaitingForAuthorsValidation",
+    self::STATUS_APPROVED_BY_AUTHOR_WAITING_FOR_FINAL_PUBLICATION => "'AcceptedWaitingForFinalPublication'",
+    self::STATUS_REMOVED => 'deletedByTheJournal',
+];
+
 
 
     #[ORM\Column(name:'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
@@ -321,27 +366,33 @@ class Papers implements UserOwnedInterface
 
     #[ORM\OneToMany(mappedBy: 'papers', targetEntity: UserAssignment::class)]
 
+    #[ApiProperty(security: "is_granted('papers_manage')")]
     private Collection $assignments;
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
+    #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
     private array $editors = [];
 
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
+    #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
     private array $reviewers = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
+    #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
     private array $copyEditors = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
+
+    #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
     private array $coAuthors = [];
 
     #[ORM\OneToMany(mappedBy: 'papers', targetEntity: PaperConflicts::class)]
@@ -351,6 +402,7 @@ class Papers implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
         ]
     )]
+    #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
     private Collection $conflicts;
 
     #[NoReturn]
@@ -811,6 +863,13 @@ class Papers implements UserOwnedInterface
         $this->conflicts = new ArrayCollection($conflicts);
 
 
+    }
+
+    public function getStatusDictionaryLabel(): string
+    {
+        return in_array($this->getStatus(), self::STATUS_DICTIONARY, true) ?
+            self::STATUS_DICTIONARY[$this->getStatus()] :
+            'UNDEFINED_STATUS_DICTIONARY_LABEL';
     }
 
 }

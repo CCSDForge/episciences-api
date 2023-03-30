@@ -92,9 +92,10 @@ abstract class AbstractDataProvider
 
         $result = new DashboardOutput();
 
-        $submissions = $this->entityManagerInterface->
-        getRepository(Papers::class)->
-        getSubmissionsStat($filters);
+        $papersRepo = $this->entityManagerInterface->
+        getRepository(Papers::class);
+
+        $submissions = $papersRepo->getSubmissionsStat($filters);
         $submissionsDelay = $this->entityManagerInterface->
         getRepository(PaperLog::class)->
         getDelayBetweenSubmissionAndLatestStatus($filters);
@@ -102,9 +103,22 @@ abstract class AbstractDataProvider
         getRepository(PaperLog::class)->
         getDelayBetweenSubmissionAndLatestStatus($filters, Papers::STATUS_PUBLISHED);
 
+        $totalPublished = $papersRepo
+            ->submissionsQuery([
+                'is' => [
+                    'rvid' => $filters['is']['rvid'] ?? null,
+                    'status' => Papers::STATUS_PUBLISHED
+                ]
+            ])
+            ->getQuery()
+            ->getSingleScalarResult();
+
+
+
         // aggregate stats
         $values = [
             $submissions->getName() => $submissions->getValue(),
+            'totalPublished' => $totalPublished,
             $submissionsDelay->getName() => $submissionsDelay->getValue(),
             $publicationsDelay->getName() => $publicationsDelay->getValue()
         ];

@@ -37,7 +37,7 @@ use App\OpenApi\OpenApiFactory;
             normalizationContext: [
                 'groups' => [AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0]]
             ],
-            security: "is_granted('ROLE_SECRETARY') or (is_granted('ROLE_USER') and object.getUid() == user.getUid())"
+            security: "is_granted('ROLE_SECRETARY')"
         ),
         new GetCollection(
             normalizationContext: [
@@ -79,6 +79,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
 {
     public const TABLE = 'USER';
     public const ROLE_ROOT = 'epiadmin';
+    public const ROLE_SECRETARY = 'secretary';
+    public const ROLE_EDITOR = 'editor';
     public const EPISCIENCES_UID = 666;
     public const USERS_REVIEW_ID_FILTER = 'userRoles.rvid';
     public const FILTERS = [self::USERS_REVIEW_ID_FILTER => 'exact'];

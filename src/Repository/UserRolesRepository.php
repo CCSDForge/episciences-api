@@ -47,9 +47,9 @@ class UserRolesRepository extends ServiceEntityRepository
         $qb = $this->createQueryBuilder(self::USER_ROLES_ALIAS);
 
         if ($withDetails) {
-            $qb->select("$userRolesAlias.rvid, $userRolesAlias.roleid as role, COUNT($userRolesAlias.uid) as nbUsers");
+            $qb->select("$userRolesAlias.rvid, $userRolesAlias.roleid as role, COUNT(DISTINCT($userRolesAlias.uid)) as nbUsers");
         } else {
-            $qb->select("COUNT($userRolesAlias.uid) as nbUsers");
+            $qb->select("COUNT(DISTINCT($userRolesAlias.uid)) as nbUsers");
         }
 
         $qb->andWhere(sprintf('%s.roleid != :epiAdmin', self::USER_ROLES_ALIAS))

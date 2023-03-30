@@ -10,9 +10,11 @@ use ApiPlatform\Metadata\Operation;
 use App\Entity\Papers;
 use App\Entity\Review;
 use App\Entity\User;
+use App\Entity\UserAssignment;
 use App\Entity\UserRoles;
 use App\Entity\UserOwnedInterface;
 use App\Entity\Volume;
+use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\QueryBuilder;
 use JetBrains\PhpStorm\NoReturn;
 use ReflectionException;
@@ -76,23 +78,32 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
     /**
      * @throws ReflectionException
      */
-    private function addWhere(QueryBuilder $queryBuilder, string $resourceClass, HttpOperation $operation = null): void
+    private function addWhere(QueryBuilder $queryBuilder, string $resourceClass, HttpOperation $operation): void
     {
-
-
-        if ($this->security->isGranted('ROLE_EPIADMIN')) {
-            return;
-        }
-
-
-        $alias = $queryBuilder->getRootAliases()[0];
 
         /** @var User $curentUser */
         $curentUser = $this->security->getUser();
 
+
+        $alias = $queryBuilder->getRootAliases()[0];
+
+
         if ($curentUser) { // connected
 
-            $this->privateAccessProcess($queryBuilder, $alias, $resourceClass, $operation, $curentUser);
+
+            if (!$curentUser->rvId) {
+
+                if ($this->security->isGranted('ROLE_EPIADMIN')) {
+                    return; /// allowed for all platform resources
+                }
+
+                $this->publicAccessProcess($queryBuilder, $alias, $resourceClass);
+
+            } else {
+
+                $this->privateAccessProcess($queryBuilder, $alias, $resourceClass, $operation, $curentUser);
+            }
+
 
         } else {
             $this->publicAccessProcess($queryBuilder, $alias, $resourceClass);
@@ -148,15 +159,16 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
 
     private function privateAccessProcess(
-        QueryBuilder $queryBuilder,
-        string       $alias,
-        string       $resourceClass,
-        HttpOperation       $operation,
-        User         $curentUser
+        QueryBuilder  $queryBuilder,
+        string        $alias,
+        string        $resourceClass,
+        HttpOperation $operation,
+        User          $curentUser
     ): void
     {
 
 
+        // @see operation security allowed only for ROLE_SECRETARY
         if ($resourceClass === User::class) {
             $queryBuilder->
             join(UserRoles::class, 'ur', 'WITH', "$alias.uid = ur.uid")
@@ -166,17 +178,33 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
         } elseif ((new \ReflectionClass($resourceClass))->implementsInterface(UserOwnedInterface::class)) {
 
 
-            if ($curentUser->rvId && $this->security->isGranted('ROLE_EDITOR')) {
-                return;
+            /// for the moment papers class
+            if (
+                $this->security->isGranted('ROLE_GUEST') ||
+                $this->security->isGranted('ROLE_REVIEWER')
+            ) { // only assigned papers
+
+                $queryBuilder
+                    ->join(UserAssignment::class, 'uAss', 'WITH', "$alias.docid = uAss.itemid")
+                    ->andWhere("uAss.item = :type")->setParameter('type', 'paper')
+                    ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $curentUser->rvId)
+                    ->andWhere("uAss.uid = :to")->setParameter('to', $curentUser->getUid())
+                    ->orderBy("$alias.when", "DESC")
+                ;
+
+
+            } else {
+
+                $queryBuilder->
+                andWhere("$alias.user= :currentUser")->
+                setParameter('currentUser', $curentUser->getUid());
+
             }
 
-            $queryBuilder->
-            andWhere("$alias.user= :currentUser")->
-            setParameter('currentUser', $curentUser->getUid());
 
         } elseif ($resourceClass === Volume::class) {
 
-            if ($curentUser->rvId && $this->security->isGranted('ROLE_EDITOR')) {
+            if ($this->security->isGranted('ROLE_EDITOR')) {
 
                 if (str_starts_with($operation->getUriTemplate(), '/volumes{._format}')) {
 
