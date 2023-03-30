@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\AppConstants;
+use App\Entity\PaperLog;
 use App\Entity\Papers;
 use App\Resource\SubmissionOutput;
 use App\Traits\ToolsTrait;
@@ -34,6 +35,16 @@ class PapersRepository extends ServiceEntityRepository
         'submitted' => 'submitted'
     ];
 
+    public const SUBMISSIONS_BY_YEAR = 'submissionsByYear';
+
+    public const TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR = 'acceptedSubmittedSameYear';
+    public const TOTAL_ACCEPTED = 'accepted';
+    public const TOTAL_REFUSED = 'refused';
+    public const ACCEPTANCE_RATE = 'acceptanceRate'; // TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR / submissions by year
+    public const MORE_DETAILS = 'moreDetailsFromModifDate';
+
+    public const REF_YEAR = '2013'; // la reprise de l'existant fausse les stats
+
     private LoggerInterface $logger;
 
     public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
@@ -50,19 +61,18 @@ class PapersRepository extends ServiceEntityRepository
      * @param bool $excludeImportedPapers
      * @return QueryBuilder
      */
-    private function submissionsQuery(array $filters = [], bool $excludeTmpVersions = false, string $fieldDateToBeUsed = 'submissionDate', bool $excludeImportedPapers = true): QueryBuilder
+    public function submissionsQuery(array $filters = [], bool $excludeTmpVersions = false, string $fieldDateToBeUsed = 'submissionDate', bool $excludeImportedPapers = false): QueryBuilder
     {
 
         $qb = $this
             ->createQueryBuilder(self::PAPERS_ALIAS)
-            ->select('count(distinct(p.paperid))');
+            ->select('count(p.docid)');
 
         $qb = $this->addQueryFilters($qb, $filters, $fieldDateToBeUsed);
 
 
-        // Sinon, on va se retouver avec des années où le nombre de soumissions par année = 0, si toutes les premières soumissions sont obsolètes
-        //$qb->andWhere('p.status != :obsolete');
-        //$qb->setParameter('obsolete', Papers::STATUS_OBSOLETE);
+        $qb->andWhere('p.status != :obsolete');
+        $qb->setParameter('obsolete', Papers::STATUS_OBSOLETE);
 
         $qb->andWhere('p.status != :deleted');
         $qb->setParameter('deleted', Papers::STATUS_DELETED);
@@ -90,7 +100,7 @@ class PapersRepository extends ServiceEntityRepository
      * @param bool $excludeImportedPapers
      * @return QueryBuilder
      */
-    private function flexibleSubmissionsQueryDetails(array $filters = null, bool $excludeTmpVersions = false, bool $excludeImportedPapers = true): QueryBuilder
+    private function flexibleSubmissionsQueryDetails(array $filters = null, bool $excludeTmpVersions = false, bool $excludeImportedPapers = false): QueryBuilder
     {
 
         $qb = $this
@@ -117,10 +127,6 @@ class PapersRepository extends ServiceEntityRepository
         $qb->andWhere('p.status != :deleted');
         $qb->setParameter('deleted', Papers::STATUS_DELETED);
 
-        //A previously submitted article that has been modified will be taken into account in the current submissions
-        //$qb->andWhere('p.status IN (:statusToBeConsidered)');
-        //$qb->setParameter('statusToBeConsidered', array_merge(Papers::ACCEPTED_SUBMISSIONS, (array)Papers::STATUS_PUBLISHED, (array)Papers::STATUS_REFUSED));
-
         $qb->orderBy('year', 'ASC');
         $qb->addOrderBy('p.rvid', 'ASC');
         $qb->addOrderBy('p.status', 'DESC');
@@ -138,7 +144,7 @@ class PapersRepository extends ServiceEntityRepository
      * @param bool $excludeTmpVersions
      * @return SubmissionOutput
      */
-    public function getSubmissionsStat(array $filters = [], bool $excludeTmpVersions = true): SubmissionOutput
+    public function getSubmissionsStat(array $filters = [], bool $excludeTmpVersions = false): SubmissionOutput
     {
 
         $rvId = $filters['is']['rvid'] ?? null;
@@ -152,29 +158,30 @@ class PapersRepository extends ServiceEntityRepository
 
         $details = null;
 
-        if (null === $rvId) {
-            $allSubmissionsQb = $this->submissionsQuery();
-        } else {
-
-            $allSubmissionsQb = $this->submissionsQuery([
-                'is' => ['rvid' => $rvId]
-            ]);
-        }
+//        if (null === $rvId) {
+//            $allSubmissionsQb = $this->submissionsQuery();
+//        } else {
+//
+//            $allSubmissionsQb = $this->submissionsQuery([
+//                'is' => ['rvid' => $rvId]
+//            ]);
+//        }
 
         try {
             $nbSubmissions = (int)$this->submissionsQuery($filters)->getQuery()->getSingleScalarResult();
-            $allSubmissions = (int)$allSubmissionsQb->getQuery()->getSingleScalarResult();
+
+            //$allSubmissions = (int)$allSubmissionsQb->getQuery()->getSingleScalarResult();
         } catch (NoResultException|NonUniqueResultException $e) {
             $nbSubmissions = null;
-            $allSubmissions = null;
+            //$allSubmissions = null;
             $this->logger->error($e->getMessage());
         }
 
 
         if ($withDetails) {
 
-            $percentage = ($allSubmissions) ? round($nbSubmissions / $allSubmissions * 100, 2) : null;
-            $details = ['allSubmissions' => $allSubmissions, 'percentage' => $percentage];
+            //$percentage = ($allSubmissions) ? round($nbSubmissions / $allSubmissions * 100, 2) : null;
+            //$details = ['allSubmissions' => $allSubmissions, 'percentage' => $percentage];
             $submissionsStats = $this->flexibleSubmissionsQueryDetails($filters, $excludeTmpVersions)->
             getQuery()->getArrayResult();
 
@@ -182,17 +189,17 @@ class PapersRepository extends ServiceEntityRepository
 
                 if (null !== $rvId && !$year && null === $status && null === $repoId) { // by review
                     $rvIdResult = $this->applyFilterBy($submissionsStats, 'rvid', $rvId);
-                    $details['moreDetails'] = $this->reformatData($rvIdResult[$rvId]);
+                    $details[self::MORE_DETAILS] = $this->reformatData($rvIdResult[$rvId]);
                     $repositories = $this->getAvailableRepositories((int)$rvId);
 
                     foreach ($this->getAvailableSubmissionYears((int)$rvId) as $year) { // pour le dashboard
                         try {
-                            $details['submissionsByYear'][$year]['submissions'] = $this->
+                            $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $this->
                             submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->
                             getQuery()->
                             getSingleScalarResult();
 
-                            $details['submissionsByYear'][$year]['publications'] = $this->
+                            $details[self::SUBMISSIONS_BY_YEAR][$year]['publications'] = $this->
                             submissionsQuery(
                                 [
                                     'is' => [
@@ -203,6 +210,20 @@ class PapersRepository extends ServiceEntityRepository
                                 ], false, 'publicationDate'
                             )->
                             getQuery()->getSingleScalarResult();
+
+
+                            $plRepo = $this->getEntityManager()->getRepository(PaperLog::class);
+
+                            $totalNumberOfPapersAcceptedSubmittedSameYear = $plRepo->getTotalNumberOfPapersByStatus($rvId);
+
+                            $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] =
+                                isset($totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year]) ?
+                                    $totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] :
+                                    0;
+
+                            $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE]  = $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] ?
+                                    round($details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] / $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] * 100, 2) : 0;
+
 
                             foreach ($repositories as $repoId) {
                                 $details['submissionsByRepo'][$year][$repoId]['submissions'] = $this->
@@ -218,82 +239,82 @@ class PapersRepository extends ServiceEntityRepository
 
                 } elseif (null === $rvId && $year && null === $status && $repoId === null) { // by year
                     $yearResult = $this->applyFilterBy($submissionsStats, 'year', $year);
-                    $details['moreDetails'] = $yearResult;
+                    $details[self::MORE_DETAILS] = $yearResult;
 
 
                 } elseif (null === $rvId && !$year && null === $status && $repoId !== null) { // by $repoId
                     $repoResult = $this->applyFilterBy($submissionsStats, 'repoid', (string)$repoId);
-                    $details['moreDetails'] = $repoResult;
+                    $details[self::MORE_DETAILS] = $repoResult;
 
 
                 } elseif (null === $rvId && !$year && null !== $status && $repoId === null) { // by $status
                     $statusResult = $this->applyFilterBy($submissionsStats, 'status', (string)$status);
-                    $details['moreDetails'] = $statusResult;
+                    $details[self::MORE_DETAILS] = $statusResult;
 
 
                 } elseif ($year && $rvId && null === $status && $repoId === null) { // $review & $year
                     $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                    $details['moreDetails'] = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
+                    $details[self::MORE_DETAILS] = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
 
 
                 } elseif (!$year && $rvId && null === $status && $repoId !== null) { // $review & $repoId
                     $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                    $details['moreDetails'] = $this->applyFilterBy($rvIdDetails[$rvId], 'repoid', (string)$repoId);
+                    $details[self::MORE_DETAILS] = $this->applyFilterBy($rvIdDetails[$rvId], 'repoid', (string)$repoId);
 
 
                 } elseif (!$year && $rvId && null !== $status && $repoId === null) { // $review & $status
                     $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                    $details['moreDetails'] = $this->applyFilterBy($rvIdDetails[$rvId], 'status', (string)$status);
+                    $details[self::MORE_DETAILS] = $this->applyFilterBy($rvIdDetails[$rvId], 'status', (string)$status);
 
 
                 } elseif ($year && $rvId && null === $status && $repoId !== null) { // $review & $year & repoId
                     $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
                     $yearDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
-                    $details['moreDetails'] = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
+                    $details[self::MORE_DETAILS] = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
 
 
                 } elseif ($year && $rvId && null !== $status && $repoId === null) { // $review & $year & $status
                     $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
                     $yearDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
-                    $details['moreDetails'] = $this->applyFilterBy($yearDetails[$year], 'status', (string)$status);
+                    $details[self::MORE_DETAILS] = $this->applyFilterBy($yearDetails[$year], 'status', (string)$status);
 
 
                 } elseif ($year && !$rvId && null !== $status && $repoId === null) { //$year & $status
                     $yearDetails = $this->applyFilterBy($submissionsStats, 'year', (string)$year);
-                    $details['moreDetails'] = $this->applyFilterBy($yearDetails[$year], 'status', (string)$status);
+                    $details[self::MORE_DETAILS] = $this->applyFilterBy($yearDetails[$year], 'status', (string)$status);
 
 
                 } elseif ($year && !$rvId && null === $status && $repoId !== null) { //$year & $repoId
                     $yearDetails = $this->applyFilterBy($submissionsStats, 'year', (string)$year);
-                    $details['moreDetails'] = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
+                    $details[self::MORE_DETAILS] = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
 
 
                 } elseif (!$year && !$rvId && null !== $status && $repoId !== null) { //$repoId & $status
                     $repoDetails = $this->applyFilterBy($submissionsStats, 'repoid', (string)$repoId);
-                    $details['moreDetails'] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
+                    $details[self::MORE_DETAILS] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
 
 
                 } elseif (!$year && $rvId && null !== $status && $repoId !== null) { //$repoId & $status & $rvId
                     $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
                     $repoDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'repoid', (string)$repoId);
-                    $details['moreDetails'] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
+                    $details[self::MORE_DETAILS] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
 
 
                 } elseif ($year && !$rvId && null !== $status && $repoId !== null) { // $year && $repoId && $status
                     $yearDetails = $this->applyFilterBy($submissionsStats, 'year', (string)$year);
                     $repoDetails = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
-                    $details['moreDetails'] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
+                    $details[self::MORE_DETAILS] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
 
 
                 } elseif ($year && $rvId && null !== $status && $repoId !== null) { // $year && $rvId && $repoId & $year
                     $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
                     $yearDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
                     $repoDetails = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
-                    $details['moreDetails'] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
+                    $details[self::MORE_DETAILS] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
 
 
                 } else {
-                    $details['moreDetails'] = $this->reformatData($submissionsStats);
+                    $details[self::MORE_DETAILS] = $this->reformatData($submissionsStats);
                 }
 
             }
@@ -336,9 +357,9 @@ class PapersRepository extends ServiceEntityRepository
 
                 if ($k === 'nbSubmissions') {
                     if (!$rvId) {
-                        $result[$year][$repoId][$status][$k] = $v;
+                        $result[$year][$repoId][Papers::STATUS_DICTIONARY[$status]][$k] = $v;
                     } else {
-                        $result[$rvId][$year][$repoId][$status][$k] = $v;
+                        $result[$rvId][$year][$repoId][Papers::STATUS_DICTIONARY[$status]][$k] = $v;
                     }
                 }
             }
@@ -395,6 +416,9 @@ class PapersRepository extends ServiceEntityRepository
         $qb = $this->createQueryBuilder(self::PAPERS_ALIAS);
         $qb->select("YEAR($alias.submissionDate) as year");
 
+       // $qb->where("$alias.flag = submitted");
+
+
         if (null !== $rvId) {
             $qb->where("$alias.rvid =:rvId");
             $qb->setParameter('rvId', $rvId);
@@ -410,7 +434,11 @@ class PapersRepository extends ServiceEntityRepository
             $years[] = $value['year'];
 
         }
-        return $years;
+
+
+        return array_filter($years, static function ($value) {
+            return $value >= self::REF_YEAR;
+        });
 
 
     }
@@ -436,8 +464,8 @@ class PapersRepository extends ServiceEntityRepository
 
         foreach ($result as $value) {
             $repoId = $value['repoid'];
-            if ($strict && $repoId !== 0) {
-                $repositories[] = $value['repoid'];
+            if ($strict) {
+                $repositories[] = $repoId;
             }
         }
 
