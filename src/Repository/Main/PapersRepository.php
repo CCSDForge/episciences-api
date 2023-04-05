@@ -51,7 +51,7 @@ class PapersRepository extends ServiceEntityRepository
      * @param bool $excludeImportedPapers
      * @return QueryBuilder
      */
-    private function submissionsQuery(array $filters = [], bool $excludeTmpVersions = true, string $fieldDateToBeUsed = 'submissionDate', bool $excludeImportedPapers = false): QueryBuilder
+    private function submissionsQuery(array $filters = [], bool $excludeTmpVersions = false, string $fieldDateToBeUsed = 'submissionDate', bool $excludeImportedPapers = false): QueryBuilder
     {
 
         $qb = $this
@@ -137,7 +137,7 @@ class PapersRepository extends ServiceEntityRepository
      * @param bool $excludeTmpVersions
      * @return StatResource
      */
-    public function getSubmissionsStat(array $filters = [], bool $excludeTmpVersions = true): StatResource
+    public function getSubmissionsStat(array $filters = [], bool $excludeTmpVersions = false): StatResource
     {
 
         $rvId = array_key_exists('rvid', $filters['is']) ? (int)$filters['is']['rvid'] : null;
@@ -431,8 +431,8 @@ class PapersRepository extends ServiceEntityRepository
 
         foreach ($result as $value) {
             $repoId = $value['repoid'];
-            if ($strict && $repoId !== 0) {
-                $repositories[] = $value['repoid'];
+            if ($strict) {
+                $repositories[] = $repoId;
             }
         }
 
