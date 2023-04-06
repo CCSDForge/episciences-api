@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+
 namespace App\Entity\Main;
 
 use ApiPlatform\Core\Annotation\ApiFilter;
@@ -16,7 +17,7 @@ use App\Resource\StatResource;
 /**
  * Papers
  *
- *  @ApiResource(
+ * @ApiResource(
  *     attributes={
  *          "normalization_context"={"groups"={"papers_read"}},
  *          "denormalization_context"={"groups"={"papers_write"}},
@@ -90,16 +91,30 @@ class Papers
     public const STATUS_CE_AUTHOR_FINAL_VERSION_SUBMITTED_WAITING_FOR_VALIDATION = 22;
     public const STATUS_CE_READY_TO_PUBLISH = 23;
     public const STATUS_CE_AUTHOR_FORMATTING_SUBMITTED_AND_VALIDATED = 24;
+    public const STATUS_ACCEPTED_WAITING_FOR_AUTHOR_FINAL_VERSION = 26;
+    public const STATUS_ACCEPTED_WAITING_FOR_MAJOR_REVISION = 27;
+    public const STATUS_TMP_VERSION_ACCEPTED = 25;
+    public const STATUS_ACCEPTED_FINAL_VERSION_SUBMITTED_WAITING_FOR_COPY_EDITORS_FORMATTING = 28;
+    public const STATUS_TMP_VERSION_ACCEPTED_AFTER_AUTHOR_MODIFICATION = 29;
+    public const STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MINOR_REVISION = 30;
+    public const STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MAJOR_REVISION = 31;
 
     public const ACCEPTED_SUBMISSIONS = [
-        self::STATUS_ACCEPTED,
-        self::STATUS_CE_WAITING_FOR_AUTHOR_SOURCES,
-        self::STATUS_CE_AUTHOR_SOURCES_SUBMITTED,
-        self::STATUS_CE_WAITING_AUTHOR_FINAL_VERSION,
-        self::STATUS_CE_AUTHOR_FINAL_VERSION_SUBMITTED_WAITING_FOR_VALIDATION,
-        self::STATUS_CE_REVIEW_FORMATTING_SUBMITTED,
-        self::STATUS_CE_AUTHOR_FORMATTING_SUBMITTED_AND_VALIDATED,
-        self::STATUS_CE_READY_TO_PUBLISH
+        self::STATUS_ACCEPTED, // 4
+        self::STATUS_CE_WAITING_FOR_AUTHOR_SOURCES, // 18
+        self::STATUS_CE_AUTHOR_SOURCES_SUBMITTED, // 19
+        self::STATUS_CE_WAITING_AUTHOR_FINAL_VERSION, // 21
+        self::STATUS_CE_AUTHOR_FINAL_VERSION_SUBMITTED_WAITING_FOR_VALIDATION, // 22
+        self::STATUS_CE_REVIEW_FORMATTING_SUBMITTED, // 20
+        self::STATUS_CE_AUTHOR_FORMATTING_SUBMITTED_AND_VALIDATED, //24
+        self::STATUS_CE_READY_TO_PUBLISH,//23,
+        self::STATUS_ACCEPTED_WAITING_FOR_AUTHOR_FINAL_VERSION, //26
+        self::STATUS_ACCEPTED_WAITING_FOR_MAJOR_REVISION, //27
+        self::STATUS_TMP_VERSION_ACCEPTED, //25
+        self::STATUS_ACCEPTED_FINAL_VERSION_SUBMITTED_WAITING_FOR_COPY_EDITORS_FORMATTING, //28
+        self::STATUS_TMP_VERSION_ACCEPTED_AFTER_AUTHOR_MODIFICATION, //29
+        self::STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MINOR_REVISION, //30
+        self::STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MAJOR_REVISION //31
     ];
 
     /**
@@ -135,7 +150,7 @@ class Papers
      * @var int
      *
      * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     *@Groups({"papers_read"})
+     * @Groups({"papers_read"})
      */
     private int $rvid;
 
