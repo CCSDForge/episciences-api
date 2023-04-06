@@ -10,4 +10,3 @@
 bin
 .idea
 composer.phar
-symfony.lock
