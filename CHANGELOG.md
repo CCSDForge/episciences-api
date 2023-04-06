@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
+## v1.0.1 2023-04-06
+### Changed
+- Stats limited to 2013
+- Updates dependencies
+
+
+
 ## v1.0 2023-02-01
 Updating 'Papers' entity:
 - Renaming 'description' field
