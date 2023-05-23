@@ -8,10 +8,9 @@ use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\Query;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\ObjectManager;
-use Symfony\Bridge\Doctrine\Security\User\UserLoaderInterface;
 
 
-class TUtilisateursRepository extends ServiceEntityRepository implements UserLoaderInterface
+class TUtilisateursRepository extends ServiceEntityRepository
 {
     private ObjectManager $objectManager;
 

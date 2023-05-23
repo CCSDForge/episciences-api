@@ -25,9 +25,8 @@ trait ToolsTrait
                 if ($k !== $extractedKey || (string)$v !== $filter) {
                     continue;
                 }
-                if ( $filter === (string)$v) {
-                    unset($value[$k]);
-                }
+
+                unset($value[$k]);
 
                 $filteredResultBy[$filter][] = $value;
             }

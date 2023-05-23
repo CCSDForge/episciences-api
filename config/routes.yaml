@@ -3,3 +3,7 @@
 #    controller: App\Controller\DefaultController::index
 api_login_check:
   path: /api/login
+  methods: ['POST']
+
+api_refresh_token:
+  path: /api/token/refresh
