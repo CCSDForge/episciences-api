@@ -872,4 +872,19 @@ class Papers implements UserOwnedInterface
             'UNDEFINED_STATUS_DICTIONARY_LABEL';
     }
 
+    /**
+     * users keys
+     * @return array [101010, .... ]
+     */
+    final public function getUsersAllowedToEditPaperCitations(): array
+    {
+        return array_merge(
+            [$this->getUid()],
+            array_keys($this->getCoAuthors()),
+            array_keys($this->getEditors()),
+            array_keys($this->getCopyEditors())
+        );
+
+    }
+
 }
