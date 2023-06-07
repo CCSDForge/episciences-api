@@ -11,6 +11,7 @@ use App\Exception\MissingRequestParameterException;
 use Doctrine\ORM\EntityManagerInterface;
 use JetBrains\PhpStorm\NoReturn;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Exception\InvalidParameterException;
 
 class PapersController
 {
@@ -27,15 +28,14 @@ class PapersController
 
         if ($request !== null) {
 
-            $documentId = $request->query->get('documentId');
+            if (!$request->query->has('documentId')) {
+                throw (new MissingRequestParameterException())::new('documentId', 'Request query');
+            }
 
+            $documentId = (int)$request->query->get('documentId');
 
             $userId = (int)$request->get('userId');
 
-
-            if (null === $documentId) {
-                throw (new MissingRequestParameterException())::new('documentId', 'Request query');
-            }
 
             if ($userId) {
                 $user = $entityManager->getRepository(User::class)->findOneBy(['uid' => $userId]);

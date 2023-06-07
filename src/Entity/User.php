@@ -112,7 +112,7 @@ use App\OpenApi\OpenApiFactory;
                         in: 'query',
                         description: 'Document identifier',
                         required: true,
-                        allowEmptyValue: false,
+                        allowEmptyValue: true,
                     )
                 ]
             ),
