@@ -80,7 +80,7 @@ use App\OpenApi\OpenApiFactory;
         ),
 
         new Get(
-            uriTemplate: '/users/{userId}/is-allowed-to-edit-citations',
+            uriTemplate: '/users/{uid}/is-allowed-to-edit-citations',
             controller: PapersController::class,
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['user']],
