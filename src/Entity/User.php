@@ -9,13 +9,17 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\OpenApi\Model\Parameter;
+use ApiPlatform\OpenApi\Model\RequestBody;
 use App\AppConstants;
+use App\Controller\PapersController;
 use App\Repository\UserRepository;
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Lexik\Bundle\JWTAuthenticationBundle\Security\User\JWTUserInterface;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Annotation\Context;
@@ -34,24 +38,35 @@ use App\OpenApi\OpenApiFactory;
 #[ApiResource(
     operations: [
         new Get(
+            openapi: new OpenApiOperation(
+                security: [
+                    ['bearerAuth' => []],
+                ]
+            ),
             normalizationContext: [
                 'groups' => [AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0]]
             ],
             security: "is_granted('ROLE_SECRETARY')"
         ),
         new GetCollection(
+            openapi: new OpenApiOperation(
+                security: [
+                    ['bearerAuth' => []],
+                ]
+            ),
             normalizationContext: [
                 'groups' => [AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0]]
-                ]
+            ],
+            security: "is_granted('ROLE_SECRETARY')",
         ),
         new Get(
             uriTemplate: '/me',
             controller: MeController::class,
             openapi: new OpenApiOperation(
-                tags:[OpenApiFactory::OAF_TAGS['auth']],
+                tags: [OpenApiFactory::OAF_TAGS['auth']],
                 summary: 'My Account',
                 security: [
-                    ['bearerAuth' =>  []],
+                    ['bearerAuth' => []],
                 ]
 
             ),
@@ -59,18 +74,56 @@ use App\OpenApi\OpenApiFactory;
                 'groups' => ['read:Me']
             ],
             security: "is_granted('ROLE_USER')",
+            output: [true, false],
             read: false
 
         ),
+
+        new Get(
+            uriTemplate: '/users/{userId}/is-allowed-to-edit-citations',
+            controller: PapersController::class,
+            openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['user']],
+                responses: [
+                    Response::HTTP_OK => [
+                        'description' => "is allowed to edit document's citations?",
+                        'content' => [
+                            'application/json' => [
+                                'schema' => [
+                                    'type' => 'object',
+                                    'properties' => [
+                                        'isAllowed' => [
+                                            'type' => 'boolean',
+                                            'readOnly' => true,
+                                            'default' => false
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ]
+
+                ],
+                summary: "is allowed to edit document's citations",
+                description: "Check if current user is allowed to edit paper's citations",
+                parameters: [
+                    new Parameter(
+                        name: 'documentId',
+                        in: 'query',
+                        description: 'Document identifier',
+                        required: true,
+                        allowEmptyValue: false,
+                    )
+                ]
+            ),
+
+            read: false, //  to bypass the automatic retrieval of the entity in your custom operation
+        ),
     ],
 
-    openapi: new OpenApiOperation(
-        security: [
-            ['bearerAuth' =>  []],
-        ]
-    ),
+
     order: ['uid' => 'DESC'],
-    security: "is_granted('ROLE_SECRETARY')",
+
 
 )]
 
@@ -80,6 +133,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public const TABLE = 'USER';
     public const ROLE_ROOT = 'epiadmin';
     public const ROLE_SECRETARY = 'secretary';
+    public const ROLE_ADMINISTRATOR = 'administrator';
+    public const ROLE_EDITOR_IN_CHIEF = 'chief_editor';
     public const ROLE_EDITOR = 'editor';
     public const EPISCIENCES_UID = 666;
     public const USERS_REVIEW_ID_FILTER = 'userRoles.rvid';
