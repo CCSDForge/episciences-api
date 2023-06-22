@@ -94,7 +94,7 @@ class Volume
         ]
 
     )]
-    private array  $titles ;
+    private ?array  $titles ;
     #[ORM\Column(name: 'descriptions', type: 'json', nullable: true)]
     #[Groups(
         [
@@ -103,7 +103,7 @@ class Volume
         ]
 
     )]
-    private  array $descriptions;
+    private  ?array $descriptions;
 
     #[ORM\OneToMany(mappedBy: 'volume', targetEntity: Papers::class)]
     #[Groups(
@@ -189,9 +189,9 @@ class Volume
     }
 
     /**
-     * @return array
+     * @return array|null
      */
-    public function getDescriptions(): array
+    public function getDescriptions(): ?array
     {
         return $this->descriptions;
     }
@@ -207,11 +207,11 @@ class Volume
     }
 
     /**
-     * @return array
+     * @return array|null
      */
-    public function getTitles(): array
+    public function getTitles(): ?array
     {
-        return $this->titles;
+        return $this->titles ?? ['en' => 'volume_' . $this->getVid() . '_title'];
     }
 
     /**
