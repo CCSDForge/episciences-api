@@ -260,9 +260,21 @@ class Review
     #[Groups(['read:Review'])]
     private Collection $papers;
 
+    #[ORM\OneToMany(mappedBy: 'review', targetEntity: ReviewSetting::class)]
+    #[Groups(
+        [
+            'read:Review',
+            'read:Reviews'
+        ]
+
+    )]
+
+    private Collection $settings;
+
     public function __construct()
     {
         $this->papers = new ArrayCollection();
+        $this->settings = new ArrayCollection();
     }
 
     public function getRvid(): ?int
@@ -353,6 +365,34 @@ class Review
         // set the owning side to null (unless already changed)
         if ($this->papers->removeElement($paper) && $paper->getReview() === $this) {
             $paper->setReview();
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, ReviewSetting>
+     */
+    public function getSettings(): Collection
+    {
+        return $this->settings;
+    }
+
+    public function addSetting(ReviewSetting $setting): self
+    {
+        if (!$this->settings->contains($setting)) {
+            $this->settings->add($setting);
+            $setting->setReview($this);
+        }
+
+        return $this;
+    }
+
+    public function removeSetting(ReviewSetting $setting): self
+    {
+        // set the owning side to null (unless already changed)
+        if ($this->settings->removeElement($setting) && $setting->getReview() === $this) {
+            $setting->setReview(null);
         }
 
         return $this;

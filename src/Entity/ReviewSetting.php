@@ -3,39 +3,54 @@
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
-/**
- * ReviewSetting
- *
- * @ORM\Table(name="REVIEW_SETTING", indexes={@ORM\Index(name="FK_CONFIG_idx", columns={"RVID"})})
- * @ORM\Entity
- */
+#[ORM\Table(name: self::TABLE)]
+#[ORM\UniqueConstraint(name: 'RVID', columns: ['SETTING'])]
+#[ORM\Entity(repositoryClass: ReviewSetting::class)]
+
 class ReviewSetting
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
+    public const TABLE = 'REVIEW_SETTING';
+
+    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     private $rvid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="SETTING", type="string", length=200, nullable=false)
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $setting;
+    #[ORM\Column(name: 'SETTING', type: 'string', length: 200, nullable: false)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    #[Groups(
+        [
+            'read:Review',
+            'read:Reviews'
+        ]
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="VALUE", type="text", length=65535, nullable=true)
-     */
+    )]
+
+    private $setting;
+    #[Groups(
+        [
+            'read:Review',
+            'read:Reviews'
+        ]
+
+    )]
+
+    #[ORM\Column(name: 'VALUE', type: 'string', length: 65535, nullable: true)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+
+
+
+
     private $value;
+
+    #[ORM\ManyToOne(targetEntity: Review::class, inversedBy: 'settings')]
+    #[ORM\JoinColumn(name: 'RVID', referencedColumnName: 'RVID', nullable: false)]
+
+    private Review $review;
 
     public function getRvid(): ?int
     {
@@ -55,6 +70,18 @@ class ReviewSetting
     public function setValue(?string $value): self
     {
         $this->value = $value;
+
+        return $this;
+    }
+
+    public function getReview(): Review
+    {
+        return $this->review;
+    }
+
+    public function setReview(Review $review): self
+    {
+        $this->review = $review;
 
         return $this;
     }
