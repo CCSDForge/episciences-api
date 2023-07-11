@@ -31,7 +31,7 @@ services:
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
     App\OpenApi\OpenApiFactory:
-        decorates: 'lexik_jwt_authentication.api_platform.openapi.factory'
+        decorates: 'api_platform.openapi.factory'
         arguments: ['@App\OpenApi\OpenApiFactory.inner']
         autoconfigure: false
 
