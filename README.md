@@ -8,17 +8,19 @@ your **API password** - once you have logged on to the journal site - via **My s
 
 ### Get the authentication token with a POST request
 
-#### The API is called up securely via a JWT token, which can be retrieved via "/api/login" endpoint:  
+#### The API is called up securely via a JWT token, which can be retrieved via "/api/login" endpoint: 
 
+```
 curl -X 'POST' \
-'https://serverName/login' \
+'https://api-preprod.episciences.org/api/login' \
 -H 'accept: application/json' \
--H 'Content-Type: application/json' \
+-H 'Content-Type: application /json' \
 -d '{
 "username": "login",
 "password": "api pwd",
 "code": "journal’s name"
 }'
+```
 
 #### Response type:
 
@@ -27,23 +29,34 @@ curl -X 'POST' \
 The token expires after **one hour**.
 The refresh_token expires after **one month**.
 
-It is possible to generate a new token without asking the user to enter these identifiers via "/token/refresh":
+It is possible to generate a new token without asking the user to enter these identifiers via "api/token/refresh":
 
+```
 curl -X 'POST' \
-'https://serverName/api/token/refresh' \
+'https://api-preprod.episciences.org/api/token/refresh' \
 -H 'accept: application/json' \
 -H 'Content-Type: application/json' \
 -d '{
 "refresh_token": "3ff818151dd…"
 }'
+```
 
 
 #### To check that you're connected and as an example of how to use it: 
 
+```
 curl -X 'GET' \
-'https://serverName/api/me' \
+'https://api-preprod.episciences.org/api/me' \
 -H 'accept: application/ld+json' \
--H 'Authorization: Bearer
-'eyJ0eXAiOiJKV1….'
+-H 'Authorization: Bearer eyJ0eXAiOiJKV1….'
+```
 
-**To explore the available endpoints: https://api-preprod.episciences.org/docs**
+**To explore the available endpoints: https://api-preprod.episciences.org/api**
+
+## Testing the API Manually
+
+1. Expand /api/login, click the Try it out button and enter your account information.
+2. Next, press the execute button, it will respond with a failed or passed result.
+3. In this case, we get the passed result response, with response code 200.
+4. Take the token string and put it in Authorize.
+5. After the authorization step, we are now ready to test the API
