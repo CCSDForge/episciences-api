@@ -36,6 +36,7 @@ use App\OpenApi\OpenApiFactory;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['review']],
                 summary: 'Journal',
+                description: 'Retrieves a Journal resource.',
                 security: [['bearerAuth' =>  []],]
             ),
 
@@ -50,6 +51,7 @@ use App\OpenApi\OpenApiFactory;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['review']],
                 summary: 'All Journals',
+                description: 'Retrieves the collection of active journals',
                 security: [['bearerAuth' =>  []],]
             ),
             normalizationContext: [
