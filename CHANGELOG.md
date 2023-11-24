@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
+## v1.1 2023-11-24
+### Changed
+- New version for PHP 8.2 and updated dependencies
+
 ## v1.0.2 2023-04-06
 ### Fixed
 - Stats: don't count duplicate users + update dependencies
@@ -23,8 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Stats limited to 2013
 - Updates dependencies
-
-
 
 ## v1.0 2023-02-01
 Updating 'Papers' entity:
