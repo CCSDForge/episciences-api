@@ -14,7 +14,7 @@ your **API password** - once you have logged on to the journal site - via **My s
 curl -X 'POST' \
 'https://api-preprod.episciences.org/api/login' \
 -H 'accept: application/json' \
--H 'Content-Type: application /json' \
+-H 'Content-Type: application/json' \
 -d '{
 "username": "login",
 "password": "api pwd",
