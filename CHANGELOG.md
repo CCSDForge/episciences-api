@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
+## v1.1.1 2024-01-17
+### Changed
+- Limit API Platform to v. 3.1.* 
+
 ## v1.1 2023-11-24
 ### Changed
 - New version for PHP 8.2 and updated dependencies
