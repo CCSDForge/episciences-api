@@ -1,6 +1,7 @@
 #Full default configuration
 
 lexik_jwt_authentication:
+    api_platform: false # disables API Platform compatibility: add check_path in OpenAPI documentation.
     secret_key: '%env(string:resolve:JWT_SECRET_KEY)%'
     public_key: '%env(string:resolve:JWT_PUBLIC_KEY)%'
     pass_phrase: '%env(string:JWT_PASSPHRASE)%'
