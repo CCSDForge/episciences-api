@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
+### Fixed:
+- A new endpoint "api_login_check" for retrieving a JWT token is added in OpenAPI documentation:
+  turn off API Platform compatibility (remove default JWT check_path in OpenAPI documentation) because a custom endpoint has been set up.
 
 ## v1.1.1 2024-01-17
 ### Changed
