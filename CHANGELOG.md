@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
+
+
+### Changed 
+- Disabling the Pagination Client-side Globally:
+  The pagination can now be enabled or disabled by adding a query parameter named pagination:
+  GET /papers?pagination=false: disabled
+  GET /papers?pagination=true: enabled
 ### Fixed:
 - A new endpoint "api_login_check" for retrieving a JWT token is added in OpenAPI documentation:
   turn off API Platform compatibility (remove default JWT check_path in OpenAPI documentation) because a custom endpoint has been set up.

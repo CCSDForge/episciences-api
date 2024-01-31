@@ -1,6 +1,7 @@
 api_platform:
     #global configuration defaults applied to all resources and all operations (2.6 only)
     defaults:
+        pagination_client_enabled: true #Disabling the Pagination Client-side Globally
         item_Operations: ~
         collection_Operations: ~
         normalization_context:
