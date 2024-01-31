@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
-
+## v1.1.2 2025-01-31
 ### Changed 
 - Disabling the Pagination Client-side Globally:
   The pagination can now be enabled or disabled by adding a query parameter named pagination:
