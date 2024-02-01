@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
+## v1.1.3 2025-02-01
+### Fixed:
+- Administrator do not have access to all journal's papers.
+
 ## v1.1.2 2025-01-31
 ### Changed 
 - Disabling the Pagination Client-side Globally:
@@ -22,7 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   GET /papers?pagination=false: disabled
   GET /papers?pagination=true: enabled
 ### Fixed:
-- Administrator do not have access to all journal's papers.
 - A new endpoint "api_login_check" for retrieving a JWT token is added in OpenAPI documentation:
   turn off API Platform compatibility (remove default JWT check_path in OpenAPI documentation) because a custom endpoint has been set up.
 
