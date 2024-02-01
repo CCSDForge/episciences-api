@@ -559,10 +559,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
 
             $currentRole = $prefix . strtoupper($userRole->getRoleid());
 
-            if ($currentRole === $prefix . strtoupper(self::ROLE_ROOT)){
-                $roles[] = $currentRole;
-                return $roles;
-            }
+//            if ($currentRole === $prefix . strtoupper(self::ROLE_ROOT)){ 
+//                $roles[] = $currentRole;
+//                return $roles;
+//            }
 
             $roles[$userRole->getRvid()][] = $currentRole;
         }

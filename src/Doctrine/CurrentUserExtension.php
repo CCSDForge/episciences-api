@@ -93,9 +93,9 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
             if (!$curentUser->rvId) {
 
-                if ($this->security->isGranted('ROLE_EPIADMIN')) {
-                    return; /// allowed for all platform resources
-                }
+//                if ($this->security->isGranted('ROLE_EPIADMIN')) {
+//                    return; /// allowed for all platform resources
+//                }
 
                 $this->publicAccessProcess($queryBuilder, $alias, $resourceClass);
 
@@ -178,9 +178,18 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
         } elseif ((new \ReflectionClass($resourceClass))->implementsInterface(UserOwnedInterface::class)) {
 
 
-            /// for the moment papers class
-            if (
-                $this->security->isGranted('ROLE_GUEST') ||
+
+            if ($this->security->isGranted('ROLE_SECRETARY')) {
+
+                $queryBuilder
+                    ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $curentUser->rvId)
+                    ->orderBy("$alias.when", "DESC")
+                ;
+
+
+            } elseif (
+                $this->security->isGranted('ROLE_EDITOR') ||
+                $this->security->isGranted('ROLE_COPY_EDITOR') ||
                 $this->security->isGranted('ROLE_REVIEWER')
             ) { // only assigned papers
 
@@ -193,7 +202,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
                 ;
 
 
-            } else {
+            } else { // author's papers
 
                 $queryBuilder->
                 andWhere("$alias.user= :currentUser")->
