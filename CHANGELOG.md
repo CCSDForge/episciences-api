@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v1.1.3 2025-02-01
 ### Fixed:
-- Administrator do not have access to all journal's papers.
+- [#11](https://github.com/CCSDForge/episciences-api/issues/11) Administrator do not have access to all journal's papers.
 
 ## v1.1.2 2025-01-31
 ### Changed 
