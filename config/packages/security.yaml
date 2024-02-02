@@ -16,17 +16,17 @@ security:
                 class: App\Entity\User
 
 
-    role_hierarchy: # ROLE_MEMBER: already has a profil in journal (ROLE_USER : not)
+    role_hierarchy:
         ROLE_GUEST: ~
         ROLE_USER: ROLE_GUEST
-        ROLE_MEMBER: ROLE_USER
-        ROLE_AUTHOR: ROLE_MEMBER
+        ROLE_MEMBER: ROLE_USER   # connected user [default role in symfony]
+        ROLE_AUTHOR: ROLE_MEMBER # ROLE_MEMBER: already has a profil in journal
         ROLE_REVIEWER: ROLE_MEMBER
         ROLE_COPY_EDITOR: ROLE_MEMBER
-        ROLE_WEBMASTER: ROLE_MEMBER
         ROLE_GUEST_EDITOR: ROLE_MEMBER
         ROLE_EDITOR: ROLE_GUEST_EDITOR
-        ROLE_SECRETARY: [ROLE_EDITOR, ROLE_WEBMASTER]
+        ROLE_WEBMASTER: ROLE_MEMBER
+        ROLE_SECRETARY: [ROLE_EDITOR, ROLE_WEBMASTER, ROLE_COPY_EDITOR]
         ROLE_ADMINISTRATOR: ROLE_SECRETARY
         ROLE_CHIEF_EDITOR: ROLE_ADMINISTRATOR
         ROLE_EPIADMIN: ROLE_CHIEF_EDITOR

@@ -148,6 +148,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0]
         ])]
+    #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private int $uid;
 
 
@@ -164,6 +165,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
             'read:Me'
         ])]
     private string $screenName;
