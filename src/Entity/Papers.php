@@ -303,7 +303,7 @@ class Papers implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         ]
     )]
-    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private string $flag = 'submitted';
 
 
@@ -346,8 +346,9 @@ class Papers implements UserOwnedInterface
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
         ])]
-    #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private UserInterface $user;
 
 
@@ -366,33 +367,33 @@ class Papers implements UserOwnedInterface
 
     #[ORM\OneToMany(mappedBy: 'papers', targetEntity: UserAssignment::class)]
 
-    #[ApiProperty(security: "is_granted('papers_manage')")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private Collection $assignments;
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
-    #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $editors = [];
 
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
-    #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $reviewers = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
-    #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $copyEditors = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
 
-    #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $coAuthors = [];
 
     #[ORM\OneToMany(mappedBy: 'papers', targetEntity: PaperConflicts::class)]
@@ -402,7 +403,7 @@ class Papers implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
         ]
     )]
-    #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private Collection $conflicts;
 
     #[NoReturn]

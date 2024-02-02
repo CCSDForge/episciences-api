@@ -14,7 +14,6 @@ use App\Entity\UserAssignment;
 use App\Entity\UserRoles;
 use App\Entity\UserOwnedInterface;
 use App\Entity\Volume;
-use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\QueryBuilder;
 use JetBrains\PhpStorm\NoReturn;
 use ReflectionException;
@@ -78,7 +77,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
     /**
      * @throws ReflectionException
      */
-    private function addWhere(QueryBuilder $queryBuilder, string $resourceClass, HttpOperation $operation): void
+    private function addWhere(QueryBuilder $queryBuilder, string $resourceClass, HttpOperation $operation = null): void
     {
 
         /** @var User $curentUser */
@@ -101,7 +100,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
             } else {
 
-                $this->privateAccessProcess($queryBuilder, $alias, $resourceClass, $operation, $curentUser);
+                $this->privateAccessProcess($queryBuilder, $alias, $resourceClass, $curentUser, $operation);
             }
 
 
@@ -162,8 +161,8 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
         QueryBuilder  $queryBuilder,
         string        $alias,
         string        $resourceClass,
-        HttpOperation $operation,
-        User          $curentUser
+        User          $curentUser,
+        HttpOperation $operation = null
     ): void
     {
 
@@ -177,6 +176,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
                 ->andWhere("ur.rvid= :userVid")->setParameter('userVid', $curentUser->rvId);
         } elseif ((new \ReflectionClass($resourceClass))->implementsInterface(UserOwnedInterface::class)) {
 
+            if ($resourceClass === Papers::class) {
 
 
             if ($this->security->isGranted('ROLE_SECRETARY')) {
@@ -187,26 +187,28 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
                 ;
 
 
-            } elseif (
-                $this->security->isGranted('ROLE_EDITOR') ||
-                $this->security->isGranted('ROLE_COPY_EDITOR') ||
-                $this->security->isGranted('ROLE_REVIEWER')
-            ) { // only assigned papers
+                } elseif (
+                    $this->security->isGranted('ROLE_EDITOR') ||
+                    $this->security->isGranted('ROLE_COPY_EDITOR') ||
+                    $this->security->isGranted('ROLE_GUEST_EDITOR') ||
+                    $this->security->isGranted('ROLE_REVIEWER')
+                ) { // only assigned papers
 
-                $queryBuilder
-                    ->join(UserAssignment::class, 'uAss', 'WITH', "$alias.docid = uAss.itemid")
-                    ->andWhere("uAss.item = :type")->setParameter('type', 'paper')
-                    ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $curentUser->rvId)
-                    ->andWhere("uAss.uid = :to")->setParameter('to', $curentUser->getUid())
-                    ->orderBy("$alias.when", "DESC")
-                ;
+                    $queryBuilder
+                        ->join(UserAssignment::class, 'uAss', 'WITH', "$alias.docid = uAss.itemid")
+                        ->andWhere("uAss.item = :type")->setParameter('type', 'paper')
+                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $curentUser->rvId)
+                        ->andWhere("uAss.uid = :to")->setParameter('to', $curentUser->getUid())
+                        ->orderBy("$alias.when", "DESC");
 
 
-            } else { // author's papers
+                } else { // author's papers
 
-                $queryBuilder->
-                andWhere("$alias.user= :currentUser")->
-                setParameter('currentUser', $curentUser->getUid());
+                    $queryBuilder->
+                    andWhere("$alias.user= :currentUser")->
+                    setParameter('currentUser', $curentUser->getUid());
+
+                }
 
             }
 
@@ -215,7 +217,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
             if ($this->security->isGranted('ROLE_EDITOR')) {
 
-                if (str_starts_with($operation->getUriTemplate(), '/volumes{._format}')) {
+                if ($operation && str_starts_with($operation->getUriTemplate(), '/volumes{._format}')) {
 
                     $queryBuilder
                         ->where("$alias.rvid= :rvId")
