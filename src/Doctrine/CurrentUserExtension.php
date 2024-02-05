@@ -89,8 +89,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
         if ($curentUser) { // connected
 
-
-            if (!$curentUser->rvId) {
+            if (!$curentUser->getCurrentJournalID()) {
 
 //                if ($this->security->isGranted('ROLE_EPIADMIN')) {
 //                    return; /// allowed for all platform resources
@@ -173,7 +172,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
             join(UserRoles::class, 'ur', 'WITH', "$alias.uid = ur.uid")
                 ->andWhere("ur.roleid!= :epiAdminRole")->setParameter('epiAdminRole', User::ROLE_ROOT)
                 ->andWhere("$alias.uid!= :systemUid")->setParameter('systemUid', User::EPISCIENCES_UID)
-                ->andWhere("ur.rvid= :userVid")->setParameter('userVid', $curentUser->rvId);
+                ->andWhere("ur.rvid= :userVid")->setParameter('userVid', $curentUser->getCurrentJournalID());
         } elseif ((new \ReflectionClass($resourceClass))->implementsInterface(UserOwnedInterface::class)) {
 
             if ($resourceClass === Papers::class) {
@@ -182,7 +181,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
             if ($this->security->isGranted('ROLE_SECRETARY')) {
 
                 $queryBuilder
-                    ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $curentUser->rvId)
+                    ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $curentUser->getCurrentJournalID())
                     ->orderBy("$alias.when", "DESC")
                 ;
 
@@ -197,7 +196,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
                     $queryBuilder
                         ->join(UserAssignment::class, 'uAss', 'WITH', "$alias.docid = uAss.itemid")
                         ->andWhere("uAss.item = :type")->setParameter('type', 'paper')
-                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $curentUser->rvId)
+                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $curentUser->getCurrentJournalID())
                         ->andWhere("uAss.uid = :to")->setParameter('to', $curentUser->getUid())
                         ->orderBy("$alias.when", "DESC");
 
@@ -221,7 +220,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
                     $queryBuilder
                         ->where("$alias.rvid= :rvId")
-                        ->setParameter('rvId', $curentUser->rvId)
+                        ->setParameter('rvId', $curentUser->getCurrentJournalID())
                         ->addOrderBy("$alias.vid", 'DESC');
                 }
 

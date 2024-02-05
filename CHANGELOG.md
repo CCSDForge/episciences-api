@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
+### fixed
+- Loss of roles when requesting a new token with a refresh token & new attribute User::currentJournalID & refactoring.
+
 ## v1.1.3 2025-02-01
 ### Fixed:
 - Administrator do not have access to all journal's papers.

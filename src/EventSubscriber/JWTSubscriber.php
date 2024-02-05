@@ -30,31 +30,33 @@ class JWTSubscriber implements EventSubscriberInterface
     public function onLexikJwtAuthenticationOnJwtCreated(JWTCreatedEvent $event): void
     {
 
-        $currentReview = null;
-        $rvId = null;
+        /** @var User $user */
+        $user = $event->getUser();
+        $rvId = $user->getCurrentJournalID();
+        $data = $event->getData();
 
         $request = $this->requestStack->getCurrentRequest();
+
         $postedContent = $request ? json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) : [];
 
         $rvCode = $postedContent['code'] ?? null;
 
         if ($rvCode) {
             $currentReview = $this->doctrine->getRepository(Review::class)->findOneBy(['code' => $rvCode]);
+
+            if ($currentReview && $currentReview->getStatus()) {
+                $rvId = $currentReview->getRvid();
+                $user->setCurrentJournalID($rvId);
+            }
+
         }
 
-        if ($currentReview && $currentReview->getStatus()) {
-            $rvId = $currentReview->getRvid();
-        }
 
-        $data = $event->getData();
-
-
-        /** @var User $user */
-        $user = $event->getUser();
         $data['uid'] = $user->getUid();
         $data['roles'] = $user->getRoles($rvId);
-        $data['rvId'] = $rvId ? $currentReview->getRvid() : null;
+        $data['rvId'] = $rvId;
         $event->setData($data);
+
     }
 
     public static function getSubscribedEvents(): array
