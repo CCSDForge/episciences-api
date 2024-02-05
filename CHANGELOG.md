@@ -15,12 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
-#### Modified
+
+## v1.1.4 2025-02-05
+### Changed
 JWT Refresh Token: set 'single_use' param. to true: if refresh token is consumed, a new refresh token will be provided.
 
-### fixed
+### Fixed
 - Loss of roles when requesting a new token with a refresh token & new attribute User::currentJournalID & refactoring.
-
+- Improvements: consuming a REST API endpoint: taking into account "conflicts of interest"
+ 
 ## v1.1.3 2025-02-01
 ### Fixed:
 - [#11](https://github.com/CCSDForge/episciences-api/issues/11) Administrator do not have access to all journal's papers.
