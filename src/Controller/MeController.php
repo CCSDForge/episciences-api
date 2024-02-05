@@ -31,7 +31,8 @@ class MeController
             findOneBy(['uid' => $user->getUid()]);
 
             if ($refreshedUser) {
-                $refreshedUser->setRoles($refreshedUser->getRoles($user->rvId));
+                $refreshedUser->setRoles($refreshedUser->getRoles($user->getCurrentJournalID()));
+                $refreshedUser->setCurrentJournalID($user->getCurrentJournalID());
                 return $refreshedUser;
             }
 

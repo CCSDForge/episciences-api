@@ -10,7 +10,6 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Parameter;
-use ApiPlatform\OpenApi\Model\RequestBody;
 use App\AppConstants;
 use App\Controller\PapersController;
 use App\Repository\UserRepository;
@@ -19,6 +18,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Lexik\Bundle\JWTAuthenticationBundle\Security\User\JWTUserInterface;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -29,10 +29,6 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\OpenApi\OpenApiFactory;
 
-
-/**
- * @property int $rvId
- */
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ApiResource(
@@ -139,6 +135,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public const EPISCIENCES_UID = 666;
     public const USERS_REVIEW_ID_FILTER = 'userRoles.rvid';
     public const FILTERS = [self::USERS_REVIEW_ID_FILTER => 'exact'];
+
+    #[Groups(['read:Me',])]
+    private ?int $currentJournalID = null;
+
+    /**
+     * @var array
+     */
+    #[Groups(['read:User', 'read:Me'])]
+    private array $roles;
 
     #[ORM\Id]
     #[ORM\Column(name: "UID", type: "integer", nullable: false, options: ['unsigned'=> true])]
@@ -247,12 +252,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[ORM\OneToMany(mappedBy: "user", targetEntity: Papers::class)]
     #[Groups(['read:User', 'read:Me'])]
     private Collection $papers;
-
-    /**
-     * @var array
-     */
-    #[Groups(['read:User', 'read:Me'])]
-    private array $roles;
 
     public function __construct()
     {
@@ -594,12 +593,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         $user->setUid($payload['uid'] ?? null);
         $user->setUsername($payload['username'] ??  null);
         $user->setRoles($payload['roles'] ?? []);
-        $user->rvId = $payload['rvId'];
+        $user->setCurrentJournalID($payload['rvId']);
         return $user;
     }
 
     public function getUserIdentifier(): string
     {
         return $this->getUsername();
+    }
+
+    public function setCurrentJournalID(?int $currentJournalID): self
+    {
+        $this->currentJournalID = $currentJournalID;
+        return $this;
+    }
+
+    public function getCurrentJournalID(): ?int
+    {
+        return $this->currentJournalID;
     }
 }
