@@ -69,7 +69,7 @@ class PaperConflicts
     )]
     private $date = 'CURRENT_TIMESTAMP';
 
-    #[ORM\ManyToOne(inversedBy: 'conflicts')]
+    #[ORM\ManyToOne( fetch: 'LAZY', inversedBy: 'conflicts')]
     #[ORM\JoinColumn(name: 'paper_id', referencedColumnName: 'PAPERID', nullable: true)]
     private ?Papers $papers = null;
 
