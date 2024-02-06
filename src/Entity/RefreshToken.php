@@ -51,23 +51,10 @@ class RefreshToken extends BaseRefreshToken
 
     public static function createForUserWithTtl(string $refreshToken, User|UserInterface $user, int $ttl): RefreshTokenInterface
     {
-        $valid = new \DateTime();
-
-        // Explicitly check for a negative number based on a behavior change in PHP 8.2, see https://github.com/php/php-src/issues/9950
-        if ($ttl > 0) {
-            $valid->modify('+'.$ttl.' seconds');
-        } elseif ($ttl < 0) {
-            $valid->modify($ttl.' seconds');
-        }
-
-        $model = new static();
-        $model->setRefreshToken($refreshToken);
-        $model->setUsername(method_exists($user, 'getUserIdentifier') ? $user->getUserIdentifier() : $user->getUsername());
-        $model->setValid($valid);
-
+        /** @var  $model static */
+        $model = Parent::createForUserWithTtl($refreshToken, $user, $ttl);
         $model->setRvid($user->getCurrentJournalID());
         $model->setDate();
-
 
         return $model;
     }
