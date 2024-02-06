@@ -6,8 +6,12 @@ use App\Entity\Review;
 
 final class AppConstants
 {
-    public const AVAILABLE_FILTERS = ['rvid', 'repoid', 'status', 'submissionDate', 'withDetails'];
+    public const AVAILABLE_FILTERS = ['rvid', 'repoid', 'status', 'submissionDate', 'withDetails', 'startAfterDate', 'flag'];
     public const WITH_DETAILS = 'withDetails';
+    public const PAPER_STATUS = 'status';
+    public const PAPER_FLAG = 'flag';
+    public const START_AFTER_DATE = 'startAfterDate';
+    public const SUBMISSION_DATE = 'submissionDate';
     public const STATS_DASHBOARD_ITEM = 'get_stats_dashboard_item';
     public const STATS_NB_SUBMISSIONS_ITEM = 'get_stats_nb_submissions_item';
     public const STATS_DELAY_SUBMISSION_ACCEPTANCE = 'get_delay_between_submit_and_acceptance_item';

@@ -70,6 +70,14 @@ use App\OpenApi\OpenApiFactory;
                 description: "",
                 parameters: [
                     new Parameter(
+                        name: AppConstants::START_AFTER_DATE,
+                        in: 'query',
+                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                    ),
+                    new Parameter(
                         name: AppConstants::WITH_DETAILS,
                         in: 'query',
                         description: 'More details',
@@ -97,6 +105,14 @@ use App\OpenApi\OpenApiFactory;
                 summary: "Total number of submissions",
                 description: "",
                 parameters: [
+                    new Parameter(
+                        name: AppConstants::START_AFTER_DATE,
+                        in: 'query',
+                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                    ),
                     new Parameter(
                         name: AppConstants::WITH_DETAILS,
                         in: 'query',
@@ -126,6 +142,14 @@ use App\OpenApi\OpenApiFactory;
                 description: "Average time in days between submission and acceptance",
                 parameters: [
                     new Parameter(
+                        name: AppConstants::START_AFTER_DATE,
+                        in: 'query',
+                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                    ),
+                    new Parameter(
                         name: AppConstants::WITH_DETAILS,
                         in: 'query',
                         description: 'More details',
@@ -153,6 +177,14 @@ use App\OpenApi\OpenApiFactory;
                 summary: "Average time in days between submission and publication",
                 description: "Average time in days between submission and publication",
                 parameters: [
+                    new Parameter(
+                        name: AppConstants::START_AFTER_DATE,
+                        in: 'query',
+                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                    ),
                     new Parameter(
                         name: AppConstants::WITH_DETAILS,
                         in: 'query',
@@ -187,7 +219,11 @@ use App\OpenApi\OpenApiFactory;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
-                    )
+                        schema: [
+                            'type' => 'datetime',
+
+                        ]
+                    ),
                 ]
             ),
             normalizationContext: [

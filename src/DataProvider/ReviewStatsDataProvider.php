@@ -13,7 +13,7 @@ use App\Entity\Review;
 final class ReviewStatsDataProvider extends AbstractDataProvider implements ProviderInterface
 {
 
-    public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS];
+    public const AVAILABLE_FILTERS = [AppConstants::START_AFTER_DATE, AppConstants::WITH_DETAILS];
 
 
     public function supports(Operation $operation = null): bool

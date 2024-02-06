@@ -59,4 +59,11 @@ trait ToolsTrait
         return $result;
     }
 
+    public static function isValidDate($date, $format = 'Y-m-d'): bool
+    {
+        $tDate = \DateTime::createFromFormat($format, $date);
+        return $tDate && $tDate->format($format) === $date;
+    }
+
+
 }

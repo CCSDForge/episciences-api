@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v1.1.4 2025-02-05
 ### Changed
-JWT Refresh Token: set 'single_use' param. to true: if refresh token is consumed, a new refresh token will be provided.
+- add an option to ignore statistics before a given date + improvements
+- JWT Refresh Token: set 'single_use' param. to true: if refresh token is consumed, a new refresh token will be provided.
 
 ### Fixed
 - Loss of roles when requesting a new token with a refresh token & new attribute User::currentJournalID & refactoring.

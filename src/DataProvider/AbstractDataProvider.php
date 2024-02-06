@@ -8,14 +8,17 @@ use App\Entity\PaperLog;
 use App\Entity\Papers;
 use App\Entity\Review;
 use App\Entity\User;
+use App\Repository\PapersRepository;
 use App\Resource\AbstractStatResource;
 use App\Resource\DashboardOutput;
 use App\Traits\CheckExistingResourceTrait;
+use App\Traits\ToolsTrait;
 use Doctrine\ORM\EntityManagerInterface;
 
 abstract class AbstractDataProvider
 {
     use CheckExistingResourceTrait;
+    use ToolsTrait;
 
     private EntityManagerInterface $entityManagerInterface;
 
@@ -34,17 +37,9 @@ abstract class AbstractDataProvider
         $result = null;
         $cFilters = $context['filters'] ?? [];
 
-        if (isset($context['uri_variables'])) {
+        if (isset($context['uri_variables'])) { // exp. {code} = rvcode
 
-            $filters['is'] = $context['uri_variables'];
-            $withDetails = isset($context['filters']) &&
-                array_key_exists(AppConstants::WITH_DETAILS, $context['filters']);
-
-            if ($withDetails) {
-                $filters['is'][AppConstants::WITH_DETAILS] = true;
-            } else {
-                $context['filters'] = [];
-            }
+            $filters['is'] = $context['uri_variables']; // available filters
 
             $journal = $this->
             entityManagerInterface->
@@ -56,6 +51,8 @@ abstract class AbstractDataProvider
 
 
             $filters['is']['rvid'] = (string)$journal->getRvid();
+
+            $this->addFilters($filters['is'], $operation->getName(), $cFilters);
 
             if ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][1]) {
                 $result = $this->entityManagerInterface->
@@ -70,7 +67,7 @@ abstract class AbstractDataProvider
                 getRepository(PaperLog::class)->
                 getDelayBetweenSubmissionAndLatestStatus($filters, Papers::STATUS_PUBLISHED);
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][0]) {
-                $result = $this->getDashboard($context, $filters, $withDetails);
+                $result = $this->getDashboard($context, $filters);
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][4]) {
                 $result = $this->entityManagerInterface->
                 getRepository(User::class)->
@@ -87,7 +84,7 @@ abstract class AbstractDataProvider
     }
 
 
-    private function getDashboard($context, $filters, $withDetails): DashboardOutput
+    private function getDashboard($context, $filters): DashboardOutput
     {
 
         $result = new DashboardOutput();
@@ -103,16 +100,13 @@ abstract class AbstractDataProvider
         getRepository(PaperLog::class)->
         getDelayBetweenSubmissionAndLatestStatus($filters, Papers::STATUS_PUBLISHED);
 
+
         $totalPublished = $papersRepo
             ->submissionsQuery([
-                'is' => [
-                    'rvid' => $filters['is']['rvid'] ?? null,
-                    'status' => Papers::STATUS_PUBLISHED
-                ]
+                'is' => array_merge($filters['is'], ['status' => Papers::STATUS_PUBLISHED])
             ])
             ->getQuery()
             ->getSingleScalarResult();
-
 
 
         // aggregate stats
@@ -128,7 +122,7 @@ abstract class AbstractDataProvider
             $values[$users->getName()] = $users->getValue();
         }
 
-        if ($withDetails) {
+        if (isset($filters['is'][AppConstants::WITH_DETAILS])) {
 
             $details = [
                 $submissions->getName() => $submissions->getDetails(),
@@ -146,7 +140,7 @@ abstract class AbstractDataProvider
 
         $result->
         setAvailableFilters(ReviewStatsDataProvider::AVAILABLE_FILTERS)->
-        setRequestedFilters($context['filters'])->
+        setRequestedFilters($context['filters']??[])->
         setName('dashboard')->
         setValue($values);
 
@@ -154,6 +148,42 @@ abstract class AbstractDataProvider
 
     }
 
+    private function addFilters(array &$availableFilters, string $operationName, array &$contextFilters = []): void
+    {
+
+
+        if (isset($contextFilters[AppConstants::START_AFTER_DATE])) {
+            $startDate = urldecode($contextFilters[AppConstants::START_AFTER_DATE]);
+
+
+            if (
+                self::isValidDate($startDate)) {
+                $availableFilters[AppConstants::START_AFTER_DATE] = $startDate;
+            }
+
+
+        }
+
+        if (isset($contextFilters[AppConstants::WITH_DETAILS])) {
+            $availableFilters[AppConstants::WITH_DETAILS] = true;
+        }
+
+        // by operation name: enable additional filters
+        if ($operationName === AppConstants::STATS_NB_SUBMISSIONS_ITEM) {
+
+            foreach ($contextFilters as $filter => $value) {
+
+                if (
+                    !isset($availableFilters[$filter]) &&
+                    in_array($filter, PapersRepository::AVAILABLE_FILTERS, true)
+                ) {
+                    $availableFilters[$filter] = $value;
+                }
+
+            }
+
+        }
+    }
 
 }
 

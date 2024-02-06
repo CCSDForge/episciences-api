@@ -72,9 +72,9 @@ class OpenApiFactory implements OpenApiFactoryInterface
                 $openApi->getPaths()->addPath($key, $path->withGet(null));
             }
 
-            if ($path->getPost() && ($path->getPost()->getOperationId() === self::JWT_POST_LOGIN_OPERATION_ID)) {
-                $openApi->getPaths()->addPath($key, $path->withPost(null));
-            }
+//            if ($path->getPost() && ($path->getPost()->getOperationId() === self::JWT_POST_LOGIN_OPERATION_ID)) {
+//                $openApi->getPaths()->addPath($key, $path->withPost(null));
+//            }
 
         }
 

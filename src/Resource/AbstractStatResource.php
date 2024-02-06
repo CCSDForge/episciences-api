@@ -102,9 +102,9 @@ abstract class AbstractStatResource
     }
 
     /**
-     * @return array
+     * @return array|null
      */
-    public function getDetails(): array
+    public function getDetails(): ?array
     {
         return $this->details;
     }

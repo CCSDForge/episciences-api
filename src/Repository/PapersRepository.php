@@ -26,7 +26,7 @@ class PapersRepository extends ServiceEntityRepository
 {
     use ToolsTrait;
 
-    public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS];
+    public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::PAPER_FLAG, AppConstants::PAPER_STATUS];
     public const PAPERS_ALIAS = 'p';
     public const LOCAL_REPOSITORY = 0;
 
@@ -61,7 +61,7 @@ class PapersRepository extends ServiceEntityRepository
      * @param bool $excludeImportedPapers
      * @return QueryBuilder
      */
-    public function submissionsQuery(array $filters = [], bool $excludeTmpVersions = false, string $fieldDateToBeUsed = 'submissionDate', bool $excludeImportedPapers = false): QueryBuilder
+    public function submissionsQuery(array $filters = [], bool $excludeTmpVersions = false, string $fieldDateToBeUsed = 'submissionDate', bool $excludeImportedPapers = false, string $flag = null): QueryBuilder
     {
 
         $qb = $this
@@ -87,6 +87,11 @@ class PapersRepository extends ServiceEntityRepository
             $qb
                 ->andWhere('p.flag = :flag')
                 ->setParameter('flag', self::AVAILABLE_FLAG_VALUES['submitted']);
+        } elseif ($flag && array_key_exists($flag, self::AVAILABLE_FLAG_VALUES)) {
+            $qb
+                ->andWhere('p.flag = :flag')
+                ->setParameter('flag', $flag);
+
         }
 
         return $qb;
@@ -190,9 +195,9 @@ class PapersRepository extends ServiceEntityRepository
                 if (null !== $rvId && !$year && null === $status && null === $repoId) { // by review
                     $rvIdResult = $this->applyFilterBy($submissionsStats, 'rvid', $rvId);
                     $details[self::MORE_DETAILS] = $this->reformatData($rvIdResult[$rvId]);
-                    $repositories = $this->getAvailableRepositories((int)$rvId);
+                    $repositories = $this->getAvailableRepositories($filters);
 
-                    foreach ($this->getAvailableSubmissionYears((int)$rvId) as $year) { // pour le dashboard
+                    foreach ($this->getAvailableSubmissionYears($filters) as $year) { // pour le dashboard
                         try {
                             $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $this->
                             submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->
@@ -221,8 +226,8 @@ class PapersRepository extends ServiceEntityRepository
                                     $totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] :
                                     0;
 
-                            $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE]  = $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] ?
-                                    round($details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] / $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] * 100, 2) : 0;
+                            $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE] = $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] ?
+                                round($details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] / $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] * 100, 2) : 0;
 
 
                             foreach ($repositories as $repoId) {
@@ -381,9 +386,11 @@ class PapersRepository extends ServiceEntityRepository
 
             foreach ($filters['is'] as $name => $value) {
 
+
                 if ($name === AppConstants::WITH_DETAILS) {
                     continue;
                 }
+
                 if (
                     (null === $value || '' === $value) || // not use empty
                     !in_array($name, AppConstants::AVAILABLE_FILTERS, true)
@@ -391,8 +398,17 @@ class PapersRepository extends ServiceEntityRepository
                     continue;
                 }
 
-                if ('submissionDate' === $name) {
-                    $qb->andWhere('YEAR(' . self::PAPERS_ALIAS . '.' . $date . ') =:' . $name);
+
+                if (
+                    $name === AppConstants::SUBMISSION_DATE ||
+                    $name === AppConstants::START_AFTER_DATE
+                ) {
+
+                    if ($name === AppConstants::SUBMISSION_DATE) { // stats by year
+                        $qb->andWhere('YEAR(' . self::PAPERS_ALIAS . '.' . $date . ') =:' . $name);
+                    } else {
+                        $qb->andWhere(self::PAPERS_ALIAS . '.' . $date . ' >=:' . $name);
+                    }
 
                 } elseif (is_array($value)) {
                     $qb->andWhere(self::PAPERS_ALIAS . '.' . $name . ' IN (:' . $name . ')');
@@ -407,7 +423,7 @@ class PapersRepository extends ServiceEntityRepository
         return $qb;
     }
 
-    public function getAvailableSubmissionYears(int $rvId = null): array
+    public function getAvailableSubmissionYears(array $filters = null, string $flag = null): array
     {
 
         $years = [];
@@ -415,13 +431,13 @@ class PapersRepository extends ServiceEntityRepository
         $alias = self::PAPERS_ALIAS;
         $qb = $this->createQueryBuilder(self::PAPERS_ALIAS);
         $qb->select("YEAR($alias.submissionDate) as year");
+        $qb = $this->addQueryFilters($qb, $filters, 'submissionDate');
 
-       // $qb->where("$alias.flag = submitted");
+        if ($flag && array_key_exists($flag, self::AVAILABLE_FLAG_VALUES)) {
 
-
-        if (null !== $rvId) {
-            $qb->where("$alias.rvid =:rvId");
-            $qb->setParameter('rvId', $rvId);
+            $qb
+                ->andWhere("$alias.flag = :flag")
+                ->setParameter('flag', self::AVAILABLE_FLAG_VALUES[$flag]);
         }
 
         $qb->orderBy('year', 'ASC');
@@ -443,7 +459,7 @@ class PapersRepository extends ServiceEntityRepository
 
     }
 
-    public function getAvailableRepositories(int $rvId = null, $strict = true): array
+    public function getAvailableRepositories(array $filters = null, $strict = true): array
     {
 
         $repositories = [];
@@ -452,10 +468,7 @@ class PapersRepository extends ServiceEntityRepository
         $qb = $this->createQueryBuilder(self::PAPERS_ALIAS);
         $qb->select("$alias.repoid");
 
-        if (null !== $rvId) {
-            $qb->where("$alias.rvid =:rvId");
-            $qb->setParameter('rvId', $rvId);
-        }
+        $qb = $this->addQueryFilters($qb, $filters, 'submissionDate');
 
 
         $qb->groupBy("$alias.repoid");
