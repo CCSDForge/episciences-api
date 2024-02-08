@@ -32,18 +32,17 @@ final class StatResourceSubscriber implements EventSubscriberInterface
      */
     public function checkStatResourceAvailability(ViewEvent $event): void
     {
-        /** @var  Generator $generator */
-        $generator = $event->getControllerResult();
 
-        if (!$generator instanceof Generator) {
+        if (!$event->getRequest()->isMethodSafe()){
             return;
         }
 
-        $statResource = $generator->current();
+        $statResource  = $event->getControllerResult();
 
-        if (!$statResource instanceof AbstractStatResource || !$event->getRequest()->isMethodSafe()) {
+        if (!$statResource instanceof AbstractStatResource) {
             return;
         }
+        
 
         $arrayDiff = $this->checkFilters($statResource->getAvailableFilters(), $statResource->getRequestedFilters());
 
