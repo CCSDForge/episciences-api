@@ -140,7 +140,7 @@ abstract class AbstractDataProvider
 
         $result->
         setAvailableFilters(ReviewStatsDataProvider::AVAILABLE_FILTERS)->
-        setRequestedFilters($context['filters']??[])->
+        setRequestedFilters($context['filters'] ?? [])->
         setName('dashboard')->
         setValue($values);
 
@@ -161,11 +161,14 @@ abstract class AbstractDataProvider
                 $availableFilters[AppConstants::START_AFTER_DATE] = $startDate;
             }
 
-
         }
 
         if (isset($contextFilters[AppConstants::WITH_DETAILS])) {
             $availableFilters[AppConstants::WITH_DETAILS] = true;
+        }
+
+        if (isset($contextFilters[AppConstants::YEAR_PARAM])) {
+            $availableFilters['submissionDate'] = $contextFilters[AppConstants::YEAR_PARAM];
         }
 
         // by operation name: enable additional filters
