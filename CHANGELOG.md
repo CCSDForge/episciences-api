@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
+### fixed
+- not available "year" parameter in query.
 
 ## v1.1.4 2025-02-05
 ### Changed
