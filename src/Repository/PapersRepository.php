@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\AppConstants;
+use App\DataProvider\ReviewStatsDataProvider;
 use App\Entity\PaperLog;
 use App\Entity\Papers;
 use App\Resource\SubmissionOutput;
@@ -26,7 +27,7 @@ class PapersRepository extends ServiceEntityRepository
 {
     use ToolsTrait;
 
-    public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::PAPER_FLAG, AppConstants::PAPER_STATUS];
+    public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::PAPER_FLAG, AppConstants::PAPER_STATUS, AppConstants::PAPER_STATUS, AppConstants::YEAR_PARAM];
     public const PAPERS_ALIAS = 'p';
     public const LOCAL_REPOSITORY = 0;
 
@@ -161,7 +162,7 @@ class PapersRepository extends ServiceEntityRepository
 
         $filters['is'][AppConstants::WITH_DETAILS] = $withDetails;
 
-        $details = null;
+        $details = [];
 
 //        if (null === $rvId) {
 //            $allSubmissionsQb = $this->submissionsQuery();
@@ -192,54 +193,9 @@ class PapersRepository extends ServiceEntityRepository
 
             if (!empty($submissionsStats)) {
 
-                if (null !== $rvId && !$year && null === $status && null === $repoId) { // by review
+                if (null !== $rvId && null === $status && null === $repoId) { // by review
                     $rvIdResult = $this->applyFilterBy($submissionsStats, 'rvid', $rvId);
                     $details[self::MORE_DETAILS] = $this->reformatData($rvIdResult[$rvId]);
-                    $repositories = $this->getAvailableRepositories($filters);
-
-                    foreach ($this->getAvailableSubmissionYears($filters) as $year) { // pour le dashboard
-                        try {
-                            $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $this->
-                            submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->
-                            getQuery()->
-                            getSingleScalarResult();
-
-                            $details[self::SUBMISSIONS_BY_YEAR][$year]['publications'] = $this->
-                            submissionsQuery(
-                                [
-                                    'is' => [
-                                        'rvid' => $rvId,
-                                        'status' => Papers::STATUS_PUBLISHED,
-                                        'submissionDate' => $year
-                                    ]
-                                ], false, 'publicationDate'
-                            )->
-                            getQuery()->getSingleScalarResult();
-
-
-                            $plRepo = $this->getEntityManager()->getRepository(PaperLog::class);
-
-                            $totalNumberOfPapersAcceptedSubmittedSameYear = $plRepo->getTotalNumberOfPapersByStatus($rvId);
-
-                            $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] =
-                                isset($totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year]) ?
-                                    $totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] :
-                                    0;
-
-                            $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE] = $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] ?
-                                round($details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] / $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] * 100, 2) : 0;
-
-
-                            foreach ($repositories as $repoId) {
-                                $details['submissionsByRepo'][$year][$repoId]['submissions'] = $this->
-                                submissionsQuery(
-                                    ['is' => ['rvid' => $rvId, 'submissionDate' => $year, 'repoid' => $repoId]
-                                    ])->getQuery()->getSingleScalarResult();
-                            }
-                        } catch (NoResultException|NonUniqueResultException $e) {
-                            $this->logger->error($e->getMessage());
-                        }
-                    }
 
 
                 } elseif (null === $rvId && $year && null === $status && $repoId === null) { // by year
@@ -323,6 +279,15 @@ class PapersRepository extends ServiceEntityRepository
                 }
 
             }
+
+            $navFiltersWithoutYear = $filters;
+            unset($navFiltersWithoutYear['is']['submissionDate']);
+            $navigation = $this->getAvailableSubmissionYears($navFiltersWithoutYear);
+
+            $details['years']['ref'] = self::REF_YEAR;
+            $details['years']['indicator'] = $navigation;
+
+            $this->getSubmissionByYearStats($filters, $rvId, $details);
 
         }
 
@@ -483,6 +448,62 @@ class PapersRepository extends ServiceEntityRepository
         }
 
         return $repositories;
+    }
+
+    /**
+     * @param array $filters
+     * @param mixed $rvId
+     * @param array $details
+     * @return void
+     */
+    private function getSubmissionByYearStats(array $filters, mixed $rvId, array &$details = []): void
+    {
+        $repositories = $this->getAvailableRepositories($filters);
+
+        foreach ($this->getAvailableSubmissionYears($filters) as $year) { // pour le dashboard
+            try {
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $this->
+                submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->
+                getQuery()->
+                getSingleScalarResult();
+
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['publications'] = $this->
+                submissionsQuery(
+                    [
+                        'is' => [
+                            'rvid' => $rvId,
+                            'status' => Papers::STATUS_PUBLISHED,
+                            'submissionDate' => $year
+                        ]
+                    ], false, 'publicationDate'
+                )->
+                getQuery()->getSingleScalarResult();
+
+
+                $plRepo = $this->getEntityManager()->getRepository(PaperLog::class);
+
+                $totalNumberOfPapersAcceptedSubmittedSameYear = $plRepo->getTotalNumberOfPapersByStatus($rvId);
+
+                $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] =
+                    isset($totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year]) ?
+                        $totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] :
+                        0;
+
+                $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE] = $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] ?
+                    round($details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] / $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] * 100, 2) : 0;
+
+
+                foreach ($repositories as $repoId) {
+                    $details['submissionsByRepo'][$year][$repoId]['submissions'] = $this->
+                    submissionsQuery(
+                        ['is' => ['rvid' => $rvId, 'submissionDate' => $year, 'repoid' => $repoId]
+                        ])->getQuery()->getSingleScalarResult();
+                }
+            } catch (NoResultException|NonUniqueResultException $e) {
+                $this->logger->error($e->getMessage());
+            }
+        }
+
     }
 
 }

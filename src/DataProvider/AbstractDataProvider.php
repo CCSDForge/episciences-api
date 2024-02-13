@@ -117,7 +117,7 @@ abstract class AbstractDataProvider
             $publicationsDelay->getName() => $publicationsDelay->getValue()
         ];
 
-        if (!isset($filters['is']['year'])) {
+        if (!isset($filters['is']['submissionDate'])) { // Roles cannot be sorted by year of creation
             $users = $this->entityManagerInterface->getRepository(User::class)->getUserStats($filters['is']);
             $values[$users->getName()] = $users->getValue();
         }

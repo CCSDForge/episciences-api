@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\AppConstants;
+use App\DataProvider\ReviewStatsDataProvider;
 use App\Entity\PaperLog;
 use App\Entity\Papers;
 use App\Resource\AbstractStatResource;
@@ -28,7 +29,7 @@ class PaperLogRepository extends ServiceEntityRepository
 {
     use ToolsTrait;
 
-    public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS];
+    public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE];
 
     private LoggerInterface $logger;
 
@@ -80,7 +81,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
         $statResource = $latestStatus ? new SubmissionPublicationDelayOutput() : new SubmissionAcceptanceDelayOutput();
         $statResource->setDetails([]);
-        $statResource->setAvailableFilters(self::AVAILABLE_FILTERS);
+        $statResource->setAvailableFilters(ReviewStatsDataProvider::AVAILABLE_FILTERS);
         $statResource->setRequestedFilters($filters['is']);
         $statResourceName = $method . ucwords(strtolower($unit)) . 'sSubmission';
         $statResourceName .= $latestStatus === Papers::STATUS_PUBLISHED ? 'Publication' : 'Acceptation';
@@ -89,7 +90,7 @@ class PaperLogRepository extends ServiceEntityRepository
         $conn = $this->getEntityManager()->getConnection();
 
         try {
-            $stmt = $conn->prepare($this->getRawSql($unit, $latestStatus, $startDate));
+            $stmt = $conn->prepare($this->getRawSql($unit, $latestStatus, $startDate, $year));
 
             $result = $stmt->executeQuery()->fetchAllAssociative();
 
@@ -131,18 +132,15 @@ class PaperLogRepository extends ServiceEntityRepository
                 $details = $this->applyFilterBy($result, 'rvid', $rvId);
 
                 if ($withDetails) {
-                    $statResource->setDetails($details);
+                    $reformattedResult = $this->reformatData($details);
+                    if (isset($reformattedResult[$rvId])) {
+                        $statResource->setDetails($reformattedResult[$rvId]);
+                        $statResource->setValue((float)$reformattedResult[$rvId][$year]['delay']);
+
+                    }
+
                 }
 
-                if (array_key_exists($rvId, $details)) {
-                    foreach ($details [$rvId] as $key => $value) {
-                        if ((int)$value['year'] === (int)$year) {
-                            $yearResult[$rvId] = $value;
-                            $statResource->setValue((float)$yearResult[$rvId]['delay']);
-                            return $statResource;
-                        }
-                    }
-                }
                 $statResource->setValue(null);
                 return $statResource;
             }
@@ -208,25 +206,31 @@ class PaperLogRepository extends ServiceEntityRepository
         return $result;
     }
 
-    private function getRawSql(string $unit, int $latestStatus, string $startStatsDate = null): string
+    private function getRawSql(string $unit, int $latestStatus, string $startStatsDate = null, $year= null): string
     {
 
 
-        return "
-             SELECT year, RVID AS rvid, ROUND(AVG(delay), 0) AS delay
-             FROM ( 
-                 SELECT YEAR(SUBMISSION_FROM_LOGS.DATE) AS year, SUBMISSION_FROM_LOGS.RVID, ABS(TIMESTAMPDIFF($unit, SUBMISSION_FROM_LOGS.DATE, JOINED_TABLE_ALIAS.DATE)) AS delay
-                 FROM ( 
-                      SELECT * 
-                      FROM PAPER_LOG WHERE ACTION LIKE 'status' AND PAPER_LOG.DATE >= '$startStatsDate' AND (DETAIL LIKE '{\"status\":" . Papers::STATUS_SUBMITTED . "}' OR DETAIL LIKE '{\"status\":\"" . Papers::STATUS_SUBMITTED . "\"}' ) GROUP BY PAPERID 
-                      ) AS SUBMISSION_FROM_LOGS INNER JOIN (   
-                                                SELECT *
-                                                FROM PAPER_LOG 
-                                                WHERE ACTION LIKE 'status' AND PAPER_LOG.DATE >= '$startStatsDate' AND (DETAIL LIKE '{\"status\":\"$latestStatus\"}' OR DETAIL LIKE '{\"status\":$latestStatus}') 
-                                                GROUP BY PAPERID ) AS JOINED_TABLE_ALIAS USING (PAPERID) 
-                 GROUP BY PAPERID ) AS DELAY_SUBMISSION_LATEST_STATUS
-             GROUP BY rvid, year 
-             ORDER BY year ASC, rvid ASC  ";
+        $sql = "SELECT year, RVID AS rvid, ROUND(AVG(delay), 0) AS delay FROM (SELECT YEAR(SUBMISSION_FROM_LOGS.DATE) AS year, SUBMISSION_FROM_LOGS.RVID, ABS(TIMESTAMPDIFF($unit, SUBMISSION_FROM_LOGS.DATE, JOINED_TABLE_ALIAS.DATE)) AS delay FROM (SELECT * FROM PAPER_LOG WHERE ACTION LIKE 'status' ";
+
+        if($startStatsDate) {
+            $sql .= "AND PAPER_LOG.DATE >= '$startStatsDate'";
+        }
+
+        $sql .=  "AND (DETAIL LIKE '{\"status\":" . Papers::STATUS_SUBMITTED . "}' OR DETAIL LIKE '{\"status\":\"" . Papers::STATUS_SUBMITTED . "\"}' ) GROUP BY PAPERID) AS SUBMISSION_FROM_LOGS INNER JOIN (SELECT * FROM PAPER_LOG WHERE ACTION LIKE 'status' ";
+
+        if ($startStatsDate){
+            $sql .=  "AND PAPER_LOG.DATE >= '$startStatsDate'";
+        }
+
+        $sql .= " AND (DETAIL LIKE '{\"status\":\"$latestStatus\"}' OR DETAIL LIKE '{\"status\":$latestStatus}') GROUP BY PAPERID ) AS JOINED_TABLE_ALIAS USING (PAPERID) GROUP BY PAPERID ) AS DELAY_SUBMISSION_LATEST_STATUS";
+
+        if($year) {
+            $sql .= " WHERE `year` = '$year'";
+        }
+
+        $sql .= " GROUP BY rvid, year ORDER BY year ASC, rvid ASC  ";
+
+        return $sql;
 
     }
 
