@@ -5,7 +5,7 @@ namespace App\Resource;
 use ApiPlatform\Metadata\ApiProperty;
 use App\AppConstants;
 use JsonException;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 abstract class AbstractStatResource
 {

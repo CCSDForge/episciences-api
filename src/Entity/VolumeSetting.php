@@ -5,7 +5,7 @@ namespace App\Entity;
 use ApiPlatform\Metadata\ApiProperty;
 use App\AppConstants;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 
 #[ORM\Table(name: self::TABLE)]
