@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
+### Changed
+- Upgrade from Symfony 6.4 to 7.0
+
 ## v1.1.5 2025-02-12
 ### Fixed
 - not available "year" parameter in query.
