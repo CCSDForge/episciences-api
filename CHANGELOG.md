@@ -14,8 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
-## Unreleased
-### Fixed:
+
+## v1.1.7 2025-02-15
+### Fixed
 - related to the option to ignore statistics before a given date: not considered parameter: startAfterDate.
 
 ## v1.1.6 2025-02-14
