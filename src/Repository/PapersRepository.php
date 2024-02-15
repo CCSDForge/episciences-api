@@ -458,6 +458,7 @@ class PapersRepository extends ServiceEntityRepository
      */
     private function getSubmissionByYearStats(array $filters, mixed $rvId, array &$details = []): void
     {
+        $startAfterDate = $filters['is']['startAfterDate'] ?? null;
         $repositories = $this->getAvailableRepositories($filters);
 
         foreach ($this->getAvailableSubmissionYears($filters) as $year) { // pour le dashboard
@@ -473,7 +474,8 @@ class PapersRepository extends ServiceEntityRepository
                         'is' => [
                             'rvid' => $rvId,
                             'status' => Papers::STATUS_PUBLISHED,
-                            'submissionDate' => $year
+                            AppConstants::SUBMISSION_DATE => $year,
+                            AppConstants::START_AFTER_DATE
                         ]
                     ], false, 'publicationDate'
                 )->
@@ -496,7 +498,7 @@ class PapersRepository extends ServiceEntityRepository
                 foreach ($repositories as $repoId) {
                     $details['submissionsByRepo'][$year][$repoId]['submissions'] = $this->
                     submissionsQuery(
-                        ['is' => ['rvid' => $rvId, 'submissionDate' => $year, 'repoid' => $repoId]
+                        ['is' => ['rvid' => $rvId, AppConstants::SUBMISSION_DATE => $year, 'repoid' => $repoId, AppConstants::START_AFTER_DATE => $startAfterDate]
                         ])->getQuery()->getSingleScalarResult();
                 }
             } catch (NoResultException|NonUniqueResultException $e) {
