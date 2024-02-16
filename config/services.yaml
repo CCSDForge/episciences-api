@@ -38,3 +38,10 @@ services:
         class: App\Security\AppCustomJWTAuthenticator
         parent: lexik_jwt_authentication.security.jwt_authenticator
 
+    'App\Serializer\ApiNormalizer': # JSON-LD format
+        decorates: 'api_platform.jsonld.normalizer.item'
+
+    'app.serializer.normalizer.item.json': #JSONformat
+        class: 'App\Serializer\ApiNormalizer'
+        decorates: 'api_platform.serializer.normalizer.item'
+

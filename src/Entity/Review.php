@@ -37,7 +37,7 @@ use App\OpenApi\OpenApiFactory;
                 tags: [OpenApiFactory::OAF_TAGS['review']],
                 summary: 'Journal',
                 description: 'Retrieves a Journal resource.',
-                security: [['bearerAuth' =>  []],]
+                security: [['bearerAuth' => []],]
             ),
 
             normalizationContext: [
@@ -52,13 +52,13 @@ use App\OpenApi\OpenApiFactory;
                 tags: [OpenApiFactory::OAF_TAGS['review']],
                 summary: 'All Journals',
                 description: 'Retrieves the collection of active journals',
-                security: [['bearerAuth' =>  []],]
+                security: [['bearerAuth' => []],]
             ),
             normalizationContext: [
                 'groups' => ['read:Reviews']
             ],
 
-            //security: "is_granted('ROLE_EPIADMIN')",
+        //security: "is_granted('ROLE_EPIADMIN')",
 
         ),
 
@@ -151,7 +151,7 @@ use App\OpenApi\OpenApiFactory;
         ),
 
         new Get(
-            uriTemplate: AppConstants::APP_CONST['custom_operations']['uri_template'][AppConstants::STATS_DELAY_SUBMISSION_ACCEPTANCE ],
+            uriTemplate: AppConstants::APP_CONST['custom_operations']['uri_template'][AppConstants::STATS_DELAY_SUBMISSION_ACCEPTANCE],
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Average time in days between submission and acceptance",
@@ -238,7 +238,7 @@ use App\OpenApi\OpenApiFactory;
             provider: ReviewStatsDataProvider::class,
         ),
         new Get(
-            uriTemplate: AppConstants::APP_CONST['custom_operations']['uri_template'][AppConstants::STATS_NB_USERS ],
+            uriTemplate: AppConstants::APP_CONST['custom_operations']['uri_template'][AppConstants::STATS_NB_USERS],
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Number of users by roles",
@@ -271,9 +271,7 @@ use App\OpenApi\OpenApiFactory;
     ],
 
     denormalizationContext: ['groups' => ['write:Review']],
-    openapi: new OpenApiOperation(
-
-    ),
+    openapi: new OpenApiOperation(),
     paginationEnabled: true,
     paginationItemsPerPage: 10,
     paginationMaximumItemsPerPage: 30
@@ -289,15 +287,27 @@ class Review
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    #[Groups(['read:Reviews', 'read:Review'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+            'read:Reviews', 'read:Review'
+        ]
+    )]
     #[ApiProperty(identifier: false)]
     private int $rvid;
 
 
-
     #[ORM\Column(name: 'CODE', type: 'string', length: 50, nullable: false)]
-    #[Groups(['read:Reviews', 'read:Review'])]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+            'read:Reviews', 'read:Review'
+        ]
+    )]
     #[ApiProperty(identifier: true)]
+
     private string $code;
 
 
@@ -319,11 +329,10 @@ class Review
     private DateTimeInterface $creation;
 
 
-   #[ORM\Column(name: 'PIWIKID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'PIWIKID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[Groups(['read:Reviews'])]
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
     private int $piwikid;
-
 
 
     #[ORM\OneToMany(mappedBy: 'review', targetEntity: Papers::class)]
@@ -338,7 +347,6 @@ class Review
         ]
 
     )]
-
     private Collection $settings;
 
     public function __construct()

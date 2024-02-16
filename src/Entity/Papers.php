@@ -261,6 +261,7 @@ class Papers implements UserOwnedInterface
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
         ])]
     private int $repoid;
 
@@ -857,9 +858,7 @@ class Papers implements UserOwnedInterface
 
     public function getStatusDictionaryLabel(): string
     {
-        return in_array($this->getStatus(), self::STATUS_DICTIONARY, true) ?
-            self::STATUS_DICTIONARY[$this->getStatus()] :
-            'UNDEFINED_STATUS_DICTIONARY_LABEL';
+        return self::STATUS_DICTIONARY[$this->getStatus()] ?? 'status_label_not_found';
     }
 
     /**
