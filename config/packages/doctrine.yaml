@@ -71,12 +71,3 @@ doctrine:
                         unix_timestamp: DoctrineExtensions\Query\Mysql\UnixTimestamp
                         utc_timestamp: DoctrineExtensions\Query\Mysql\UtcTimestamp
                         extract: DoctrineExtensions\Query\Mysql\Extract
-            customer:
-                connection: customer
-                mappings:
-                    Customer:
-                        is_bundle: false
-                        type: attribute
-                        dir: '%kernel.project_dir%/src/Entity/Customer'
-                        prefix: 'App\Entity\Customer'
-                        alias: Customer
