@@ -29,6 +29,8 @@ doctrine:
         entity_managers:
             default:
                 connection: default
+                # Opt-in to new mapping driver mode as of Doctrine ORM 2.16, https://github.com/doctrine/orm/pull/10455
+                report_fields_where_declared: true
                 mappings:
                     App:
                         is_bundle: false
