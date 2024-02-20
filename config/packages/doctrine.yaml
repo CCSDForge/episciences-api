@@ -25,7 +25,7 @@ doctrine:
     orm:
         default_entity_manager: default
         # Enables the new implementation of proxies based on lazy ghosts instead of using the legacy implementation
-        enable_lazy_ghost_objects: false
+        enable_lazy_ghost_objects: true
         entity_managers:
             default:
                 connection: default
