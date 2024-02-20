@@ -41,7 +41,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
         new Get(
             openapi: new OpenApiOperation(
                 summary: 'Article',
-                security: [['bearerAuth' =>  []],]
+                security: [['bearerAuth' => []],]
             ),
 
             normalizationContext: [
@@ -54,7 +54,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
         new GetCollection(
             openapi: new OpenApiOperation(
                 summary: 'All Papers',
-                security: [['bearerAuth' =>  []],]
+                security: [['bearerAuth' => []],]
             ),
             normalizationContext: [
                 'groups' => ['read:Papers']
@@ -63,7 +63,6 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                 'groups' => ['write:Papers']
             ]
         ),
-
 
 
     ],
@@ -75,7 +74,7 @@ class Papers implements UserOwnedInterface
 {
     public const FILTERS = [
         'rvid' => AppConstants::FILTER_TYPE_EXACT,
-        'doi' =>AppConstants::FILTER_TYPE_EXACT,
+        'doi' => AppConstants::FILTER_TYPE_EXACT,
         'paperid' => AppConstants::FILTER_TYPE_EXACT,
         'docid' => AppConstants::FILTER_TYPE_EXACT,
         'vid' => AppConstants::FILTER_TYPE_EXACT,
@@ -120,6 +119,14 @@ class Papers implements UserOwnedInterface
     public const STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MAJOR_REVISION = 31;
     public const STATUS_ACCEPTED_WAITING_FOR_AUTHOR_VALIDATION = 32;
     public const STATUS_APPROVED_BY_AUTHOR_WAITING_FOR_FINAL_PUBLICATION = 33;
+    public const PAPERS_GROUPS = [
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0]
+    ];
 
     public const ACCEPTED_SUBMISSIONS = [
         self::STATUS_ACCEPTED, // 4
@@ -141,85 +148,61 @@ class Papers implements UserOwnedInterface
 
 
     public const STATUS_DICTIONARY = [
-    self::STATUS_SUBMITTED => 'submitted',
-    self::STATUS_OK_FOR_REVIEWING => 'waitingFor reviewing',
-    self::STATUS_BEING_REVIEWED => 'underReview',
-    self::STATUS_REVIEWED => 'reviewed',
-    self::STATUS_ACCEPTED => 'accepted',
-    self::STATUS_PUBLISHED => 'published',
-    self::STATUS_REFUSED => 'refused',
-    self::STATUS_OBSOLETE => 'obsolete',
-    self::STATUS_WAITING_FOR_MINOR_REVISION => 'pendingMinorRevision',
-    self::STATUS_WAITING_FOR_MAJOR_REVISION => 'pendingMajorRevision',
-    self::STATUS_WAITING_FOR_COMMENTS => 'pendingClarification',
-    self::STATUS_TMP_VERSION => 'temporaryVersion',
-    self::STATUS_NO_REVISION => 'revisionRequestAnswerWithoutAnyModifications',
-    self::STATUS_NEW_VERSION => 'answerToRevisionRequestNewVersion',
-    self::STATUS_DELETED => 'deleted',
-    self::STATUS_ABANDONED => 'abandoned',
-    self::STATUS_CE_WAITING_FOR_AUTHOR_SOURCES => "waitingForAuthorsSources",
-    self::STATUS_CE_AUTHOR_SOURCES_SUBMITTED => 'waitingForFormattingByTheJournal',
-    self::STATUS_CE_WAITING_AUTHOR_FINAL_VERSION => "waitingForAuthorsFinalVersion",
-    self::STATUS_CE_AUTHOR_FINAL_VERSION_SUBMITTED_WAITING_FOR_VALIDATION =>
-        'finalVersionSubmittedWaitingForValidation',
-    self::STATUS_CE_REVIEW_FORMATTING_SUBMITTED => 'formattingByJournalCompletedWaitingForAFinalVersion',
-    self::STATUS_CE_AUTHOR_FORMATTING_SUBMITTED_AND_VALIDATED => "formattingByAuthorCompletedWaitingForFinalVersion",
-    self::STATUS_CE_READY_TO_PUBLISH => 'readyToPublish',
-    self::STATUS_TMP_VERSION_ACCEPTED => "acceptedTemporaryVersionWaitingForAuthorsFinalVersion",
-    self::STATUS_ACCEPTED_WAITING_FOR_AUTHOR_FINAL_VERSION => "acceptedWaitingForAuthorsFinalVersion",
-    self::STATUS_ACCEPTED_WAITING_FOR_MAJOR_REVISION => 'acceptedWaitingForMajorRevision',
-    self::STATUS_ACCEPTED_FINAL_VERSION_SUBMITTED_WAITING_FOR_COPY_EDITORS_FORMATTING =>
-        'acceptedFinalVersionSubmittedWaitingForFormattingByCopyEditors',
-    self::STATUS_TMP_VERSION_ACCEPTED_AFTER_AUTHOR_MODIFICATION =>
-        "acceptedTemporaryVersionAfterAuthorsModifications",
-    self::STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MINOR_REVISION =>
-        'acceptedTemporaryVersionWaitingForMinorRevision',
-    self::STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MAJOR_REVISION =>
-        'acceptedTemporaryVersionWaitingForMajorRevision"',
-    self::STATUS_ACCEPTED_WAITING_FOR_AUTHOR_VALIDATION => "AcceptedWaitingForAuthorsValidation",
-    self::STATUS_APPROVED_BY_AUTHOR_WAITING_FOR_FINAL_PUBLICATION => "'AcceptedWaitingForFinalPublication'",
-    self::STATUS_REMOVED => 'deletedByTheJournal',
-];
+        self::STATUS_SUBMITTED => 'submitted',
+        self::STATUS_OK_FOR_REVIEWING => 'waitingFor reviewing',
+        self::STATUS_BEING_REVIEWED => 'underReview',
+        self::STATUS_REVIEWED => 'reviewed',
+        self::STATUS_ACCEPTED => 'accepted',
+        self::STATUS_PUBLISHED => 'published',
+        self::STATUS_REFUSED => 'refused',
+        self::STATUS_OBSOLETE => 'obsolete',
+        self::STATUS_WAITING_FOR_MINOR_REVISION => 'pendingMinorRevision',
+        self::STATUS_WAITING_FOR_MAJOR_REVISION => 'pendingMajorRevision',
+        self::STATUS_WAITING_FOR_COMMENTS => 'pendingClarification',
+        self::STATUS_TMP_VERSION => 'temporaryVersion',
+        self::STATUS_NO_REVISION => 'revisionRequestAnswerWithoutAnyModifications',
+        self::STATUS_NEW_VERSION => 'answerToRevisionRequestNewVersion',
+        self::STATUS_DELETED => 'deleted',
+        self::STATUS_ABANDONED => 'abandoned',
+        self::STATUS_CE_WAITING_FOR_AUTHOR_SOURCES => "waitingForAuthorsSources",
+        self::STATUS_CE_AUTHOR_SOURCES_SUBMITTED => 'waitingForFormattingByTheJournal',
+        self::STATUS_CE_WAITING_AUTHOR_FINAL_VERSION => "waitingForAuthorsFinalVersion",
+        self::STATUS_CE_AUTHOR_FINAL_VERSION_SUBMITTED_WAITING_FOR_VALIDATION =>
+            'finalVersionSubmittedWaitingForValidation',
+        self::STATUS_CE_REVIEW_FORMATTING_SUBMITTED => 'formattingByJournalCompletedWaitingForAFinalVersion',
+        self::STATUS_CE_AUTHOR_FORMATTING_SUBMITTED_AND_VALIDATED => "formattingByAuthorCompletedWaitingForFinalVersion",
+        self::STATUS_CE_READY_TO_PUBLISH => 'readyToPublish',
+        self::STATUS_TMP_VERSION_ACCEPTED => "acceptedTemporaryVersionWaitingForAuthorsFinalVersion",
+        self::STATUS_ACCEPTED_WAITING_FOR_AUTHOR_FINAL_VERSION => "acceptedWaitingForAuthorsFinalVersion",
+        self::STATUS_ACCEPTED_WAITING_FOR_MAJOR_REVISION => 'acceptedWaitingForMajorRevision',
+        self::STATUS_ACCEPTED_FINAL_VERSION_SUBMITTED_WAITING_FOR_COPY_EDITORS_FORMATTING =>
+            'acceptedFinalVersionSubmittedWaitingForFormattingByCopyEditors',
+        self::STATUS_TMP_VERSION_ACCEPTED_AFTER_AUTHOR_MODIFICATION =>
+            "acceptedTemporaryVersionAfterAuthorsModifications",
+        self::STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MINOR_REVISION =>
+            'acceptedTemporaryVersionWaitingForMinorRevision',
+        self::STATUS_TMP_VERSION_ACCEPTED_WAITING_FOR_MAJOR_REVISION =>
+            'acceptedTemporaryVersionWaitingForMajorRevision"',
+        self::STATUS_ACCEPTED_WAITING_FOR_AUTHOR_VALIDATION => "AcceptedWaitingForAuthorsValidation",
+        self::STATUS_APPROVED_BY_AUTHOR_WAITING_FOR_FINAL_PUBLICATION => "'AcceptedWaitingForFinalPublication'",
+        self::STATUS_REMOVED => 'deletedByTheJournal',
+    ];
 
 
-
-    #[ORM\Column(name:'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
-        ]
-    )]
-
+    #[groups(self::PAPERS_GROUPS)]
     private int $docid;
 
 
     #[ORM\Column(name: 'PAPERID', type: 'integer', nullable: true, options: ['unsigned' => true])]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
-        ]
-    )]
+    #[groups(self::PAPERS_GROUPS)]
     private ?int $paperid;
 
 
-    #[ORM\Column(name: 'DOI', type: 'string', length: 250, nullable: true )]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
-
-        ]
-    )]
+    #[ORM\Column(name: 'DOI', type: 'string', length: 250, nullable: true)]
+    #[groups(self::PAPERS_GROUPS)]
     private ?string $doi;
 
 
@@ -252,18 +235,11 @@ class Papers implements UserOwnedInterface
 
 
     #[ORM\Column(name: 'STATUS', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
-        ]
-    )]
+    #[groups(self::PAPERS_GROUPS)]
     private int $status = 0;
 
 
-    #[ORM\Column(name:'IDENTIFIER', type: 'string', length: 500, nullable: false)]
+    #[ORM\Column(name: 'IDENTIFIER', type: 'string', length: 500, nullable: false)]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -289,7 +265,7 @@ class Papers implements UserOwnedInterface
     private int $repoid;
 
 
-    #[ORM\Column(name: 'RECORD', type: 'text', length: 65535, nullable: false )]
+    #[ORM\Column(name: 'RECORD', type: 'text', length: 65535, nullable: false)]
     #[groups(
         [AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],]
     )]
@@ -361,12 +337,15 @@ class Papers implements UserOwnedInterface
         ])]
     private Review $review;
 
+    #[ORM\ManyToOne(targetEntity: Section::class, inversedBy: 'papers')]
+    #[ORM\JoinColumn(name: 'SID', referencedColumnName: 'SID', nullable: true)]
+    private ?Section $section = null;
+
     #[ORM\ManyToOne(targetEntity: Volume::class, inversedBy: 'papers')]
     #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID', nullable: true)]
     private ?Volume $volume = null;
 
     #[ORM\OneToMany(mappedBy: 'papers', targetEntity: UserAssignment::class)]
-
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private Collection $assignments;
     #[groups([
@@ -392,7 +371,6 @@ class Papers implements UserOwnedInterface
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
-
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $coAuthors = [];
 
@@ -668,6 +646,18 @@ class Papers implements UserOwnedInterface
         return $this;
     }
 
+    public function getSection(): ?Section
+    {
+        return $this->section;
+    }
+
+    public function setSection(?Section $section): self
+    {
+        $this->section = $section;
+
+        return $this;
+    }
+
     /**
      * @return Collection<int, UserAssignment>
      */
@@ -741,7 +731,6 @@ class Papers implements UserOwnedInterface
         $this->reviewers = $reviewers;
         return $this;
     }
-
 
 
     private function assignmentsProcess(): void
@@ -858,7 +847,7 @@ class Papers implements UserOwnedInterface
         /** @var PaperConflicts $conflict */
 
         foreach ($this->conflicts as $conflict) {
-           $conflicts[$conflict->getBy()] = $conflict;
+            $conflicts[$conflict->getBy()] = $conflict;
         }
 
         $this->conflicts = new ArrayCollection($conflicts);
