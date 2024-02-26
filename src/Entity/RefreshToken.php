@@ -3,11 +3,9 @@
 namespace App\Entity;
 
 use App\Repository\RefreshTokenRepository;
-use Container31G4Cwd\get_Debug_ValueResolver_ArgumentResolver_DefaultService;
 use DateTime;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Gesdinet\JWTRefreshTokenBundle\Model\AbstractRefreshToken as BaseRefreshToken;
+use Gesdinet\JWTRefreshTokenBundle\Model\AbstractRefreshToken;
 use Gesdinet\JWTRefreshTokenBundle\Model\RefreshTokenInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
@@ -15,7 +13,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\Entity(repositoryClass: RefreshTokenRepository::class)]
 #[ORM\Table(name: "refresh_tokens")]
 #[ORM\UniqueConstraint(columns: ['refreshToken'])]
-class RefreshToken extends BaseRefreshToken
+class RefreshToken extends AbstractRefreshToken
 {
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
