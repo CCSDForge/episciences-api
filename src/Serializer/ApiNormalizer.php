@@ -25,9 +25,10 @@ class ApiNormalizer implements NormalizerInterface, SerializerAwareInterface
 
         $data = $this->decorated->normalize($object, $format, $context);
 
+
         if (($object instanceof Papers) && is_array($data)) {
             $data['statusLabel'] = $object->getStatusDictionaryLabel();
-            $data['repository'] = $this->metadataSourcesService->getLabel($object->getRepoid());
+            $data['repository'] = $this->metadataSourcesService->repositoryToArray($object->getRepoid());
         }
 
         return $data;
@@ -35,7 +36,7 @@ class ApiNormalizer implements NormalizerInterface, SerializerAwareInterface
 
     public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool
     {
-        return $this->decorated->supportsNormalization($data, $format);
+        return $this->decorated->supportsNormalization($data, $format, $context);
     }
 
     public function getSupportedTypes(?string $format): array

@@ -40,5 +40,11 @@ class MetadataSources
 
     }
 
+    public function repositoryToArray(int $repoId): array
+    {
+        /** @var \App\Entity\MetadataSources $repo */
+        $repo = $this->getRepositories()[$repoId];
+        return $repo->toArray();
+    }
 
 }
