@@ -10,6 +10,8 @@ your **API password** - once you have logged on to the journal site - via **My s
 
 #### The API is called up securely via a JWT token, which can be retrieved via "/api/login" endpoint: 
 
+> **_NOTE:_** `About "code": you have to use only the journal's code (e.g. "code": "epijinfo")`.
+
 ```
 curl -X 'POST' \
 'https://api-preprod.episciences.org/api/login' \
@@ -18,7 +20,7 @@ curl -X 'POST' \
 -d '{
 "username": "login",
 "password": "api pwd",
-"code": "journal’s name"
+"code": "journal’s code (e.g. epijinfo)"
 }'
 ```
 
