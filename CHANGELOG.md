@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adding Extra Data: statusLabel and repository
 - refactoring + adding measurement's unit to publication delay indicators.
 - if the journal's code is not recognized during authentication, an error 400 is returned.
+- it is now possible to override the Cache and Log directories
 ## v1.1.6 2025-02-14
 ### Fixed
 - Improvements: related to the option to ignore statistics before a given date
