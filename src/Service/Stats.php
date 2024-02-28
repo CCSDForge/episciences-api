@@ -28,6 +28,7 @@ class Stats
 
     public const SUBMISSIONS_BY_YEAR = 'submissionsByYear';
     public const STATS_UNIT = 'unit';
+    public const STATS_METHOD = 'method';
     public const TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR = 'acceptedSubmittedSameYear';
     public const ACCEPTANCE_RATE = 'acceptanceRate'; // TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR / submissions by year
     public const MORE_DETAILS = 'moreDetailsFromModifDate';
@@ -145,8 +146,9 @@ class Stats
         $statResource->setDetails([]);
         $statResource->setAvailableFilters(ReviewStatsDataProvider::AVAILABLE_FILTERS);
         $statResource->setRequestedFilters($filters['is']);
-        $statResourceName = $method . ucwords(strtolower($unit)) . 'sSubmission';
-        $statResourceName .= $latestStatus === Papers::STATUS_PUBLISHED ? 'Publication' : 'Acceptation';
+        $statResourceName = 'submission';
+        $statResourceName .= $latestStatus === Papers::STATUS_PUBLISHED ? 'Publication' : 'Acceptance';
+        $statResourceName .= 'Time';
         $statResource->setName($statResourceName);
 
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
@@ -170,11 +172,12 @@ class Stats
         if (!$year && $rvId) {
             $rvIdResult = $this->applyFilterBy($result, 'rvid', $rvId);
             if (array_key_exists($rvId, $rvIdResult)) {
-                $statResource->setValue(['value' => $this->avg($rvIdResult[$rvId]), self::STATS_UNIT => $unit]);
+                $statResource->setValue(['value' => $this->avg($rvIdResult[$rvId]), self::STATS_UNIT => $unit, self::STATS_METHOD => $method]);
             }
 
             if ($withDetails) {
-                $reformattedResult = $this->reformatPaperLogData($rvIdResult, $unit);
+
+                $reformattedResult = $this->reformatPaperLogData($rvIdResult, $unit, PaperLogRepository::DELAY, $method);
 
                 if (isset($reformattedResult[$rvId])) {
                     $statResource->setDetails($reformattedResult[$rvId]);
@@ -188,17 +191,19 @@ class Stats
         if ($year && $rvId) {
             $details = $this->applyFilterBy($result, 'rvid', $rvId);
 
-            if ($withDetails) {
-                $reformattedResult = $this->reformatPaperLogData($details, $unit);
-                if (isset($reformattedResult[$rvId])) {
+            $reformattedResult = $this->reformatPaperLogData($details, $unit,PaperLogRepository::DELAY, $method);
+
+            if (isset($reformattedResult[$rvId])) {
+
+                $statResource->setValue($reformattedResult[$rvId][$year][PaperLogRepository::DELAY]);
+
+                if ($withDetails) {
                     $statResource->setDetails($reformattedResult[$rvId]);
-                    $statResource->setValue((float)$reformattedResult[$rvId][$year]['delay']);
 
                 }
 
             }
 
-            $statResource->setValue(null);
             return $statResource;
         }
 
@@ -498,7 +503,7 @@ class Stats
                 //before reformat data : [ 8 => [0 => ["year" => 2023, PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [], ... ]
                 return $this->reformatPaperLogData(
                     $this->applyFilterBy($stmt->executeQuery()->fetchAllAssociative(), 'rvid', $rvId),
-                    null, $as
+                    null, $as, 'average'
                 );
 
                 //after: [8 => [ 2023 => [PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [2022 => ], .....
@@ -583,7 +588,7 @@ class Stats
     }
 
 
-    private function reformatPaperLogData(array $array, string $unit = null, string $extractedField = 'delay'): array
+    private function reformatPaperLogData(array $array, string $unit = null, string $extractedField = PaperLogRepository::DELAY, string $method = 'average'): array
     {
 
         $result = [];
@@ -600,7 +605,7 @@ class Stats
                     }
 
                     if ($kv === $extractedField) {
-                        $result[$rvId][$year][$kv] = $extractedField === self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR ? (int)$vv : ['value' => (float)$vv, self::STATS_UNIT => $unit];
+                        $result[$rvId][$year][$kv] = $extractedField === self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR ? (int)$vv : ['value' => (float)$vv, self::STATS_UNIT => $unit, self::STATS_METHOD => $method];
                     }
                 }
 
