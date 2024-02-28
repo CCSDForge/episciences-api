@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
-use App\AppConstants;
 use App\Entity\User;
 use App\Entity\UserRoles;
 use App\Traits\ToolsTrait;

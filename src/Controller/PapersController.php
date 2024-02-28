@@ -11,7 +11,6 @@ use App\Exception\MissingRequestParameterException;
 use Doctrine\ORM\EntityManagerInterface;
 use JetBrains\PhpStorm\NoReturn;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Routing\Exception\InvalidParameterException;
 
 class PapersController
 {

@@ -5,7 +5,6 @@ namespace App\DataProvider;
 use ApiPlatform\Metadata\Operation;
 use App\AppConstants;
 use App\Entity\Papers;
-use App\Repository\PapersRepository;
 use App\Resource\AbstractStatResource;
 use App\Service\Stats;
 use App\Traits\CheckExistingResourceTrait;

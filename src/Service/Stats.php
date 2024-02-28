@@ -9,8 +9,6 @@ use App\Entity\Papers;
 use App\Entity\Review;
 use App\Entity\User;
 use App\Repository\PaperLogRepository;
-use App\Repository\PapersRepository;
-use App\Repository\UserRepository;
 use App\Resource\AbstractStatResource;
 use App\Resource\DashboardOutput;
 use App\Resource\SubmissionAcceptanceDelayOutput;

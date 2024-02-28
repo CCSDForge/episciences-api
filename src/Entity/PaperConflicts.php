@@ -3,7 +3,6 @@
 namespace App\Entity;
 
 use App\AppConstants;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\PaperConflictsRepository;
 use Symfony\Component\Serializer\Attribute\Groups;
