@@ -47,7 +47,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
                 'content' => [
                     'application/json' => [
                         'schema' => [
-                            '$ref' => '#components/schemas/Token'
+                            '$ref' => '#/components/schemas/Token'
                         ]
                     ]
                 ]
@@ -164,7 +164,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
                     new \ArrayObject([
                             'application/json' => [
                                 'schema' => [
-                                    '$ref' => '#components/schemas/Credentials'
+                                    '$ref' => '#/components/schemas/Credentials'
                                 ]
                             ]
                         ]
@@ -195,7 +195,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
                     new \ArrayObject([
                             'application/json' => [
                                 'schema' => [
-                                    '$ref' => '#components/schemas/RefreshTokenCredential'
+                                    '$ref' => '#/components/schemas/RefreshTokenCredential'
                                 ]
                             ]
                         ]
