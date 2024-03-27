@@ -47,7 +47,7 @@ api_platform:
         json: ['application/merge-patch+json']
     swagger:
         versions: [3]
-
+    keep_legacy_inflector: false
     exception_to_status:
         # Custom mapping
         App\Exception\StatResourceNotFoundException : 404
