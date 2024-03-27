@@ -16,6 +16,11 @@ api_platform:
     # The version of the API.
     version: '1.0.0'
 
+    formats:
+        jsonld: ['application/ld+json']
+        json: ['application/json']
+        html: ['text/html']
+
     # Set this to false if you want Webby to disappear.
     show_webby: false
     openapi:
