@@ -4,14 +4,10 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\AppConstants;
-use App\DataProvider\ReviewStatsDataProvider;
-use App\Entity\PaperLog;
 use App\Entity\Papers;
-use App\Resource\SubmissionOutput;
+use App\Service\Stats;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\ORM\NonUniqueResultException;
-use Doctrine\ORM\NoResultException;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
@@ -27,7 +23,6 @@ class PapersRepository extends ServiceEntityRepository
 {
     use ToolsTrait;
 
-    public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::PAPER_FLAG, AppConstants::PAPER_STATUS, AppConstants::PAPER_STATUS, AppConstants::YEAR_PARAM];
     public const PAPERS_ALIAS = 'p';
     public const LOCAL_REPOSITORY = 0;
 
@@ -36,15 +31,8 @@ class PapersRepository extends ServiceEntityRepository
         'submitted' => 'submitted'
     ];
 
-    public const SUBMISSIONS_BY_YEAR = 'submissionsByYear';
 
-    public const TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR = 'acceptedSubmittedSameYear';
-    public const TOTAL_ACCEPTED = 'accepted';
-    public const TOTAL_REFUSED = 'refused';
-    public const ACCEPTANCE_RATE = 'acceptanceRate'; // TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR / submissions by year
-    public const MORE_DETAILS = 'moreDetailsFromModifDate';
-
-    public const REF_YEAR = '2013'; // la reprise de l'existant fausse les stats
+    // la reprise de l'existant fausse les stats
 
     private LoggerInterface $logger;
 
@@ -106,7 +94,7 @@ class PapersRepository extends ServiceEntityRepository
      * @param bool $excludeImportedPapers
      * @return QueryBuilder
      */
-    private function flexibleSubmissionsQueryDetails(array $filters = null, bool $excludeTmpVersions = false, bool $excludeImportedPapers = false): QueryBuilder
+    public function flexibleSubmissionsQueryDetails(array $filters = null, bool $excludeTmpVersions = false, bool $excludeImportedPapers = false): QueryBuilder
     {
 
         $qb = $this
@@ -143,199 +131,6 @@ class PapersRepository extends ServiceEntityRepository
         $qb->addGroupBy('p.status');
 
         return $qb;
-    }
-
-    /**
-     * @param array $filters
-     * @param bool $excludeTmpVersions
-     * @return SubmissionOutput
-     */
-    public function getSubmissionsStat(array $filters = [], bool $excludeTmpVersions = false): SubmissionOutput
-    {
-
-        $rvId = $filters['is']['rvid'] ?? null;
-        $status = $filters['is']['status'] ?? null; // submitted: $status = 0
-        $year = (array_key_exists('submissionDate', $filters['is']) && !empty($filters['is']['submissionDate'])) ?
-            $filters['is']['submissionDate'] : null;
-        $repoId = $filters['is']['repoid'] ?? null; // tmp version: $repoId = 0
-        $withDetails = array_key_exists(AppConstants::WITH_DETAILS, $filters['is']);
-
-        $filters['is'][AppConstants::WITH_DETAILS] = $withDetails;
-
-        $details = [];
-
-//        if (null === $rvId) {
-//            $allSubmissionsQb = $this->submissionsQuery();
-//        } else {
-//
-//            $allSubmissionsQb = $this->submissionsQuery([
-//                'is' => ['rvid' => $rvId]
-//            ]);
-//        }
-
-        try {
-            $nbSubmissions = (int)$this->submissionsQuery($filters)->getQuery()->getSingleScalarResult();
-
-            //$allSubmissions = (int)$allSubmissionsQb->getQuery()->getSingleScalarResult();
-        } catch (NoResultException|NonUniqueResultException $e) {
-            $nbSubmissions = null;
-            //$allSubmissions = null;
-            $this->logger->error($e->getMessage());
-        }
-
-
-        if ($withDetails) {
-
-            //$percentage = ($allSubmissions) ? round($nbSubmissions / $allSubmissions * 100, 2) : null;
-            //$details = ['allSubmissions' => $allSubmissions, 'percentage' => $percentage];
-            $submissionsStats = $this->flexibleSubmissionsQueryDetails($filters, $excludeTmpVersions)->
-            getQuery()->getArrayResult();
-
-            if (!empty($submissionsStats)) {
-
-                if (null !== $rvId && null === $status && null === $repoId) { // by review
-                    $rvIdResult = $this->applyFilterBy($submissionsStats, 'rvid', $rvId);
-                    $details[self::MORE_DETAILS] = $this->reformatData($rvIdResult[$rvId]);
-
-
-                } elseif (null === $rvId && $year && null === $status && $repoId === null) { // by year
-                    $yearResult = $this->applyFilterBy($submissionsStats, 'year', $year);
-                    $details[self::MORE_DETAILS] = $yearResult;
-
-
-                } elseif (null === $rvId && !$year && null === $status && $repoId !== null) { // by $repoId
-                    $repoResult = $this->applyFilterBy($submissionsStats, 'repoid', (string)$repoId);
-                    $details[self::MORE_DETAILS] = $repoResult;
-
-
-                } elseif (null === $rvId && !$year && null !== $status && $repoId === null) { // by $status
-                    $statusResult = $this->applyFilterBy($submissionsStats, 'status', (string)$status);
-                    $details[self::MORE_DETAILS] = $statusResult;
-
-
-                } elseif ($year && $rvId && null === $status && $repoId === null) { // $review & $year
-                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                    $details[self::MORE_DETAILS] = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
-
-
-                } elseif (!$year && $rvId && null === $status && $repoId !== null) { // $review & $repoId
-                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                    $details[self::MORE_DETAILS] = $this->applyFilterBy($rvIdDetails[$rvId], 'repoid', (string)$repoId);
-
-
-                } elseif (!$year && $rvId && null !== $status && $repoId === null) { // $review & $status
-                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                    $details[self::MORE_DETAILS] = $this->applyFilterBy($rvIdDetails[$rvId], 'status', (string)$status);
-
-
-                } elseif ($year && $rvId && null === $status && $repoId !== null) { // $review & $year & repoId
-                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                    $yearDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
-                    $details[self::MORE_DETAILS] = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
-
-
-                } elseif ($year && $rvId && null !== $status && $repoId === null) { // $review & $year & $status
-                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                    $yearDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
-                    $details[self::MORE_DETAILS] = $this->applyFilterBy($yearDetails[$year], 'status', (string)$status);
-
-
-                } elseif ($year && !$rvId && null !== $status && $repoId === null) { //$year & $status
-                    $yearDetails = $this->applyFilterBy($submissionsStats, 'year', (string)$year);
-                    $details[self::MORE_DETAILS] = $this->applyFilterBy($yearDetails[$year], 'status', (string)$status);
-
-
-                } elseif ($year && !$rvId && null === $status && $repoId !== null) { //$year & $repoId
-                    $yearDetails = $this->applyFilterBy($submissionsStats, 'year', (string)$year);
-                    $details[self::MORE_DETAILS] = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
-
-
-                } elseif (!$year && !$rvId && null !== $status && $repoId !== null) { //$repoId & $status
-                    $repoDetails = $this->applyFilterBy($submissionsStats, 'repoid', (string)$repoId);
-                    $details[self::MORE_DETAILS] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
-
-
-                } elseif (!$year && $rvId && null !== $status && $repoId !== null) { //$repoId & $status & $rvId
-                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                    $repoDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'repoid', (string)$repoId);
-                    $details[self::MORE_DETAILS] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
-
-
-                } elseif ($year && !$rvId && null !== $status && $repoId !== null) { // $year && $repoId && $status
-                    $yearDetails = $this->applyFilterBy($submissionsStats, 'year', (string)$year);
-                    $repoDetails = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
-                    $details[self::MORE_DETAILS] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
-
-
-                } elseif ($year && $rvId && null !== $status && $repoId !== null) { // $year && $rvId && $repoId & $year
-                    $rvIdDetails = $this->applyFilterBy($submissionsStats, 'rvid', (string)$rvId);
-                    $yearDetails = $this->applyFilterBy($rvIdDetails[$rvId], 'year', (string)$year);
-                    $repoDetails = $this->applyFilterBy($yearDetails[$year], 'repoid', (string)$repoId);
-                    $details[self::MORE_DETAILS] = $this->applyFilterBy($repoDetails[$repoId], 'status', (string)$status);
-
-
-                } else {
-                    $details[self::MORE_DETAILS] = $this->reformatData($submissionsStats);
-                }
-
-            }
-
-            $navFiltersWithoutYear = $filters;
-            unset($navFiltersWithoutYear['is']['submissionDate']);
-            $navigation = $this->getAvailableSubmissionYears($navFiltersWithoutYear);
-
-            $details['years']['ref'] = self::REF_YEAR;
-            $details['years']['indicator'] = $navigation;
-
-            $this->getSubmissionByYearStats($filters, $rvId, $details);
-
-        }
-
-        return (new SubmissionOutput())->
-        setAvailableFilters(self::AVAILABLE_FILTERS)->
-        setRequestedFilters($filters['is'])->
-        setName('nbSubmissions')->
-        setValue($nbSubmissions)->
-        setDetails($details);
-    }
-
-    private function reformatData(array $array): array
-    {
-        $year = null;
-        $rvId = null;
-        $repoId = null;
-        $status = null;
-        $result = [];
-
-        foreach ($array as $value) {
-            foreach ($value as $k => $v) {
-                if ($k === 'rvid' && $v !== $rvId) {
-                    $rvId = $v;
-                }
-
-                if ($k === 'year' && $v !== $year) {
-                    $year = $v;
-                }
-
-                if ($k === 'repoid' && $v !== $repoId) {
-                    $repoId = $v;
-                }
-
-                if ($k === 'status' && $v !== $status) {
-                    $status = $v;
-                }
-
-                if ($k === 'nbSubmissions') {
-                    if (!$rvId) {
-                        $result[$year][$repoId][Papers::STATUS_DICTIONARY[$status]][$k] = $v;
-                    } else {
-                        $result[$rvId][$year][$repoId][Papers::STATUS_DICTIONARY[$status]][$k] = $v;
-                    }
-                }
-            }
-        }
-
-        return $result;
     }
 
     /**
@@ -418,7 +213,7 @@ class PapersRepository extends ServiceEntityRepository
 
 
         return array_filter($years, static function ($value) {
-            return $value >= self::REF_YEAR;
+            return $value >= Stats::REF_YEAR;
         });
 
 
@@ -448,64 +243,6 @@ class PapersRepository extends ServiceEntityRepository
         }
 
         return $repositories;
-    }
-
-    /**
-     * @param array $filters
-     * @param mixed $rvId
-     * @param array $details
-     * @return void
-     */
-    private function getSubmissionByYearStats(array $filters, mixed $rvId, array &$details = []): void
-    {
-        $startAfterDate = $filters['is']['startAfterDate'] ?? null;
-        $repositories = $this->getAvailableRepositories($filters);
-
-        foreach ($this->getAvailableSubmissionYears($filters) as $year) { // pour le dashboard
-            try {
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $this->
-                submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->
-                getQuery()->
-                getSingleScalarResult();
-
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['publications'] = $this->
-                submissionsQuery(
-                    [
-                        'is' => [
-                            'rvid' => $rvId,
-                            'status' => Papers::STATUS_PUBLISHED,
-                            AppConstants::SUBMISSION_DATE => $year,
-                            AppConstants::START_AFTER_DATE
-                        ]
-                    ], false, 'publicationDate'
-                )->
-                getQuery()->getSingleScalarResult();
-
-
-                $plRepo = $this->getEntityManager()->getRepository(PaperLog::class);
-
-                $totalNumberOfPapersAcceptedSubmittedSameYear = $plRepo->getTotalNumberOfPapersByStatus($rvId);
-
-                $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] =
-                    isset($totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year]) ?
-                        $totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] :
-                        0;
-
-                $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE] = $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] ?
-                    round($details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] / $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] * 100, 2) : 0;
-
-
-                foreach ($repositories as $repoId) {
-                    $details['submissionsByRepo'][$year][$repoId]['submissions'] = $this->
-                    submissionsQuery(
-                        ['is' => ['rvid' => $rvId, AppConstants::SUBMISSION_DATE => $year, 'repoid' => $repoId, AppConstants::START_AFTER_DATE => $startAfterDate]
-                        ])->getQuery()->getSingleScalarResult();
-                }
-            } catch (NoResultException|NonUniqueResultException $e) {
-                $this->logger->error($e->getMessage());
-            }
-        }
-
     }
 
 }

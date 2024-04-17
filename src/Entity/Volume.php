@@ -10,10 +10,11 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\AppConstants;
+use App\OpenApi\OpenApiFactory;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 
 #[ORM\Table(name: self::TABLE)]
@@ -24,6 +25,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
         new Get(
             openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Consult a particular volume',
                 security: [['bearerAuth' =>  []],]
 
@@ -37,6 +39,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
         ),
         new GetCollection(
             openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Volumes list',
                 security: [['bearerAuth' =>  []],]
 
@@ -53,11 +56,12 @@ use Symfony\Component\Serializer\Annotation\Groups;
 class Volume
 {
     public const TABLE = 'VOLUME';
+    public const DEFAULT_URI_TEMPLATE = '/volumes{._format}';
 
    #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
    #[ORM\Id]
    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $vid;
+    private int $vid;
 
 
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
@@ -68,11 +72,11 @@ class Volume
         ]
 
     )]
-    private $rvid;
+    private int $rvid;
 
 
    #[ORM\Column(name: 'POSITION', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    private $position;
+    private int $position;
 
 
     #[ORM\Column(name: 'BIB_REFERENCE', type: 'string', length: 255, nullable: true, options: ['comment' => "Volume's bibliographical reference"])]
@@ -83,7 +87,7 @@ class Volume
         ]
 
     )]
-    private $bibReference;
+    private string $bibReference;
 
 
     #[ORM\Column(name: 'titles', type: 'json', nullable: true)]
@@ -232,10 +236,6 @@ class Volume
 
     public function getPapers(): Collection
     {
-       /* $filteredPapers = $this->papers->filter(function (Papers $paper) {
-            return $paper;
-        });*/
-
         return $this->papers;
     }
 

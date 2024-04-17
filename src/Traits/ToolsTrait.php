@@ -2,7 +2,6 @@
 
 
 namespace App\Traits;
-
 trait ToolsTrait
 {
 
@@ -64,6 +63,4 @@ trait ToolsTrait
         $tDate = \DateTime::createFromFormat($format, $date);
         return $tDate && $tDate->format($format) === $date;
     }
-
-
 }

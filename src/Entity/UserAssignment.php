@@ -4,7 +4,7 @@ namespace App\Entity;
 
 use App\AppConstants;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 
 #[ORM\Table(name: 'USER_ASSIGNMENT')]

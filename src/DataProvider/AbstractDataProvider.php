@@ -4,13 +4,9 @@ namespace App\DataProvider;
 
 use ApiPlatform\Metadata\Operation;
 use App\AppConstants;
-use App\Entity\PaperLog;
 use App\Entity\Papers;
-use App\Entity\Review;
-use App\Entity\User;
-use App\Repository\PapersRepository;
 use App\Resource\AbstractStatResource;
-use App\Resource\DashboardOutput;
+use App\Service\Stats;
 use App\Traits\CheckExistingResourceTrait;
 use App\Traits\ToolsTrait;
 use Doctrine\ORM\EntityManagerInterface;
@@ -20,12 +16,9 @@ abstract class AbstractDataProvider
     use CheckExistingResourceTrait;
     use ToolsTrait;
 
-    private EntityManagerInterface $entityManagerInterface;
-
-
-    public function __construct(EntityManagerInterface $entityManagerInterface)
+    public function __construct(private readonly EntityManagerInterface $entityManagerInterface, private readonly Stats $statsService)
     {
-        $this->entityManagerInterface = $entityManagerInterface;
+
     }
 
 
@@ -41,9 +34,7 @@ abstract class AbstractDataProvider
 
             $filters['is'] = $context['uri_variables']; // available filters
 
-            $journal = $this->
-            entityManagerInterface->
-            getRepository(Review::class)->findOneBy($context['uri_variables']);
+            $journal = $this->statsService->getJournal($context['uri_variables']);
 
             if (!$journal) {
                 return null;
@@ -55,23 +46,16 @@ abstract class AbstractDataProvider
             $this->addFilters($filters['is'], $operation->getName(), $cFilters);
 
             if ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][1]) {
-                $result = $this->entityManagerInterface->
-                getRepository(Papers::class)->
-                getSubmissionsStat($filters);
+                $result = $this->statsService->getSubmissionsStat($filters);
 
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][2]) {
-                $result = $this->entityManagerInterface->
-                getRepository(PaperLog::class)->getDelayBetweenSubmissionAndLatestStatus($filters);
+                $result = $this->statsService->getDelayBetweenSubmissionAndLatestStatus($filters);
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][3]) {
-                $result = $this->entityManagerInterface->
-                getRepository(PaperLog::class)->
-                getDelayBetweenSubmissionAndLatestStatus($filters, Papers::STATUS_PUBLISHED);
+                $result = $this->statsService->getDelayBetweenSubmissionAndLatestStatus($filters, Papers::STATUS_PUBLISHED);
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][0]) {
-                $result = $this->getDashboard($context, $filters);
+                $result = $this->statsService->getDashboard($context, $filters);
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][4]) {
-                $result = $this->entityManagerInterface->
-                getRepository(User::class)->
-                getUserStats($filters['is']);
+                $result = $this->statsService->getUserStats($filters['is']);
             }
         }
 
@@ -83,70 +67,6 @@ abstract class AbstractDataProvider
 
     }
 
-
-    private function getDashboard($context, $filters): DashboardOutput
-    {
-
-        $result = new DashboardOutput();
-
-        $papersRepo = $this->entityManagerInterface->
-        getRepository(Papers::class);
-
-        $submissions = $papersRepo->getSubmissionsStat($filters);
-        $submissionsDelay = $this->entityManagerInterface->
-        getRepository(PaperLog::class)->
-        getDelayBetweenSubmissionAndLatestStatus($filters);
-        $publicationsDelay = $this->entityManagerInterface->
-        getRepository(PaperLog::class)->
-        getDelayBetweenSubmissionAndLatestStatus($filters, Papers::STATUS_PUBLISHED);
-
-
-        $totalPublished = $papersRepo
-            ->submissionsQuery([
-                'is' => array_merge($filters['is'], ['status' => Papers::STATUS_PUBLISHED])
-            ])
-            ->getQuery()
-            ->getSingleScalarResult();
-
-
-        // aggregate stats
-        $values = [
-            $submissions->getName() => $submissions->getValue(),
-            'totalPublished' => $totalPublished,
-            $submissionsDelay->getName() => $submissionsDelay->getValue(),
-            $publicationsDelay->getName() => $publicationsDelay->getValue()
-        ];
-
-        if (!isset($filters['is']['submissionDate'])) { // Roles cannot be sorted by year of creation
-            $users = $this->entityManagerInterface->getRepository(User::class)->getUserStats($filters['is']);
-            $values[$users->getName()] = $users->getValue();
-        }
-
-        if (isset($filters['is'][AppConstants::WITH_DETAILS])) {
-
-            $details = [
-                $submissions->getName() => $submissions->getDetails(),
-                $submissionsDelay->getName() => $submissionsDelay->getDetails(),
-                $publicationsDelay->getName() => $publicationsDelay->getDetails()
-            ];
-
-            if (isset($users)) {
-                $details[$users->getName()] = $users->getDetails();
-            }
-
-            $result->setDetails($details);
-
-        }
-
-        $result->
-        setAvailableFilters(ReviewStatsDataProvider::AVAILABLE_FILTERS)->
-        setRequestedFilters($context['filters'] ?? [])->
-        setName('dashboard')->
-        setValue($values);
-
-        return $result;
-
-    }
 
     private function addFilters(array &$availableFilters, string $operationName, array &$contextFilters = []): void
     {
@@ -178,7 +98,7 @@ abstract class AbstractDataProvider
 
                 if (
                     !isset($availableFilters[$filter]) &&
-                    in_array($filter, PapersRepository::AVAILABLE_FILTERS, true)
+                    in_array($filter, Stats::AVAILABLE_PAPERS_FILTERS, true)
                 ) {
                     $availableFilters[$filter] = $value;
                 }

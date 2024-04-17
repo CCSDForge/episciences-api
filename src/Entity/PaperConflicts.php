@@ -3,10 +3,9 @@
 namespace App\Entity;
 
 use App\AppConstants;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use App\Repository\PaperConflictsRepository;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Table(name: self::TABLE)]
 #[ORM\UniqueConstraint(name: 'U_PAPERID_BY', columns: ['paper_id', 'by' ])]

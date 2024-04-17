@@ -4,11 +4,9 @@ namespace App\OpenApi;
 
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
 use ApiPlatform\OpenApi\Model\Operation;
-use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\OpenApi;
-use App\Entity\User;
 use Symfony\Component\HttpFoundation\Response;
 
 class OpenApiFactory implements OpenApiFactoryInterface
@@ -18,7 +16,8 @@ class OpenApiFactory implements OpenApiFactoryInterface
         'auth' => 'Sign in - Myspace',
         'stats' => 'Statistics',
         'review' => 'Journals',
-        'user' => 'User'
+        'user' => 'User',
+        'sections_volumes' => 'Sections | Volumes',
     ];
     public const JWT_POST_LOGIN_OPERATION_ID = 'login_check_post';
     public const USER_GET_COLLECTION_PATH = '/api/users';
@@ -48,7 +47,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
                 'content' => [
                     'application/json' => [
                         'schema' => [
-                            '$ref' => '#components/schemas/Token'
+                            '$ref' => '#/components/schemas/Token'
                         ]
                     ]
                 ]
@@ -165,7 +164,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
                     new \ArrayObject([
                             'application/json' => [
                                 'schema' => [
-                                    '$ref' => '#components/schemas/Credentials'
+                                    '$ref' => '#/components/schemas/Credentials'
                                 ]
                             ]
                         ]
@@ -196,7 +195,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
                     new \ArrayObject([
                             'application/json' => [
                                 'schema' => [
-                                    '$ref' => '#components/schemas/RefreshTokenCredential'
+                                    '$ref' => '#/components/schemas/RefreshTokenCredential'
                                 ]
                             ]
                         ]
