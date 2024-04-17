@@ -9,6 +9,7 @@ use ApiPlatform\Metadata\HttpOperation;
 use ApiPlatform\Metadata\Operation;
 use App\Entity\Papers;
 use App\Entity\Review;
+use App\Entity\Section;
 use App\Entity\User;
 use App\Entity\UserAssignment;
 use App\Entity\UserRoles;
@@ -108,11 +109,11 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
         }
 
 
-        if ($resourceClass === Volume::class) {
+        if ($resourceClass === Volume::class | $resourceClass === Section::class) {
 
-            $queryBuilder
-                ->orderBy("$alias.rvid", 'DESC')
-                ->addOrderBy("$alias.vid", 'DESC');
+            $queryBuilder->orderBy("$alias.rvid", 'DESC');
+            $resourceClass === Volume::class ? $queryBuilder->addOrderBy("$alias.vid", 'DESC') :
+                $queryBuilder->addOrderBy("$alias.sid", 'DESC');
 
         } elseif ($resourceClass === Review::class) {
 
@@ -146,7 +147,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
             andWhere("$alias.status= :publishedOnly")->
             setParameter('publishedOnly', Papers::STATUS_PUBLISHED);
 
-        } elseif ($resourceClass === Volume::class) {
+        } elseif ($resourceClass === Volume::class || $resourceClass === Section::class) {
 
             $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status');
 
@@ -178,12 +179,11 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
             if ($resourceClass === Papers::class) {
 
 
-            if ($this->security->isGranted('ROLE_SECRETARY')) {
+                if ($this->security->isGranted('ROLE_SECRETARY')) {
 
-                $queryBuilder
-                    ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $curentUser->getCurrentJournalID())
-                    ->orderBy("$alias.when", "DESC")
-                ;
+                    $queryBuilder
+                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $curentUser->getCurrentJournalID())
+                        ->orderBy("$alias.when", "DESC");
 
 
                 } elseif (
@@ -212,16 +212,25 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
             }
 
 
-        } elseif ($resourceClass === Volume::class) {
+        } elseif ($resourceClass === Volume::class || $resourceClass === Section::class) {
 
             if ($this->security->isGranted('ROLE_EDITOR')) {
 
-                if ($operation && str_starts_with($operation->getUriTemplate(), '/volumes{._format}')) {
+                if (
+                    $operation &&
+                    (
+                        ($isVolumesOperation = str_starts_with($operation->getUriTemplate(), Volume::DEFAULT_URI_TEMPLATE)) ||
+                        str_starts_with($operation->getUriTemplate(), Section::DEFAULT_URI_TEMPLATE)
+                    )
+                ) {
 
                     $queryBuilder
                         ->where("$alias.rvid= :rvId")
-                        ->setParameter('rvId', $curentUser->getCurrentJournalID())
-                        ->addOrderBy("$alias.vid", 'DESC');
+                        ->setParameter('rvId', $curentUser->getCurrentJournalID());
+
+                    $isVolumesOperation ?
+                        $queryBuilder->addOrderBy("$alias.vid", 'DESC') :
+                        $queryBuilder->addOrderBy("$alias.sid", 'DESC');
                 }
 
 

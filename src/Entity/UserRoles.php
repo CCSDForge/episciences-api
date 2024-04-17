@@ -5,7 +5,7 @@ namespace App\Entity;
 use App\AppConstants;
 use App\Repository\UserRolesRepository;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 
 #[ORM\Table(name: self::TABLE)]

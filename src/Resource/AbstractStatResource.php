@@ -5,7 +5,7 @@ namespace App\Resource;
 use ApiPlatform\Metadata\ApiProperty;
 use App\AppConstants;
 use JsonException;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 abstract class AbstractStatResource
 {
@@ -86,7 +86,7 @@ abstract class AbstractStatResource
     /**
      * @return float|array|null
      */
-    public function getValue(): float|array|null
+    public function getValue(): int|float|array|null
     {
         return $this->value;
     }
@@ -95,7 +95,7 @@ abstract class AbstractStatResource
      * @param float|array|null $value
      * @return $this
      */
-    public function setValue(float|array|null $value): self
+    public function setValue(int|float|array|null $value): self
     {
         $this->value = $value;
         return $this;

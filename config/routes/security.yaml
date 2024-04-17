@@ -1,0 +1,4 @@
+#https://symfony.com/blog/new-in-symfony-6-4-simpler-logout
+_security_logout:
+    resource: security.route_loader.logout
+    type: service

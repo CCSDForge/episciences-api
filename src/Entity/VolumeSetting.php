@@ -2,10 +2,9 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Metadata\ApiProperty;
 use App\AppConstants;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 
 #[ORM\Table(name: self::TABLE)]
@@ -20,7 +19,7 @@ class VolumeSetting
     #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy:'NONE')]
-    private $vid;
+    private int $vid;
 
 
     #[ORM\Column(name: 'SETTING', type: 'string', length: 200, nullable: false)]
@@ -35,7 +34,7 @@ class VolumeSetting
         ]
 
     )]
-    private $setting;
+    private string $setting;
 
 
     #[ORM\Column(name: 'VALUE', type: 'text', length: 65535, nullable: true)]
@@ -48,7 +47,7 @@ class VolumeSetting
         ]
 
     )]
-    private $value;
+    private string $value;
 
     #[ORM\ManyToOne(targetEntity: Volume::class, inversedBy: 'settings')]
     #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID', nullable: false)]
@@ -62,6 +61,13 @@ class VolumeSetting
     public function getSetting(): ?string
     {
         return $this->setting;
+    }
+
+    public function setSetting(string $setting): self
+    {
+        $this->setting = $setting;
+        return $this;
+
     }
 
     public function getValue(): ?string

@@ -20,7 +20,6 @@ use Psr\Log\LoggerInterface;
 
 class UserRolesRepository extends ServiceEntityRepository
 {
-    public const AVAILABLE_FILTERS = ['rvid', 'uid', 'role'];
     public const USER_ROLES_ALIAS = 'ur';
 
     private LoggerInterface $logger;

@@ -103,6 +103,19 @@ final class AppConstants
                         ]
                     ]
 
+                ],
+                'section' => [
+                    'item' => [
+                        'read' => [
+                            'read:Section'
+                        ]
+                    ],
+                    'collection' => [
+                        'read' => [
+                            'read:Sections'
+                        ]
+                    ]
+
                 ]
             ]]
 

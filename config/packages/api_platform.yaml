@@ -1,6 +1,8 @@
 api_platform:
     #global configuration defaults applied to all resources and all operations (2.6 only)
     defaults:
+        #By default, API Platform generates all URLs as absolute paths to the base URL.
+        url_generation_strategy: !php/const ApiPlatform\Api\UrlGeneratorInterface::ABS_PATH
         pagination_client_enabled: true #Disabling the Pagination Client-side Globally
         item_Operations: ~
         collection_Operations: ~
@@ -14,8 +16,31 @@ api_platform:
     # The version of the API.
     version: '1.0.0'
 
+    formats:
+        jsonld: ['application/ld+json']
+        json: ['application/json']
+        html: ['text/html']
+
     # Set this to false if you want Webby to disappear.
     show_webby: false
+    openapi:
+        # The contact information for the exposed API.
+        contact:
+            # The identifying name of the contact person/organization.
+            name:
+            # The URL pointing to the contact information. MUST be in the format of a URL.
+            url:
+            # The email address of the contact person/organization. MUST be in the format of an email address.
+            email:
+        # A URL to the Terms of Service for the API. MUST be in the format of a URL.
+        termsOfService: https://www.episciences.org/terms-of-use/
+        # The license information for the exposed API.
+        license:
+            # The license name used for the API.
+            name:
+            # URL to the license used for the API. MUST be in the format of a URL.
+            url:
+
     mapping:
         # The list of paths with files or directories where the bundle will look for additional resource files.
         paths: ['%kernel.project_dir%/src/Resource']
@@ -27,7 +52,7 @@ api_platform:
         json: ['application/merge-patch+json']
     swagger:
         versions: [3]
-
+    keep_legacy_inflector: false
     exception_to_status:
         # Custom mapping
         App\Exception\StatResourceNotFoundException : 404

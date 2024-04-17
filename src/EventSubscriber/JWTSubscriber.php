@@ -8,6 +8,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Lexik\Bundle\JWTAuthenticationBundle\Event\JWTCreatedEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class JWTSubscriber implements EventSubscriberInterface
 {
@@ -47,6 +48,8 @@ class JWTSubscriber implements EventSubscriberInterface
             if ($currentReview && $currentReview->getStatus()) {
                 $rvId = $currentReview->getRvid();
                 $user->setCurrentJournalID($rvId);
+            } else {
+                throw new BadRequestHttpException(sprintf('No journal matches the requested code "%s".', $rvCode));
             }
 
         }
