@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
+## v1.1.9 2024-04-19
 ### Fixed
 - An extra character "s" is added to the "api/papers" endpoint.
 
