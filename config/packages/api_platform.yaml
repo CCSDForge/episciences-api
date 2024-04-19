@@ -14,7 +14,7 @@ api_platform:
     # The description of the API.
     description: 'Search API'
     # The version of the API.
-    version: '1.0.0'
+    version: "%git_application_version%"
 
     formats:
         jsonld: ['application/ld+json']

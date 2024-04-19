@@ -13,6 +13,8 @@ class Kernel extends BaseKernel
 
     protected function configureContainer(ContainerConfigurator $container): void
     {
+        $appVersion = '1.0.0';
+
         $container->import('../config/{packages}/*.yaml');
         $container->import('../config/{packages}/' . $this->environment . '/*.yaml');
 
@@ -21,6 +23,11 @@ class Kernel extends BaseKernel
             $container->import('../config/{services}_' . $this->environment . '.yaml');
         } elseif (is_file($path = \dirname(__DIR__) . '/config/services.php')) {
             (require $path)($container->withPath($path), $this);
+        }
+
+        if (is_file($path = \dirname(__DIR__) . '/version.php') && is_readable($path)) {
+            include($path);
+            $container->parameters()->set('git_application_version', $appVersion ?? '1.0.0');
         }
     }
 
