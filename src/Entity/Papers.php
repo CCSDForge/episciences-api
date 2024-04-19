@@ -39,6 +39,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 #[ApiResource(
     operations: [
         new Get(
+            uriTemplate: self::URI_TEMPLATE . '{docid}',
             openapi: new OpenApiOperation(
                 summary: 'Article',
                 security: [['bearerAuth' => []],]
@@ -52,6 +53,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
             ]
         ),
         new GetCollection(
+            uriTemplate: self::URI_TEMPLATE,
             openapi: new OpenApiOperation(
                 summary: 'All Papers',
                 security: [['bearerAuth' => []],]
@@ -84,6 +86,7 @@ class Papers implements UserOwnedInterface
     ];
 
     public const TABLE = 'PAPERS';
+    public const URI_TEMPLATE = '/papers/';
     public const STATUS_SUBMITTED = 0;
     public const STATUS_OK_FOR_REVIEWING = 1; // reviewers have been assigned, but did not start their reports
     public const STATUS_BEING_REVIEWED = 2; // rating has begun (at least one reviewer has starter working on his rating report)
