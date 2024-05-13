@@ -41,7 +41,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
         new Get(
             uriTemplate: self::URI_TEMPLATE . '{docid}',
             openapi: new OpenApiOperation(
-                summary: 'The paper identified by docid',
+                summary: 'The paper identified by docid or paperid',
                 security: [['bearerAuth' => []],]
             ),
 
@@ -197,11 +197,13 @@ class Paper implements UserOwnedInterface
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
 
+    #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private int $docid;
 
 
     #[ORM\Column(name: 'PAPERID', type: 'integer', nullable: true, options: ['unsigned' => true])]
 
+    #[groups(self::PAPERS_GROUPS)]
     private ?int $paperid;
 
 
@@ -253,14 +255,13 @@ class Paper implements UserOwnedInterface
 
     private string $record;
     #[ORM\Column(name: 'DOCUMENT', type: 'json', nullable: false)]
-    #[groups(self::PAPERS_GROUPS)]
+    //#[groups(self::PAPERS_GROUPS)]
 
-//    #[groups(
-//        [
-//            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-//            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
-//        ]
-//    )]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        ]
+    )]
 
     private array $document;
     #[ORM\Column(name: 'CONCEPT_IDENTIFIER', type: 'string', length: 500, nullable: true, options: ['comment' => 'This identifier represents all versions'])]
@@ -300,7 +301,6 @@ class Paper implements UserOwnedInterface
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
         ])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private UserInterface $user;
@@ -324,26 +324,22 @@ class Paper implements UserOwnedInterface
     private Collection $assignments;
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $editors = [];
 
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $reviewers = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $copyEditors = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $coAuthors = [];
@@ -352,7 +348,6 @@ class Paper implements UserOwnedInterface
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
         ]
     )]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]

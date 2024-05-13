@@ -92,10 +92,6 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
             if (!$curentUser->getCurrentJournalID()) {
 
-//                if ($this->security->isGranted('ROLE_EPIADMIN')) {
-//                    return; /// allowed for all platform resources
-//                }
-
                 $this->publicAccessProcess($queryBuilder, $alias, $resourceClass);
 
             } else {
@@ -131,6 +127,19 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
     private function adnWherePublishedOnly(QueryBuilder $queryBuilder, string $field): QueryBuilder
     {
+        $parameters = $queryBuilder->getParameters()->getValues();
+        if(!empty($parameters)){
+            $docId = $parameters[array_key_first($parameters)]->getValue();
+
+            if($docId){
+                $alias = $queryBuilder->getRootAliases()[0];
+                $queryBuilder->
+                orWhere("$alias.paperid= :paperId")->
+                setParameter('paperId', $docId);
+
+            }
+
+        }
         return $queryBuilder->
         andWhere("$field= :published")->
         setParameter('published', Paper::STATUS_PUBLISHED);
@@ -143,9 +152,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
         if ($resourceClass === Paper::class) {
 
-            $this->adnWherePublishedOnly($queryBuilder, "$alias.status")->
-            andWhere("$alias.status= :publishedOnly")->
-            setParameter('publishedOnly', Paper::STATUS_PUBLISHED);
+            $this->adnWherePublishedOnly($queryBuilder, "$alias.status");
 
         } elseif ($resourceClass === Volume::class || $resourceClass === Section::class) {
 

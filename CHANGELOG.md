@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New class attribute Paper::document () ;
   - New query filter 'status' (/papers endpoint) ;
   - Do not expose duplicate informations available now in 'document' attribute
+  - In offline mode, a document can be retrieved using either DocID or PaperID.
+  - Do not include article's details when collecting all documents
 
 ## v1.1.9 2024-04-19
 ### Fixed
