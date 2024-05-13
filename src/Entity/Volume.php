@@ -109,7 +109,7 @@ class Volume
     )]
     private  ?array $descriptions;
 
-    #[ORM\OneToMany(mappedBy: 'volume', targetEntity: Papers::class)]
+    #[ORM\OneToMany(mappedBy: 'volume', targetEntity: Paper::class)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -231,7 +231,7 @@ class Volume
 
 
     /**
-     * @return Collection<int, Papers>
+     * @return Collection<int, Paper>
      */
 
     public function getPapers(): Collection
@@ -239,7 +239,7 @@ class Volume
         return $this->papers;
     }
 
-    public function addPaper(Papers $paper): self
+    public function addPaper(Paper $paper): self
     {
         if (!$this->papers->contains($paper)) {
             $this->papers->add($paper);
@@ -249,7 +249,7 @@ class Volume
         return $this;
     }
 
-    public function removePaper(Papers $paper): self
+    public function removePaper(Paper $paper): self
     {
         // set the owning side to null (unless already changed)
         if ($this->papers->removeElement($paper) && $paper->getVolume() === $this) {

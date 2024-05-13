@@ -248,7 +248,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     private Collection $userRoles;
 
 
-    #[ORM\OneToMany(mappedBy: "user", targetEntity: Papers::class)]
+    #[ORM\OneToMany(mappedBy: "user", targetEntity: Paper::class)]
     #[Groups(['read:User', 'read:Me'])]
     private Collection $papers;
 
@@ -503,7 +503,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this->papers;
     }
 
-    public function addPaper(Papers $paper): self
+    public function addPaper(Paper $paper): self
     {
         if (!$this->papers->contains($paper)) {
             $this->papers[] = $paper;
@@ -513,7 +513,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this;
     }
 
-    public function removePaper(Papers $paper): self
+    public function removePaper(Paper $paper): self
     {
         // set the owning side to null (unless already changed)
         if ($this->papers->removeElement($paper) && $paper->getUser() === $this) {

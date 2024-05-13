@@ -5,7 +5,7 @@ namespace App\Repository;
 
 use App\AppConstants;
 use App\Entity\PaperLog;
-use App\Entity\Papers;
+use App\Entity\Paper;
 use App\Service\Stats;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -47,7 +47,7 @@ class PaperLogRepository extends ServiceEntityRepository
      * @return array|null
      */
 
-    public function delayBetweenSubmissionAndLatestStatus(string $unit = self::DEFAULT_UNIT, int $latestStatus = Papers::STATUS_ACCEPTED, string $startDate = null, string $year = null): ?array
+    public function delayBetweenSubmissionAndLatestStatus(string $unit = self::DEFAULT_UNIT, int $latestStatus = Paper::STATUS_ACCEPTED, string $startDate = null, string $year = null): ?array
     {
         $result = null;
         try {
@@ -63,7 +63,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    private function query(string $unit = self::DEFAULT_UNIT, int $latestStatus = Papers::STATUS_ACCEPTED, string $startStatsDate = null, $year = null): string
+    private function query(string $unit = self::DEFAULT_UNIT, int $latestStatus = Paper::STATUS_ACCEPTED, string $startStatsDate = null, $year = null): string
     {
 
 
@@ -73,7 +73,7 @@ class PaperLogRepository extends ServiceEntityRepository
             $sql .= "AND PAPER_LOG.DATE >= '$startStatsDate'";
         }
 
-        $sql .= "AND (DETAIL LIKE '{\"status\":" . Papers::STATUS_SUBMITTED . "}' OR DETAIL LIKE '{\"status\":\"" . Papers::STATUS_SUBMITTED . "\"}' ) GROUP BY PAPERID) AS SUBMISSION_FROM_LOGS INNER JOIN (SELECT * FROM PAPER_LOG WHERE ACTION LIKE 'status' ";
+        $sql .= "AND (DETAIL LIKE '{\"status\":" . Paper::STATUS_SUBMITTED . "}' OR DETAIL LIKE '{\"status\":\"" . Paper::STATUS_SUBMITTED . "\"}' ) GROUP BY PAPERID) AS SUBMISSION_FROM_LOGS INNER JOIN (SELECT * FROM PAPER_LOG WHERE ACTION LIKE 'status' ";
 
         if ($startStatsDate) {
             $sql .= "AND PAPER_LOG.DATE >= '$startStatsDate'";
@@ -107,7 +107,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    public function totalNumberOfPapersByStatus(bool $isSubmittedSameYear = true, $as = Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Papers::STATUS_ACCEPTED): ?Statement
+    public function totalNumberOfPapersByStatus(bool $isSubmittedSameYear = true, $as = Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_ACCEPTED): ?Statement
     {
 
         $conn = $this->getEntityManager()->getConnection();

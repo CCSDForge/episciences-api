@@ -3,7 +3,7 @@
 namespace App\Serializer;
 
 
-use App\Entity\Papers;
+use App\Entity\Paper;
 use App\Service\MetadataSources;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Component\Serializer\SerializerAwareInterface;
@@ -25,11 +25,13 @@ class ApiNormalizer implements NormalizerInterface, SerializerAwareInterface
 
         $data = $this->decorated->normalize($object, $format, $context);
 
+        // duplication of information: now included in Paper::document
 
-        if (($object instanceof Papers) && is_array($data)) {
-            $data['statusLabel'] = $object->getStatusDictionaryLabel();
-            $data['repository'] = $this->metadataSourcesService->repositoryToArray($object->getRepoid());
-        }
+
+//        if (($object instanceof Papers) && is_array($data)) {
+//            $data['statusLabel'] = $object->getStatusDictionaryLabel();
+//            $data['repository'] = $this->metadataSourcesService->repositoryToArray($object->getRepoid());
+//        }
 
         return $data;
     }

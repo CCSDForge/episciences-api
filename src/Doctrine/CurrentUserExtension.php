@@ -7,7 +7,7 @@ use ApiPlatform\Doctrine\Orm\Extension\QueryItemExtensionInterface;
 use ApiPlatform\Doctrine\Orm\Util\QueryNameGeneratorInterface;
 use ApiPlatform\Metadata\HttpOperation;
 use ApiPlatform\Metadata\Operation;
-use App\Entity\Papers;
+use App\Entity\Paper;
 use App\Entity\Review;
 use App\Entity\Section;
 use App\Entity\User;
@@ -133,7 +133,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
     {
         return $queryBuilder->
         andWhere("$field= :published")->
-        setParameter('published', Papers::STATUS_PUBLISHED);
+        setParameter('published', Paper::STATUS_PUBLISHED);
 
     }
 
@@ -141,11 +141,11 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
     private function publicAccessProcess(QueryBuilder $queryBuilder, string $alias, string $resourceClass): void
     {
 
-        if ($resourceClass === Papers::class) {
+        if ($resourceClass === Paper::class) {
 
             $this->adnWherePublishedOnly($queryBuilder, "$alias.status")->
             andWhere("$alias.status= :publishedOnly")->
-            setParameter('publishedOnly', Papers::STATUS_PUBLISHED);
+            setParameter('publishedOnly', Paper::STATUS_PUBLISHED);
 
         } elseif ($resourceClass === Volume::class || $resourceClass === Section::class) {
 
@@ -176,7 +176,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
                 ->andWhere("ur.rvid= :userVid")->setParameter('userVid', $curentUser->getCurrentJournalID());
         } elseif ((new \ReflectionClass($resourceClass))->implementsInterface(UserOwnedInterface::class)) {
 
-            if ($resourceClass === Papers::class) {
+            if ($resourceClass === Paper::class) {
 
 
                 if ($this->security->isGranted('ROLE_SECRETARY')) {

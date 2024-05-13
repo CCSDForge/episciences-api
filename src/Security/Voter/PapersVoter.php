@@ -2,7 +2,7 @@
 
 namespace App\Security\Voter;
 
-use App\Entity\Papers;
+use App\Entity\Paper;
 use App\Entity\User;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -29,7 +29,7 @@ class PapersVoter extends Voter
     {
         return in_array($attribute, [
             self::PAPERS_EDIT, self::PAPERS_VIEW, self::PAPERS_MANAGE,self::PAPERS_REVIEW, self::PAPERS_FOLLOW
-            ]) && $subject instanceof Papers;
+            ]) && $subject instanceof Paper;
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token): bool
@@ -57,7 +57,7 @@ class PapersVoter extends Voter
 
     }
 
-    private function canView(User $user, Papers $paper): bool
+    private function canView(User $user, Paper $paper): bool
     {
         /** @var User $subjectUser */
         $subjectUser = $paper->getUser();
@@ -83,7 +83,7 @@ class PapersVoter extends Voter
             );
     }
 
-    private function canEdit(User $authenticatedUser, Papers $paper): bool
+    private function canEdit(User $authenticatedUser, Paper $paper): bool
     {
 
         /** @var User $author */
@@ -109,7 +109,7 @@ class PapersVoter extends Voter
     }
 
 
-    private function canReview(User $authenticatedUser, Papers $paper): bool
+    private function canReview(User $authenticatedUser, Paper $paper): bool
     {
         /** @var User $subjectUser */
         $subjectUser = $paper->getUser();
@@ -135,7 +135,7 @@ class PapersVoter extends Voter
             );
     }
 
-    private function canFollow(User $authenticatedUser, Papers $paper): bool
+    private function canFollow(User $authenticatedUser, Paper $paper): bool
     {
         /** @var User $subjectUser */
         $subjectUser = $paper->getUser();
@@ -145,7 +145,7 @@ class PapersVoter extends Voter
 
     }
 
-    private function canManage(User $authenticatedUser, Papers $paper): bool
+    private function canManage(User $authenticatedUser, Paper $paper): bool
     {
         /** @var User $author */
         $author = $paper->getUser();

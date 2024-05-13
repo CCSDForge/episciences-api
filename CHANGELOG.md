@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 ### Changed
 - automatic generation of the deployment tag
+- JSON representation of document: 
+  - New class attribute Paper::document () ;
+  - New query filter 'status' (/papers endpoint) ;
+  - Do not expose duplicate informations available now in 'document' attribute
 
 ## v1.1.9 2024-04-19
 ### Fixed

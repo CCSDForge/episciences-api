@@ -7,7 +7,7 @@ namespace App\DataProvider;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\AppConstants;
-use App\Entity\Papers;
+use App\Entity\Paper;
 
 
 final class PapersStatsDataProvider extends AbstractDataProvider implements ProviderInterface
@@ -16,7 +16,7 @@ final class PapersStatsDataProvider extends AbstractDataProvider implements Prov
     {
         return (
             $operation &&
-            (Papers::class === $operation->getClass()) &&
+            (Paper::class === $operation->getClass()) &&
             in_array($operation->getName(), AppConstants::APP_CONST['custom_operations']['items']['papers'], true)
         );
     }

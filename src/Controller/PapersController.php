@@ -4,7 +4,7 @@ namespace App\Controller;
 
 
 
-use App\Entity\Papers;
+use App\Entity\Paper;
 
 use App\Entity\User;
 use App\Exception\MissingRequestParameterException;
@@ -37,8 +37,8 @@ class PapersController
 
             if ($userId) {
                 $user = $entityManager->getRepository(User::class)->findOneBy(['uid' => $userId]);
-                /** @var Papers $currentPaper */
-                $currentPaper = $entityManager->getRepository(Papers::class)->findOneBy(['docid' => $documentId]);
+                /** @var Paper $currentPaper */
+                $currentPaper = $entityManager->getRepository(Paper::class)->findOneBy(['docid' => $documentId]);
 
                 if (!$user || !$currentPaper) {
                     return false;

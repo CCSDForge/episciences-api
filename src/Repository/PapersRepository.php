@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\AppConstants;
-use App\Entity\Papers;
+use App\Entity\Paper;
 use App\Service\Stats;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -13,10 +13,10 @@ use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 
 /**
- * @method Papers|null find($id, $lockMode = null, $lockVersion = null)
- * @method Papers|null findOneBy(array $criteria, array $orderBy = null)
- * @method Papers[]    findAll()
- * @method Papers[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+ * @method Paper|null find($id, $lockMode = null, $lockVersion = null)
+ * @method Paper|null findOneBy(array $criteria, array $orderBy = null)
+ * @method Paper[]    findAll()
+ * @method Paper[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
  */
 class PapersRepository extends ServiceEntityRepository
@@ -38,7 +38,7 @@ class PapersRepository extends ServiceEntityRepository
 
     public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
     {
-        parent::__construct($registry, Papers::class);
+        parent::__construct($registry, Paper::class);
         $this->logger = $logger;
     }
 
@@ -61,10 +61,10 @@ class PapersRepository extends ServiceEntityRepository
 
 
         $qb->andWhere('p.status != :obsolete');
-        $qb->setParameter('obsolete', Papers::STATUS_OBSOLETE);
+        $qb->setParameter('obsolete', Paper::STATUS_OBSOLETE);
 
         $qb->andWhere('p.status != :deleted');
-        $qb->setParameter('deleted', Papers::STATUS_DELETED);
+        $qb->setParameter('deleted', Paper::STATUS_DELETED);
 
         if ($excludeTmpVersions) {
             $qb
@@ -116,10 +116,10 @@ class PapersRepository extends ServiceEntityRepository
         }
 
         $qb->andWhere('p.status != :obsolete');
-        $qb->setParameter('obsolete', Papers::STATUS_OBSOLETE);
+        $qb->setParameter('obsolete', Paper::STATUS_OBSOLETE);
 
         $qb->andWhere('p.status != :deleted');
-        $qb->setParameter('deleted', Papers::STATUS_DELETED);
+        $qb->setParameter('deleted', Paper::STATUS_DELETED);
 
         $qb->orderBy('year', 'ASC');
         $qb->addOrderBy('p.rvid', 'ASC');

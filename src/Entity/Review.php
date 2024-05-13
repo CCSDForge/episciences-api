@@ -335,7 +335,7 @@ class Review
     private int $piwikid;
 
 
-    #[ORM\OneToMany(mappedBy: 'review', targetEntity: Papers::class)]
+    #[ORM\OneToMany(mappedBy: 'review', targetEntity: Paper::class)]
     #[Groups(['read:Review'])]
     private Collection $papers;
 
@@ -428,7 +428,7 @@ class Review
         return $this->papers;
     }
 
-    public function addPaper(Papers $paper): self
+    public function addPaper(Paper $paper): self
     {
         if (!$this->papers->contains($paper)) {
             $this->papers[] = $paper;
@@ -438,7 +438,7 @@ class Review
         return $this;
     }
 
-    public function removePaper(Papers $paper): self
+    public function removePaper(Paper $paper): self
     {
         // set the owning side to null (unless already changed)
         if ($this->papers->removeElement($paper) && $paper->getReview() === $this) {

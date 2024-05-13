@@ -41,7 +41,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
         new Get(
             uriTemplate: self::URI_TEMPLATE . '{docid}',
             openapi: new OpenApiOperation(
-                summary: 'Article',
+                summary: 'The paper identified by docid',
                 security: [['bearerAuth' => []],]
             ),
 
@@ -55,7 +55,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
         new GetCollection(
             uriTemplate: self::URI_TEMPLATE,
             openapi: new OpenApiOperation(
-                summary: 'All Papers',
+                summary: 'All Papers (In offline mode: only published papers )',
                 security: [['bearerAuth' => []],]
             ),
             normalizationContext: [
@@ -72,7 +72,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 
 )]
 #[ApiFilter(SearchFilter::class, properties: self::FILTERS)]
-class Papers implements UserOwnedInterface
+class Paper implements UserOwnedInterface
 {
     public const FILTERS = [
         'rvid' => AppConstants::FILTER_TYPE_EXACT,
@@ -82,7 +82,8 @@ class Papers implements UserOwnedInterface
         'vid' => AppConstants::FILTER_TYPE_EXACT,
         'sid' => AppConstants::FILTER_TYPE_EXACT,
         'repoid' => AppConstants::FILTER_TYPE_EXACT,
-        'flag' => AppConstants::FILTER_TYPE_EXACT
+        'flag' => AppConstants::FILTER_TYPE_EXACT,
+        'status' => AppConstants::FILTER_TYPE_EXACT
     ];
 
     public const TABLE = 'PAPERS';
@@ -195,41 +196,32 @@ class Papers implements UserOwnedInterface
     #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    #[groups(self::PAPERS_GROUPS)]
+
     private int $docid;
 
 
     #[ORM\Column(name: 'PAPERID', type: 'integer', nullable: true, options: ['unsigned' => true])]
-    #[groups(self::PAPERS_GROUPS)]
+
     private ?int $paperid;
 
 
     #[ORM\Column(name: 'DOI', type: 'string', length: 250, nullable: true)]
-    #[groups(self::PAPERS_GROUPS)]
+
     private ?string $doi;
 
 
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
-        ]
-    )]
+
     private int $rvid;
 
 
     #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    #[groups(
-        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0]
-    )]
+
     private int $vid = 0;
 
 
     #[ORM\Column(name: 'SID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    #[groups(
-        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0]
-    )]
+
     private int $sid = 0;
 
 
@@ -238,70 +230,56 @@ class Papers implements UserOwnedInterface
 
 
     #[ORM\Column(name: 'STATUS', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    #[groups(self::PAPERS_GROUPS)]
+
     private int $status = 0;
 
 
     #[ORM\Column(name: 'IDENTIFIER', type: 'string', length: 500, nullable: false)]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
-        ])]
+
     private string $identifier;
 
 
     #[ORM\Column(name: 'VERSION', type: 'float', precision: 10, scale: 0, nullable: false, options: ['default' => 1])]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
-        ])]
+
     private $version = 1;
 
 
     #[ORM\Column(name: 'REPOID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
-        ])]
+
     private int $repoid;
 
 
     #[ORM\Column(name: 'RECORD', type: 'text', length: 65535, nullable: false)]
-    #[groups(
-        [AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],]
-    )]
+
     private string $record;
+    #[ORM\Column(name: 'DOCUMENT', type: 'json', nullable: false)]
+    #[groups(self::PAPERS_GROUPS)]
+
+//    #[groups(
+//        [
+//            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+//            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
+//        ]
+//    )]
+
+    private array $document;
     #[ORM\Column(name: 'CONCEPT_IDENTIFIER', type: 'string', length: 500, nullable: true, options: ['comment' => 'This identifier represents all versions'])]
     private ?string $conceptIdentifier;
 
     #[ORM\Column(name: 'FLAG', type: 'string', length: 0, nullable: false, options: ['default' => 'submitted'])]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-        ]
-    )]
+
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private string $flag = 'submitted';
 
 
     #[ORM\Column(name: 'WHEN', type: 'datetime', nullable: false)]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-        ]
-    )]
+
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $when;
 
 
     #[ORM\Column(name: 'SUBMISSION_DATE', type: 'datetime', nullable: false)]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-        ])]
+
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $submissionDate;
 
@@ -312,11 +290,7 @@ class Papers implements UserOwnedInterface
 
 
     #[ORM\Column(name: 'PUBLICATION_DATE', type: 'datetime', nullable: true)]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
-        ])]
+
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private ?DateTime $publicationDate;
 
@@ -334,11 +308,7 @@ class Papers implements UserOwnedInterface
 
     #[ORM\ManyToOne(targetEntity: Review::class, inversedBy: 'papers')]
     #[ORM\JoinColumn(name: 'RVID', referencedColumnName: 'RVID', nullable: false)]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
-        ])]
+
     private Review $review;
 
     #[ORM\ManyToOne(targetEntity: Section::class, inversedBy: 'papers')]
@@ -630,9 +600,9 @@ class Papers implements UserOwnedInterface
 
     /**
      * @param string $flag
-     * @return Papers
+     * @return Paper
      */
-    public function setFlag(string $flag): Papers
+    public function setFlag(string $flag): Paper
     {
         $this->flag = $flag;
         return $this;
@@ -705,7 +675,7 @@ class Papers implements UserOwnedInterface
 
     /**
      * @param array $editors
-     * @return Papers
+     * @return Paper
      */
     public function setEditors(array $editors): self
     {
@@ -728,7 +698,7 @@ class Papers implements UserOwnedInterface
 
     /**
      * @param array $reviewers
-     * @return Papers
+     * @return Paper
      */
     public function setReviewers(array $reviewers): self
     {
@@ -783,7 +753,7 @@ class Papers implements UserOwnedInterface
 
     /**
      * @param array $copyEditors
-     * @return Papers
+     * @return Paper
      */
     public function setCopyEditors(array $copyEditors): self
     {
@@ -805,7 +775,7 @@ class Papers implements UserOwnedInterface
 
     /**
      * @param array $coAuthors
-     * @return Papers
+     * @return Paper
      */
     public function setCoAuthors(array $coAuthors): self
     {
@@ -877,6 +847,17 @@ class Papers implements UserOwnedInterface
             array_keys($this->getCopyEditors())
         );
 
+    }
+
+    public function getDocument(): array
+    {
+        return $this->document;
+    }
+
+    public function setDocument(array $document): self
+    {
+        $this->document = $document;
+        return $this;
     }
 
 }

@@ -2,7 +2,7 @@
 
 namespace App\DataFixtures;
 
-use App\Entity\Papers;
+use App\Entity\Paper;
 use App\Entity\User;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
@@ -50,7 +50,7 @@ class AppFixtures extends Fixture
 
 
 
-        $paper = new Papers();
+        $paper = new Paper();
 
         $paper
             ->setRvid(2)

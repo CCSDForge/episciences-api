@@ -97,7 +97,7 @@ class Section
     )]
     private ?array $descriptions;
 
-    #[ORM\OneToMany(mappedBy: 'section', targetEntity: Papers::class)]
+    #[ORM\OneToMany(mappedBy: 'section', targetEntity: Paper::class)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
@@ -172,7 +172,7 @@ class Section
         return $this;
     }
 
-    public function addPaper(Papers $paper): self
+    public function addPaper(Paper $paper): self
     {
         if (!$this->papers->contains($paper)) {
             $this->papers->add($paper);
@@ -182,7 +182,7 @@ class Section
         return $this;
     }
 
-    public function removePaper(Papers $paper): self
+    public function removePaper(Paper $paper): self
     {
         // set the owning side to null (unless already changed)
         if ($this->papers->removeElement($paper) && $paper->getSection() === $this) {

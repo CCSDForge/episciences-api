@@ -111,7 +111,7 @@ class UserAssignment
 
     #[ORM\ManyToOne(inversedBy: 'assignments')]
     #[ORM\JoinColumn(name: 'ITEMID', referencedColumnName: 'DOCID', nullable: false)]
-    private ?Papers $papers = null;
+    private ?Paper $papers = null;
 
     public function getId(): ?int
     {
@@ -238,12 +238,12 @@ class UserAssignment
         return $this;
     }
 
-    public function getPapers(): ?Papers
+    public function getPapers(): ?Paper
     {
         return $this->papers;
     }
 
-    public function setPapers(?Papers $papers): self
+    public function setPapers(?Paper $papers): self
     {
         $this->papers = $papers;
 
