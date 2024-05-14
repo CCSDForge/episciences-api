@@ -24,6 +24,7 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 {
 
     private Security $security;
+    public static string $order = 'DESC';
 
     public function __construct(Security $security)
     {
@@ -107,9 +108,9 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
         if ($resourceClass === Volume::class | $resourceClass === Section::class) {
 
-            $queryBuilder->orderBy("$alias.rvid", 'DESC');
-            $resourceClass === Volume::class ? $queryBuilder->addOrderBy("$alias.vid", 'DESC') :
-                $queryBuilder->addOrderBy("$alias.sid", 'DESC');
+            $queryBuilder->orderBy("$alias.rvid", self::$order);
+            $resourceClass === Volume::class ? $queryBuilder->addOrderBy("$alias.vid", self::$order) :
+                $queryBuilder->addOrderBy("$alias.sid", self::$order);
 
         } elseif ($resourceClass === Review::class) {
 
@@ -121,28 +122,31 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
 
         }
 
-
     }
 
 
     private function adnWherePublishedOnly(QueryBuilder $queryBuilder, string $field): QueryBuilder
     {
         $parameters = $queryBuilder->getParameters()->getValues();
-        if(!empty($parameters)){
+
+        if (!empty($parameters)) {
             $docId = $parameters[array_key_first($parameters)]->getValue();
 
-            if($docId){
+            if ($docId) {
                 $alias = $queryBuilder->getRootAliases()[0];
-                $queryBuilder->
-                orWhere("$alias.paperid= :paperId")->
-                setParameter('paperId', $docId);
+
+                $queryBuilder->orWhere(sprintf('%s.paperid = :paperId', $alias))
+                    ->setParameter('paperId', $docId);
 
             }
 
         }
-        return $queryBuilder->
+
+        $queryBuilder->
         andWhere("$field= :published")->
         setParameter('published', Paper::STATUS_PUBLISHED);
+
+        return  $queryBuilder;
 
     }
 
@@ -236,8 +240,8 @@ class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollecti
                         ->setParameter('rvId', $curentUser->getCurrentJournalID());
 
                     $isVolumesOperation ?
-                        $queryBuilder->addOrderBy("$alias.vid", 'DESC') :
-                        $queryBuilder->addOrderBy("$alias.sid", 'DESC');
+                        $queryBuilder->addOrderBy("$alias.vid", self::$order) :
+                        $queryBuilder->addOrderBy("$alias.sid", self::$order);
                 }
 
 

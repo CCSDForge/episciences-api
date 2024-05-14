@@ -197,7 +197,12 @@ class Paper implements UserOwnedInterface
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
 
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    //#[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+        ]
+    )]
     private int $docid;
 
 
@@ -208,6 +213,12 @@ class Paper implements UserOwnedInterface
 
 
     #[ORM\Column(name: 'DOI', type: 'string', length: 250, nullable: true)]
+
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+        ]
+    )]
 
     private ?string $doi;
 
@@ -232,6 +243,12 @@ class Paper implements UserOwnedInterface
 
 
     #[ORM\Column(name: 'STATUS', type: 'integer', nullable: false, options: ['unsigned' => true])]
+
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+        ]
+    )]
 
     private int $status = 0;
 
@@ -309,6 +326,11 @@ class Paper implements UserOwnedInterface
     #[ORM\ManyToOne(targetEntity: Review::class, inversedBy: 'papers')]
     #[ORM\JoinColumn(name: 'RVID', referencedColumnName: 'RVID', nullable: false)]
 
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+        ]
+    )]
     private Review $review;
 
     #[ORM\ManyToOne(targetEntity: Section::class, inversedBy: 'papers')]
