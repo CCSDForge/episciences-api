@@ -240,10 +240,10 @@ class Stats
 
         $userRepository = $this->entityManager->getRepository(User::class);
 
-        $userStats = $userRepository->findByReviewQuery($rvId, $uid, $role, $withDetails, $registrationYear)->getQuery()->getArrayResult();
+        $userStats = $userRepository->findByReviewQuery($rvId, $withDetails, $role, $uid, $registrationYear)->getQuery()->getArrayResult();
 
         try {
-            $nbUsers = (int)$userRepository->findByReviewQuery($rvId, $uid, $role, false, $registrationYear)->getQuery()->getSingleScalarResult();
+            $nbUsers = (int)$userRepository->findByReviewQuery($rvId, false, $role, $uid, $registrationYear)->getQuery()->getSingleScalarResult();
         } catch (NoResultException | NonUniqueResultException $e) {
             $nbUsers = null;
             $this->logger->error($e->getMessage());

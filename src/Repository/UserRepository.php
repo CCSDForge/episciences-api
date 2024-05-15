@@ -35,13 +35,13 @@ class UserRepository extends ServiceEntityRepository
     /**
      * get users by review query
      * @param int|null $rvId
-     * @param null $uid
-     * @param string|null $role
      * @param bool $withDetails
+     * @param string|null $role
+     * @param null $uid
      * @param int|null $registrationYear
      * @return QueryBuilder
      */
-    public function findByReviewQuery(int $rvId = null, $uid = null, string $role = null, bool $withDetails = false, int $registrationYear = null): QueryBuilder
+    public function findByReviewQuery(int $rvId = null, bool $withDetails = false, string $role = null, $uid = null, int $registrationYear = null): QueryBuilder
     {
         return $this->getEntityManager()->getRepository(UserRoles::class)->getUserRolesStatsQuery($rvId, $uid, $role, $withDetails);
     }
