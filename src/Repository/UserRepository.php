@@ -18,7 +18,6 @@ use Doctrine\Persistence\ManagerRegistry;
  * @method User[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
  */
-
 class UserRepository extends ServiceEntityRepository
 {
     use ToolsTrait;
@@ -113,5 +112,22 @@ class UserRepository extends ServiceEntityRepository
         $qb->addGroupBy("$userRolesAlias.roleid");
         $qb->addGroupBy("$userAlias1.uid");
         return $qb;
+    }
+
+
+    public function boardsQuery(int $rvId = null): QueryBuilder
+    {
+
+        $qb = $this->createQueryBuilder("u");
+        $qb->leftJoin("u.userRoles", 'ur');
+        $qb->select("u,ur");
+
+
+        if ($rvId) {
+            $qb->andWhere("ur.rvid = :rvId")->setParameter('rvId', $rvId);
+        }
+
+        return $qb;
+
     }
 }

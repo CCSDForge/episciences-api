@@ -15,6 +15,11 @@ class UserRoles
 {
     public const TABLE = 'USER_ROLES';
 
+    public const TECHNICAL_BOARD = 'technical_board';
+    public const EDITORIAL_BOARD = 'editorial_board';
+    public const SCIENTIFIC_BOARD = 'scientific_board';
+    public const FORMER_MEMBER = 'former_member';
+
     #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]

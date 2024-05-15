@@ -9,6 +9,8 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
+use App\Controller\BoardsController;
+use App\Resource\Boards;
 use App\Resource\DashboardOutput;
 use App\Resource\SubmissionAcceptanceDelayOutput;
 use App\Resource\SubmissionOutput;
@@ -45,6 +47,23 @@ use App\OpenApi\OpenApiFactory;
             ],
 
             security: "is_granted('ROLE_SECRETARY')",
+        ),
+        new Get(
+            uriTemplate: self::URI_TEMPLATE . 'boards/{code}',
+            //inputFormats: ['json' => ['application/json']],
+            controller: BoardsController::class,
+            openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['review']],
+                summary: 'Boards',
+                description: 'Editorial board',
+            ),
+            normalizationContext: [
+                'groups' => ['read:Boards']
+            ],
+
+            output: Boards::class,
+
+
         ),
         new GetCollection(
             uriTemplate: self::URI_TEMPLATE,

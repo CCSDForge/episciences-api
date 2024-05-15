@@ -141,7 +141,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     /**
      * @var array
      */
-    #[Groups(['read:User', 'read:Me'])]
+    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
     private array $roles;
 
     #[ORM\Id]
@@ -150,9 +150,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0]
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+            'read:Boards'
         ])]
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    //#[ApiProperty(security: "is_granted('papers_manage', object)")] //
     private int $uid;
 
 
@@ -160,7 +161,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-        'read:Me',
+        'read:Me','read:Boards'
     ])]
     private string $langueid = 'fr';
     #[ORM\Column(name:"SCREEN_NAME", type: 'string', length: 250, nullable: false) ]
@@ -170,7 +171,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
-            'read:Me'
+            'read:Me','read:Boards'
         ])]
     private string $screenName;
 
@@ -189,7 +190,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-        'read:Me',
+        'read:Me','read:Boards'
     ])]
     private $email;
 
@@ -198,21 +199,21 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-        'read:Me',
+        'read:Me','read:Boards'
     ])]
     private $civ;
 
     #[ORM\Column(name: "LASTNAME", type: 'string', length: 100, nullable: false)]
-    #[Groups(['read:User', 'read:Me'])]
+    #[Groups(['read:User', 'read:Me','read:Boards'])]
     private $lastname;
 
 
     #[ORM\Column(name: "FIRSTNAME", type: 'string', length: 100, nullable: true)]
-    #[Groups(['read:User', 'read:Me'])]
+    #[Groups(['read:User', 'read:Me','read:Boards'])]
     private $firstname;
 
        #[ORM\Column(name: "MIDDLENAME", type: 'string', length: 100, nullable: true)]
-    #[Groups(['read:User', 'read:Me'])]
+    #[Groups(['read:User', 'read:Me','read:Boards'])]
     private $middlename;
 
 
@@ -231,6 +232,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private $modificationDate;
 
+
+    #[ORM\Column(name: "ORCID", type: 'string', length: 19, nullable: true)]
+    #[Groups(['read:User', 'read:Me','read:Boards'])]
+    private $orcid = null;
+
+    #[ORM\Column(name: 'ADDITIONAL_PROFILE_INFORMATION', type: 'json', nullable: true)]
+    #[Groups(['read:User', 'read:Me','read:Boards'])]
+    private ?array $additionalProfileInformation;
 
     #[ORM\Column(name: "IS_VALID", type: "boolean", nullable: false)]
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
@@ -251,6 +260,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[ORM\OneToMany(mappedBy: "user", targetEntity: Paper::class)]
     #[Groups(['read:User', 'read:Me'])]
     private Collection $papers;
+
+    private ?string $photoPath;
 
     public function __construct()
     {
@@ -610,5 +621,41 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public function getCurrentJournalID(): ?int
     {
         return $this->currentJournalID;
+    }
+
+    public function getAdditionalProfileInformation(): ?array
+    {
+        return $this->additionalProfileInformation;
+    }
+
+    public function setAdditionalProfileInformation(array $additionalProfileInformation = null): self
+    {
+        $this->additionalProfileInformation = $additionalProfileInformation;
+        return $this;
+    }
+
+    public function getOrcid(): ?string
+    {
+        return $this->orcid;
+    }
+
+    public function setOrcid(string $orcid = null): self
+    {
+        $this->orcid = $orcid;
+        return $this;
+    }
+
+    public function getPhotoPath():string {
+        return $this->photoPath;
+    }
+
+    public function setPhotoPath(?string $photoPath = null): self
+    {
+        if (null === $photoPath) {
+            $this->photoPath = sprintf('/user/photo/uid/%s', $this->getUid());
+        } else {
+            $this->photoPath = $photoPath;
+        }
+        return $this;
     }
 }
