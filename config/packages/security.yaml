@@ -19,6 +19,11 @@ security:
     role_hierarchy:
         ROLE_GUEST: ~
         ROLE_USER: ROLE_GUEST
+        ROLE_EDITORIAL_BOARD: ROLE_USER,
+        ROLE_TECHNICAL_BOARD: ROLE_USER,
+        ROLE_SCIENTIFIC_BOARD: ROLE_USER,
+        ROLE_FORMER_USER: ROLE_USER,
+        ROLE_COAUTHOR: ROLE_USER,
         ROLE_MEMBER: ROLE_USER   # connected user [default role in symfony]
         ROLE_AUTHOR: ROLE_MEMBER # ROLE_MEMBER: already has a profil in journal
         ROLE_REVIEWER: ROLE_MEMBER
