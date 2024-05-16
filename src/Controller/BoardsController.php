@@ -15,7 +15,7 @@ class BoardsController extends AbstractController
 {
 
 
-    public function __invoke(EntityManagerInterface $entityManager,LoggerInterface $logger, Request $request = null): ?Boards
+    public function __invoke(EntityManagerInterface $entityManager, LoggerInterface $logger, Request $request = null): ?Boards
     {
 
         if ($request !== null) {
@@ -44,7 +44,7 @@ class BoardsController extends AbstractController
 
                 foreach ($result1 as $current1) {
 
-                    if (!$current1['user']){
+                    if (!$current1['user']) {
                         $logger->info(sprintf('empty user [UID = %s', $current1['uid']), [
                             'cause' => sprintf("L'identifiant a probablement été supprimé da la table %s, mais il est toujours présent dans la table %s", User::TABLE, UserRoles::TABLE),
                         ]);
@@ -70,23 +70,15 @@ class BoardsController extends AbstractController
                         ->setOrcid($currentUser['orcid'])
                         ->setAdditionalProfileInformation($currentUser['additionalProfileInformation'])
                         ->setLastname($currentUser['lastname'])
-                        ->setFirstname($currentUser['firstname'])
-                    ;
+                        ->setFirstname($currentUser['firstname']);
 
-                    if (isset($tags[UserRoles::EDITORIAL_BOARD]) && in_array($uid, $tags[UserRoles::EDITORIAL_BOARD], true)) {
-                        $boards[UserRoles::EDITORIAL_BOARD][] = $user;
-                    }
-
-                    if (isset($tags[UserRoles::TECHNICAL_BOARD]) && in_array($uid, $tags[UserRoles::TECHNICAL_BOARD], true)) {
-                        $boards[UserRoles::TECHNICAL_BOARD][] = $user;
-                    }
-
-                    if (isset($tags[UserRoles::SCIENTIFIC_BOARD]) && in_array($uid, $tags[UserRoles::SCIENTIFIC_BOARD], true)) {
-                        $boards[UserRoles::SCIENTIFIC_BOARD][] = $user;
-                    }
-
-                    if (isset($tags[UserRoles::FORMER_MEMBER]) && in_array($uid, $tags[UserRoles::FORMER_MEMBER], true)) {
-                        $boards[UserRoles::FORMER_MEMBER][] = $user;
+                    if (
+                        (isset($tags[UserRoles::EDITORIAL_BOARD]) && in_array($uid, $tags[UserRoles::EDITORIAL_BOARD], true)) ||
+                        (isset($tags[UserRoles::TECHNICAL_BOARD]) && in_array($uid, $tags[UserRoles::TECHNICAL_BOARD], true)) ||
+                        (isset($tags[UserRoles::SCIENTIFIC_BOARD]) && in_array($uid, $tags[UserRoles::SCIENTIFIC_BOARD], true)) ||
+                        (isset($tags[UserRoles::FORMER_MEMBER]) && in_array($uid, $tags[UserRoles::FORMER_MEMBER], true))
+                    ) {
+                        $boards[] = $user;
                     }
                 }
 
@@ -94,12 +86,6 @@ class BoardsController extends AbstractController
 
         }
 
-        return (new Boards())
-            ->setEditorialBoard($boards[UserRoles::EDITORIAL_BOARD] ?? null)
-            ->setFormerBoard($boards[UserRoles::FORMER_MEMBER]?? null)
-            ->setScientificBoard($boards[UserRoles::SCIENTIFIC_BOARD] ?? null)
-            ->setTechnicalBoard($boards[UserRoles::TECHNICAL_BOARD] ?? null)
-            ;
-
+        return (new Boards())->setBoards($boards);
     }
 }
