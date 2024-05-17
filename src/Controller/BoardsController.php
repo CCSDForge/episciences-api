@@ -60,18 +60,6 @@ class BoardsController extends AbstractController
                 foreach ($rolesByUid as $current) {
 
                     $uid = $current['user']['uid'] ?? null;
-                    $currentUser = $current['user'];
-                    $user = new User();
-                    $user->setUid($uid)
-                        ->setLangueid($currentUser['langueid'])
-                        ->setScreenName($currentUser['screenName'])
-                        ->setRoles([$current['roles']])
-                        ->setEmail($currentUser['email'])
-                        ->setCiv($currentUser['civ'])
-                        ->setOrcid($currentUser['orcid'])
-                        ->setAdditionalProfileInformation($currentUser['additionalProfileInformation'])
-                        ->setLastname($currentUser['lastname'])
-                        ->setFirstname($currentUser['firstname']);
 
                     if (
                         (isset($tags[UserRoles::EDITORIAL_BOARD]) && in_array($uid, $tags[UserRoles::EDITORIAL_BOARD], true)) ||
@@ -79,6 +67,18 @@ class BoardsController extends AbstractController
                         (isset($tags[UserRoles::SCIENTIFIC_BOARD]) && in_array($uid, $tags[UserRoles::SCIENTIFIC_BOARD], true)) ||
                         (isset($tags[UserRoles::FORMER_MEMBER]) && in_array($uid, $tags[UserRoles::FORMER_MEMBER], true))
                     ) {
+                        $currentUser = $current['user'];
+                        $user = new User();
+                        $user->setUid($uid)
+                            ->setLangueid($currentUser['langueid'])
+                            ->setScreenName($currentUser['screenName'])
+                            ->setRoles([$current['roles']])
+                            ->setEmail($currentUser['email'])
+                            ->setCiv($currentUser['civ'])
+                            ->setOrcid($currentUser['orcid'])
+                            ->setAdditionalProfileInformation($currentUser['additionalProfileInformation'])
+                            ->setLastname($currentUser['lastname'])
+                            ->setFirstname($currentUser['firstname']);
                         $boards[] = $user;
                     }
                 }

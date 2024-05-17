@@ -114,9 +114,11 @@ class UserRolesRepository extends ServiceEntityRepository
 
     }
 
-    public function communBoardsQuery(int $rvId = null) : QueryBuilder{
+    public function communBoardsQuery(int $rvId = null): QueryBuilder
+    {
 
         $qb = $this->createQueryBuilder("ur");
+        $qb->andWhere("ur.roleid != :epiAdminRole")->setParameter('epiAdminRole', User::ROLE_ROOT);
         $qb->leftJoin("ur.user", 'u', Join::WITH, "ur.uid = u.uid");
 
         $qb->addOrderBy('ur.uid', 'desc');
