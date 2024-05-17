@@ -17,10 +17,11 @@ class BoardsController extends AbstractController
 
     public function __invoke(EntityManagerInterface $entityManager, LoggerInterface $logger, Request $request = null): ?Boards
     {
+        $boards = [];
 
         if ($request !== null) {
             $tags = [];
-            $boards = [];
+
             $rolesByUid = [];
             $code = $request->get('code');
 
@@ -34,13 +35,13 @@ class BoardsController extends AbstractController
                 }
 
                 $userRolesRepo = $entityManager->getRepository(UserRoles::class);
-                $boardTags = $userRolesRepo->boardsTagsQuery($journal->getRvid())->getQuery()->getArrayResult();
+                $boardTags = $userRolesRepo->boardsUsersQuery($journal->getRvid())->getQuery()->getArrayResult();
 
                 foreach ($boardTags as $boardTag) {
                     $tags[$boardTag['roleid']][] = $boardTag['uid'];
                 }
 
-                $result1 = $userRolesRepo->boardsQuery($journal->getRvid())->getQuery()->getArrayResult();
+                $result1 = $userRolesRepo->joinUserRolesQuery($journal->getRvid())->getQuery()->getArrayResult();
 
                 foreach ($result1 as $current1) {
 

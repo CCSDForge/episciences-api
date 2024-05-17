@@ -88,24 +88,16 @@ class UserRolesRepository extends ServiceEntityRepository
     }
 
 
-    public function boardsQuery(int $rvId = null): QueryBuilder
+    public function joinUserRolesQuery(int $rvId = null): QueryBuilder
     {
 
         $qb = $this->communBoardsQuery($rvId);
-
-        $qb->andWhere("ur.roleid != :ebRoleId AND ur.roleid != :forRoleId AND ur.roleid != :sciRoleId AND ur.roleid != :tecRoleId")
-            ->setParameter('ebRoleId', UserRoles::EDITORIAL_BOARD)
-            ->setParameter('forRoleId', UserRoles::FORMER_MEMBER)
-            ->setParameter('sciRoleId', UserRoles::SCIENTIFIC_BOARD)
-            ->setParameter('tecRoleId', UserRoles::TECHNICAL_BOARD);
-
         $qb->select("ur,u");
-
         return $qb;
 
     }
 
-    public function boardsTagsQuery(int $rvId = null): QueryBuilder
+    public function boardsUsersQuery(int $rvId = null): QueryBuilder
     {
 
         $qb = $this->communBoardsQuery($rvId);
@@ -128,6 +120,7 @@ class UserRolesRepository extends ServiceEntityRepository
         $qb->leftJoin("ur.user", 'u', Join::WITH, "ur.uid = u.uid");
 
         $qb->addOrderBy('ur.uid', 'desc');
+        $qb->addOrderBy('LENGTH(ur.roleid)', 'asc');
 
         if ($rvId) {
             $qb->andWhere("ur.rvid = :rvId")->setParameter('rvId', $rvId);
