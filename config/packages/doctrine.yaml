@@ -31,3 +31,7 @@ doctrine:
                         prefix: 'App\Entity'
                         alias: App
                 dql:
+                    string_functions:
+                        JSON_EXTRACT: Scienta\DoctrineJsonFunctions\Query\AST\Functions\Mysql\JsonExtract
+
+

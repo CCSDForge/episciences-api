@@ -15,8 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 ### Added
-- New endpoint "boards" (/api/journals/boards/{code})
-  Boards)
+- New endpoints:
+  1. Boards (/api/journals/boards/{code})
+  2. Pages (/api/pages; /api/pages/{id})
+
 ## Unreleased
 ### Changed
 - automatic generation of the deployment tag

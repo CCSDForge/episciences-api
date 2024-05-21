@@ -7,6 +7,7 @@ use ApiPlatform\Doctrine\Orm\Extension\QueryItemExtensionInterface;
 use ApiPlatform\Doctrine\Orm\Util\QueryNameGeneratorInterface;
 use ApiPlatform\Metadata\HttpOperation;
 use ApiPlatform\Metadata\Operation;
+use App\Entity\Page;
 use App\Entity\Paper;
 use App\Entity\Review;
 use App\Entity\Section;
@@ -120,6 +121,8 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 ->andWhere("$alias.status!= :status")
                 ->setParameter('status', Review::STATUS_DISABLED);
 
+        } elseif($resourceClass === Page::class){
+           $queryBuilder->andWhere("JSON_EXTRACT ($alias.visibility, '$[0]') = :visibility")->setParameter('visibility', 'public');
         }
 
     }

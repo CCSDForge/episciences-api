@@ -15,7 +15,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
     public const OAF_TAGS = [
         'auth' => 'Sign in - Myspace',
         'stats' => 'Statistics',
-        'review' => 'Journals',
+        'review' => 'Journals | Boards',
         'user' => 'User',
         'sections_volumes' => 'Sections | Volumes',
     ];

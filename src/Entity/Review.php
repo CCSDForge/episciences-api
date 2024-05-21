@@ -50,7 +50,6 @@ use App\OpenApi\OpenApiFactory;
         ),
         new Get(
             uriTemplate: self::URI_TEMPLATE . 'boards/{code}',
-            //inputFormats: ['json' => ['application/json']],
             controller: BoardsController::class,
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['review']],
