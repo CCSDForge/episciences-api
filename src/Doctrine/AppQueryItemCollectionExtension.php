@@ -20,7 +20,7 @@ use JetBrains\PhpStorm\NoReturn;
 use ReflectionException;
 use Symfony\Bundle\SecurityBundle\Security;
 
-class CurrentUserExtension implements QueryItemExtensionInterface, QueryCollectionExtensionInterface
+class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, QueryCollectionExtensionInterface
 {
 
     private Security $security;
