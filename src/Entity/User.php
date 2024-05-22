@@ -569,12 +569,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         foreach ($elements as $userRole) {
 
             $currentRole = $prefix . strtoupper($userRole->getRoleid());
-
-//            if ($currentRole === $prefix . strtoupper(self::ROLE_ROOT)){ 
-//                $roles[] = $currentRole;
-//                return $roles;
-//            }
-
             $roles[$userRole->getRvid()][] = $currentRole;
         }
         return ($rvId === null || !array_key_exists($rvId, $roles)) ? ['ROLE_USER'] : $roles[$rvId];
