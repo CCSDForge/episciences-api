@@ -137,9 +137,6 @@ class Page
     )]
     private \DateTimeInterface $date_updated;
 
-    #[ORM\Column(name: 'legacy_id', type: 'integer', nullable: true, options: ['comment' => 'Legacy Page ID'])]
-    private ?int $legacy_id = null;
-
     public function getId(): int
     {
         return $this->id;
@@ -237,18 +234,6 @@ class Page
     public function setPageCode(string $page_code): static
     {
         $this->page_code = $page_code;
-
-        return $this;
-    }
-
-    public function getLegacyId(): ?int
-    {
-        return $this->legacy_id;
-    }
-
-    public function setLegacyId(int $legacy_id): static
-    {
-        $this->legacy_id = $legacy_id;
 
         return $this;
     }
