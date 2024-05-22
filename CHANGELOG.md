@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New endpoints:
   1. Boards (/api/journals/boards/{code})
   2. Pages (/api/pages; /api/pages/{id})
+  3. News (/api/news; /api/news/{id})
 
 ## Unreleased
 ### Changed
