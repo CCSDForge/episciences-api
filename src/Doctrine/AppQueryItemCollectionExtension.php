@@ -129,11 +129,11 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     }
 
 
-    private function adnWherePublishedOnly(QueryBuilder $queryBuilder, string $field): QueryBuilder
+    private function adnWherePublishedOnly(QueryBuilder $queryBuilder, string $field, string $resourceClass): QueryBuilder
     {
         $parameters = $queryBuilder->getParameters()->getValues();
 
-        if (!empty($parameters)) {
+        if (!empty($parameters) && $resourceClass === Paper::class) {
             $docId = $parameters[array_key_first($parameters)]->getValue();
 
             if ($docId) {
@@ -160,11 +160,11 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
         if ($resourceClass === Paper::class) {
 
-            $this->adnWherePublishedOnly($queryBuilder, "$alias.status");
+            $this->adnWherePublishedOnly($queryBuilder, "$alias.status", $resourceClass);
 
         } elseif ($resourceClass === Volume::class || $resourceClass === Section::class) {
 
-            $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status');
+            $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status', $resourceClass);
 
         }
 
