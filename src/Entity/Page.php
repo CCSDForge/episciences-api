@@ -87,9 +87,6 @@ class Page
 
 
     #[ORM\Column(name: 'uid', type: 'integer', nullable: false)]
-    #[groups(
-        ['read:Page', 'read:Pages']
-    )]
     private int $uid;
 
 

@@ -171,7 +171,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
-            'read:Me','read:Boards'
+            'read:Me','read:Boards','read:News', 'read:News:Collection'
         ])]
     private string $screenName;
 
@@ -263,11 +263,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
 
     private ?string $photoPath;
 
+    /**
+     * @var Collection<int, News>
+     */
+    #[ORM\OneToMany(mappedBy: 'creator', targetEntity: News::class)]
+    #[Groups(['read:User', 'read:Me'])]
+    private Collection $news;
+
     public function __construct()
     {
         $this->roles = [];
         $this->userRoles = new ArrayCollection();
         $this->papers = new ArrayCollection();
+        $this->news = new ArrayCollection();
     }
 
     public function getUid(): ?int
@@ -650,6 +658,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         } else {
             $this->photoPath = $photoPath;
         }
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, News>
+     */
+    public function getNews(): Collection
+    {
+        return $this->news;
+    }
+
+    public function addNews(News $news): static
+    {
+        if (!$this->news->contains($news)) {
+            $this->news->add($news);
+            $news->setCreator($this);
+        }
+
+        return $this;
+    }
+
+    public function removeNews(News $news): static
+    {
+        if ($this->news->removeElement($news)) {
+            // set the owning side to null (unless already changed)
+            if ($news->getCreator() === $this) {
+                $news->setCreator(null);
+            }
+        }
+
         return $this;
     }
 }

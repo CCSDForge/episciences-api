@@ -70,6 +70,13 @@ class News
     )]
     private ?int $id = null;
 
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'news')]
+    #[ORM\JoinColumn(name: 'UID', referencedColumnName: 'UID', nullable: false)]
+    #[groups(
+        ['read:News', 'read:News:Collection']
+    )]
+    private ?User $creator = null;
+
     #[ORM\Column(nullable: true)]
     private ?int $legacy_id = null;
     #[ORM\Column(name: 'code', length: 100, nullable: false, options: ['comment' => 'Journal code rvcode'])]
@@ -79,9 +86,6 @@ class News
     private ?string $rvcode = null;
 
     #[ORM\Column(name: 'uid', type: 'integer', nullable: false)]
-    #[groups(
-        ['read:News', 'read:News:Collection']
-    )]
     private ?int $uid = null;
 
     #[ORM\Column(name: 'title', type: 'json', nullable: false, options: ['comment' => 'Page title'])]
@@ -104,7 +108,7 @@ class News
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     #[groups(
-        ['read:News']
+        ['read:News', 'read:News:Collection']
     )]
     private ?\DateTimeInterface $date_creation = null;
 
@@ -229,6 +233,18 @@ class News
     public function setVisibility(array $visibility): static
     {
         $this->visibility = $visibility;
+
+        return $this;
+    }
+
+    public function getCreator(): ?User
+    {
+        return $this->creator;
+    }
+
+    public function setCreator(?User $creator): static
+    {
+        $this->creator = $creator;
 
         return $this;
     }
