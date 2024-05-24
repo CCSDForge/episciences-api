@@ -13,6 +13,7 @@ use App\AppConstants;
 use App\OpenApi\OpenApiFactory;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -74,6 +75,36 @@ class Volume
     )]
     private int $rvid;
 
+    #[ORM\Column(nullable: true)]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+        ]
+
+    )]
+    private ?int $vol_year = null;
+
+    #[ORM\Column(type: 'string', nullable: true)]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+        ]
+
+    )]
+    private ?string $vol_type = null;
+
+    #[ORM\Column(type: 'string', nullable: true)]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+        ]
+
+    )]
+    private ?string $type = null;
+
 
    #[ORM\Column(name: 'POSITION', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private int $position;
@@ -133,6 +164,17 @@ class Volume
     #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
     private Collection $settings;
 
+    #[ORM\OneToMany(mappedBy: 'volume', targetEntity: VolumeProceeding::class)]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
+
+        ]
+
+    )]
+    private Collection $settings_proceeding;
+
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -148,6 +190,7 @@ class Volume
     {
         $this->papers = new ArrayCollection();
         $this->settings = new ArrayCollection();
+        $this->settings_proceeding = new ArrayCollection();
         $this->metadata = new ArrayCollection();
     }
 
@@ -267,6 +310,11 @@ class Volume
         return $this->settings;
     }
 
+    public function getSettingsProceeding(): Collection
+    {
+        return $this->settings_proceeding;
+    }
+
     public function addSetting(VolumeSetting $setting): self
     {
         if (!$this->settings->contains($setting)) {
@@ -277,10 +325,31 @@ class Volume
         return $this;
     }
 
+
+    public function addSettingProceeding(VolumeProceeding $setting): self
+    {
+        if (!$this->settings_proceeding->contains($setting)) {
+            $this->settings_proceeding->add($setting);
+            $setting->setVolume($this);
+        }
+
+        return $this;
+    }
+
     public function removeSetting(VolumeSetting $setting): self
     {
         // set the owning side to null (unless already changed)
         if ($this->settings->removeElement($setting) && $setting->getVolume() === $this) {
+            $setting->setVolume(null);
+        }
+
+        return $this;
+    }
+
+    public function removeSettingProceeding(VolumeProceeding $setting): self
+    {
+        // set the owning side to null (unless already changed)
+        if ($this->settings_proceeding->removeElement($setting) && $setting->getVolume() === $this) {
             $setting->setVolume(null);
         }
 
@@ -311,6 +380,42 @@ class Volume
         if ($this->metadata->removeElement($metadata) && $metadata->getVolume() === $this) {
             $metadata->setVolume(null);
         }
+
+        return $this;
+    }
+
+    public function getVolYear(): ?int
+    {
+        return $this->vol_year;
+    }
+
+    public function setVolYear(?int $vol_year): static
+    {
+        $this->vol_year = $vol_year;
+
+        return $this;
+    }
+
+    public function getVolType(): ?string
+    {
+        return $this->vol_type;
+    }
+
+    public function setVolType(?array $vol_type): static
+    {
+        $this->vol_type = $vol_type;
+
+        return $this;
+    }
+
+    public function getType(): ?string
+    {
+        return $this->type;
+    }
+
+    public function setType(?array $type): static
+    {
+        $this->type = $type;
 
         return $this;
     }
