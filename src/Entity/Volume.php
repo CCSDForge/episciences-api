@@ -28,7 +28,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Consult a particular volume',
-                security: [['bearerAuth' =>  []],]
+                security: [['bearerAuth' => []],]
 
             ),
 
@@ -42,7 +42,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Volumes list',
-                security: [['bearerAuth' =>  []],]
+                security: [['bearerAuth' => []],]
 
             ),
             normalizationContext: [
@@ -59,9 +59,9 @@ class Volume
     public const TABLE = 'VOLUME';
     public const DEFAULT_URI_TEMPLATE = '/volumes{._format}';
 
-   #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-   #[ORM\Id]
-   #[ORM\GeneratedValue(strategy: 'IDENTITY')]
+    #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private int $vid;
 
 
@@ -95,18 +95,7 @@ class Volume
     )]
     private ?string $vol_type = null;
 
-    #[ORM\Column(type: 'string', nullable: true)]
-    #[Groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
-        ]
-
-    )]
-    private ?string $type = null;
-
-
-   #[ORM\Column(name: 'POSITION', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'POSITION', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private int $position;
 
 
@@ -129,7 +118,7 @@ class Volume
         ]
 
     )]
-    private ?array  $titles ;
+    private ?array $titles;
     #[ORM\Column(name: 'descriptions', type: 'json', nullable: true)]
     #[Groups(
         [
@@ -138,7 +127,7 @@ class Volume
         ]
 
     )]
-    private  ?array $descriptions;
+    private ?array $descriptions;
 
     #[ORM\OneToMany(mappedBy: 'volume', targetEntity: Paper::class)]
     #[Groups(
@@ -159,7 +148,6 @@ class Volume
         ]
 
     )]
-
     #[ORM\OneToMany(mappedBy: 'volume', targetEntity: VolumeSetting::class)]
     #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
     private Collection $settings;
@@ -182,7 +170,6 @@ class Volume
         ]
 
     )]
-
     #[ORM\OneToMany(mappedBy: 'volume', targetEntity: VolumeMetadata::class, orphanRemoval: true)]
     private Collection $metadata;
 
@@ -270,7 +257,6 @@ class Volume
         $this->titles = $titles;
         return $this;
     }
-
 
 
     /**
@@ -407,18 +393,4 @@ class Volume
 
         return $this;
     }
-
-    public function getType(): ?string
-    {
-        return $this->type;
-    }
-
-    public function setType(?array $type): static
-    {
-        $this->type = $type;
-
-        return $this;
-    }
-
-
 }
