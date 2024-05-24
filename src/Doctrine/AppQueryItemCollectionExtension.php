@@ -122,7 +122,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 ->andWhere("$alias.status!= :status")
                 ->setParameter('status', Review::STATUS_DISABLED);
 
-        } elseif ($resourceClass === Page::class || News::class) {
+        } elseif ($resourceClass === Page::class || $resourceClass === News::class) {
             $queryBuilder->andWhere("JSON_EXTRACT ($alias.visibility, '$[0]') = :visibility")->setParameter('visibility', 'public');
         }
 
