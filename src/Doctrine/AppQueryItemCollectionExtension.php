@@ -251,7 +251,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
             } else {
 
-                $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status');
+                $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status', $resourceClass);
             }
 
         }
