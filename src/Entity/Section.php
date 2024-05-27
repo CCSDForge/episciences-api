@@ -9,6 +9,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\AppConstants;
 use App\OpenApi\OpenApiFactory;
+use App\Repository\SectionRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -20,7 +21,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Index(columns: ['RVID'], name: 'FK_CONFID_idx')]
 #[ORM\Index(columns: ['POSITION'], name: 'POSITION')]
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: SectionRepository::class)]
 #[ApiResource(
     operations: [
 
@@ -63,6 +64,7 @@ class Section
     #[ORM\Column(name: 'SID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
+    #[Groups(['read:Boards'])]
     private int $sid;
 
     /**
@@ -81,7 +83,8 @@ class Section
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0]
+            AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0],
+            'read:Boards'
         ]
 
     )]
@@ -155,7 +158,7 @@ class Section
         return $this->titles;
     }
 
-    public function setTitles(?array $titles): self
+    public function setTitles(?array $titles = null): self
     {
         $this->titles = $titles;
         return $this;
@@ -166,7 +169,7 @@ class Section
         return $this->descriptions;
     }
 
-    public function setDescriptions(?array $descriptions): self
+    public function setDescriptions(?array $descriptions = null): self
     {
         $this->descriptions = $descriptions;
         return $this;
@@ -230,9 +233,10 @@ class Section
         return $this->sid;
     }
 
-    public function setSid(int $sid): void
+    public function setSid(int $sid): self
     {
         $this->sid = $sid;
+        return $this;
     }
 
 
