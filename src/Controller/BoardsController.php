@@ -3,9 +3,11 @@
 namespace App\Controller;
 
 use App\Entity\Review;
+use App\Entity\Section;
 use App\Entity\User;
 use App\Entity\UserRoles;
 use App\Resource\Boards;
+use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -37,8 +39,17 @@ class BoardsController extends AbstractController
                 $userRolesRepo = $entityManager->getRepository(UserRoles::class);
                 $boardTags = $userRolesRepo->boardsUsersQuery($journal->getRvid())->getQuery()->getArrayResult();
 
+                if (empty($boardTags)) {
+                    return (new Boards())->setBoards();
+                }
+
+                $boardIdentifies = [];
+
                 foreach ($boardTags as $boardTag) {
                     $tags[$boardTag['roleid']][] = $boardTag['uid'];
+                    if (!in_array($boardTag['uid'], $boardIdentifies, true)) {
+                        $boardIdentifies[] = $boardTag['uid'];
+                    }
                 }
 
                 $result1 = $userRolesRepo->joinUserRolesQuery($journal->getRvid())->getQuery()->getArrayResult();
@@ -53,8 +64,18 @@ class BoardsController extends AbstractController
                         continue;
 
                     }
+
                     $rolesByUid[$current1['uid']]['roles'][] = $current1['roleid'];
                     $rolesByUid[$current1['uid']]['user'] = $current1['user'];
+                }
+
+
+                try {
+                    $assignedSections = $entityManager->getRepository(Section::class)->getAssignedSection($journal->getRvid(), $boardIdentifies);
+                } catch (Exception | \JsonException  $e) {
+                    $assignedSections = [];
+                    $logger->critical($e->getMessage());
+
                 }
 
                 foreach ($rolesByUid as $current) {
@@ -78,7 +99,8 @@ class BoardsController extends AbstractController
                             ->setOrcid($currentUser['orcid'])
                             ->setAdditionalProfileInformation($currentUser['additionalProfileInformation'])
                             ->setLastname($currentUser['lastname'])
-                            ->setFirstname($currentUser['firstname']);
+                            ->setFirstname($currentUser['firstname'])
+                            ->setAssignedSections($assignedSections[$uid] ?? null);
                         $boards[] = $user;
                     }
                 }

@@ -19,7 +19,7 @@ class Boards
         return $this->boards;
     }
 
-    public function setBoards(?array $boards): self
+    public function setBoards(?array $boards = null): self
     {
         $this->boards = $boards;
         return $this;

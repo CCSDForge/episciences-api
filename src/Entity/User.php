@@ -269,6 +269,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[ORM\OneToMany(mappedBy: 'creator', targetEntity: News::class)]
     #[Groups(['read:User', 'read:Me'])]
     private Collection $news;
+    #[Groups(['read:Boards'])]
+    private ?array $assignedSections;
 
     public function __construct()
     {
@@ -690,4 +692,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
 
         return $this;
     }
+
+    public function getAssignedSections(): ?array
+    {
+        return $this->assignedSections;
+    }
+
+    public function setAssignedSections(?array $assignedSections = null): void
+    {
+        $this->assignedSections = $assignedSections;
+    }
+
 }
