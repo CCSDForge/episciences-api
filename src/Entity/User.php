@@ -16,6 +16,7 @@ use App\Repository\UserRepository;
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Lexik\Bundle\JWTAuthenticationBundle\Security\User\JWTUserInterface;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,6 +30,15 @@ use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\OpenApi\OpenApiFactory;
 
 #[ORM\Table(name: self::TABLE)]
+#[ORM\UniqueConstraint(name: 'uuid', columns: ['uuid'])]
+#[ORM\UniqueConstraint(name: 'U_USERNAME', columns: ['USERNAME'])]
+#[ORM\Index(columns: ['IS_VALID'], name: 'IS_VALID')]
+#[ORM\Index(columns: ['API_PASSWORD'], name: 'API_PASSWORD')]
+#[ORM\Index(columns: ['FIRSTNAME'], name: 'FIRSTNAME')]
+#[ORM\Index(columns: ['LASTNAME'], name: 'LASTNAME')]
+#[ORM\Index(columns: ['SCREEN_NAME'], name: 'SCREEN_NAME')]
+#[ORM\Index(columns: ['EMAIL'], name: 'EMAIL')]
+#[ORM\Index(columns: ['REGISTRATION_DATE'], name: 'REGISTRATION_DATE')]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ApiResource(
     operations: [
@@ -155,6 +165,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         ])]
     //#[ApiProperty(security: "is_granted('papers_manage', object)")] //
     private int $uid;
+
+    #[ORM\Column(type: Types::GUID)]
+    private ?string $uuid = null;
 
 
     #[ORM\Column(name:"LANGUEID",type: "string", length: 2, nullable: false, options: ['default' => 'fr'])]
@@ -701,6 +714,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public function setAssignedSections(?array $assignedSections = null): void
     {
         $this->assignedSections = $assignedSections;
+    }
+
+    public function getUuid(): ?string
+    {
+        return $this->uuid;
+    }
+
+    public function setUuid(string $uuid): static
+    {
+        $this->uuid = $uuid;
+
+        return $this;
     }
 
 }
