@@ -90,7 +90,9 @@ class BoardsController extends AbstractController
                     ) {
                         $currentUser = $current['user'];
                         $user = new User();
-                        $user->setUid($uid)
+                        $user
+                            ->setUid($uid)
+                            ->setUuid($currentUser['uuid'])
                             ->setLangueid($currentUser['langueid'])
                             ->setScreenName($currentUser['screenName'])
                             ->setRoles([$current['roles']])

@@ -163,10 +163,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
             'read:Boards'
         ])]
-    //#[ApiProperty(security: "is_granted('papers_manage', object)")] //
+    #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private int $uid;
 
     #[ORM\Column(type: Types::GUID)]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+            'read:Boards'
+        ])]
     private ?string $uuid = null;
 
 
