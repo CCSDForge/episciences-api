@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 ### Added
+- new field user's uuid
 - Sections information to editorial Staff members
 - New endpoints:
   1. Boards (/api/journals/boards/{code})
