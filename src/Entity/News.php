@@ -9,6 +9,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\Repository\NewsRepository;
 
@@ -28,6 +29,19 @@ use Symfony\Component\Serializer\Annotation\Groups;
             openapi: new OpenApiOperation(
                 summary: 'List of News',
                 description: 'Retrieving a list of News',
+                parameters: [
+                    new Parameter(
+                        name: AppConstants::YEAR_PARAM,
+                        in: 'query',
+                        description: 'The Year of creation',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ]
+                    ),
+                    ]
             ),
             normalizationContext: [
                 'groups' => ['read:News:Collection']

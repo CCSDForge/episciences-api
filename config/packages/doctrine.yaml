@@ -32,6 +32,8 @@ doctrine:
                         alias: App
                 dql:
                     string_functions:
+                        MONTH: DoctrineExtensions\Query\Mysql\Month
+                        YEAR: DoctrineExtensions\Query\Mysql\Year
                         JSON_EXTRACT: Scienta\DoctrineJsonFunctions\Query\AST\Functions\Mysql\JsonExtract
 
 

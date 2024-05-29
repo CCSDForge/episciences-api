@@ -7,6 +7,7 @@ use ApiPlatform\Doctrine\Orm\Extension\QueryItemExtensionInterface;
 use ApiPlatform\Doctrine\Orm\Util\QueryNameGeneratorInterface;
 use ApiPlatform\Metadata\HttpOperation;
 use ApiPlatform\Metadata\Operation;
+use App\AppConstants;
 use App\Entity\News;
 use App\Entity\Page;
 use App\Entity\Paper;
@@ -52,7 +53,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         array                       $context = []
     ): void
     {
-        $this->addWhere($queryBuilder, $resourceClass, $operation);
+        $this->addWhere($queryBuilder, $resourceClass, $operation, $context);
     }
 
     /**
@@ -81,7 +82,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     /**
      * @throws ReflectionException
      */
-    private function addWhere(QueryBuilder $queryBuilder, string $resourceClass, HttpOperation $operation = null): void
+    private function addWhere(QueryBuilder $queryBuilder, string $resourceClass, HttpOperation $operation = null, array $context = []): void
     {
 
         /** @var User $curentUser */
@@ -123,6 +124,16 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 ->setParameter('status', Review::STATUS_DISABLED);
 
         } elseif ($resourceClass === Page::class || $resourceClass === News::class) {
+
+            if ($resourceClass === News::class) {
+
+                $year = isset($context['filters'][AppConstants::YEAR_PARAM]) ? (int)$context['filters'][AppConstants::YEAR_PARAM] : null;
+                if ($year) {
+                    $queryBuilder->andWhere("YEAR($alias.date_creation) = :yearCreation");
+                    $queryBuilder->setParameter('yearCreation', $year);
+                }
+            }
+
             $queryBuilder->andWhere("JSON_EXTRACT ($alias.visibility, '$[0]') = :visibility")->setParameter('visibility', 'public');
         }
 
