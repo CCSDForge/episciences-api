@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 ### Added
+- Volumes endpoint: add year & type filters
+- News endpoint: add year filter.
 - new field user's uuid
 - Sections information to editorial Staff members
 - New endpoints:

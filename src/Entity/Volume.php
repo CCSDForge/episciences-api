@@ -9,6 +9,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\OpenApi\OpenApiFactory;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -42,6 +43,32 @@ use Symfony\Component\Serializer\Attribute\Groups;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Volumes list',
+
+                parameters: [
+                    new Parameter(
+                        name: AppConstants::YEAR_PARAM,
+                        in: 'query',
+                        description: 'The Year of creation',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ]
+                    ),
+                    new Parameter(
+                        name: 'type',
+                        in: 'query',
+                        description: 'Volume type',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                        ]
+                    ),
+                ],
+
                 security: [['bearerAuth' => []],]
 
             ),
@@ -92,6 +119,14 @@ class Volume
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
         ]
 
+    )]
+
+    #[ApiProperty(
+        openapiContext: [
+            'type' => 'string',
+            'enum' => ['special_issue', 'proceeding'],
+            'example' => 'special_issue'
+        ]
     )]
     private ?string $vol_type = null;
 

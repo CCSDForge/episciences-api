@@ -111,6 +111,22 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
         if ($resourceClass === Volume::class | $resourceClass === Section::class) {
 
+            if ($resourceClass === Volume::class) {
+                $year = isset($context['filters'][AppConstants::YEAR_PARAM]) ? (int)$context['filters'][AppConstants::YEAR_PARAM] : null;
+                $volType = (isset($context['filters']['type']) && (string)$context['filters']['type']) ? $context['filters']['type'] : null;
+
+                if ($volType) {
+                    $queryBuilder->andWhere("$alias.vol_type= :volType");
+                    $queryBuilder->setParameter('volType', $volType);
+                }
+
+                if ($year) {
+                    $queryBuilder->andWhere("$alias.vol_year= :volYear");
+                    $queryBuilder->setParameter('volYear', $year);
+                }
+            }
+
+
             $queryBuilder->orderBy("$alias.rvid", self::$order);
             $resourceClass === Volume::class ? $queryBuilder->addOrderBy("$alias.vid", self::$order) :
                 $queryBuilder->addOrderBy("$alias.sid", self::$order);
