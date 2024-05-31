@@ -59,7 +59,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
         ),
 
     ],
-    order: ['date_updated' => AppConstants::ORDER_DESC]
+    order: ['date_creation' => AppConstants::ORDER_DESC]
 )]
 #[ApiFilter(
     SearchFilter::class,
