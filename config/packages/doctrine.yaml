@@ -16,6 +16,10 @@ doctrine:
         #server_version: '13'
     orm:
         default_entity_manager: default
+        #Since doctrine/doctrine-bundle 2.12: The default value of "doctrine.orm.controller_resolver.auto_mapping" will be changed from `true` to `false`.
+        #Explicitly configure `true` to keep existing behaviour.
+        controller_resolver:
+            auto_mapping: true
         # Enables the new implementation of proxies based on lazy ghosts instead of using the legacy implementation
         enable_lazy_ghost_objects: true
         entity_managers:
