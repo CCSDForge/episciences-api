@@ -16,6 +16,16 @@ use Symfony\Component\HttpFoundation\Request;
 class BoardsController extends AbstractController
 {
 
+    public const ROLES_TO_SHOWS = [
+        UserRoles::EDITORIAL_BOARD,
+        UserRoles::FORMER_MEMBER,
+        UserRoles::TECHNICAL_BOARD,
+        UserRoles::SCIENTIFIC_BOARD,
+        UserRoles::ROLE_GUEST_EDITOR,
+        User::ROLE_EDITOR,
+        User::ROLE_EDITOR_IN_CHIEF,
+        User::ROLE_SECRETARY,
+    ];
 
     public function __invoke(EntityManagerInterface $entityManager, LoggerInterface $logger, Request $request = null): ?Boards
     {
@@ -65,7 +75,11 @@ class BoardsController extends AbstractController
 
                     }
 
-                    $rolesByUid[$current1['uid']]['roles'][] = $current1['roleid'];
+
+                    if(in_array($current1['roleid'], self::ROLES_TO_SHOWS, true)){
+                        $rolesByUid[$current1['uid']]['roles'][] = $current1['roleid'];
+                    }
+
                     $rolesByUid[$current1['uid']]['user'] = $current1['user'];
                 }
 

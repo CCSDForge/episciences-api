@@ -20,6 +20,8 @@ class UserRoles
     public const SCIENTIFIC_BOARD = 'scientific_board';
     public const FORMER_MEMBER = 'former_member';
 
+    public const ROLE_GUEST_EDITOR = 'guest_editor';
+
     #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]

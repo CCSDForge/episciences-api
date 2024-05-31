@@ -53,14 +53,13 @@ use Symfony\Component\Serializer\Annotation\Groups;
                 summary: 'Single News',
                 description: 'Retrieve a single News via a GET request by replacing {id} with News identifier',
             ),
-
-            order: ['date_creation' => AppConstants::ORDER_DESC],
             normalizationContext: [
                 'groups' => ['read:News']
             ],
         ),
 
-    ]
+    ],
+    order: ['date_updated' => AppConstants::ORDER_DESC]
 )]
 #[ApiFilter(
     SearchFilter::class,
@@ -127,9 +126,9 @@ class News
     )]
     private ?\DateTimeInterface $date_creation = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[ORM\Column(name: 'date_updated', type: Types::DATETIME_MUTABLE)]
     #[groups(
-        ['read:News']
+        ['read:News', 'read:News:Collection']
     )]
     private ?\DateTimeInterface $date_updated = null;
 
