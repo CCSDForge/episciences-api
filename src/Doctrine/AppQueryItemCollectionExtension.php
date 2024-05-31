@@ -27,7 +27,6 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 {
 
     private Security $security;
-    public static string $order = 'DESC';
 
     public function __construct(Security $security)
     {
@@ -256,7 +255,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 if (
                     $operation &&
                     (
-                        ($isVolumesOperation = str_starts_with($operation->getUriTemplate(), Volume::DEFAULT_URI_TEMPLATE)) ||
+                        str_starts_with($operation->getUriTemplate(), Volume::DEFAULT_URI_TEMPLATE) ||
                         str_starts_with($operation->getUriTemplate(), Section::DEFAULT_URI_TEMPLATE)
                     )
                 ) {
@@ -264,10 +263,6 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                     $queryBuilder
                         ->where("$alias.rvid= :rvId")
                         ->setParameter('rvId', $curentUser->getCurrentJournalID());
-
-                    $isVolumesOperation ?
-                        $queryBuilder->addOrderBy("$alias.vid", self::$order) :
-                        $queryBuilder->addOrderBy("$alias.sid", self::$order);
                 }
 
 
