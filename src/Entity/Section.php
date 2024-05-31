@@ -46,9 +46,11 @@ use Symfony\Component\Serializer\Attribute\Groups;
                 security: [['bearerAuth' => []],]
 
             ),
+            order: ['rvid' => AppConstants::ORDER_DESC, 'sid' => AppConstants::ORDER_DESC],
             normalizationContext: [
                 'groups' => [AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0]],
             ],
+
         ),
 
 

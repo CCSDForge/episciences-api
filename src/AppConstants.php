@@ -6,6 +6,7 @@ use App\Entity\Review;
 
 final class AppConstants
 {
+    public const ORDER_DESC = 'DESC';
     public const AVAILABLE_FILTERS = ['rvid', 'repoid', 'status', 'submissionDate', 'withDetails', 'startAfterDate', 'flag'];
     public const WITH_DETAILS = 'withDetails';
     public const PAPER_STATUS = 'status';

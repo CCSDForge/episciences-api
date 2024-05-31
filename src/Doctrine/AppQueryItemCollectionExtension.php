@@ -126,11 +126,6 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 }
             }
 
-
-            $queryBuilder->orderBy("$alias.rvid", self::$order);
-            $resourceClass === Volume::class ? $queryBuilder->addOrderBy("$alias.vid", self::$order) :
-                $queryBuilder->addOrderBy("$alias.sid", self::$order);
-
         } elseif ($resourceClass === Review::class) {
 
             $queryBuilder
