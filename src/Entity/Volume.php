@@ -14,7 +14,6 @@ use App\AppConstants;
 use App\OpenApi\OpenApiFactory;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -102,7 +101,6 @@ class Volume
     )]
     private int $rvid;
 
-    #[ORM\Column(nullable: true)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -110,9 +108,9 @@ class Volume
         ]
 
     )]
+    #[ORM\Column(nullable: true)]
     private ?int $vol_year = null;
 
-    #[ORM\Column(type: 'string', nullable: true)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -128,7 +126,8 @@ class Volume
             'example' => 'special_issue'
         ]
     )]
-    private ?string $vol_type = null;
+    #[ORM\Column(type: 'simple_array', nullable: true)]
+    private ?array $vol_type = null;
 
     #[ORM\Column(name: 'POSITION', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private int $position;
@@ -417,7 +416,7 @@ class Volume
         return $this;
     }
 
-    public function getVolType(): ?string
+    public function getVolType(): ?array
     {
         return $this->vol_type;
     }
