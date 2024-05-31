@@ -54,6 +54,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
                 description: 'Retrieve a single News via a GET request by replacing {id} with News identifier',
             ),
 
+            order: ['date_creation' => AppConstants::ORDER_DESC],
             normalizationContext: [
                 'groups' => ['read:News']
             ],
