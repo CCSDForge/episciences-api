@@ -66,13 +66,27 @@ class Section
     #[ORM\Column(name: 'SID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    #[Groups(['read:Boards'])]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0],
+            'read:Boards'
+        ]
+
+    )]
     private int $sid;
 
     /**
      * @var int
      */
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0],
+        ]
+
+    )]
     private int $rvid;
 
     /**
