@@ -4,6 +4,7 @@ api_platform:
         #By default, API Platform generates all URLs as absolute paths to the base URL.
         url_generation_strategy: !php/const ApiPlatform\Api\UrlGeneratorInterface::ABS_PATH
         pagination_client_enabled: true #Disabling the Pagination Client-side Globally
+        pagination_client_items_per_page: true
         item_Operations: ~
         collection_Operations: ~
         normalization_context:
