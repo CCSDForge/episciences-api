@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 ### Added
-- NEWS PAGE - Sorted by DESC date
+- Set "pagination_maximum_items_per_page" to 1000 & "pagination_items_per_page" to 30.
+- NEWS PAGE - Sorted by DESC date_creation
 - Allow number of elements to be paginated client-side
 - Volumes endpoint: add year & type filters
 - News endpoint: add year filter.
