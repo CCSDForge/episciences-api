@@ -23,6 +23,7 @@ api_platform:
         jsonld: ['application/ld+json']
         json: ['application/json']
         html: ['text/html']
+        xml: ['application/xml']
 
     # Set this to false if you want Webby to disappear.
     show_webby: false

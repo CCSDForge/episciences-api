@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - /api/boards: show only the following roles: 'editorial_board','scientific_board','former_member','technical_board','guest_editor','secretary','chief_editor' and 'editor'.
 ### Added
+- New Feed RSS endpoint.
 - Set "pagination_maximum_items_per_page" to 1000 & "pagination_items_per_page" to 30.
 - NEWS PAGE - Sorted by DESC date_creation
 - Allow number of elements to be paginated client-side

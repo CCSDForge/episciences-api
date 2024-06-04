@@ -10,6 +10,7 @@ use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\Controller\BoardsController;
+use App\Controller\FeedController;
 use App\Resource\Boards;
 use App\Resource\DashboardOutput;
 use App\Resource\SubmissionAcceptanceDelayOutput;
@@ -47,6 +48,23 @@ use App\OpenApi\OpenApiFactory;
             ],
 
             security: "is_granted('ROLE_SECRETARY')",
+        ),
+        new GetCollection(
+            uriTemplate: '/feed/rss/{code}',
+            formats: ['xml'],
+            controller: FeedController::class,
+            openapi: new OpenApiOperation(
+                tags: ['Feed'],
+                summary: 'Feed RSS',
+                description: 'Feed RSS',
+            ),
+            paginationEnabled: false,
+            paginationClientEnabled: false,
+            paginationClientItemsPerPage: false,
+            normalizationContext: [
+                'groups' => ['read:Feed']
+            ],
+
         ),
         new Get(
             uriTemplate: self::URI_TEMPLATE . 'boards/{code}',
@@ -325,7 +343,6 @@ class Review
         ]
     )]
     #[ApiProperty(identifier: true)]
-
     private string $code;
 
 
