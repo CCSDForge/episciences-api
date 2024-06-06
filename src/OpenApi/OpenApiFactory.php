@@ -18,6 +18,7 @@ class OpenApiFactory implements OpenApiFactoryInterface
         'review' => 'Journals | Boards',
         'user' => 'User',
         'sections_volumes' => 'Sections | Volumes',
+        'browse' => 'Browse'
     ];
     public const JWT_POST_LOGIN_OPERATION_ID = 'login_check_post';
     public const USER_GET_COLLECTION_PATH = '/api/users';

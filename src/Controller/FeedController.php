@@ -15,8 +15,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 class FeedController extends AbstractController
 {
-    use CheckExistingResourceTrait;
-
     public function __invoke(Request $request, Solr $solrSrv, EntityManagerInterface $entityManager): Response
     {
 

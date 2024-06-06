@@ -339,7 +339,7 @@ class Review
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
-            'read:Reviews', 'read:Review'
+            'read:Reviews', 'read:Review', 'read:Browse:Authors'
         ]
     )]
     #[ApiProperty(identifier: true)]

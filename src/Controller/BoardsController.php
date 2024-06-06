@@ -38,9 +38,7 @@ class BoardsController extends AbstractController
             $code = $request->get('code');
 
             if ($code) {
-                $result = $entityManager->getRepository(Review::class)->findBy(['code' => $code]);
-                /** @var  Review $journal */
-                $journal = $result[array_key_first($result)] ?? null;
+                $journal = $entityManager->getRepository(Review::class)->findOneBy(['code' => $code]);
 
                 if (!$journal) {
                     return null;
