@@ -6,7 +6,6 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\ArrayPaginator;
 use ApiPlatform\State\ProviderInterface;
 use App\Entity\Review;
-use App\Resource\Browse;
 use App\Resource\Facet;
 use App\Service\Solr;
 use Doctrine\ORM\EntityManagerInterface;
@@ -69,7 +68,6 @@ class BrowseStateProvider implements ProviderInterface
 
 
         foreach ($result as $name => $count) {
-            $name = mb_strtolower($name);
             $author = (new Facet())
                 ->setField('author_fullname_fs')
                 ->setValues(['name' => $name, 'count' => $count]);
