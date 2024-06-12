@@ -70,7 +70,6 @@ class News
     public const TABLE = 'news';
 
     public const FILTERS = [
-        'uid' => AppConstants::FILTER_TYPE_EXACT,
         'rvcode' => AppConstants::FILTER_TYPE_EXACT,
         'news_code' => AppConstants::FILTER_TYPE_EXACT,
     ];
