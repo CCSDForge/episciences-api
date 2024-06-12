@@ -75,7 +75,7 @@ class BrowseStateProvider implements ProviderInterface
         }
 
         if ($isPaginationEnabled) {
-            $maxResults = $operation->getPaginationItemsPerPage();
+            $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;
             $firstResult = ($page - 1) * $maxResults;
         }
 
