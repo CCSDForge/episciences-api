@@ -12,7 +12,7 @@ use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\Repository\NewsRepository;
-use App\State\NewsStateProvider;
+
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
@@ -46,7 +46,6 @@ use Symfony\Component\Serializer\Annotation\Groups;
             normalizationContext: [
                 'groups' => ['read:News:Collection']
             ],
-            provider: NewsStateProvider::class,
 
         ),
         new Get(
@@ -84,9 +83,11 @@ class News
     )]
     private ?int $id = null;
 
-    //#[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'news')]
-    //#[ORM\JoinColumn(name: 'UID', referencedColumnName: 'UID', nullable: false)]
-
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'news')]
+    #[ORM\JoinColumn(name: 'UID', referencedColumnName: 'UID', nullable: false)]
+    #[groups(
+        ['read:News', 'read:News:Collection']
+    )]
     private ?User $creator = null;
 
     #[ORM\Column(nullable: true)]
