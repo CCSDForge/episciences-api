@@ -20,4 +20,12 @@ class ReviewRepository extends ServiceEntityRepository
         parent::__construct($registry, Review::class);
     }
 
+
+    public function getJournalByIdentifier(string|int $identifier = null): ?Review
+    {
+        $criteria = is_int($identifier) ? ['rvid' => $identifier] : ['code' => $identifier] ;
+        return $this->findOneBy($criteria);
+
+    }
+
 }

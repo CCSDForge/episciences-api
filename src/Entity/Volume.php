@@ -11,7 +11,10 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
+use App\Controller\VolumesRangeController;
 use App\OpenApi\OpenApiFactory;
+use App\Repository\VolumeRepository;
+use App\Resource\Rang;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -20,9 +23,43 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Index(columns: ['RVID'], name: 'FK_CONFID_idx')]
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: VolumeRepository::class)]
 #[ApiResource(
     operations: [
+
+        new Get(
+            uriTemplate: '/volumes/range/',
+            controller: VolumesRangeController::class,
+            openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
+                summary: 'Year range',
+                description: 'Retrieving available years',
+                parameters: [
+                    new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal Code (ex. epijinfo)',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                        ],
+                        explode: false,
+                    ),
+                ]
+
+            ),
+            paginationEnabled: false,
+            paginationItemsPerPage: false,
+            paginationMaximumItemsPerPage: false,
+            paginationClientEnabled: false,
+            normalizationContext: [
+                'groups' => ['read:Volume:Range']
+            ],
+            output: Rang::class,// bypass the automatic retrieval of the entity
+            read: false
+        ),
 
         new Get(
             openapi: new OpenApiOperation(
@@ -76,7 +113,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
                 'groups' => [AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]],
             ],
         ),
-
 
     ]
 )]

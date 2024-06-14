@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Action\PlaceholderAction;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
@@ -11,8 +12,10 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
+use App\Controller\NewsRangeController;
+use App\Controller\RangeController;
 use App\Repository\NewsRepository;
-
+use App\Resource\Rang;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
@@ -24,6 +27,39 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ORM\Entity(repositoryClass: NewsRepository::class)]
 #[ApiResource(
     operations: [
+        new Get(
+            uriTemplate: '/news/range/',
+            controller: NewsRangeController::class,
+            openapi: new OpenApiOperation(
+                summary: 'Year range',
+                description: 'Retrieving available years',
+                parameters: [
+                    new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal Code (ex. epijinfo)',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                        ],
+                        explode: false,
+                    ),
+                ]
+
+            ),
+            paginationEnabled: false,
+
+            paginationItemsPerPage: false,
+            paginationMaximumItemsPerPage: false,
+            paginationClientEnabled: false,
+            normalizationContext: [
+                'groups' => ['read:News:Range']
+            ],
+            output: Rang::class,// bypass the automatic retrieval of the entity
+            read: false
+        ),
 
         new GetCollection(
             openapi: new OpenApiOperation(
@@ -43,11 +79,15 @@ use Symfony\Component\Serializer\Annotation\Groups;
                     ),
                     ]
             ),
+            order: ['date_creation' => AppConstants::ORDER_DESC],
+
             normalizationContext: [
                 'groups' => ['read:News:Collection']
-            ],
+            ]
 
         ),
+
+
         new Get(
             openapi: new OpenApiOperation(
                 summary: 'Single News',
@@ -57,9 +97,8 @@ use Symfony\Component\Serializer\Annotation\Groups;
                 'groups' => ['read:News']
             ],
         ),
-
     ],
-    order: ['date_creation' => AppConstants::ORDER_DESC]
+
 )]
 #[ApiFilter(
     SearchFilter::class,
