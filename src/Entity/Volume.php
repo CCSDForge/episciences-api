@@ -155,6 +155,16 @@ class Volume
     #[ORM\Column(nullable: true)]
     private ?int $vol_year = null;
 
+    #[ORM\Column(name: 'vol_num', type:'string', length: 6, nullable: true)]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+        ]
+
+    )]
+    private ?string $vol_num;
+
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -469,6 +479,18 @@ class Volume
     {
         $this->vol_type = $vol_type;
 
+        return $this;
+    }
+
+
+    public function getVolNum(): ?string
+    {
+        return $this->vol_num;
+    }
+
+    public function setVolNum(?string $vol_num): self
+    {
+        $this->vol_num = $vol_num;
         return $this;
     }
 }
