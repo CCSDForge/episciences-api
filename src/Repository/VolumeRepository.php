@@ -33,4 +33,20 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
         return $qb->getQuery()->getResult();
 
     }
+
+
+    public function getTypes(int|string $journalIdentifier = null): array
+    {
+        $qb = $this->createQueryBuilder('v');
+        $qb->distinct();
+        $qb->select("v.vol_type AS type");
+
+        if ($journalIdentifier) {
+            $qb->andWhere('v.rvid = :rvId');
+            $qb->setParameter('rvId', $journalIdentifier);
+        }
+        $types = $qb->getQuery()->getResult();
+        return array_merge([], ...$types);
+
+    }
 }

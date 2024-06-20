@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - /api/boards: show only the following roles: 'editorial_board','scientific_board','former_member','technical_board','guest_editor','secretary','chief_editor' and 'editor'.
 ### Added
+- type range for volumes
 - New attribute Volume::vol_number (volume number)
 - Year range endpoints: Year filter is now dynamically build for News & volumes.
 - New endpoint: /browse/authors/

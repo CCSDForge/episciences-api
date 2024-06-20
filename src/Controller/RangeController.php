@@ -4,11 +4,12 @@ namespace App\Controller;
 
 use App\Entity\News;
 use App\Entity\Review;
+use App\Entity\Section;
 use App\Entity\Volume;
 use App\Resource\Range;
+use App\Resource\RangeType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
-
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Contracts\Service\Attribute\Required;
 
@@ -26,10 +27,9 @@ abstract class RangeController extends AbstractController
     public function getResult(Request $request): Range
     {
         $code = $request->get('rvcode');
+        $identifier = null;
 
         $journal = $this->entityManager->getRepository(Review::class)->getJournalByIdentifier($code);
-
-        $identifier = null;
 
         if ($journal) {
             if ($this->resourceName === News::class) {
@@ -38,8 +38,22 @@ abstract class RangeController extends AbstractController
                 $identifier = $journal->getRvid();
             }
         }
-        $result = $this->entityManager->getRepository($this->resourceName)->getRange($identifier);
-        return (new Range())->setValues($result);
+
+        $repo = $this->entityManager->getRepository($this->resourceName);
+
+        if ($this->resourceName === News::class) {
+            return (new Range())->setYears($repo->getRange($identifier));
+        }
+
+        $oRangeType = new RangeType();
+
+        if ($this->resourceName === Volume::class) {
+            $oRangeType
+                ->setTypes($this->entityManager->getRepository($this->resourceName)->getTypes($identifier))
+                ->setYears($repo->getRange($identifier));
+        }
+
+        return $oRangeType;
     }
 
     #[Required]

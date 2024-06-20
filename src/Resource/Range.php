@@ -9,27 +9,27 @@ class Range
     #[groups(
         ['read:News:Range', 'read:Volume:Range']
     )]
-    private string $name = 'range';
+    protected string $name = 'range';
     #[groups(
         ['read:News:Range', 'read:Volume:Range']
     )]
-    private array $values = [];
+    protected array $years = [];
 
     public function getName(): string
     {
         return $this->name;
     }
 
-    public function getValues(): array
+    public function getYears(): array
     {
-        return $this->values;
+        return $this->years;
     }
 
-    public function setValues(array $values = []): self
+    public function setYears(array $result = []): self
     {
         $years = [];
 
-        foreach ($values as $value) {
+        foreach ($result as $value) {
             if (isset($value['year'])) {
                 if (empty($value)) {
                     continue;
@@ -37,8 +37,10 @@ class Range
                 $years[] = $value['year'];
             }
         }
-        $this->values = $years;
+        $this->years = $years;
+
         return $this;
     }
+
 
 }

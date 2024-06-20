@@ -15,6 +15,7 @@ use App\Controller\VolumesRangeController;
 use App\OpenApi\OpenApiFactory;
 use App\Repository\VolumeRepository;
 use App\Resource\Range;
+use App\Resource\RangeType;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -32,8 +33,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
             controller: VolumesRangeController::class,
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
-                summary: 'Year range',
-                description: 'Retrieving available years',
+                summary: 'Volume types and Year range',
+                description: 'Retrieving available volume types and year range',
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -57,7 +58,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             normalizationContext: [
                 'groups' => ['read:Volume:Range']
             ],
-            output: Range::class,// bypass the automatic retrieval of the entity
+            output: RangeType::class,// bypass the automatic retrieval of the entity
             read: false
         ),
 
