@@ -4,7 +4,7 @@ namespace App\Resource;
 
 use Symfony\Component\Serializer\Annotation\Groups;
 
-class Rang
+class Range
 {
     #[groups(
         ['read:News:Range', 'read:Volume:Range']

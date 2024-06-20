@@ -15,7 +15,7 @@ use App\AppConstants;
 use App\Controller\NewsRangeController;
 use App\Controller\RangeController;
 use App\Repository\NewsRepository;
-use App\Resource\Rang;
+use App\Resource\Range;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
@@ -57,7 +57,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
             normalizationContext: [
                 'groups' => ['read:News:Range']
             ],
-            output: Rang::class,// bypass the automatic retrieval of the entity
+            output: Range::class,// bypass the automatic retrieval of the entity
             read: false
         ),
 

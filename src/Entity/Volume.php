@@ -14,7 +14,7 @@ use App\AppConstants;
 use App\Controller\VolumesRangeController;
 use App\OpenApi\OpenApiFactory;
 use App\Repository\VolumeRepository;
-use App\Resource\Rang;
+use App\Resource\Range;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -57,7 +57,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             normalizationContext: [
                 'groups' => ['read:Volume:Range']
             ],
-            output: Rang::class,// bypass the automatic retrieval of the entity
+            output: Range::class,// bypass the automatic retrieval of the entity
             read: false
         ),
 

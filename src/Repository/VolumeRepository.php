@@ -3,7 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Volume;
-use App\Resource\Rang;
+use App\Resource\Range;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

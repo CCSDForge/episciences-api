@@ -2,7 +2,7 @@
 
 namespace App\Repository;
 
-use App\Resource\Rang;
+use App\Resource\Range;
 
 interface RangeInterface
 {

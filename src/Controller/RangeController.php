@@ -5,7 +5,7 @@ namespace App\Controller;
 use App\Entity\News;
 use App\Entity\Review;
 use App\Entity\Volume;
-use App\Resource\Rang;
+use App\Resource\Range;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -23,7 +23,7 @@ abstract class RangeController extends AbstractController
         $this->resourceName = $resourceName;
     }
 
-    public function getResult(Request $request): Rang
+    public function getResult(Request $request): Range
     {
         $code = $request->get('rvcode');
 
@@ -39,7 +39,7 @@ abstract class RangeController extends AbstractController
             }
         }
         $result = $this->entityManager->getRepository($this->resourceName)->getRange($identifier);
-        return (new Rang())->setValues($result);
+        return (new Range())->setValues($result);
     }
 
     #[Required]
