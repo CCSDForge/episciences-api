@@ -115,16 +115,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 if (isset($context['filters'][AppConstants::YEAR_PARAM])) {
 
                     $volYear = $this->processYears($context['filters'][AppConstants::YEAR_PARAM]);
-
-                    if (!empty($volYear)) {
-                        $orExp = $queryBuilder->expr()->orX();
-                        foreach ($volYear as $cYear) {
-                            $orExp->add($queryBuilder->expr()->eq(sprintf("%s.vol_year", $alias), $cYear));
-                        }
-
-                        $queryBuilder->andWhere($orExp);
-                    }
-
+                    $this->processOrExpression($queryBuilder, $alias, $volYear, $resourceClass);
                 }
 
                 if ((isset($context['filters']['type']) && $context['filters']['type'])) {
@@ -161,13 +152,10 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
         } elseif ($resourceClass === Page::class || $resourceClass === News::class) {
 
-            if ($resourceClass === News::class) {
+            if (($resourceClass === News::class) && isset($context['filters'][AppConstants::YEAR_PARAM])) {
 
-                $year = isset($context['filters'][AppConstants::YEAR_PARAM]) ? (int)$context['filters'][AppConstants::YEAR_PARAM] : null;
-                if ($year) {
-                    $queryBuilder->andWhere("YEAR($alias.date_creation) = :yearCreation");
-                    $queryBuilder->setParameter('yearCreation', $year);
-                }
+                $newsYear = $this->processYears($context['filters'][AppConstants::YEAR_PARAM]);
+                $this->processOrExpression($queryBuilder, $alias, $newsYear, $resourceClass);
             }
 
             $queryBuilder->andWhere("JSON_EXTRACT ($alias.visibility, '$[0]') = :visibility")->setParameter('visibility', 'public');
@@ -308,12 +296,41 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         $processedYears = [];
 
         foreach ($yFilters as $yVal) {
-            if ($yVal && !in_array($yVal, $processedYears, true)) {
-                $processedYears[] = (int)($yVal);
+
+            $yVal = (int)$yVal;
+
+            if (!in_array($yVal, $processedYears, true)) {
+                $processedYears[] = $yVal;
             }
         }
 
         return $processedYears;
+    }
+
+    private function processOrExpression(QueryBuilder $qb, string $alias, array $values, string $resourceClass): QueryBuilder
+    {
+
+        if (empty($values)) {
+            return $qb;
+        }
+
+        if ($resourceClass === Volume::class) {
+            $yearExp = "$alias.vol_year";
+        } elseif ($resourceClass === News::class) {
+            $yearExp = "YEAR($alias.date_creation)";
+
+        } else {
+            return $qb;
+        }
+
+        $orExp = $qb->expr()->orX();
+
+        foreach ($values as $val) {
+            $orExp->add($qb->expr()->eq(sprintf("%s", $yearExp), $val));
+        }
+
+        return $qb->andWhere($orExp);
+
     }
 
 }

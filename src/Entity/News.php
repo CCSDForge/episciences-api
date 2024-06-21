@@ -75,7 +75,24 @@ use Symfony\Component\Serializer\Annotation\Groups;
                         allowEmptyValue: false,
                         schema: [
                             'type' => 'integer',
-                        ]
+                        ],explode: false, allowReserved: false
+                    ),
+                    new Parameter(
+                        name: 'year[]',
+                        in: 'query',
+                        description: 'The Year of creation',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'integer',
+                            ]
+                        ],
+                        explode: true,
+                        allowReserved: false,
+
                     ),
                     ]
             ),
