@@ -112,8 +112,20 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
             if ($resourceClass === Volume::class) {
 
-                $volType = '';
-                $year = isset($context['filters'][AppConstants::YEAR_PARAM]) ? (int)$context['filters'][AppConstants::YEAR_PARAM] : null;
+                if (isset($context['filters'][AppConstants::YEAR_PARAM])) {
+
+                    $volYear = $this->processYears($context['filters'][AppConstants::YEAR_PARAM]);
+
+                    if (!empty($volYear)) {
+                        $orExp = $queryBuilder->expr()->orX();
+                        foreach ($volYear as $cYear) {
+                            $orExp->add($queryBuilder->expr()->eq(sprintf("%s.vol_year", $alias), $cYear));
+                        }
+
+                        $queryBuilder->andWhere($orExp);
+                    }
+
+                }
 
                 if ((isset($context['filters']['type']) && $context['filters']['type'])) {
                     $tFilters = (array)$context['filters']['type'];
@@ -128,17 +140,15 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                     }
 
                     $volType = !empty($currentTypes) ? implode(',', $currentTypes) : implode(',', $tFilters);
+
+                    if ('' !== $volType) {
+                        $queryBuilder->andWhere("$alias.vol_type like :volType");
+                        $queryBuilder->setParameter('volType', '%' . $volType . '%');
+                    }
+
+
                 }
 
-                if ('' !== $volType) {
-                    $queryBuilder->andWhere("$alias.vol_type like :volType");
-                    $queryBuilder->setParameter('volType', '%' . $volType . '%');
-                }
-
-                if ($year) {
-                    $queryBuilder->andWhere("$alias.vol_year= :volYear");
-                    $queryBuilder->setParameter('volYear', $year);
-                }
             }
 
         } elseif ($resourceClass === Review::class) {
@@ -289,6 +299,21 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
         }
 
+    }
+
+    private function processYears(string|array $yFilters = []): array
+    {
+        $yFilters = (array)$yFilters;
+
+        $processedYears = [];
+
+        foreach ($yFilters as $yVal) {
+            if ($yVal && !in_array($yVal, $processedYears, true)) {
+                $processedYears[] = (int)($yVal);
+            }
+        }
+
+        return $processedYears;
     }
 
 }

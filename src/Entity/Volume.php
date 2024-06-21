@@ -93,6 +93,21 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         ]
                     ),
                     new Parameter(
+                        name: 'year[]',
+                        in: 'query',
+                        description: 'The Year of creation',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'integer',
+                            ]
+                        ],
+                        explode: true
+                    ),
+                    new Parameter(
                         name: 'type',
                         in: 'query',
                         description: 'Volume type',
