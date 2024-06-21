@@ -18,6 +18,7 @@ use App\Entity\UserAssignment;
 use App\Entity\UserRoles;
 use App\Entity\UserOwnedInterface;
 use App\Entity\Volume;
+use App\Exception\ResourceNotFoundException;
 use Doctrine\ORM\QueryBuilder;
 use JetBrains\PhpStorm\NoReturn;
 use ReflectionException;
@@ -52,6 +53,19 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         array                       $context = []
     ): void
     {
+
+        $rvCode = $context['filters']['rvcode'] ?? null;
+
+        if ($rvCode) {
+            $journal = $queryBuilder->getEntityManager()->getRepository(Review::class)->findOneBy(['code' => $rvCode]);
+            if (!$journal) {
+                throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $rvCode));
+            }
+
+            $context['filters']['rvid'] = $journal->getRvid();
+
+        }
+
         $this->addWhere($queryBuilder, $resourceClass, $operation, $context);
     }
 
@@ -95,7 +109,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
             if (!$curentUser->getCurrentJournalID()) {
 
-                $this->publicAccessProcess($queryBuilder, $alias, $resourceClass);
+                $this->publicAccessProcess($queryBuilder, $alias, $resourceClass, $context);
 
             } else {
 
@@ -104,16 +118,16 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
 
         } else {
-            $this->publicAccessProcess($queryBuilder, $alias, $resourceClass);
+            $this->publicAccessProcess($queryBuilder, $alias, $resourceClass, $context);
         }
 
 
         if ($resourceClass === Volume::class | $resourceClass === Section::class) {
 
+
             if ($resourceClass === Volume::class) {
 
                 if (isset($context['filters'][AppConstants::YEAR_PARAM])) {
-
                     $volYear = $this->processYears($context['filters'][AppConstants::YEAR_PARAM]);
                     $this->processOrExpression($queryBuilder, $alias, $volYear, $resourceClass);
                 }
@@ -190,20 +204,24 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     }
 
 
-    private function publicAccessProcess(QueryBuilder $queryBuilder, string $alias, string $resourceClass): void
+    private function publicAccessProcess(QueryBuilder $queryBuilder, string $alias, string $resourceClass, array $context = []): void
     {
 
-        if ($resourceClass === Paper::class) {
+        if ($resourceClass === Paper::class || $resourceClass === Volume::class || $resourceClass === Section::class) {
 
-            $this->adnWherePublishedOnly($queryBuilder, "$alias.status", $resourceClass);
+            if ($resourceClass === Paper::class) {
+                $this->adnWherePublishedOnly($queryBuilder, "$alias.status", $resourceClass);
+            } else {
+                $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status', $resourceClass);
+            }
 
-        } elseif ($resourceClass === Volume::class || $resourceClass === Section::class) {
+            $rvId = $context['filters']['rvid'] ?? null;
 
-            $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status', $resourceClass);
+            if ($rvId) {
+                $queryBuilder->andWhere(sprintf("%s.rvid = :rvId", $alias))->setParameter('rvId', $rvId);
+            }
 
         }
-
-
     }
 
 

@@ -82,6 +82,18 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
                 parameters: [
                     new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal Code (ex. epijinfo)',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                        ],
+                        explode: false,
+                    ),
+                    new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
                         description: 'The Year of creation',
