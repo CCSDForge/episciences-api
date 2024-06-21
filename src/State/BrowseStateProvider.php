@@ -6,6 +6,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\ArrayPaginator;
 use ApiPlatform\State\ProviderInterface;
 use App\Entity\Review;
+use App\Exception\ResourceNotFoundException;
 use App\Resource\Facet;
 use App\Service\Solr;
 use Doctrine\ORM\EntityManagerInterface;
@@ -54,7 +55,7 @@ class BrowseStateProvider implements ProviderInterface
             $journal = $this->entityManager->getRepository(Review::class)->findOneBy(['code' => $code]);
 
             if (!$journal) {
-                throw new RuntimeException(sprintf('Oops! not found Journal %s', $code));
+                throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $code));
             }
 
         }

@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use ApiPlatform\Exception\RuntimeException;
 use App\Entity\Review;
+use App\Exception\ResourceNotFoundException;
 use App\Service\Solr;
 use App\Traits\CheckExistingResourceTrait;
 use Doctrine\ORM\EntityManagerInterface;
@@ -23,7 +24,7 @@ class FeedController extends AbstractController
         $journal = $entityManager->getRepository(Review::class)->findOneBy(['code' => $code]);
 
         if (!$journal) {
-            throw new RuntimeException(sprintf('Oops! Feed cannot be generated: not found Journal %s', $code ));
+            throw new ResourceNotFoundException(sprintf('Oops! Feed cannot be generated: not found Journal %s', $code ));
         }
 
         $solrSrv->setJournal($journal);

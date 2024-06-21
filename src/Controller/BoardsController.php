@@ -6,6 +6,7 @@ use App\Entity\Review;
 use App\Entity\Section;
 use App\Entity\User;
 use App\Entity\UserRoles;
+use App\Exception\ResourceNotFoundException;
 use App\Resource\Boards;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
@@ -41,7 +42,7 @@ class BoardsController extends AbstractController
                 $journal = $entityManager->getRepository(Review::class)->findOneBy(['code' => $code]);
 
                 if (!$journal) {
-                    return null;
+                    throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $code));
                 }
 
                 $userRolesRepo = $entityManager->getRepository(UserRoles::class);

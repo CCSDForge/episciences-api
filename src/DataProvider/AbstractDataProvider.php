@@ -5,6 +5,7 @@ namespace App\DataProvider;
 use ApiPlatform\Metadata\Operation;
 use App\AppConstants;
 use App\Entity\Paper;
+use App\Exception\ResourceNotFoundException;
 use App\Resource\AbstractStatResource;
 use App\Service\Stats;
 use App\Traits\CheckExistingResourceTrait;
@@ -37,7 +38,7 @@ abstract class AbstractDataProvider
             $journal = $this->statsService->getJournal($context['uri_variables']);
 
             if (!$journal) {
-                return null;
+                throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $context['uri_variables']['code']));
             }
 
 
