@@ -46,7 +46,7 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
             $qb->setParameter('rvId', $journalIdentifier);
         }
         $types = $qb->getQuery()->getResult();
-        return array_merge([], ...$types);
+        return array_merge([], ...$types)['type'];
 
     }
 }
