@@ -62,4 +62,4 @@ api_platform:
     keep_legacy_inflector: false
     exception_to_status:
         # Custom mapping
-        App\Exception\StatResourceNotFoundException : 404
+        App\Exception\ResourceNotFoundException : 404

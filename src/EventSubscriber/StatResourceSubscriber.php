@@ -4,7 +4,7 @@
 namespace App\EventSubscriber;
 
 use ApiPlatform\Symfony\EventListener\EventPriorities as EventPrioritiesAlias;
-use App\Exception\StatResourceNotFoundException;
+use App\Exception\ResourceNotFoundException;
 use App\Resource\AbstractStatResource;
 use App\Traits\CheckExistingResourceTrait;
 use Exception;
@@ -26,7 +26,7 @@ final class StatResourceSubscriber implements EventSubscriberInterface
 
     /**
      * @param ViewEvent $event
-     * @throws StatResourceNotFoundException
+     * @throws ResourceNotFoundException
      * @throws Exception
      */
     public function checkStatResourceAvailability(ViewEvent $event): void
@@ -50,11 +50,11 @@ final class StatResourceSubscriber implements EventSubscriberInterface
         }
 
         if (!empty($arrayDiff['arrayDiff']['out'])) {
-            throw new StatResourceNotFoundException(sprintf('%s does not exist: Parameter(s) %s not available. The available parameters are: %s ', $statResource, json_encode(array_values($arrayDiff['arrayDiff']['out']), JSON_THROW_ON_ERROR), json_encode($statResource->getAvailableFilters(), JSON_THROW_ON_ERROR)));
+            throw new ResourceNotFoundException(sprintf('%s does not exist: Parameter(s) %s not available. The available parameters are: %s ', $statResource, json_encode(array_values($arrayDiff['arrayDiff']['out']), JSON_THROW_ON_ERROR), json_encode($statResource->getAvailableFilters(), JSON_THROW_ON_ERROR)));
         }
 
         if ($statResource->getValue() === null) {
-            throw new StatResourceNotFoundException(sprintf('%s does not exist.', $statResource));
+            throw new ResourceNotFoundException(sprintf('%s does not exist.', $statResource));
         }
     }
 }
