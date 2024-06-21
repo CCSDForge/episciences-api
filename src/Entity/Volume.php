@@ -14,7 +14,6 @@ use App\AppConstants;
 use App\Controller\VolumesRangeController;
 use App\OpenApi\OpenApiFactory;
 use App\Repository\VolumeRepository;
-use App\Resource\Range;
 use App\Resource\RangeType;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -102,7 +101,23 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         allowEmptyValue: false,
                         schema: [
                             'type' => 'string',
-                        ]
+                        ],
+                        explode: false
+                    ),
+                    new Parameter(
+                        name: 'type[]',
+                        in: 'query',
+                        description: 'Volume types',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'string'
+                            ]
+                        ],
+                        explode: true
                     ),
                 ],
 

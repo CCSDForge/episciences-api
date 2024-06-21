@@ -111,12 +111,28 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         if ($resourceClass === Volume::class | $resourceClass === Section::class) {
 
             if ($resourceClass === Volume::class) {
-                $year = isset($context['filters'][AppConstants::YEAR_PARAM]) ? (int)$context['filters'][AppConstants::YEAR_PARAM] : null;
-                $volType = (isset($context['filters']['type']) && (string)$context['filters']['type']) ? $context['filters']['type'] : null;
 
-                if ($volType) {
-                    $queryBuilder->andWhere("$alias.vol_type= :volType");
-                    $queryBuilder->setParameter('volType', $volType);
+                $volType = '';
+                $year = isset($context['filters'][AppConstants::YEAR_PARAM]) ? (int)$context['filters'][AppConstants::YEAR_PARAM] : null;
+
+                if ((isset($context['filters']['type']) && $context['filters']['type'])) {
+                    $tFilters = (array)$context['filters']['type'];
+                    $currentTypes = [];
+                    $availableTypes = $queryBuilder->getEntityManager()->getRepository(Volume::class)->getTypes();
+
+                    foreach ($tFilters as $value) {
+                        $value = trim($value);
+                        if (in_array($value, $availableTypes, true) && !in_array($value, $currentTypes, true)) {
+                            $currentTypes[] = $value;
+                        }
+                    }
+
+                    $volType = !empty($currentTypes) ? implode(',', $currentTypes) : implode(',', $tFilters);
+                }
+
+                if ('' !== $volType) {
+                    $queryBuilder->andWhere("$alias.vol_type like :volType");
+                    $queryBuilder->setParameter('volType', '%' . $volType . '%');
                 }
 
                 if ($year) {
