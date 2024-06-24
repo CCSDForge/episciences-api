@@ -44,7 +44,7 @@ use App\OpenApi\OpenApiFactory;
                 'groups' => ['read:Review']
             ],
 
-            security: "is_granted('ROLE_SECRETARY')",
+            #security: "is_granted('ROLE_SECRETARY')",
         ),
         new GetCollection(
             uriTemplate: self::URI_TEMPLATE,
@@ -336,7 +336,6 @@ class Review
 
 
     #[ORM\OneToMany(mappedBy: 'review', targetEntity: Papers::class)]
-    #[Groups(['read:Review'])]
     private Collection $papers;
 
     #[ORM\OneToMany(mappedBy: 'review', targetEntity: ReviewSetting::class)]
