@@ -35,6 +35,15 @@ class VolumeMetadata
     )]
     private $position;
 
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+        ]
+
+    )]
+    private array $titles;
+
     #[ORM\Column(name: 'CONTENT', type: 'json', nullable: false)]
     #[Groups(
         [

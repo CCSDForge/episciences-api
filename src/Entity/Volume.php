@@ -25,11 +25,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Index(columns: ['RVID'], name: 'FK_CONFID_idx')]
 #[ORM\Entity(repositoryClass: VolumeRepository::class)]
 #[ApiResource(
+    uriTemplate: '/volumes-range',
     operations: [
-
-        new Get(
-            uriTemplate: '/volumes/range/',
-            controller: VolumesRangeController::class,
+        new GetCollection(
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Volume types and Year range',
@@ -60,7 +58,12 @@ use Symfony\Component\Serializer\Attribute\Groups;
             output: RangeType::class,// bypass the automatic retrieval of the entity
             read: false
         ),
+    ],
+    controller: VolumesRangeController::class
 
+)]
+#[ApiResource(
+    operations: [
         new Get(
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
@@ -186,6 +189,7 @@ class Volume
         ]
 
     )]
+
     private int $rvid;
 
     #[Groups(

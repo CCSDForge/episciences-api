@@ -25,43 +25,12 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ORM\UniqueConstraint(name: 'uid', columns: ['uid'])]
 #[ORM\UniqueConstraint(name: 'rvcode', columns: ['code'])]
 #[ORM\Entity(repositoryClass: NewsRepository::class)]
+
 #[ApiResource(
+    uriTemplate: '/news/',
     operations: [
-        new Get(
-            uriTemplate: '/news/range/',
-            controller: NewsRangeController::class,
-            openapi: new OpenApiOperation(
-                summary: 'Year range',
-                description: 'Retrieving available years',
-                parameters: [
-                    new Parameter(
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal Code (ex. epijinfo)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ],
-                        explode: false,
-                    ),
-                ]
-
-            ),
-            paginationEnabled: false,
-
-            paginationItemsPerPage: false,
-            paginationMaximumItemsPerPage: false,
-            paginationClientEnabled: false,
-            normalizationContext: [
-                'groups' => ['read:News:Range']
-            ],
-            output: Range::class,// bypass the automatic retrieval of the entity
-            read: false
-        ),
-
         new GetCollection(
+
             openapi: new OpenApiOperation(
                 summary: 'List of News',
                 description: 'Retrieving a list of News',
@@ -94,7 +63,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
                         allowReserved: false,
 
                     ),
-                    ]
+                ]
             ),
             order: ['date_creation' => AppConstants::ORDER_DESC],
 
@@ -103,9 +72,15 @@ use Symfony\Component\Serializer\Annotation\Groups;
             ]
 
         ),
+    ],
 
+)]
 
+#[ApiResource(
+    uriTemplate: '/news/{id}',
+    operations: [
         new Get(
+            uriTemplate: '/news/{id}',
             openapi: new OpenApiOperation(
                 summary: 'Single News',
                 description: 'Retrieve a single News via a GET request by replacing {id} with News identifier',
@@ -115,8 +90,49 @@ use Symfony\Component\Serializer\Annotation\Groups;
             ],
         ),
     ],
+)]
+
+#[ApiResource(
+    uriTemplate: '/news-range',
+    operations: [
+        new GetCollection(
+
+            openapi: new OpenApiOperation(
+                summary: 'Year range',
+                description: 'Retrieving available years',
+                parameters: [
+                    new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal Code (ex. epijinfo)',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                        ],
+                        explode: false,
+                    ),
+                ]
+
+            ),
+            paginationEnabled: false,
+
+            paginationItemsPerPage: false,
+            paginationMaximumItemsPerPage: false,
+            paginationClientEnabled: false,
+            normalizationContext: [
+                'groups' => ['read:News:Range']
+            ],
+            output: Range::class,// bypass the automatic retrieval of the entity
+
+        ),
+
+    ],
+    controller: NewsRangeController::class,
 
 )]
+
 #[ApiFilter(
     SearchFilter::class,
     properties: self::FILTERS
