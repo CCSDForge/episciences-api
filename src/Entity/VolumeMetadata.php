@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiProperty;
+use ApiPlatform\Metadata\ApiResource;
 use App\AppConstants;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -29,7 +31,7 @@ class VolumeMetadata
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+            #AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
         ]
 
     )]
@@ -38,17 +40,18 @@ class VolumeMetadata
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+            #AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
         ]
 
     )]
+    #[ORM\Column(name: 'titles', type: 'json', nullable: false)]
     private array $titles;
 
     #[ORM\Column(name: 'CONTENT', type: 'json', nullable: false)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+            #AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
         ]
 
     )]
@@ -58,7 +61,7 @@ class VolumeMetadata
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+            #AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
         ]
 
     )]
