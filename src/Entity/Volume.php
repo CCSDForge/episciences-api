@@ -278,12 +278,13 @@ class Volume
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
+            #AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
 
         ]
 
     )]
     #[ORM\OneToMany(mappedBy: 'volume', targetEntity: VolumeSetting::class)]
+
     #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]
     private Collection $settings;
 
@@ -291,7 +292,7 @@ class Volume
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
+            #AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
 
         ]
 
@@ -301,7 +302,7 @@ class Volume
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+            #AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
         ]
 
     )]
