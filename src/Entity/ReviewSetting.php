@@ -9,6 +9,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\UniqueConstraint(name: 'RVID', columns: ['SETTING'])]
 #[ORM\Entity(repositoryClass: ReviewSetting::class)]
 
+
 class ReviewSetting
 {
     public const TABLE = 'REVIEW_SETTING';

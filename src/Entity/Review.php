@@ -47,7 +47,7 @@ use App\OpenApi\OpenApiFactory;
                 'groups' => ['read:Review']
             ],
 
-            security: "is_granted('ROLE_SECRETARY')",
+            #security: "is_granted('ROLE_SECRETARY')",
         ),
         new GetCollection(
             uriTemplate: '/feed/rss/{code}',
@@ -371,7 +371,6 @@ class Review
 
 
     #[ORM\OneToMany(mappedBy: 'review', targetEntity: Paper::class)]
-    #[Groups(['read:Review'])]
     private Collection $papers;
 
     #[ORM\OneToMany(mappedBy: 'review', targetEntity: ReviewSetting::class)]
