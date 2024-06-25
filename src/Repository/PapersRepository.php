@@ -5,9 +5,14 @@ namespace App\Repository;
 
 use App\AppConstants;
 use App\Entity\Paper;
+use App\Entity\Section;
+use App\Entity\Volume;
 use App\Service\Stats;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\AbstractQuery;
+use Doctrine\ORM\NonUniqueResultException;
+use Doctrine\ORM\NoResultException;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
@@ -22,6 +27,8 @@ use Psr\Log\LoggerInterface;
 class PapersRepository extends ServiceEntityRepository
 {
     use ToolsTrait;
+
+    public const TOTAL_ARTICLE = 'totalPublishedArticles';
 
     public const PAPERS_ALIAS = 'p';
     public const LOCAL_REPOSITORY = 0;
@@ -48,6 +55,7 @@ class PapersRepository extends ServiceEntityRepository
      * @param bool $excludeTmpVersions
      * @param string $fieldDateToBeUsed (default = submissionDate): l'année prise en compte est l'année de la première soumission
      * @param bool $excludeImportedPapers
+     * @param string|null $flag
      * @return QueryBuilder
      */
     public function submissionsQuery(array $filters = [], bool $excludeTmpVersions = false, string $fieldDateToBeUsed = 'submissionDate', bool $excludeImportedPapers = false, string $flag = null): QueryBuilder
@@ -243,6 +251,108 @@ class PapersRepository extends ServiceEntityRepository
         }
 
         return $repositories;
+    }
+
+    /**
+     * @param string $resourceClass
+     * @param int $status
+     * @param int|array|null $identifiers
+     * @param array $filters
+     * @return QueryBuilder
+     */
+
+
+    public function getTotalArticlesBySectionOrVolumeQuery(string $resourceClass = Section::class, int $status = Paper::STATUS_PUBLISHED, int|array $identifiers = null, array $filters = []): QueryBuilder
+    {
+
+        $withoutIdentifier = empty($identifiers);
+
+        $tableId = 'sid';
+
+        if ($resourceClass === Volume::class) {
+            $tableId = 'vid';
+        }
+
+        $qb = $this->createQueryBuilder(self::PAPERS_ALIAS);
+
+        if (!$withoutIdentifier) {
+
+            if (is_int($identifiers)) {
+                $identifiers = (array)$identifiers;
+            }
+
+            $qb->select(sprintf('COUNT(DISTINCT(%s.paperid)) AS %s', self::PAPERS_ALIAS, self::TOTAL_ARTICLE));
+        } else {
+            $qb->select(sprintf('%s.rvid, %s.%s, COUNT(DISTINCT(%s.paperid)) AS %s', self::PAPERS_ALIAS, self::PAPERS_ALIAS, $tableId, self::PAPERS_ALIAS, self::TOTAL_ARTICLE));
+        }
+
+        $qb->andWhere(sprintf('%s.status =:status', self::PAPERS_ALIAS))
+            ->andWhere(sprintf('%s.%s != 0', self::PAPERS_ALIAS, $tableId))
+            ->setParameter('status', $status);
+
+
+        if (!$withoutIdentifier) {
+
+            $orExp = $qb->expr()->orX();
+
+            foreach ($identifiers as $val) {
+                $val = (int)$val;
+                $orExp->add($qb->expr()->eq(sprintf("%s.%s", self::PAPERS_ALIAS, $tableId), $val));
+            }
+
+            $qb->andWhere($orExp);
+        } else {
+            $qb->addGroupBy(sprintf('%s.rvid', self::PAPERS_ALIAS));
+            $qb->addGroupBy(sprintf('%s.%s', self::PAPERS_ALIAS, $tableId));
+            $qb->addOrderBy(sprintf('%s.rvid', self::PAPERS_ALIAS), 'DESC');
+        }
+
+        // SELECT p.RVID, p.VID, COUNT(DISTINCT(p.PAPERID)) AS totalArticles FROM PAPERS p WHERE p.STATUS = 16 AND p.VID != 0 GROUP BY p.RVID, p.VID ORDER BY p.RVID DESC
+
+        //$debugQuery = $qb->getQuery()->getDQL();
+
+        return $qb;
+
+    }
+
+
+    public function getTotalArticleBySectionOrVolume(string $resourceClass = Section::class, int $status = Paper::STATUS_PUBLISHED, int|array $identifiers = null, int $rvId = null, array $filters = []): array|float|bool|int|string|null
+    {
+
+        $resultQuery = $this->getTotalArticlesBySectionOrVolumeQuery($resourceClass, $status, $identifiers, $filters)->getQuery();
+
+        if (!empty($identifiers)) {
+            try {
+                return [self::TOTAL_ARTICLE => $resultQuery->getSingleScalarResult()];
+            } catch (NoResultException|NonUniqueResultException $e) {
+                $this->logger->critical($e->getMessage());
+                return [self::TOTAL_ARTICLE => null];
+            }
+        }
+
+        $result = $resultQuery->getArrayResult();
+
+        $assoc = [self::TOTAL_ARTICLE => 0];
+
+        foreach ($result as $values) {
+            $key = $resourceClass === Section::class ? 'sid' : 'vid';
+
+            $currentRvId = $values['rvid'] ?? null;
+
+            if ($currentRvId) {
+
+                $assoc[$currentRvId][self::TOTAL_ARTICLE] = $assoc[$currentRvId][self::TOTAL_ARTICLE] ?? 0;
+
+                $assoc[self::TOTAL_ARTICLE] += $values[self::TOTAL_ARTICLE]; // all platform
+                $assoc[$currentRvId][self::TOTAL_ARTICLE] += $values[self::TOTAL_ARTICLE];
+                $assoc[$currentRvId][$values[$key]][self::TOTAL_ARTICLE] = $values[self::TOTAL_ARTICLE];
+            } else {
+                $assoc[$values[$key]] = $values[self::TOTAL_ARTICLE];
+            }
+
+        }
+
+        return $rvId ? $assoc[$rvId] : $assoc;
     }
 
 }

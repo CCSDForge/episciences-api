@@ -19,6 +19,7 @@ use App\Entity\UserRoles;
 use App\Entity\UserOwnedInterface;
 use App\Entity\Volume;
 use App\Exception\ResourceNotFoundException;
+use App\Traits\QueryTrait;
 use Doctrine\ORM\QueryBuilder;
 use JetBrains\PhpStorm\NoReturn;
 use ReflectionException;
@@ -26,6 +27,7 @@ use Symfony\Bundle\SecurityBundle\Security;
 
 class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, QueryCollectionExtensionInterface
 {
+    use QueryTrait;
 
     private Security $security;
 
@@ -134,17 +136,8 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
                 if ((isset($context['filters']['type']) && $context['filters']['type'])) {
                     $tFilters = (array)$context['filters']['type'];
-                    $currentTypes = [];
-                    $availableTypes = $queryBuilder->getEntityManager()->getRepository(Volume::class)->getTypes();
 
-                    foreach ($tFilters as $value) {
-                        $value = trim($value);
-                        if (in_array($value, $availableTypes, true) && !in_array($value, $currentTypes, true)) {
-                            $currentTypes[] = $value;
-                        }
-                    }
-
-                    $volType = !empty($currentTypes) ? implode(',', $currentTypes) : implode(',', $tFilters);
+                    $volType = $this->processTypes($queryBuilder, $tFilters);
 
                     if ('' !== $volType) {
                         $queryBuilder->andWhere("$alias.vol_type like :volType");
@@ -304,50 +297,6 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             }
 
         }
-
-    }
-
-    private function processYears(string|array $yFilters = []): array
-    {
-        $yFilters = (array)$yFilters;
-
-        $processedYears = [];
-
-        foreach ($yFilters as $yVal) {
-
-            $yVal = (int)$yVal;
-
-            if (!in_array($yVal, $processedYears, true)) {
-                $processedYears[] = $yVal;
-            }
-        }
-
-        return $processedYears;
-    }
-
-    private function processOrExpression(QueryBuilder $qb, string $alias, array $values, string $resourceClass): QueryBuilder
-    {
-
-        if (empty($values)) {
-            return $qb;
-        }
-
-        if ($resourceClass === Volume::class) {
-            $yearExp = "$alias.vol_year";
-        } elseif ($resourceClass === News::class) {
-            $yearExp = "YEAR($alias.date_creation)";
-
-        } else {
-            return $qb;
-        }
-
-        $orExp = $qb->expr()->orX();
-
-        foreach ($values as $val) {
-            $orExp->add($qb->expr()->eq(sprintf("%s", $yearExp), $val));
-        }
-
-        return $qb->andWhere($orExp);
 
     }
 

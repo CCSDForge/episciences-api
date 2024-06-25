@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\AppConstants;
+use App\Repository\UserAssignmentRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -10,7 +11,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Table(name: 'USER_ASSIGNMENT')]
 #[ORM\Index(columns: ['ITEMID"'], name: 'FK_ITEMID_idx')]
 #[ORM\Index(columns: ['UID"'], name: 'FK_UID_idx')]
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: UserAssignmentRepository::class)]
 
 class UserAssignment
 {

@@ -39,10 +39,14 @@ services:
         class: App\Security\AppCustomJWTAuthenticator
         parent: lexik_jwt_authentication.security.jwt_authenticator
 
-    'App\Serializer\ApiNormalizer': # JSON-LD format
+    'App\Serializer\Normalizer\ApiCollectionNormalizer':
+        decorates: 'api_platform.hydra.normalizer.collection'
+        arguments: [ '@App\Serializer\Normalizer\ApiCollectionNormalizer.inner' ]
+
+    'App\Serializer\Normalizer\ApiItemNormalizer': # JSON-LD format
         decorates: 'api_platform.jsonld.normalizer.item'
 
-    'app.serializer.normalizer.item.json': #JSONformat
-        class: 'App\Serializer\ApiNormalizer'
-        decorates: 'api_platform.serializer.normalizer.item'
+#    'app.serializer.normalizer.item.json': #JSONformat
+#        class: 'App\Serializer\Normalizer\ApiItemNormalizer'
+#        decorates: 'api_platform.serializer.normalizer.item'
 

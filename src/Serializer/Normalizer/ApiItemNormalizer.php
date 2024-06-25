@@ -1,22 +1,21 @@
 <?php
 
-namespace App\Serializer;
+namespace App\Serializer\Normalizer;
 
-
-use App\Entity\Paper;
-use App\Service\MetadataSources;
+use App\Entity\Section;
+use App\Entity\Volume;
+use App\Repository\PapersRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Component\Serializer\SerializerAwareInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 
-class ApiNormalizer implements NormalizerInterface, SerializerAwareInterface
+class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
 {
 
-    private MetadataSources $metadataSourcesService;
-
-    public function __construct(private readonly NormalizerInterface $decorated, MetadataSources $metadataSourcesService)
+    public function __construct(private readonly NormalizerInterface $decorated, private readonly EntityManagerInterface $entityManager)
     {
-        $this->metadataSourcesService = $metadataSourcesService;
+
     }
 
 
@@ -25,13 +24,10 @@ class ApiNormalizer implements NormalizerInterface, SerializerAwareInterface
 
         $data = $this->decorated->normalize($object, $format, $context);
 
-        // duplication of information: now included in Paper::document
-
-
-//        if (($object instanceof Papers) && is_array($data)) {
-//            $data['statusLabel'] = $object->getStatusDictionaryLabel();
-//            $data['repository'] = $this->metadataSourcesService->repositoryToArray($object->getRepoid());
-//        }
+        if ((($isVolume = $object instanceof Volume) || $object instanceof Section) && is_array($data)) {
+            $data['committee'] = $this->entityManager->getRepository($object::class)->getCommittee($object->getRvid(), $isVolume ? $object->getVid() : $object->getSid());
+            $data[PapersRepository::TOTAL_ARTICLE] = count($data['papers']) ?? 0;
+        }
 
         return $data;
     }
@@ -52,6 +48,5 @@ class ApiNormalizer implements NormalizerInterface, SerializerAwareInterface
             $this->decorated->setSerializer($serializer);
         }
     }
+
 }
-
-

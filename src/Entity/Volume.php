@@ -62,7 +62,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
     controller: VolumesRangeController::class
 
 )]
+
 #[ApiResource(
+    uriTemplate: '/volumes/{vid}',
     operations: [
         new Get(
             openapi: new OpenApiOperation(
@@ -78,6 +80,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 
         ),
+    ]
+)]
+#[ApiResource(
+    operations: [
         new GetCollection(
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
@@ -162,7 +168,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
     ]
 )]
-#[ApiFilter(SearchFilter::class, properties: ['rvid' => 'exact', 'vid' => 'exact'])]
+#[ApiFilter(SearchFilter::class, properties: ['vid' => 'exact'])]
 class Volume
 {
     public const TABLE = 'VOLUME';
