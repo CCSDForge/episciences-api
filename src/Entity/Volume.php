@@ -11,10 +11,8 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
-use App\Controller\VolumesRangeController;
 use App\OpenApi\OpenApiFactory;
 use App\Repository\VolumeRepository;
-use App\Resource\RangeType;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -24,45 +22,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Index(columns: ['RVID'], name: 'FK_CONFID_idx')]
 #[ORM\Entity(repositoryClass: VolumeRepository::class)]
-#[ApiResource(
-    uriTemplate: '/volumes-range',
-    operations: [
-        new GetCollection(
-            openapi: new OpenApiOperation(
-                tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
-                summary: 'Volume types and Year range',
-                description: 'Retrieving available volume types and year range',
-                parameters: [
-                    new Parameter(
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal Code (ex. epijinfo)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ],
-                        explode: false,
-                    ),
-                ]
-
-            ),
-            paginationEnabled: false,
-            paginationItemsPerPage: false,
-            paginationMaximumItemsPerPage: false,
-            paginationClientEnabled: false,
-            normalizationContext: [
-                'groups' => ['read:Volume:Range']
-            ],
-            output: RangeType::class,// bypass the automatic retrieval of the entity
-            read: false
-        ),
-    ],
-    controller: VolumesRangeController::class
-
-)]
-
 #[ApiResource(
     uriTemplate: '/volumes/{vid}',
     operations: [
