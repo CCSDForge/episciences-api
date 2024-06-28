@@ -52,21 +52,22 @@ class BrowseStateProvider implements ProviderInterface
 
         $maxResults = $operation->getPaginationMaximumItemsPerPage() ?: Solr::SOLR_MAX_RETURNED_FACETS_RESULTS;
 
-        if ($isPaginationEnabled) {
-            $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;
-            $firstResult = ($page - 1) * $maxResults;
-        }
 
         if (isset($uriVariables[self::AUTHOR_FULlNAME])) { // "browse/authors-search" collection
-
-            $response = [];
 
             $fullName = trim($uriVariables[self::AUTHOR_FULlNAME]);
             $result = $this->solrSrv->setJournal($journal)->getSolrAuthorsByFullName($fullName);
             $docs = $result['response']['docs'] ?? [];
 
+            $response = [];
+
             foreach ($docs as $values){
                 $response[] = new SolrDoc($values);
+            }
+
+            if ($isPaginationEnabled) {
+                $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;
+                $firstResult = ($page - 1) * $maxResults;
             }
 
             return new ArrayPaginator($response, $firstResult, $maxResults);
@@ -97,6 +98,11 @@ class BrowseStateProvider implements ProviderInterface
                 ->setField('author_fullname_fs')
                 ->setValues(['name' => $name, 'count' => $count]);
             $authors[] = $author;
+        }
+
+        if ($isPaginationEnabled) {
+            $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;
+            $firstResult = ($page - 1) * $maxResults;
         }
 
         return new ArrayPaginator($authors, $firstResult, $maxResults);
