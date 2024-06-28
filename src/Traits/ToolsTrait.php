@@ -63,4 +63,41 @@ trait ToolsTrait
         $tDate = \DateTime::createFromFormat($format, $date);
         return $tDate && $tDate->format($format) === $date;
     }
+
+    public static function convertToCamelCase(string $string, string $separator = '_', bool $capitalizeFirstCharacter = false): string
+    {
+
+        if (self::isInUppercase($string, $separator)) {
+            $string = strtolower($string);
+        }
+
+        $str = str_replace($separator, '', ucwords($string, $separator));
+
+        if (!$capitalizeFirstCharacter) {
+            $str = lcfirst($str);
+        }
+
+        return $str;
+    }
+    /**
+     * @param $string
+     * @param string $separator
+     * @return bool
+     */
+    public static function isInUppercase($string, string $separator = '_'): bool
+    {
+
+        $latestSubString = '';
+        foreach (explode($separator, $string) as $str) {
+
+            $latestSubString = $str;
+
+            if (ctype_lower($str)) {
+                return false;
+            }
+        }
+
+        return ctype_upper($latestSubString);
+
+    }
 }

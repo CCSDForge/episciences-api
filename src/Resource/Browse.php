@@ -9,7 +9,6 @@ use ApiPlatform\OpenApi\Model\Parameter;
 use App\Entity\Review;
 use App\OpenApi\OpenApiFactory;
 use App\State\BrowseStateProvider;
-use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ApiResource(
     operations: [
@@ -52,9 +51,38 @@ use Symfony\Component\Serializer\Attribute\Groups;
             normalizationContext: [
                 'groups' => ['read:Browse:Authors']
             ],
-            provider: BrowseStateProvider::class,
+        ),
+        new GetCollection(
+            uriTemplate: '/browse/authors-search/{author_fullname}',
+            formats: ['jsonld', 'json'],
+            openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['browse']],
+                summary: 'todo',
+                description: 'todo',
+                parameters: [
+                    new Parameter(
+                        name: 'code',
+                        in: 'query',
+                        description: 'Journal code (exp. epijinfo)',
+                        required: false,
+                        schema: [
+                            "type" => 'string',
+                            "default" => ''
+                        ]
+                    ),
+
+
+                ],
+            ),
+            normalizationContext: [
+                'groups' => ['read:Browse:Authors:fullName']
+            ],
+            output: SolrDoc::class,
         )
-    ]
+
+    ],
+    output: Browse::class,
+    provider: BrowseStateProvider::class
 )]
 class Browse
 {

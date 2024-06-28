@@ -8,12 +8,13 @@ use ApiPlatform\State\ProviderInterface;
 use App\Entity\Review;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\Facet;
+use App\Resource\SolrDoc;
 use App\Service\Solr;
 use Doctrine\ORM\EntityManagerInterface;
-use RuntimeException;
 
 class BrowseStateProvider implements ProviderInterface
 {
+    public const AUTHOR_FULlNAME = 'author_fullname';
 
     private EntityManagerInterface $entityManager;
     private Solr $solrSrv;
@@ -27,24 +28,9 @@ class BrowseStateProvider implements ProviderInterface
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
-        $authors = [];
+
         $journal = null;
-
-        $isPaginationEnabled = !isset($context['filters']['pagination']) || filter_var($context['filters']['pagination'], FILTER_VALIDATE_BOOLEAN);
-        $page = $filter['page'] ?? 1;
-        $firstResult = 0;
-        $maxResults = $operation->getPaginationMaximumItemsPerPage() ?: Solr::SOLR_MAX_RETURNED_FACETS_RESULTS;
-
-        $letter = $context['filters']['letter'] ?? 'all';
-        $availableLetters = array_merge(range('A', 'Z'), ['all', 'other']);
-
-        if (!in_array($letter, $availableLetters, true)) {
-            $letter = 'all';
-        }
-
-        $sortType = $context['filters']['sort'] ?? 'index';
         $code = $context['filters']['code'] ?? null;
-
 
         if ($code === '{code}') {
             $code = null;
@@ -59,6 +45,44 @@ class BrowseStateProvider implements ProviderInterface
             }
 
         }
+
+        $isPaginationEnabled = !isset($context['filters']['pagination']) || filter_var($context['filters']['pagination'], FILTER_VALIDATE_BOOLEAN);
+        $page = $filter['page'] ?? 1;
+        $firstResult = 0;
+
+        $maxResults = $operation->getPaginationMaximumItemsPerPage() ?: Solr::SOLR_MAX_RETURNED_FACETS_RESULTS;
+
+        if ($isPaginationEnabled) {
+            $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;
+            $firstResult = ($page - 1) * $maxResults;
+        }
+
+        if (isset($uriVariables[self::AUTHOR_FULlNAME])) { // "browse/authors-search" collection
+
+            $response = [];
+
+            $fullName = trim($uriVariables[self::AUTHOR_FULlNAME]);
+            $result = $this->solrSrv->setJournal($journal)->getSolrAuthorsByFullName($fullName);
+            $docs = $result['response']['docs'] ?? [];
+
+            foreach ($docs as $values){
+                $response[] = new SolrDoc($values);
+            }
+
+            return new ArrayPaginator($response, $firstResult, $maxResults);
+
+        }
+        // "browse/authors" collection
+        $authors = [];
+
+        $letter = $context['filters']['letter'] ?? 'all';
+        $availableLetters = array_merge(range('A', 'Z'), ['all', 'other']);
+
+        if (!in_array($letter, $availableLetters, true)) {
+            $letter = 'all';
+        }
+
+        $sortType = $context['filters']['sort'] ?? 'index';
 
         $result = $this->solrSrv->setJournal($journal)->getSolrFacet([
             'facetFieldName' => 'author_fullname_fs',
@@ -75,11 +99,7 @@ class BrowseStateProvider implements ProviderInterface
             $authors[] = $author;
         }
 
-        if ($isPaginationEnabled) {
-            $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;
-            $firstResult = ($page - 1) * $maxResults;
-        }
-
         return new ArrayPaginator($authors, $firstResult, $maxResults);
+
     }
 }

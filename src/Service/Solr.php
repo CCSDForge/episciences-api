@@ -242,4 +242,43 @@ class Solr
 
     }
 
+    public function getSolrAuthorsByFullName(string $fullName): array
+    {
+
+        try {
+            $response = $this->client->request(
+                'GET',
+                $this->getSolrAuthorsByFullNameQuery($fullName)
+
+            );
+            $response = $response->getContent();
+            $responseToArray = json_decode($response, true, 512, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+
+            return $responseToArray;
+
+
+        } catch (\JsonException|TransportExceptionInterface|ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface $e) {
+            $this->logger->critical($e->getMessage());
+            throw new RuntimeException('Oops! Feed cannot be generated: An error occurred');
+
+        }
+
+    }
+
+    private function getSolrAuthorsByFullNameQuery(string $fullName): string
+    {
+        $journal = $this->getJournal();
+        $solrQuery = $this->parameters->get('app.solr.host') . '/query/?q=author_fullname_t:';
+        $solrQuery .= sprintf('%s&q.op=OR&indent=false', urlencode($fullName));
+
+        if ($journal) {
+            $solrQuery .= '&fq=revue_id_i:' . $journal->getRvid();
+        }
+
+        return $solrQuery;
+
+    }
+
+
+
 }
