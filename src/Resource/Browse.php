@@ -57,8 +57,8 @@ use App\State\BrowseStateProvider;
             formats: ['jsonld', 'json'],
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['browse']],
-                summary: 'todo',
-                description: 'todo',
+                summary: 'Author search by text',
+                description: 'Search authors by text ',
                 parameters: [
                     new Parameter(
                         name: 'code',
