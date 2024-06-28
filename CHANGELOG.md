@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 ### Changed
+- "range" endpoints are no longer required: they have been merged with the "news" and "volumes" endpoints.
 - Volumes: search by list of values [type].
 - /api/boards: show only the following roles: 'editorial_board','scientific_board','former_member','technical_board','guest_editor','secretary','chief_editor' and 'editor'.
 ### Added

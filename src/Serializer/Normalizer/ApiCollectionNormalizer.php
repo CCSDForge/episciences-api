@@ -3,11 +3,15 @@
 namespace App\Serializer\Normalizer;
 
 use ApiPlatform\Metadata\HttpOperation;
+use App\Entity\News;
 use App\Entity\Paper;
 use App\Entity\Review;
 use App\Entity\Section;
 use App\Entity\Volume;
 use App\Repository\PapersRepository;
+use App\Repository\RangeInterface;
+use App\Resource\Range;
+use App\Resource\RangeType;
 use App\Traits\QueryTrait;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -64,6 +68,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         $rvCode = $parsedUri['rvcode'] ?? null;
 
         $rvId = null;
+        $journal = null;
 
         if ($rvCode) {
 
@@ -74,12 +79,10 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             }
         }
 
-
         $operationClass = $operation->getClass();
+        $identifiers = [];
 
         if (($operationClass === Volume::class || $operationClass === Section::class) && $operation->getMethod() === 'GET') {
-
-            $identifiers = [];
 
             if (!empty($filters)) {
 
@@ -96,13 +99,9 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
                 $hydraMember[$index][PapersRepository::TOTAL_ARTICLE] = count($values['papers']) ?? 0;
             }
 
-            if (!empty($hydraMember)) {
-                $this->addHydraContext($data, $operationClass, $rvId, $identifiers, $filters);
-            } else {
-                $data[sprintf('hydra:%s', PapersRepository::TOTAL_ARTICLE)] = 0;
-            }
         }
 
+        $this->addHydraContext($data, $operationClass, $journal, $identifiers, $filters);
         $data['hydra:member'] = $hydraMember;
         return $data;
 
@@ -118,10 +117,43 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         return ['object' => self::FORMAT];
     }
 
-    private function addHydraContext(array &$data, string $operationClass, $rvId, array $identifiers = [], array $filters = []): void
+    private function addHydraContext(array &$data, string $operationClass, Review|null $journal, array $identifiers = [], array $filters = []): void
     {
-        $allPublishedArticles = $this->entityManager->getRepository(Paper::class)->getTotalArticleBySectionOrVolume($operationClass, Paper::STATUS_PUBLISHED, $identifiers, $rvId, $filters);
-        $data[sprintf('hydra:%s', PapersRepository::TOTAL_ARTICLE)] = $allPublishedArticles[PapersRepository::TOTAL_ARTICLE];
+
+        $rvId = null;
+        $repo = null;
+
+        if($journal){
+            $rvId = $journal->getRvid();
+            $rvCode = $journal->getCode();
+        }
+
+        if($operationClass === News::class || $operationClass === Volume::class){
+            $repo = $this->entityManager->getRepository($operationClass);
+        }
+
+        $hydraMember = $data['hydra:member'] ?? [];
+        if ($operationClass === News::class) {
+            $data[sprintf('hydra:%s', RangeInterface::RANGE)] = ['years' => $repo ? (new Range())->setYears($repo->getRange($rvId))->getYears() : []];
+        } elseif ($operationClass === Volume::class || $operationClass === Section::class) {
+            $data[sprintf('hydra:%s', PapersRepository::TOTAL_ARTICLE)] = 0;
+
+            if($operationClass === Volume::class){
+
+                $rangeType = (new RangeType())
+                    ->setTypes($repo->getTypes($rvId))
+                    ->setYears($repo->getRange($rvId));
+
+                $data[sprintf('hydra:%s', RangeInterface::RANGE)] = ['year' => $rangeType->getYears(), 'types' => $rangeType->getTypes()];
+
+            }
+
+            if (!empty($hydraMember)) {
+                $allPublishedArticles = $this->entityManager->getRepository(Paper::class)->getTotalArticleBySectionOrVolume($operationClass, Paper::STATUS_PUBLISHED, $identifiers, $rvId, $filters);
+                $data[sprintf('hydra:%s', PapersRepository::TOTAL_ARTICLE)] = $allPublishedArticles[PapersRepository::TOTAL_ARTICLE];
+            }
+
+        }
         asort($data);
     }
 
