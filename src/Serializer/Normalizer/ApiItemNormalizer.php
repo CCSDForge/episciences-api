@@ -26,7 +26,7 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
 
         if ((($isVolume = $object instanceof Volume) || $object instanceof Section) && is_array($data)) {
             $data['committee'] = $this->entityManager->getRepository($object::class)->getCommittee($object->getRvid(), $isVolume ? $object->getVid() : $object->getSid());
-            $data[PapersRepository::TOTAL_ARTICLE] = count($data['papers']) ?? 0;
+            $data[PapersRepository::TOTAL_ARTICLE] = count($data['papers'] ?? []) ?? 0;
         }
 
         return $data;
