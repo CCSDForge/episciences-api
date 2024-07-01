@@ -71,7 +71,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
     ]
 )]
-class Section
+class Section extends AbstractVolumeSection implements EntityIdentifierInterface
 {
     public const TABLE = 'SECTION';
     public const DEFAULT_URI_TEMPLATE = '/sections{._format}';
@@ -153,8 +153,10 @@ class Section
     )]
     private Collection $settings;
 
-    public function __construct()
+    public function __construct(array $options = [])
     {
+        parent::__construct($options);
+
         $this->papers = new ArrayCollection();
         $this->settings = new ArrayCollection();
     }
@@ -271,4 +273,8 @@ class Section
     }
 
 
+    public function getIdentifier(): ?int
+    {
+        return $this->getSid();
+    }
 }

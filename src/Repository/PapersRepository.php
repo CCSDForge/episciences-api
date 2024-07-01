@@ -307,10 +307,6 @@ class PapersRepository extends ServiceEntityRepository
             $qb->addOrderBy(sprintf('%s.rvid', self::PAPERS_ALIAS), 'DESC');
         }
 
-        // SELECT p.RVID, p.VID, COUNT(DISTINCT(p.PAPERID)) AS totalArticles FROM PAPERS p WHERE p.STATUS = 16 AND p.VID != 0 GROUP BY p.RVID, p.VID ORDER BY p.RVID DESC
-
-        //$debugQuery = $qb->getQuery()->getDQL();
-
         return $qb;
 
     }
@@ -332,17 +328,16 @@ class PapersRepository extends ServiceEntityRepository
 
         $result = $resultQuery->getArrayResult();
 
-        $assoc = [self::TOTAL_ARTICLE => 0];
+        $assoc[self::TOTAL_ARTICLE] = 0;
 
         foreach ($result as $values) {
+
             $key = $resourceClass === Section::class ? 'sid' : 'vid';
 
             $currentRvId = $values['rvid'] ?? null;
 
             if ($currentRvId) {
-
                 $assoc[$currentRvId][self::TOTAL_ARTICLE] = $assoc[$currentRvId][self::TOTAL_ARTICLE] ?? 0;
-
                 $assoc[self::TOTAL_ARTICLE] += $values[self::TOTAL_ARTICLE]; // all platform
                 $assoc[$currentRvId][self::TOTAL_ARTICLE] += $values[self::TOTAL_ARTICLE];
                 $assoc[$currentRvId][$values[$key]][self::TOTAL_ARTICLE] = $values[self::TOTAL_ARTICLE];

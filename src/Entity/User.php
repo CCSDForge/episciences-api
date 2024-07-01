@@ -13,6 +13,7 @@ use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\Controller\PapersController;
 use App\Repository\UserRepository;
+use App\Traits\ToolsTrait;
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -135,6 +136,7 @@ use App\OpenApi\OpenApiFactory;
 #[ApiFilter(SearchFilter::class, properties: self::FILTERS)]
 class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUserInterface
 {
+    use ToolsTrait;
     public const TABLE = 'USER';
     public const ROLE_ROOT = 'epiadmin';
     public const ROLE_SECRETARY = 'secretary';
@@ -294,12 +296,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups(['read:Boards'])]
     private ?array $assignedSections;
 
-    public function __construct()
+    public function __construct($options = [])
     {
         $this->roles = [];
         $this->userRoles = new ArrayCollection();
         $this->papers = new ArrayCollection();
         $this->news = new ArrayCollection();
+
+        $this->setOptions($options);
+
+
     }
 
     public function getUid(): ?int
@@ -735,6 +741,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         $this->uuid = $uuid;
 
         return $this;
+    }
+
+    public function setOptions(array $options): void
+    {
+        $classMethods = get_class_methods($this);
+        foreach ($options as $key => $value) {
+            $key = self::convertToCamelCase($key, '_', true);
+            $method = 'set' . $key;
+            if (in_array($method, $classMethods, true)) {
+                $this->$method($value);
+            }
+        }
     }
 
 }

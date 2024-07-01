@@ -2,10 +2,11 @@
 
 namespace App\Serializer\Normalizer;
 
-use App\Entity\Section;
-use App\Entity\Volume;
+use App\Entity\AbstractVolumeSection;
+use App\Entity\EntityIdentifierInterface;
 use App\Repository\PapersRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Component\Serializer\SerializerAwareInterface;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -19,14 +20,25 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
     }
 
 
+    /**
+     * @throws \ReflectionException
+     * @throws ExceptionInterface
+     */
     public function normalize(mixed $object, ?string $format = null, array $context = []): array|string|int|float|bool|\ArrayObject|null
     {
 
         $data = $this->decorated->normalize($object, $format, $context);
 
-        if ((($isVolume = $object instanceof Volume) || $object instanceof Section) && is_array($data)) {
-            $data['committee'] = $this->entityManager->getRepository($object::class)->getCommittee($object->getRvid(), $isVolume ? $object->getVid() : $object->getSid());
-            $data[PapersRepository::TOTAL_ARTICLE] = count($data['papers'] ?? []) ?? 0;
+        if (
+            $object instanceof AbstractVolumeSection &&
+            is_array($data) &&
+            (new \ReflectionClass($object::class))->implementsInterface(EntityIdentifierInterface::class)
+        ) {
+            $committee = $this->entityManager->getRepository($object::class)->getCommittee($object->getRvid(), $object->getIdentifier());
+            $object->setCommittee($committee);
+            $object->setTotalPublishedArticles(count($data['papers'] ?? []) ?? 0);
+            $data['committee'] = $object->getCommittee();
+            $data[PapersRepository::TOTAL_ARTICLE] = $object->getTotalPublishedArticles();
         }
 
         return $data;

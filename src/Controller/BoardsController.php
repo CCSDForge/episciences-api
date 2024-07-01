@@ -2,12 +2,14 @@
 
 namespace App\Controller;
 
+use ApiPlatform\State\Pagination\ArrayPaginator;
 use App\Entity\Review;
 use App\Entity\Section;
 use App\Entity\User;
 use App\Entity\UserRoles;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\Boards;
+use App\Service\Solr;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -28,12 +30,19 @@ class BoardsController extends AbstractController
         User::ROLE_SECRETARY,
     ];
 
-    public function __invoke(EntityManagerInterface $entityManager, LoggerInterface $logger, Request $request = null): ?Boards
+    public function __invoke(EntityManagerInterface $entityManager, LoggerInterface $logger, Request $request = null)
     {
         $boards = [];
+        $pagination = true;
+        $page = 1;
+        $maxResults = Solr::SOLR_MAX_RETURNED_FACETS_RESULTS;
+        $firstResult = 0;
 
         if ($request !== null) {
             $tags = [];
+            $page = !$request->query->has('pagination') ? 1 : (int)$request->query->get('page');
+            $itemsPerPage = !$request->query->has('pagination') ? 30 : (int)$request->query->get('itemsPerPage');
+            $pagination = !$request->query->has('pagination') || $request->query->get('pagination');
 
             $rolesByUid = [];
             $code = $request->get('code');
@@ -75,7 +84,7 @@ class BoardsController extends AbstractController
                     }
 
 
-                    if(in_array($current1['roleid'], self::ROLES_TO_SHOWS, true)){
+                    if (in_array($current1['roleid'], self::ROLES_TO_SHOWS, true)) {
                         $rolesByUid[$current1['uid']]['roles'][] = $current1['roleid'];
                     }
 
@@ -85,7 +94,7 @@ class BoardsController extends AbstractController
 
                 try {
                     $assignedSections = $entityManager->getRepository(Section::class)->getAssignedSection($journal->getRvid(), $boardIdentifies);
-                } catch (Exception | \JsonException  $e) {
+                } catch (Exception|\JsonException  $e) {
                     $assignedSections = [];
                     $logger->critical($e->getMessage());
 
@@ -124,6 +133,14 @@ class BoardsController extends AbstractController
 
         }
 
-        return (new Boards())->setBoards($boards);
+        if ($pagination) {
+            $maxResults = $itemsPerPage ?? $maxResults;
+            $firstResult = ($page - 1) * $maxResults;
+        }
+
+        return new ArrayPaginator($boards, $firstResult, $maxResults);
+
+
+        //return (new Boards())->setBoards($boards);
     }
 }
