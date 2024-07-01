@@ -2,9 +2,8 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Metadata\ApiProperty;
-use ApiPlatform\Metadata\ApiResource;
 use App\AppConstants;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -21,26 +20,24 @@ class VolumeMetadata
     #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $id;
+    private int $id;
 
     #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    private $vid;
+    private int $vid;
 
 
     #[ORM\Column(name: 'POSITION', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            #AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
         ]
 
     )]
-    private $position;
+    private ?int $position;
 
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            #AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
         ]
 
     )]
@@ -51,25 +48,41 @@ class VolumeMetadata
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            #AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
         ]
 
     )]
-    private $content;
+    private ?array $content;
 
     #[ORM\Column(name: 'FILE', type: 'string', length: 250, nullable: true)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-            #AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
         ]
 
     )]
-    private $file;
+    private ?string $file;
 
     #[ORM\ManyToOne(targetEntity: Volume::class, inversedBy: 'metadata')]
     #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID', nullable: false)]
     private ?Volume $volume = null;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+        ]
+
+    )]
+    private ?\DateTimeInterface $date_creation = null;
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+        ]
+
+    )]
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private ?\DateTimeInterface $date_updated = null;
 
     public function getId(): ?int
     {
@@ -151,6 +164,30 @@ class VolumeMetadata
     public function setTitles(array $titles): self
     {
         $this->titles = $titles;
+        return $this;
+    }
+
+    public function getDateCreation(): ?\DateTimeInterface
+    {
+        return $this->date_creation;
+    }
+
+    public function setDateCreation(?\DateTimeInterface $date_creation): static
+    {
+        $this->date_creation = $date_creation;
+
+        return $this;
+    }
+
+    public function getDateUpdated(): ?\DateTimeInterface
+    {
+        return $this->date_updated;
+    }
+
+    public function setDateUpdated(\DateTimeInterface $date_updated): static
+    {
+        $this->date_updated = $date_updated;
+
         return $this;
     }
 
