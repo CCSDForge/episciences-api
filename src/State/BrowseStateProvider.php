@@ -26,6 +26,14 @@ class BrowseStateProvider implements ProviderInterface
 
     }
 
+    /**
+     * @param Operation $operation
+     * @param array $uriVariables
+     * @param array $context
+     * @return object|array|object[]|null
+     * @throws ResourceNotFoundException
+     */
+
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
 
@@ -75,13 +83,8 @@ class BrowseStateProvider implements ProviderInterface
         }
         // "browse/authors" collection
         $authors = [];
-
-        $letter = $context['filters']['letter'] ?? 'all';
-        $availableLetters = array_merge(range('A', 'Z'), ['all', 'other']);
-
-        if (!in_array($letter, $availableLetters, true)) {
-            $letter = 'all';
-        }
+        $letter = isset($context['filters']['letter']) ? mb_ucfirst($context['filters']['letter']) : 'all';
+        $search = isset($context['filters']['search']) ? mb_ucfirst($context['filters']['search']) : '';
 
         $sortType = $context['filters']['sort'] ?? 'index';
 
@@ -89,7 +92,8 @@ class BrowseStateProvider implements ProviderInterface
             'facetFieldName' => 'author_fullname_fs',
             'facetLimit' => $maxResults,
             'letter' => $letter,
-            'sortType' => $sortType
+            'sortType' => $sortType,
+            'search' => $search
         ]);
 
 

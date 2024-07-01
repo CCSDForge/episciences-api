@@ -60,6 +60,7 @@ class Solr
 
 
         $letter = $params['letter'] ?? 'all';
+        $search = $params['search'] ?? '';
         $sortType = $params['sortType'] ?? 'index';
 
         if ($sortType !== 'count') {
@@ -76,8 +77,12 @@ class Solr
             $baseQueryString .= '&fq=revue_id_i:' . $journal->getRvid();
         }
 
-        if ($letter !== 'all') {
+        if (mb_lcfirst($letter) !== 'all') {
             $baseQueryString .= '&facet.prefix=' . $letter;
+        }
+
+        if ($search !== '') {
+            $baseQueryString .= '&facet.contains=' . $search;
         }
 
         $baseQueryString .= '&facet.sort=' . $sortType;
@@ -116,7 +121,8 @@ class Solr
             'facetFieldName' => '',
             'facetLimit' => Solr::SOLR_MAX_RETURNED_FACETS_RESULTS,
             'letter' => 'A',
-            'sortType' => 'index'
+            'sortType' => 'index',
+            'search' => '',
 
         ]): array
     {

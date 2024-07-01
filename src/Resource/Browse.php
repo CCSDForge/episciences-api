@@ -33,11 +33,19 @@ use App\State\BrowseStateProvider;
 
                     new Parameter(
                         name: 'letter', in: 'query',
-                        description: 'Available values : A...Z, all, other',
+                        description: 'Available values : A...Z, all',
                         required: false,
                         schema: [
                             "type" => 'string',
                             'default' => 'all',
+                        ]
+                    ),
+                    new Parameter(
+                        name: 'search', in: 'query',
+                        description: 'Contains a given substring [Performs case-sensitive verification]',
+                        required: false,
+                        schema: [
+                            "type" => 'string'
                         ]
                     ),
                     new Parameter(
