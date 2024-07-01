@@ -273,7 +273,7 @@ class Solr
     private function getSolrAuthorsByFullNameQuery(string $fullName): string
     {
         $journal = $this->getJournal();
-        $solrQuery = $this->parameters->get('app.solr.host') . '/query/?q=author_fullname_t:';
+        $solrQuery = $this->parameters->get('app.solr.host') . '/select/?q=author_fullname_t:';
         $solrQuery .= sprintf('%s&q.op=OR&indent=false', urlencode($fullName));
 
         if ($journal) {
