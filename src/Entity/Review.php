@@ -33,6 +33,51 @@ use App\OpenApi\OpenApiFactory;
 #[ORM\UniqueConstraint(name: 'U_CODE', columns: ['CODE'])]
 #[ORM\Entity(repositoryClass: ReviewRepository::class)]
 #[ApiResource(
+    uriTemplate: self::URI_TEMPLATE . '{code}',
+    operations: [
+        new GetCollection(
+            uriTemplate: self::URI_TEMPLATE . 'boards/{code}',
+            openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['review']],
+                summary: 'Boards',
+                description: 'Editorial board',
+            ),
+
+            normalizationContext: [
+                'groups' => ['read:Boards']
+            ],
+            read: false,
+        ),
+    ],
+    controller: BoardsController::class,
+    output: Boards::class
+
+)]
+#[ApiResource(
+    uriTemplate: '/feed/rss/{code}',
+    operations: [
+        new GetCollection(
+            openapi: new OpenApiOperation(
+                tags: ['Feed'],
+                summary: 'Feed RSS',
+                description: 'Feed RSS',
+            ),
+            paginationEnabled: false,
+            paginationClientEnabled: false,
+            paginationClientItemsPerPage: false,
+            normalizationContext: [
+                'groups' => ['read:Feed']
+            ],
+            read: false,
+
+        ),
+    ],
+    formats: ['xml'],
+    controller: FeedController::class
+
+)
+]
+#[ApiResource(
     operations: [
         new Get(
             uriTemplate: self::URI_TEMPLATE . '{code}',
@@ -47,41 +92,9 @@ use App\OpenApi\OpenApiFactory;
                 'groups' => ['read:Review']
             ],
 
-            #security: "is_granted('ROLE_SECRETARY')",
+        #security: "is_granted('ROLE_SECRETARY')",
         ),
-        new GetCollection(
-            uriTemplate: '/feed/rss/{code}',
-            formats: ['xml'],
-            controller: FeedController::class,
-            openapi: new OpenApiOperation(
-                tags: ['Feed'],
-                summary: 'Feed RSS',
-                description: 'Feed RSS',
-            ),
-            paginationEnabled: false,
-            paginationClientEnabled: false,
-            paginationClientItemsPerPage: false,
-            normalizationContext: [
-                'groups' => ['read:Feed']
-            ],
 
-        ),
-        new Get(
-            uriTemplate: self::URI_TEMPLATE . 'boards/{code}',
-            controller: BoardsController::class,
-            openapi: new OpenApiOperation(
-                tags: [OpenApiFactory::OAF_TAGS['review']],
-                summary: 'Boards',
-                description: 'Editorial board',
-            ),
-            normalizationContext: [
-                'groups' => ['read:Boards']
-            ],
-
-            output: Boards::class,
-
-
-        ),
         new GetCollection(
             uriTemplate: self::URI_TEMPLATE,
             openapi: new OpenApiOperation(

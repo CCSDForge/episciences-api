@@ -82,23 +82,13 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         $operationClass = $operation->getClass();
         $identifiers = [];
 
-        if (($operationClass === Volume::class || $operationClass === Section::class) && $operation->getMethod() === 'GET') {
+        if (!empty($filters) && ($operationClass === Volume::class || $operationClass === Section::class) && $operation->getMethod() === 'GET') {
 
-            if (!empty($filters)) {
-
-                if ($rvId) {
-                    $filters['rvid'] = $rvId;
-                }
-
-                $identifiers = $this->getIdentifiers($this->entityManager->getRepository($operationClass)->createQueryBuilder('alias'), $filters);
+            if ($rvId) {
+                $filters['rvid'] = $rvId;
             }
 
-            foreach ($hydraMember as $index => $values) {
-                $id = $operationClass === Volume::class ? $values['vid'] : $values['sid'];
-                $hydraMember[$index]['committee'] = $this->entityManager->getRepository($operationClass)->getCommittee($values['rvid'], $id);
-                $hydraMember[$index][PapersRepository::TOTAL_ARTICLE] = count($values['papers']) ?? 0;
-            }
-
+            $identifiers = $this->getIdentifiers($this->entityManager->getRepository($operationClass)->createQueryBuilder('alias'), $filters);
         }
 
         $this->addHydraContext($data, $operationClass, $journal, $identifiers, $filters);
@@ -120,13 +110,9 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
     private function addHydraContext(array &$data, string $operationClass, Review|null $journal, array $identifiers = [], array $filters = []): void
     {
 
-        $rvId = null;
         $repo = null;
 
-        if($journal){
-            $rvId = $journal->getRvid();
-            $rvCode = $journal->getCode();
-        }
+        $rvId = $journal?->getRvid();
 
         if($operationClass === News::class || $operationClass === Volume::class){
             $repo = $this->entityManager->getRepository($operationClass);
