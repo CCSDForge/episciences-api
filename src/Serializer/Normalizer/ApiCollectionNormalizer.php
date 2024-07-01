@@ -113,6 +113,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         $repo = null;
 
         $rvId = $journal?->getRvid();
+        $rvCode = $journal?->getCode();
 
         if($operationClass === News::class || $operationClass === Volume::class){
             $repo = $this->entityManager->getRepository($operationClass);
@@ -120,7 +121,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 
         $hydraMember = $data['hydra:member'] ?? [];
         if ($operationClass === News::class) {
-            $data[sprintf('hydra:%s', RangeInterface::RANGE)] = ['years' => $repo ? (new Range())->setYears($repo->getRange($rvId))->getYears() : []];
+            $data[sprintf('hydra:%s', RangeInterface::RANGE)] = ['years' => $repo ? (new Range())->setYears($repo->getRange($rvCode))->getYears() : []];
         } elseif ($operationClass === Volume::class || $operationClass === Section::class) {
             $data[sprintf('hydra:%s', PapersRepository::TOTAL_ARTICLE)] = 0;
 
