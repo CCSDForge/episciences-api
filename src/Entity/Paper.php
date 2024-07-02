@@ -10,6 +10,7 @@ use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\Repository\PapersRepository;
 use DateTime;
@@ -56,6 +57,21 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
             uriTemplate: self::URI_TEMPLATE,
             openapi: new OpenApiOperation(
                 summary: 'All Papers (In offline mode: only published papers )',
+                parameters: [
+                    new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal Code (ex. epijinfo)',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                        ],
+                        explode: false,
+                    ),
+
+                ],
                 security: [['bearerAuth' => []],]
             ),
             normalizationContext: [
@@ -211,6 +227,8 @@ class Paper implements UserOwnedInterface
     #[groups(self::PAPERS_GROUPS)]
     private ?int $paperid;
 
+    #[ORM\Column(name: 'TYPE', type: 'json', nullable: true)]
+    private array $type;
 
     #[ORM\Column(name: 'DOI', type: 'string', length: 250, nullable: true)]
 
@@ -874,6 +892,19 @@ class Paper implements UserOwnedInterface
     public function setDocument(array $document): self
     {
         $this->document = $document;
+        return $this;
+    }
+
+
+    public function getType(): ?array
+    {
+        return $this->type;
+    }
+
+
+    public function setType(array $type = null): self
+    {
+        $this->type = $type;
         return $this;
     }
 

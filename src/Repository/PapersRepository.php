@@ -10,7 +10,6 @@ use App\Entity\Volume;
 use App\Service\Stats;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\ORM\AbstractQuery;
 use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\NoResultException;
 use Doctrine\ORM\QueryBuilder;
@@ -348,6 +347,83 @@ class PapersRepository extends ServiceEntityRepository
         }
 
         return $rvId ? $assoc[$rvId] : $assoc;
+    }
+
+    public function getTypes(array $filters = [], bool $strict = true): array
+    {
+        $types = [];
+        $qb = $this->createQueryBuilder('p');
+        $qb->select("DISTINCT JSON_UNQUOTE(JSON_EXTRACT(p.type, '$.title')) AS types");
+        $qb->andWhere("JSON_EXTRACT(p.type, '$.title') IS NOT NULL");
+        $this->andWhere($qb, $filters, $strict);
+
+
+        $result = array_values($qb->getQuery()->getArrayResult());
+
+        foreach ($result as $type) {
+            $type = strtolower($type['types']);
+            if (!in_array($type, $types, true)) {
+                $types[] = $type;
+            }
+        }
+
+        natcasesort($types);
+
+        return $types;
+
+    }
+
+    public function getRange(array $filters = []): array
+    {
+        $qb = $this->createQueryBuilder('p');
+        $qb->distinct();
+        $qb->select("YEAR(p.publicationDate) AS year");
+
+        $this->andWhere($qb, $filters);
+
+        $qb->orderBy('year', 'DESC');
+
+        return $qb->getQuery()->getResult();
+
+    }
+
+
+    private function andWhere(QueryBuilder $qb, array $filters = [], bool $strict = true): QueryBuilder
+    {
+
+        foreach ($filters as $key => $value) {
+
+            if ($key !== 'rvid' && $key !== 'sid' && $key !== 'vid') {
+                continue;
+            }
+
+            $value = (int)$value;
+
+            if ($value) {
+                if ($key === 'rvid') {
+                    $qb->andWhere('p.rvid = :rvId');
+                    $qb->setParameter('rvId', $value);
+                } elseif ($key === 'vid') {
+
+                    $qb->andWhere('p.vid = :vId');
+                    $qb->setParameter('vId', $value);
+                } elseif ($key === 'sid') {
+                    $qb->andWhere('p.sid = :sId');
+                    $qb->setParameter('sId', $value);
+
+                }
+
+            }
+
+        }
+
+        if ($strict) {
+            $qb->andWhere('p.status =:status')
+                ->setParameter('status', Paper::STATUS_PUBLISHED);
+        }
+
+
+        return $qb;
     }
 
 }
