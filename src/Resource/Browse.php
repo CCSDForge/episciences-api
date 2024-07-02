@@ -50,7 +50,9 @@ use App\State\BrowseStateProvider;
                     ),
                     new Parameter(
                         name: 'sort',
-                        in: 'query', schema: [
+                        in: 'query',
+                        description: 'Alphabetically [Index] | Total articles DESC [count]',
+                        schema: [
                         'type' => 'string',
                         'default' => 'index'
                     ]),
