@@ -17,8 +17,8 @@ use App\State\BrowseStateProvider;
             formats: ['jsonld', 'json'],
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['browse']],
-                summary: 'Browse by author',
-                description: 'Browse by author',
+                summary: 'Browse by authors',
+                description: 'Browse by authors',
                 parameters: [
                     new Parameter(
                         name: 'code',
@@ -51,7 +51,7 @@ use App\State\BrowseStateProvider;
                     new Parameter(
                         name: 'sort',
                         in: 'query',
-                        description: 'Alphabetically [Index] | Total articles DESC [count]',
+                        description: 'Alphabetically [index] | Total articles DESC [count]',
                         schema: [
                         'type' => 'string',
                         'default' => 'index'
