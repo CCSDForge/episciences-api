@@ -33,7 +33,7 @@ use App\State\BrowseStateProvider;
 
                     new Parameter(
                         name: 'letter', in: 'query',
-                        description: 'Available values : A...Z, all',
+                        description: 'Prefixed with a letter: available values [A...Z, all]',
                         required: false,
                         schema: [
                             "type" => 'string',
