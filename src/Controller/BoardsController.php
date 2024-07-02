@@ -30,7 +30,7 @@ class BoardsController extends AbstractController
         User::ROLE_SECRETARY,
     ];
 
-    public function __invoke(EntityManagerInterface $entityManager, LoggerInterface $logger, Request $request = null)
+    public function __invoke(EntityManagerInterface $entityManager, LoggerInterface $logger, Request $request = null): ArrayPaginator
     {
         $boards = [];
         $pagination = true;
@@ -58,7 +58,7 @@ class BoardsController extends AbstractController
                 $boardTags = $userRolesRepo->boardsUsersQuery($journal->getRvid())->getQuery()->getArrayResult();
 
                 if (empty($boardTags)) {
-                    return (new Boards())->setBoards();
+                    return new ArrayPaginator($boards, $firstResult, $maxResults);
                 }
 
                 $boardIdentifies = [];
@@ -111,21 +111,23 @@ class BoardsController extends AbstractController
                         (isset($tags[UserRoles::FORMER_MEMBER]) && in_array($uid, $tags[UserRoles::FORMER_MEMBER], true))
                     ) {
                         $currentUser = $current['user'];
-                        $user = new User();
-                        $user
-                            ->setUid($uid)
-                            ->setUuid($currentUser['uuid'])
-                            ->setLangueid($currentUser['langueid'])
-                            ->setScreenName($currentUser['screenName'])
-                            ->setRoles([$current['roles']])
-                            ->setEmail($currentUser['email'])
-                            ->setCiv($currentUser['civ'])
-                            ->setOrcid($currentUser['orcid'])
-                            ->setAdditionalProfileInformation($currentUser['additionalProfileInformation'])
-                            ->setLastname($currentUser['lastname'])
-                            ->setFirstname($currentUser['firstname'])
-                            ->setAssignedSections($assignedSections[$uid] ?? null);
-                        $boards[] = $user;
+
+                        $options = [
+                            'uid' => $uid,
+                            'uuid' => $currentUser['uuid'],
+                            'langueid' => $currentUser['langueid'],
+                            'screenName' => $currentUser['screenName'],
+                            'roles' => [$current['roles']],
+                            'email' => $currentUser['email'],
+                            'civ' => ($currentUser['civ']),
+                            'orcid' => $currentUser['orcid'],
+                            'additionalProfileInformation' => $currentUser['additionalProfileInformation'],
+                            'lastname' => $currentUser['lastname'],
+                            'firstname' => $currentUser['firstname'],
+                            'assignedSections' => $assignedSections[$uid] ?? null
+                        ];
+
+                        $boards[] = new User($options);
                     }
                 }
 
@@ -139,8 +141,5 @@ class BoardsController extends AbstractController
         }
 
         return new ArrayPaginator($boards, $firstResult, $maxResults);
-
-
-        //return (new Boards())->setBoards($boards);
     }
 }
