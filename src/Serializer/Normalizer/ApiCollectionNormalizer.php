@@ -33,13 +33,6 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
     {
 
         $data = $this->decorated->normalize($object, $format, $context);
-
-        $hydraMember = $data['hydra:member'] ?? [];
-
-        if (empty($hydraMember)) {
-            return $data;
-        }
-
         /** @var HttpOperation $operation */
         $operation = $context['operation'] ?? $context['root_operation'] ?? null;
 
@@ -47,11 +40,30 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             return null;
         }
 
-        $requestUri = $context['uri'] ?? '';
-
-        parse_str($requestUri, $parsedUri);
+        $operationClass = $operation->getClass();
 
         $filters = [];
+        $journal = null;
+
+        $requestUri = $context['uri'] ?? '';
+        parse_str($requestUri, $parsedUri);
+
+        $rvCode = $parsedUri['rvcode'] ?? null;
+
+        if ($rvCode) {
+            $journal = $this->entityManager->getRepository(Review::class)->findOneBy(['code' => $rvCode]);
+        }
+
+        $hydraMember = $data['hydra:member'] ?? [];
+
+
+        if (empty($hydraMember)) {
+            $this->addHydraContext($data, $operationClass, $journal, $filters);
+            return $data;
+        }
+
+        $identifiers = [];
+        $rvId = $journal?->getRvid();
 
         if (isset($parsedUri['year'])) {
             $filters['year'] = $parsedUri['year'];
@@ -64,23 +76,6 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         if (isset($parsedUri['vid'])) {
             $filters['vid'] = $parsedUri['vid'];
         }
-
-        $rvCode = $parsedUri['rvcode'] ?? null;
-
-        $rvId = null;
-        $journal = null;
-
-        if ($rvCode) {
-
-            $journal = $this->entityManager->getRepository(Review::class)->findOneBy(['code' => $rvCode]);
-
-            if ($journal) {
-                $rvId = $journal->getRvid();
-            }
-        }
-
-        $operationClass = $operation->getClass();
-        $identifiers = [];
 
         if (!empty($filters) && ($operationClass === Volume::class || $operationClass === Section::class) && $operation->getMethod() === 'GET') {
 
@@ -115,17 +110,16 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         $rvId = $journal?->getRvid();
         $rvCode = $journal?->getCode();
 
-        if($operationClass === News::class || $operationClass === Volume::class){
+        if ($operationClass === News::class || $operationClass === Volume::class) {
             $repo = $this->entityManager->getRepository($operationClass);
         }
 
-        $hydraMember = $data['hydra:member'] ?? [];
         if ($operationClass === News::class) {
             $data[sprintf('hydra:%s', RangeInterface::RANGE)] = ['years' => $repo ? (new Range())->setYears($repo->getRange($rvCode))->getYears() : []];
         } elseif ($operationClass === Volume::class || $operationClass === Section::class) {
             $data[sprintf('hydra:%s', PapersRepository::TOTAL_ARTICLE)] = 0;
 
-            if($operationClass === Volume::class){
+            if ($operationClass === Volume::class) {
 
                 $rangeType = (new RangeType())
                     ->setTypes($repo->getTypes($rvId))
@@ -135,7 +129,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 
             }
 
-            if (!empty($hydraMember)) {
+            if (!empty($data['hydra:member'])) {
                 $allPublishedArticles = $this->entityManager->getRepository(Paper::class)->getTotalArticleBySectionOrVolume($operationClass, Paper::STATUS_PUBLISHED, $identifiers, $rvId, $filters);
                 $data[sprintf('hydra:%s', PapersRepository::TOTAL_ARTICLE)] = $allPublishedArticles[PapersRepository::TOTAL_ARTICLE];
             }
