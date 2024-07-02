@@ -55,7 +55,7 @@ class BrowseStateProvider implements ProviderInterface
         }
 
         $isPaginationEnabled = !isset($context['filters']['pagination']) || filter_var($context['filters']['pagination'], FILTER_VALIDATE_BOOLEAN);
-        $page = $filter['page'] ?? 1;
+        $page = $context['filters']['page'] ?? 1;
         $firstResult = 0;
 
         $maxResults = $operation->getPaginationMaximumItemsPerPage() ?: Solr::SOLR_MAX_RETURNED_FACETS_RESULTS;
