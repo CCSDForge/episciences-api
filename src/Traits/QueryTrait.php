@@ -26,13 +26,7 @@ trait QueryTrait
             return $qb;
         }
 
-        $orExp = $qb->expr()->orX();
-
-        foreach ($values as $val) {
-            $orExp->add($qb->expr()->eq(sprintf("%s", $yearExp), $val));
-        }
-
-        return $qb->andWhere($orExp);
+        return $this->andOrExp($qb,sprintf("%s", $yearExp), $values );
 
     }
 
@@ -121,5 +115,21 @@ trait QueryTrait
 
         return $identifiers;
 
+    }
+
+    final public function andOrExp(QueryBuilder $qb, string $expression, array $values = []): QueryBuilder
+    {
+
+        if(empty($values)){
+            return $qb;
+        }
+
+        $orExp = $qb->expr()->orX();
+
+        foreach ($values as $val) {
+            $orExp->add($qb->expr()->eq($expression, is_string($val) ? "'$val'" : $val));
+        }
+
+        return $qb->andWhere($orExp);
     }
 }

@@ -166,10 +166,14 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             }
 
             $queryBuilder->andWhere("JSON_EXTRACT ($alias.visibility, '$[0]') = :visibility")->setParameter('visibility', 'public');
+
+        } elseif ($resourceClass === Paper::class) {
+
+            $types = isset($context['filters']['type']) ? (array)($context['filters']['type']) : [];
+            $this->andOrExp($queryBuilder,sprintf("JSON_EXTRACT(%s.type, '$.title')", $alias), $types);
+
         }
-
     }
-
 
     private function adnWherePublishedOnly(QueryBuilder $queryBuilder, string $field, string $resourceClass): QueryBuilder
     {

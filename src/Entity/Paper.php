@@ -99,7 +99,8 @@ class Paper implements UserOwnedInterface
         'sid' => AppConstants::FILTER_TYPE_EXACT,
         'repoid' => AppConstants::FILTER_TYPE_EXACT,
         'flag' => AppConstants::FILTER_TYPE_EXACT,
-        'status' => AppConstants::FILTER_TYPE_EXACT
+        'status' => AppConstants::FILTER_TYPE_EXACT,
+        'type' => AppConstants::FILTER_TYPE_EXACT,
     ];
 
     public const TABLE = 'PAPERS';
