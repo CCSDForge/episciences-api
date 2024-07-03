@@ -105,6 +105,10 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
     private function addHydraContext(array &$data, string $operationClass, Review|null $journal, array $identifiers = [], array $filters = []): void
     {
 
+        if (!isset($data['hydra:totalItems'])) { // is not a collection, so don't add context
+            return;
+        }
+
         $repo = null;
 
         $rvId = $journal?->getRvid();
