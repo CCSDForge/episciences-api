@@ -33,19 +33,7 @@ trait QueryTrait
     final public function processYears(string|array $yFilters = []): array
     {
         $yFilters = (array)$yFilters;
-
-        $processedYears = [];
-
-        foreach ($yFilters as $yVal) {
-
-            $yVal = (int)$yVal;
-
-            if (!in_array($yVal, $processedYears, true)) {
-                $processedYears[] = $yVal;
-            }
-        }
-
-        return $processedYears;
+        return array_unique($yFilters);
     }
 
 
