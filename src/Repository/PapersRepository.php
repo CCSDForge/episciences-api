@@ -8,6 +8,7 @@ use App\Entity\Paper;
 use App\Entity\Section;
 use App\Entity\Volume;
 use App\Service\Stats;
+use App\Traits\QueryTrait;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\NonUniqueResultException;
@@ -26,6 +27,7 @@ use Psr\Log\LoggerInterface;
 class PapersRepository extends ServiceEntityRepository
 {
     use ToolsTrait;
+    use QueryTrait;
 
     public const TOTAL_ARTICLE = 'totalPublishedArticles';
 
@@ -168,11 +170,19 @@ class PapersRepository extends ServiceEntityRepository
 
                 if (
                     $name === AppConstants::SUBMISSION_DATE ||
-                    $name === AppConstants::START_AFTER_DATE
+                    $name === AppConstants::START_AFTER_DATE ||
+                    $name === AppConstants::YEAR_PARAM
                 ) {
 
-                    if ($name === AppConstants::SUBMISSION_DATE) { // stats by year
-                        $qb->andWhere('YEAR(' . self::PAPERS_ALIAS . '.' . $date . ') =:' . $name);
+                    if (
+                        $name === AppConstants::SUBMISSION_DATE
+                        || $name === AppConstants::YEAR_PARAM // @see statisticStateProvider
+                    ) {
+                        if ($name === AppConstants::SUBMISSION_DATE) { // old stats by year @see PapersStatsProvider
+                            $qb->andWhere('YEAR(' . self::PAPERS_ALIAS . '.' . $date . ') =:' . $name);
+                        } else {
+                            $this->andOrExp($qb, sprintf('YEAR(%s.%s)', self::PAPERS_ALIAS, $date), $value);
+                        }
                     } else {
                         $qb->andWhere(self::PAPERS_ALIAS . '.' . $date . ' >=:' . $name);
                     }
@@ -183,7 +193,10 @@ class PapersRepository extends ServiceEntityRepository
                     $qb->andWhere(self::PAPERS_ALIAS . '.' . $name . ' =:' . $name);
                 }
 
-                $qb->setParameter($name, $value);
+                if ($name !== AppConstants::YEAR_PARAM) {
+                    $qb->setParameter($name, $value);
+                }
+
             }
         }
 
