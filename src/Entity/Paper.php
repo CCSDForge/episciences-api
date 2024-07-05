@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
@@ -70,6 +71,33 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                         ],
                         explode: false,
                     ),
+                    new Parameter(
+                        name: 'type',
+                        in: 'query',
+                        description: 'Paper type',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                        ],
+                        explode: false
+                    ),
+                    new Parameter(
+                        name: 'type[]',
+                        in: 'query',
+                        description: 'Paper types',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'string'
+                            ]
+                        ],
+                        explode: true
+                    ),
 
                 ],
                 security: [['bearerAuth' => []],]
@@ -88,6 +116,9 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 
 )]
 #[ApiFilter(SearchFilter::class, properties: self::FILTERS)]
+#[ApiFilter(DateFilter::class, properties: ['submissionDate'])]
+#[ApiFilter(DateFilter::class, properties: ['publicationDate'])]
+
 class Paper implements UserOwnedInterface
 {
     public const FILTERS = [
@@ -100,7 +131,6 @@ class Paper implements UserOwnedInterface
         'repoid' => AppConstants::FILTER_TYPE_EXACT,
         'flag' => AppConstants::FILTER_TYPE_EXACT,
         'status' => AppConstants::FILTER_TYPE_EXACT,
-        'type' => AppConstants::FILTER_TYPE_EXACT,
     ];
 
     public const TABLE = 'PAPERS';
