@@ -47,7 +47,7 @@ class PaperLogRepository extends ServiceEntityRepository
      * @return array|null
      */
 
-    public function delayBetweenSubmissionAndLatestStatus(string $unit = self::DEFAULT_UNIT, int $latestStatus = Paper::STATUS_ACCEPTED, string $startDate = null, string $year = null): ?array
+    public function delayBetweenSubmissionAndLatestStatus(string $unit = self::DEFAULT_UNIT, int $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED, string $startDate = null, string $year = null): ?array
     {
         $result = null;
         try {
@@ -63,7 +63,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    private function query(string $unit = self::DEFAULT_UNIT, int $latestStatus = Paper::STATUS_ACCEPTED, string $startStatsDate = null, $year = null): string
+    private function query(string $unit = self::DEFAULT_UNIT, int $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED, string $startStatsDate = null, $year = null): string
     {
 
 
@@ -107,7 +107,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    public function totalNumberOfPapersByStatus(bool $isSubmittedSameYear = true, $as = Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_ACCEPTED): ?Statement
+    public function totalNumberOfPapersByStatus(bool $isSubmittedSameYear = true, $as = Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): ?Statement
     {
 
         $conn = $this->getEntityManager()->getConnection();

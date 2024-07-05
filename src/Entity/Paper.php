@@ -139,7 +139,7 @@ class Paper implements UserOwnedInterface
     public const STATUS_OK_FOR_REVIEWING = 1; // reviewers have been assigned, but did not start their reports
     public const STATUS_BEING_REVIEWED = 2; // rating has begun (at least one reviewer has starter working on his rating report)
     public const STATUS_REVIEWED = 3; // rating is finished (all reviewers)
-    public const STATUS_ACCEPTED = 4;
+    public const STATUS_STRICTLY_ACCEPTED = 4;
     public const STATUS_REFUSED = 5;
     public const STATUS_OBSOLETE = 6;
     public const STATUS_WAITING_FOR_MINOR_REVISION = 7;
@@ -180,7 +180,7 @@ class Paper implements UserOwnedInterface
     ];
 
     public const ACCEPTED_SUBMISSIONS = [
-        self::STATUS_ACCEPTED, // 4
+        self::STATUS_STRICTLY_ACCEPTED, // 4
         self::STATUS_CE_WAITING_FOR_AUTHOR_SOURCES, // 18
         self::STATUS_CE_AUTHOR_SOURCES_SUBMITTED, // 19
         self::STATUS_CE_WAITING_AUTHOR_FINAL_VERSION, // 21
@@ -203,7 +203,7 @@ class Paper implements UserOwnedInterface
         self::STATUS_OK_FOR_REVIEWING => 'waitingFor reviewing',
         self::STATUS_BEING_REVIEWED => 'underReview',
         self::STATUS_REVIEWED => 'reviewed',
-        self::STATUS_ACCEPTED => 'accepted',
+        self::STATUS_STRICTLY_ACCEPTED => 'strictly_accepted',
         self::STATUS_PUBLISHED => 'published',
         self::STATUS_REFUSED => 'refused',
         self::STATUS_OBSOLETE => 'obsolete',
@@ -237,6 +237,7 @@ class Paper implements UserOwnedInterface
         self::STATUS_ACCEPTED_WAITING_FOR_AUTHOR_VALIDATION => "AcceptedWaitingForAuthorsValidation",
         self::STATUS_APPROVED_BY_AUTHOR_WAITING_FOR_FINAL_PUBLICATION => "'AcceptedWaitingForFinalPublication'",
         self::STATUS_REMOVED => 'deletedByTheJournal',
+
     ];
 
 

@@ -34,7 +34,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             $currentFilters['rvid'] = $journal->getRvid();
         }
 
-        $dictionary = array_flip(Paper::STATUS_DICTIONARY);
+        $dictionary = array_merge(array_flip(Paper::STATUS_DICTIONARY), ['accepted' => array_keys(Paper::ACCEPTED_SUBMISSIONS)]);
 
         $status = isset($filters['status']) ? array_unique((array)$filters['status']) : [];
         $years = isset($filters[AppConstants::YEAR_PARAM]) ? array_unique((array)$filters[AppConstants::YEAR_PARAM]): null;
