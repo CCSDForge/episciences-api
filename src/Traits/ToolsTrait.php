@@ -2,6 +2,8 @@
 
 
 namespace App\Traits;
+use LengthException;
+
 trait ToolsTrait
 {
 
@@ -99,5 +101,22 @@ trait ToolsTrait
 
         return ctype_upper($latestSubString);
 
+    }
+
+
+    /** @throws LengthException */
+    public function getMedian(array $array): int|float
+    {
+        if (!$array) {
+            throw new LengthException('Cannot calculate median because Argument #1 ($array) is empty');
+        }
+
+        sort($array);
+        $middleIndex = count($array) / 2;
+
+        if (is_float($middleIndex)) {
+            return $array[(int) $middleIndex];
+        }
+        return ($array[$middleIndex] + $array[$middleIndex - 1]) / 2;
     }
 }

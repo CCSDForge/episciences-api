@@ -417,7 +417,7 @@ class Stats
 
             $navFiltersWithoutYear = $filters;
             unset($navFiltersWithoutYear['is']['submissionDate']);
-            $relevantYears= $papersRepository->getAvailableSubmissionYears($navFiltersWithoutYear);
+            $relevantYears= $papersRepository->getSubmissionYearRange($navFiltersWithoutYear);
 
             $details['years']['statSinceRef'] = self::REF_YEAR;
             $details['years']['relevantYears'] = $relevantYears;
@@ -447,7 +447,7 @@ class Stats
         $startAfterDate = $filters['is']['startAfterDate'] ?? null;
         $repositories = $papersRepository->getAvailableRepositories($filters);
 
-        foreach ($papersRepository->getAvailableSubmissionYears($filters) as $year) { // pour le dashboard
+        foreach ($papersRepository->getSubmissionYearRange($filters) as $year) { // pour le dashboard
             try {
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $papersRepository->
                 submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->
@@ -498,17 +498,22 @@ class Stats
         try {
             $stmt = $this->entityManager->getRepository(PaperLog::class)->totalNumberOfPapersByStatus($isSubmittedSameYear, $as, $status);
 
-            if ($stmt && $rvId) {
+            if ($stmt) {
 
-                //before reformat data : [ 8 => [0 => ["year" => 2023, PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [], ... ]
-                return $this->reformatPaperLogData(
-                    $this->applyFilterBy($stmt->executeQuery()->fetchAllAssociative(), 'rvid', $rvId),
-                    null, $as, 'average'
-                );
+                if ($rvId) {
 
-                //after: [8 => [ 2023 => [PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [2022 => ], .....
+                    //before reformat data : [ 8 => [0 => ["year" => 2023, PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [], ... ]
+                    return $this->reformatPaperLogData(
+                        $this->applyFilterBy($stmt->executeQuery()->fetchAllAssociative(), 'rvid', $rvId),
+                        null, $as, 'average'
+                    );
+
+                    //after: [8 => [ 2023 => [PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [2022 => ], .....
 
 
+                }
+
+                return $stmt->executeQuery()->fetchAllAssociative();
             }
 
         } catch (Exception $e) {

@@ -200,7 +200,7 @@ class Paper implements UserOwnedInterface
 
     public const STATUS_DICTIONARY = [
         self::STATUS_SUBMITTED => 'submitted',
-        self::STATUS_OK_FOR_REVIEWING => 'waitingFor reviewing',
+        self::STATUS_OK_FOR_REVIEWING => 'waitingForReviewing',
         self::STATUS_BEING_REVIEWED => 'underReview',
         self::STATUS_REVIEWED => 'reviewed',
         self::STATUS_STRICTLY_ACCEPTED => 'strictly_accepted',

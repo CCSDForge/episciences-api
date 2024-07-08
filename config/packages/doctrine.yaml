@@ -38,6 +38,7 @@ doctrine:
                     string_functions:
                         MONTH: DoctrineExtensions\Query\Mysql\Month
                         YEAR: DoctrineExtensions\Query\Mysql\Year
+                        TIMESTAMPDIFF: DoctrineExtensions\Query\Mysql\TimestampDiff
                         JSON_EXTRACT: Scienta\DoctrineJsonFunctions\Query\AST\Functions\Mysql\JsonExtract
                         JSON_UNQUOTE: Scienta\DoctrineJsonFunctions\Query\AST\Functions\Mysql\JsonUnquote
 

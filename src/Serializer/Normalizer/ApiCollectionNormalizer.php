@@ -12,6 +12,7 @@ use App\Repository\PapersRepository;
 use App\Repository\RangeInterface;
 use App\Resource\Range;
 use App\Resource\RangeType;
+use App\Resource\Statistic;
 use App\Traits\QueryTrait;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -118,7 +119,13 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             $repo = $this->entityManager->getRepository($operationClass);
         }
 
-        if ($operationClass === Paper::class) {
+        if ($operationClass === Statistic::class) {
+            $repo = $this->entityManager->getRepository(Paper::class);
+            $years = $repo->getSubmissionYearRange(['is' => ['rvid' => $rvId]]);
+            rsort($years);
+            $data[sprintf('hydra:%s', RangeInterface::RANGE)] = ['years' => $years, 'indicators' => array_values(Statistic::AVAILABLE_INDICATORS)];
+
+        } elseif ($operationClass === Paper::class) {
             $rangeType = (new RangeType())
                 ->setTypes($repo->getTypes(['rvid' => $rvId]))
                 ->setYears($repo->getRange(['rvid' => $rvId]));

@@ -75,6 +75,9 @@ class PapersRepository extends ServiceEntityRepository
         $qb->andWhere('p.status != :deleted');
         $qb->setParameter('deleted', Paper::STATUS_DELETED);
 
+        $qb->andWhere('p.status != :removed');
+        $qb->setParameter('removed', Paper::STATUS_REMOVED);
+
         if ($excludeTmpVersions) {
             $qb
                 ->andWhere('p.repoid != :repoId')
@@ -203,7 +206,7 @@ class PapersRepository extends ServiceEntityRepository
         return $qb;
     }
 
-    public function getAvailableSubmissionYears(array $filters = null, string $flag = null): array
+    public function getSubmissionYearRange(array $filters = null, string $flag = null): array
     {
 
         $years = [];
@@ -230,7 +233,6 @@ class PapersRepository extends ServiceEntityRepository
             $years[] = $value['year'];
 
         }
-
 
         return array_filter($years, static function ($value) {
             return $value >= Stats::REF_YEAR;

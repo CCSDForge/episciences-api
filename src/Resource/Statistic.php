@@ -4,17 +4,87 @@ namespace App\Resource;
 
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
-use App\Entity\Paper;
-use App\OpenApi\OpenApiFactory;
 use App\State\StatisticStateProcessor;
 use App\State\StatisticStateProvider;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ApiResource(
     operations: [
+
+        new GetCollection(
+            uriTemplate: '/statistics/',
+            openapi: new OpenApiOperation(
+                tags: ['Statistics | UX'],
+                summary: "Retrieve all available statistical indicators",
+                description: "",
+                parameters: [
+                    new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal code (exp. epijinfo)',
+                        required: false,
+                        schema: [
+                            "type" => 'string',
+                            "default" => ''
+                        ]
+                    ),
+                    new Parameter(
+                        name: 'indicator',
+                        in: 'query',
+                        description: "Statistic's identifier (exp. nb-submissions)",
+                        required: false,
+                        schema: [
+                            "type" => 'string',
+                            "default" => ''
+                        ]
+                    ),
+                    new Parameter(
+                        name: AppConstants::YEAR_PARAM,
+                        in: 'query',
+                        description: 'The Year of submission',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    ),
+                    new Parameter(
+                        name: 'year[]',
+                        in: 'query',
+                        description: 'The Year of submission',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'integer',
+                            ]
+                        ],
+                        explode: true,
+                        allowReserved: false,
+
+                    ),
+
+                    new Parameter(
+                        name: AppConstants::START_AFTER_DATE,
+                        in: 'query',
+                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                    ),
+                ]
+            ),
+        ),
+
         new Get(
             uriTemplate: '/statistics/nb-submissions',
             openapi: new OpenApiOperation(
@@ -23,7 +93,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
                 description: "",
                 parameters: [
                     new Parameter(
-                        name: 'code',
+                        name: 'rvcode',
                         in: 'query',
                         description: 'Journal code (exp. epijinfo)',
                         required: false,
@@ -115,13 +185,224 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     ),
                 ]
             ),
-            normalizationContext: [
-                'groups' => [
-                    'read:Statistic'
-                ]
 
-            ],
         ),
+        new Get(
+            uriTemplate: '/statistics/median-submission-publication',
+            openapi: new OpenApiOperation(
+                tags: ['Statistics | UX'],
+                summary: "Median Time submission-publication",
+                description: self::INDICATOR_DESCRIPTION,
+                parameters: [
+                    new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal code (exp. epijinfo)',
+                        required: false,
+                        schema: [
+                            "type" => 'string',
+                            "default" => ''
+                        ]
+                    ),
+                    new Parameter(
+                        name: AppConstants::YEAR_PARAM,
+                        in: 'query',
+                        description: 'The Year of submission',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    ),
+                    new Parameter(
+                        name: 'year[]',
+                        in: 'query',
+                        description: 'The Year of submission',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'integer',
+                            ]
+                        ],
+                        explode: true,
+                        allowReserved: false,
+
+                    ),
+
+                    new Parameter(
+                        name: AppConstants::START_AFTER_DATE,
+                        in: 'query',
+                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                    ),
+                    new Parameter(
+                        name: 'unit',
+                        in: 'query',
+                        description: 'The unit of the difference of two timestamps in MySQL',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                            'default' => 'week'
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    )
+                ]
+            ),
+        ),
+
+        new Get(
+            uriTemplate: '/statistics/median-submission-acceptance',
+            openapi: new OpenApiOperation(
+                tags: ['Statistics | UX'],
+                summary: "Median Time submission-acceptance",
+                description: self::INDICATOR_DESCRIPTION,
+                parameters: [
+                    new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal code (exp. epijinfo)',
+                        required: false,
+                        schema: [
+                            "type" => 'string',
+                            "default" => ''
+                        ]
+                    ),
+                    new Parameter(
+                        name: AppConstants::YEAR_PARAM,
+                        in: 'query',
+                        description: 'The Year of submission',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    ),
+                    new Parameter(
+                        name: 'year[]',
+                        in: 'query',
+                        description: 'The Year of submission',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'integer',
+                            ]
+                        ],
+                        explode: true,
+                        allowReserved: false,
+
+                    ),
+
+                    new Parameter(
+                        name: AppConstants::START_AFTER_DATE,
+                        in: 'query',
+                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                    ),
+                    new Parameter(
+                        name: 'unit',
+                        in: 'query',
+                        description: 'The unit of the difference of two timestamps in MySQL',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                            'default' => 'week'
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    )
+                ]
+            ),
+        ),
+
+
+        new Get(
+            uriTemplate: '/statistics/acceptance-rate',
+            openapi: new OpenApiOperation(
+                tags: ['Statistics | UX'],
+                summary: "Acceptance rate",
+                description: self::INDICATOR_DESCRIPTION,
+                parameters: [
+                    new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal code (exp. epijinfo)',
+                        required: false,
+                        schema: [
+                            "type" => 'string',
+                            "default" => ''
+                        ]
+                    ),
+                    new Parameter(
+                        name: AppConstants::YEAR_PARAM,
+                        in: 'query',
+                        description: 'The Year of submission',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    ),
+                    new Parameter(
+                        name: 'year[]',
+                        in: 'query',
+                        description: 'The Year of submission',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'integer',
+                            ]
+                        ],
+                        explode: true,
+                        allowReserved: false,
+
+                    ),
+
+                    new Parameter(
+                        name: AppConstants::START_AFTER_DATE,
+                        in: 'query',
+                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                    ),
+                ]
+            ),
+        ),
+
+
+
+    ],
+    normalizationContext: [
+        'groups' => [
+            'read:Statistic'
+        ]
 
     ],
     provider: StatisticStateProvider::class,
@@ -130,10 +411,19 @@ use Symfony\Component\Serializer\Attribute\Groups;
 )]
 class Statistic
 {
+    public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles";
+    public const AVAILABLE_INDICATORS = [
+        'nb-submissions_get' => 'nb-submissions',
+        'acceptance-rate_get' => 'acceptance-rate',
+        'median-submission-publication_get' => 'median-submission-publication',
+        'median-submission-acceptance_get' => 'median-submission-acceptance',
+    ];
     #[groups(['read:Statistic'])]
     private string $name;
     #[groups(['read:Statistic'])]
-    private float $value;
+    private float|null $value;
+    #[groups(['read:Statistic'])]
+    private string|null $unit;
 
     public function getName(): string
     {
@@ -146,14 +436,25 @@ class Statistic
         return $this;
     }
 
-    public function getValue(): float
+    public function getValue(): float|null
     {
         return $this->value;
     }
 
-    public function setValue(float $value): self
+    public function setValue(float|null $value): self
     {
         $this->value = $value;
+        return $this;
+    }
+
+    public function getUnit(): ?string
+    {
+        return $this->unit;
+    }
+
+    public function setUnit(?string $unit): self
+    {
+        $this->unit = $unit;
         return $this;
     }
 
