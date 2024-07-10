@@ -178,9 +178,9 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             return null;
         }
 
-        $allaAcceptedArticle = $this->entityManagerInterface->getRepository(PaperLog::class)->getNumberOfAcceptedArticlesQuery($rvId, $years, $startAfterDate);
+        $allAcceptedArticle = $this->entityManagerInterface->getRepository(PaperLog::class)->getNumberOfAcceptedArticlesQuery($rvId, $years, $startAfterDate);
 
-        return round(($allaAcceptedArticle / $allSubmissions) * 100, 2);
+        return round(($allAcceptedArticle / $allSubmissions) * 100, 2);
 
     }
 }
