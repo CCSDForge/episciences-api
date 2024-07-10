@@ -396,6 +396,156 @@ use Symfony\Component\Serializer\Attribute\Groups;
             ),
         ),
 
+        new Get(
+            uriTemplate: '/statistics/median-number-of-reviews',
+            openapi: new OpenApiOperation(
+                tags: ['Statistics | UX'],
+                summary: "Median number of reviews",
+                description: 'Median number of reviews for documents',
+                parameters: [
+                    new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal code (exp. epijinfo)',
+                        required: false,
+                        schema: [
+                            "type" => 'string',
+                            "default" => ''
+                        ]
+                    ),
+                    new Parameter(
+                        name: AppConstants::YEAR_PARAM,
+                        in: 'query',
+                        description: 'The Year of submission',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    ),
+                    new Parameter(
+                        name: 'year[]',
+                        in: 'query',
+                        description: 'The Year of submission',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'integer',
+                            ]
+                        ],
+                        explode: true,
+                        allowReserved: false,
+
+                    ),
+                ]
+            ),
+        ),
+        new Get(
+            uriTemplate: '/statistics/reviews-requested',
+            openapi: new OpenApiOperation(
+                tags: ['Statistics | UX'],
+                summary: "Reviews requested",
+                description: '',
+                parameters: [
+                    new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal code (exp. epijinfo)',
+                        required: false,
+                        schema: [
+                            "type" => 'string',
+                            "default" => ''
+                        ]
+                    ),
+                    new Parameter(
+                        name: AppConstants::YEAR_PARAM,
+                        in: 'query',
+                        description: 'The year in which the review was requested',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    ),
+                    new Parameter(
+                        name: 'year[]',
+                        in: 'query',
+                        description: 'The year in which the review was requested',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'integer',
+                            ]
+                        ],
+                        explode: true,
+                        allowReserved: false,
+
+                    ),
+                ]
+            ),
+        ),
+        new Get(
+            uriTemplate: '/statistics/reviews-received',
+            openapi: new OpenApiOperation(
+                tags: ['Statistics | UX'],
+                summary: "Reviews received",
+                description: '',
+                parameters: [
+                    new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal code (exp. epijinfo)',
+                        required: false,
+                        schema: [
+                            "type" => 'string',
+                            "default" => ''
+                        ]
+                    ),
+                    new Parameter(
+                        name: AppConstants::YEAR_PARAM,
+                        in: 'query',
+                        description: 'The year in which the review was received',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    ),
+                    new Parameter(
+                        name: 'year[]',
+                        in: 'query',
+                        description: 'The year in which the review was received',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'integer',
+                            ]
+                        ],
+                        explode: true,
+                        allowReserved: false,
+
+                    ),
+                ]
+            ),
+        ),
 
 
     ],
@@ -417,6 +567,9 @@ class Statistic
         'acceptance-rate_get' => 'acceptance-rate',
         'median-submission-publication_get' => 'median-submission-publication',
         'median-submission-acceptance_get' => 'median-submission-acceptance',
+        'median-reviews-number_get' => 'median-reviews-number',
+        'reviews-requested_get' => 'reviews-requested',
+        'reviews-received_get' => 'reviews-received',
     ];
     #[groups(['read:Statistic'])]
     private string $name;

@@ -121,7 +121,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 
         if ($operationClass === Statistic::class) {
             $repo = $this->entityManager->getRepository(Paper::class);
-            $years = $repo->getSubmissionYearRange(['is' => ['rvid' => $rvId]]);
+            $years = $repo->getYearRange($rvId);
             rsort($years);
             $data[sprintf('hydra:%s', RangeInterface::RANGE)] = ['years' => $years, 'indicators' => array_values(Statistic::AVAILABLE_INDICATORS)];
 
