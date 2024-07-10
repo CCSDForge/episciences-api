@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\BooleanFilter;
 use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
@@ -82,6 +83,18 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                             'type' => 'string',
                         ],
                         explode: false
+                    ),
+
+                    new Parameter(
+                        name: 'only_accepted',
+                        in: 'query',
+                        description: 'If this is true, only accepted documents will be returned.',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                        schema: [
+                            'type' => 'boolean',
+                        ]
                     ),
                     new Parameter(
                         name: 'type[]',

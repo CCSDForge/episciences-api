@@ -22,7 +22,6 @@ use App\Exception\ResourceNotFoundException;
 use App\Traits\QueryTrait;
 use Doctrine\ORM\QueryBuilder;
 use JetBrains\PhpStorm\NoReturn;
-use ReflectionException;
 use Symfony\Bundle\SecurityBundle\Security;
 
 class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, QueryCollectionExtensionInterface
@@ -43,7 +42,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
      * @param Operation|null $operation
      * @param array $context
      * @return void
-     * @throws ReflectionException
+     * @throws ResourceNotFoundException
      */
 
     #[NoReturn]
@@ -79,7 +78,6 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
      * @param Operation|null $operation
      * @param array $context
      * @return void
-     * @throws ReflectionException
      */
     public function applyToItem(
         QueryBuilder                $queryBuilder,
@@ -95,27 +93,25 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     }
 
     /**
-     * @throws ReflectionException
      */
     private function addWhere(QueryBuilder $queryBuilder, string $resourceClass, HttpOperation $operation = null, array $context = []): void
     {
-
-        /** @var User $curentUser */
-        $curentUser = $this->security->getUser();
+        /** @var User $currentUser */
+        $currentUser = $this->security->getUser();
 
 
         $alias = $queryBuilder->getRootAliases()[0];
 
 
-        if ($curentUser) { // connected
+        if ($currentUser) { // connected
 
-            if (!$curentUser->getCurrentJournalID()) {
+            if (!$currentUser->getCurrentJournalID()) {
 
                 $this->publicAccessProcess($queryBuilder, $alias, $resourceClass, $context);
 
             } else {
 
-                $this->privateAccessProcess($queryBuilder, $alias, $resourceClass, $curentUser, $operation);
+                $this->privateAccessProcess($queryBuilder, $alias, $resourceClass, $currentUser, $operation, $context);
             }
 
 
@@ -170,7 +166,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         } elseif ($resourceClass === Paper::class) {
 
             $types = isset($context['filters']['type']) ? (array)($context['filters']['type']) : [];
-            $this->andOrExp($queryBuilder,sprintf("JSON_EXTRACT(%s.type, '$.title')", $alias), $types);
+            $this->andOrExp($queryBuilder, sprintf("JSON_EXTRACT(%s.type, '$.title')", $alias), $types);
 
         }
     }
@@ -200,14 +196,26 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
     }
 
+    private function adnWhereAcceptedOnly(QueryBuilder $queryBuilder, string $alias): QueryBuilder
+    {
+        $this->andOrExp($queryBuilder, sprintf('%s.status', $alias), Paper::ACCEPTED_SUBMISSIONS);
+        return $queryBuilder;
+
+    }
+
 
     private function publicAccessProcess(QueryBuilder $queryBuilder, string $alias, string $resourceClass, array $context = []): void
     {
+        $isOnlyAccepted = isset($context['filters']['only_accepted']) && filter_var($context['filters']['only_accepted'], FILTER_VALIDATE_BOOLEAN);
 
         if ($resourceClass === Paper::class || $resourceClass === Volume::class || $resourceClass === Section::class) {
 
             if ($resourceClass === Paper::class) {
-                $this->adnWherePublishedOnly($queryBuilder, "$alias.status", $resourceClass);
+                if ($isOnlyAccepted) {
+                    $this->adnWhereAcceptedOnly($queryBuilder, $alias);
+                } else {
+                    $this->adnWherePublishedOnly($queryBuilder, "$alias.status", $resourceClass);
+                }
             } else {
                 $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status', $resourceClass);
             }
@@ -226,11 +234,12 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         QueryBuilder  $queryBuilder,
         string        $alias,
         string        $resourceClass,
-        User          $curentUser,
-        HttpOperation $operation = null
+        User          $currentUser,
+        HttpOperation $operation = null,
+                      $context = []
     ): void
     {
-
+        $isOnlyAccepted = isset($context['filters']['only_accepted']) && filter_var($context['filters']['only_accepted'], FILTER_VALIDATE_BOOLEAN);
 
         // @see operation security allowed only for ROLE_SECRETARY
         if ($resourceClass === User::class) {
@@ -238,16 +247,19 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             join(UserRoles::class, 'ur', 'WITH', "$alias.uid = ur.uid")
                 ->andWhere("ur.roleid!= :epiAdminRole")->setParameter('epiAdminRole', User::ROLE_ROOT)
                 ->andWhere("$alias.uid!= :systemUid")->setParameter('systemUid', User::EPISCIENCES_UID)
-                ->andWhere("ur.rvid= :userVid")->setParameter('userVid', $curentUser->getCurrentJournalID());
+                ->andWhere("ur.rvid= :userVid")->setParameter('userVid', $currentUser->getCurrentJournalID());
         } elseif ((new \ReflectionClass($resourceClass))->implementsInterface(UserOwnedInterface::class)) {
 
             if ($resourceClass === Paper::class) {
 
+                if($isOnlyAccepted){
+                    $this->adnWhereAcceptedOnly($queryBuilder, $alias);
+                }
 
                 if ($this->security->isGranted('ROLE_SECRETARY')) {
 
                     $queryBuilder
-                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $curentUser->getCurrentJournalID())
+                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $currentUser->getCurrentJournalID())
                         ->orderBy("$alias.when", "DESC");
 
 
@@ -261,8 +273,8 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                     $queryBuilder
                         ->join(UserAssignment::class, 'uAss', 'WITH', "$alias.docid = uAss.itemid")
                         ->andWhere("uAss.item = :type")->setParameter('type', 'paper')
-                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $curentUser->getCurrentJournalID())
-                        ->andWhere("uAss.uid = :to")->setParameter('to', $curentUser->getUid())
+                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $currentUser->getCurrentJournalID())
+                        ->andWhere("uAss.uid = :to")->setParameter('to', $currentUser->getUid())
                         ->orderBy("$alias.when", "DESC");
 
 
@@ -270,7 +282,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
                     $queryBuilder->
                     andWhere("$alias.user= :currentUser")->
-                    setParameter('currentUser', $curentUser->getUid());
+                    setParameter('currentUser', $currentUser->getUid());
 
                 }
 
@@ -291,7 +303,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
                     $queryBuilder
                         ->where("$alias.rvid= :rvId")
-                        ->setParameter('rvId', $curentUser->getCurrentJournalID());
+                        ->setParameter('rvId', $currentUser->getCurrentJournalID());
                 }
 
 
