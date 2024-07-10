@@ -212,6 +212,7 @@ class PaperLogRepository extends ServiceEntityRepository
             $median = $this->getMedian($delay);
 
         } catch (\LengthException $e) {
+            $this->logger->critical($e->getMessage());
             $median = null;
         }
 
