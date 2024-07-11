@@ -13,6 +13,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
 class ReviewSetting
 {
     public const TABLE = 'REVIEW_SETTING';
+    // todo to be implemented: new setting "allowBrowseAcceptedDocuments"
+    public const ALLOW_BROWSE_ACCEPTED_ARTICLE = 'allowBrowseAcceptedDocuments';
 
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]

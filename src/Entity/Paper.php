@@ -134,6 +134,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 
 class Paper implements UserOwnedInterface
 {
+    public const COLLECTION_NAME = '_api_/papers/_get_collection';
     public const FILTERS = [
         'rvid' => AppConstants::FILTER_TYPE_EXACT,
         'doi' => AppConstants::FILTER_TYPE_EXACT,

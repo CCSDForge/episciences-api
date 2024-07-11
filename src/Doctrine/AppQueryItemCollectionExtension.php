@@ -12,6 +12,7 @@ use App\Entity\News;
 use App\Entity\Page;
 use App\Entity\Paper;
 use App\Entity\Review;
+use App\Entity\ReviewSetting;
 use App\Entity\Section;
 use App\Entity\User;
 use App\Entity\UserAssignment;
@@ -96,9 +97,9 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
      */
     private function addWhere(QueryBuilder $queryBuilder, string $resourceClass, HttpOperation $operation = null, array $context = []): void
     {
+        $context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE] = true;
         /** @var User $currentUser */
         $currentUser = $this->security->getUser();
-
 
         $alias = $queryBuilder->getRootAliases()[0];
 
@@ -171,7 +172,15 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         }
     }
 
-    private function adnWherePublishedOnly(QueryBuilder $queryBuilder, string $field, string $resourceClass): QueryBuilder
+    /**
+     * @param QueryBuilder $queryBuilder
+     * @param string $field
+     * @param string $resourceClass
+     * @param bool $strict = true : get only published documents
+     * @return QueryBuilder
+     */
+
+    private function adnWherePublishedOrAccepted(QueryBuilder $queryBuilder, string $field, string $resourceClass, bool $strict = true): QueryBuilder
     {
         $parameters = $queryBuilder->getParameters()->getValues();
 
@@ -188,9 +197,15 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
         }
 
-        $queryBuilder->
-        andWhere("$field= :published")->
-        setParameter('published', Paper::STATUS_PUBLISHED);
+
+        if (!$strict) {
+            $this->andOrExp($queryBuilder, $field, array_merge(Paper::ACCEPTED_SUBMISSIONS, [Paper::STATUS_PUBLISHED]));
+        } else {
+            $queryBuilder->
+            andWhere("$field= :published")->
+            setParameter('published', Paper::STATUS_PUBLISHED);
+
+        }
 
         return $queryBuilder;
 
@@ -206,18 +221,25 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
     private function publicAccessProcess(QueryBuilder $queryBuilder, string $alias, string $resourceClass, array $context = []): void
     {
-        $isOnlyAccepted = isset($context['filters']['only_accepted']) && filter_var($context['filters']['only_accepted'], FILTER_VALIDATE_BOOLEAN);
+        /** @var HttpOperation $operation */
+        $operation = $context['operation'] ?? null;
+        $operationName = $operation?->getName();
 
         if ($resourceClass === Paper::class || $resourceClass === Volume::class || $resourceClass === Section::class) {
-
             if ($resourceClass === Paper::class) {
-                if ($isOnlyAccepted) {
+                $isOnlyAccepted = isset($context['filters']['only_accepted']) && filter_var($context['filters']['only_accepted'], FILTER_VALIDATE_BOOLEAN);
+
+                if ( // for collection
+                    $operationName === Paper::COLLECTION_NAME &&
+                    $isOnlyAccepted &&
+                    $context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE]
+                ) {
                     $this->adnWhereAcceptedOnly($queryBuilder, $alias);
                 } else {
-                    $this->adnWherePublishedOnly($queryBuilder, "$alias.status", $resourceClass);
+                    $this->adnWherePublishedOrAccepted($queryBuilder, "$alias.status", $resourceClass, !$context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE]);
                 }
             } else {
-                $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status', $resourceClass);
+                $this->adnWherePublishedOrAccepted($queryBuilder, 'papers_a1.status', $resourceClass);
             }
 
             $rvId = $context['filters']['rvid'] ?? null;
@@ -252,7 +274,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
             if ($resourceClass === Paper::class) {
 
-                if($isOnlyAccepted){
+                if ($isOnlyAccepted) {
                     $this->adnWhereAcceptedOnly($queryBuilder, $alias);
                 }
 
@@ -309,7 +331,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
             } else {
 
-                $this->adnWherePublishedOnly($queryBuilder, 'papers_a1.status', $resourceClass);
+                $this->adnWherePublishedOrAccepted($queryBuilder, 'papers_a1.status', $resourceClass);
             }
 
         }
