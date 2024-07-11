@@ -12,9 +12,11 @@ use App\Entity\Review;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\PapersRepository;
 use App\Resource\Statistic;
+use App\Traits\ToolsTrait;
 
 class StatisticStateProvider extends AbstractStateDataProvider implements ProviderInterface
 {
+    use ToolsTrait;
 
     /**
      * @throws ResourceNotFoundException
@@ -29,6 +31,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $filters = $context['filters'] ?? [];
         $code = $filters['rvcode'] ?? null;
         $unit = $filters['unit'] ?? 'week';
+        $rvId = null;
 
         if ($code) {
 
@@ -37,15 +40,26 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                 throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $code));
             }
 
-            $currentFilters['rvid'] = $journal->getRvid();
+            $rvId =  $journal->getRvid();
+            $currentFilters['rvid'] = $rvId;
         }
 
         $operationName = str_replace($prefix, '', $operation->getName());
-        $dictionary = array_merge(array_flip(Paper::STATUS_DICTIONARY), ['accepted' => Paper::ACCEPTED_SUBMISSIONS]);
+        $dictionary = array_merge(array_flip(Paper::STATUS_DICTIONARY), ['accepted' => Paper::STATUS_ACCEPTED]);
         unset($dictionary[Paper::STATUS_DICTIONARY[Paper::STATUS_OBSOLETE]], $dictionary[Paper::STATUS_DICTIONARY[Paper::STATUS_REMOVED]], $dictionary[Paper::STATUS_DICTIONARY[Paper::STATUS_DELETED]]);
 
         $status = isset($filters['status']) ? array_unique((array)$filters['status']) : [];
-        $years = isset($filters[AppConstants::YEAR_PARAM]) ? array_unique((array)$filters[AppConstants::YEAR_PARAM]) : null;
+
+        $years = isset($filters[AppConstants::YEAR_PARAM]) ? array_unique((array)$filters[AppConstants::YEAR_PARAM]) :  [];
+        $availableYears = $this->entityManagerInterface->getRepository(Paper::class)->getSubmissionYearRange(['is' => ['rvid' => $rvId]]);
+
+        $yearsDiff = $this->checkArrayEquality($availableYears, $years);
+
+        if (!empty($yearsDiff['arrayDiff']['out'])){
+            $message = sprintf('Oops! invalid year(s): %s because the available values are [%s]', implode(', ', $yearsDiff['arrayDiff']['out']), implode(', ',$availableYears));
+            throw new ResourceNotFoundException($message);
+        }
+
         $flag = $filters['flag'] ?? null;
         $startAfterDate = $filters['startAfterDate'] ?? null;
 
@@ -54,14 +68,18 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $firstResult = 0;
         $indicator = $filters['indicator'] ?? null;
 
-        foreach ($status as $currentStatus) {
-            $toLowerStatus = strtolower($currentStatus);
-            if (!array_key_exists($toLowerStatus, $dictionary)) {
-                $message = sprintf('Oops! invalid status: "%s" because the available values are: %s ', $currentStatus, implode(', ', array_keys($dictionary)));
-                throw new ResourceNotFoundException($message);
-            }
+        $dictionaryKeys = array_keys($dictionary);
+        $statusValues = array_values($status);
 
-            $currentFilters['status'] = array_merge($currentFilters['status'] ?? [], (array)$dictionary[$toLowerStatus]);
+        $statusDiff = $this->checkArrayEquality($dictionaryKeys, $statusValues);
+
+        if (!empty($statusDiff['arrayDiff']['out'])){
+            $message = sprintf('Oops! invalid status: "%s" because the available values are: [%s]', implode(', ', $statusDiff['arrayDiff']['out']), implode(', ', $dictionaryKeys));
+            throw new ResourceNotFoundException($message);
+        }
+
+        foreach ($status as $currentStatus) {
+            $currentFilters['status'] = array_merge($currentFilters['status'] ?? [], (array)$dictionary[$currentStatus]);
         }
 
         if ($years) {
@@ -107,9 +125,14 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
             } else {
                 $nbSubmissionStatsQuery = $this->entityManagerInterface->getRepository(Paper::class)->submissionsQuery(['is' => $currentFilters])->getQuery();
+                $nbSubmission = (float)$nbSubmissionStatsQuery->getSingleScalarResult();
+                $nbPublished = (float)$this->entityManagerInterface->getRepository(Paper::class)->submissionsQuery(['is' => array_merge(['status' => Paper::STATUS_PUBLISHED], $currentFilters)])->getQuery()->getSingleScalarResult();
+                $nbRefused = (float)$this->entityManagerInterface->getRepository(Paper::class)->submissionsQuery(['is' => array_merge(['status' => Paper::STATUS_REFUSED], $currentFilters)])->getQuery()->getSingleScalarResult();
+                $nbAccepted = (float)$this->entityManagerInterface->getRepository(Paper::class)->submissionsQuery(['is' => array_merge(['status' => Paper::STATUS_ACCEPTED], $currentFilters)])->getQuery()->getSingleScalarResult();
+
                 $response[] = (new Statistic())
                     ->setName(Statistic::AVAILABLE_INDICATORS['nb-submissions_get'])
-                    ->setValue((float)$nbSubmissionStatsQuery->getSingleScalarResult());
+                    ->setValue($nbSubmission);
 
                 $response[] = (new Statistic())
                     ->setName(Statistic::AVAILABLE_INDICATORS['acceptance-rate_get'])
@@ -125,6 +148,17 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                     ->setName(Statistic::AVAILABLE_INDICATORS['median-submission-acceptance_get'])
                     ->setValue($this->entityManagerInterface->getRepository(PaperLog::class)->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, Statistic::AVAILABLE_INDICATORS['median-submission-acceptance_get'], $unit))
                     ->setUnit(strtolower($unit));
+
+                $response[] = (new Statistic())
+                    ->setName('nb-submissions-details')
+                    ->setValue([
+                        Paper::STATUS_DICTIONARY[Paper::STATUS_PUBLISHED] => $nbPublished,
+                        Paper::STATUS_DICTIONARY[Paper::STATUS_REFUSED] => $nbRefused,
+                        'being-to-publish' => [
+                            'accepted' => $nbAccepted,
+                            'other-status' => $nbSubmission - ($nbPublished + $nbRefused + $nbAccepted),
+                        ]
+                    ]);
 
             }
 

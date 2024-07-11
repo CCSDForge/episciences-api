@@ -421,7 +421,7 @@ class Statistic
     #[groups(['read:Statistic'])]
     private string $name;
     #[groups(['read:Statistic'])]
-    private float|null $value;
+    private array|float|null $value;
     #[groups(['read:Statistic'])]
     private string|null $unit;
 
@@ -436,12 +436,12 @@ class Statistic
         return $this;
     }
 
-    public function getValue(): float|null
+    public function getValue(): array|float|null
     {
         return $this->value;
     }
 
-    public function setValue(float|null $value): self
+    public function setValue(array|float|null $value): self
     {
         $this->value = $value;
         return $this;

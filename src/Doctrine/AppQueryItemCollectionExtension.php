@@ -199,7 +199,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
 
         if (!$strict) {
-            $this->andOrExp($queryBuilder, $field, array_merge(Paper::ACCEPTED_SUBMISSIONS, [Paper::STATUS_PUBLISHED]));
+            $this->andOrExp($queryBuilder, $field, array_merge(Paper::STATUS_ACCEPTED, [Paper::STATUS_PUBLISHED]));
         } else {
             $queryBuilder->
             andWhere("$field= :published")->
@@ -213,7 +213,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
     private function adnWhereAcceptedOnly(QueryBuilder $queryBuilder, string $alias): QueryBuilder
     {
-        $this->andOrExp($queryBuilder, sprintf('%s.status', $alias), Paper::ACCEPTED_SUBMISSIONS);
+        $this->andOrExp($queryBuilder, sprintf('%s.status', $alias), Paper::STATUS_ACCEPTED);
         return $queryBuilder;
 
     }

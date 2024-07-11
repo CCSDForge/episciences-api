@@ -193,7 +193,7 @@ class Paper implements UserOwnedInterface
         AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0]
     ];
 
-    public const ACCEPTED_SUBMISSIONS = [
+    public const STATUS_ACCEPTED = [
         self::STATUS_STRICTLY_ACCEPTED, // 4
         self::STATUS_CE_WAITING_FOR_AUTHOR_SOURCES, // 18
         self::STATUS_CE_AUTHOR_SOURCES_SUBMITTED, // 19
