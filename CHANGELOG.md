@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 ### Changed
+- Return all volume's metadata on GET /volumes.
 - Possibility of retrieving all accepted documents: /api/papers/?rvcode=rvcode&only_accepted=true
 - "range" endpoints are no longer required: they have been merged with the "news" and "volumes" endpoints.
 - Volumes: search by list of values [type].

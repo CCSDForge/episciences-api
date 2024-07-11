@@ -38,6 +38,7 @@ class VolumeMetadata
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
         ]
 
     )]
@@ -48,6 +49,7 @@ class VolumeMetadata
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
         ]
 
     )]
@@ -57,6 +59,8 @@ class VolumeMetadata
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+
         ]
 
     )]
