@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "api-platform/core",
-            "version": "v3.3.7",
+            "version": "v3.3.8",
             "source": {
                 "type": "git",
                 "url": "https://github.com/api-platform/core.git",
-                "reference": "6daec826cf2a26fa6455a0a137c027c71b126f15"
+                "reference": "0792141f3fda46babc59c73893491d8f0e5e1105"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/api-platform/core/zipball/6daec826cf2a26fa6455a0a137c027c71b126f15",
-                "reference": "6daec826cf2a26fa6455a0a137c027c71b126f15",
+                "url": "https://api.github.com/repos/api-platform/core/zipball/0792141f3fda46babc59c73893491d8f0e5e1105",
+                "reference": "0792141f3fda46babc59c73893491d8f0e5e1105",
                 "shasum": ""
             },
             "require": {
@@ -190,9 +190,9 @@
             ],
             "support": {
                 "issues": "https://github.com/api-platform/core/issues",
-                "source": "https://github.com/api-platform/core/tree/v3.3.7"
+                "source": "https://github.com/api-platform/core/tree/v3.3.8"
             },
-            "time": "2024-06-28T09:35:57+00:00"
+            "time": "2024-07-11T14:15:03+00:00"
         },
         {
             "name": "beberlei/doctrineextensions",
@@ -8330,12 +8330,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/Roave/SecurityAdvisories.git",
-                "reference": "0970dcafb84065dda980b50a7074acacafd68368"
+                "reference": "fc38d77fa25d52b7da4c00962fa4189549c60e16"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Roave/SecurityAdvisories/zipball/0970dcafb84065dda980b50a7074acacafd68368",
-                "reference": "0970dcafb84065dda980b50a7074acacafd68368",
+                "url": "https://api.github.com/repos/Roave/SecurityAdvisories/zipball/fc38d77fa25d52b7da4c00962fa4189549c60e16",
+                "reference": "fc38d77fa25d52b7da4c00962fa4189549c60e16",
                 "shasum": ""
             },
             "conflict": {
@@ -8810,7 +8810,7 @@
                 "prestashop/ps_emailsubscription": "<2.6.1",
                 "prestashop/ps_facetedsearch": "<3.4.1",
                 "prestashop/ps_linklist": "<3.1",
-                "privatebin/privatebin": "<1.4",
+                "privatebin/privatebin": "<1.4|>=1.5,<1.7.4",
                 "processwire/processwire": "<=3.0.210",
                 "propel/propel": ">=2.0.0.0-alpha1,<=2.0.0.0-alpha7",
                 "propel/propel1": ">=1,<=1.7.1",
@@ -8894,7 +8894,7 @@
                 "spoon/library": "<1.4.1",
                 "spoonity/tcpdf": "<6.2.22",
                 "squizlabs/php_codesniffer": ">=1,<2.8.1|>=3,<3.0.1",
-                "ssddanbrown/bookstack": "<22.02.3",
+                "ssddanbrown/bookstack": "<24.05.1",
                 "statamic/cms": "<4.46|>=5.3,<5.6.2",
                 "stormpath/sdk": "<9.9.99",
                 "studio-42/elfinder": "<2.1.62",
@@ -9130,7 +9130,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2024-07-08T20:05:45+00:00"
+            "time": "2024-07-10T17:04:19+00:00"
         },
         {
             "name": "symfony/maker-bundle",
