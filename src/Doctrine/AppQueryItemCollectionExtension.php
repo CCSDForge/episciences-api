@@ -178,7 +178,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
      * @param QueryBuilder $queryBuilder
      * @param string $field
      * @param string $resourceClass
-     * @param bool $isItem: is item operation
+     * @param bool $isItemOrCollection 
      * @param bool $strict
      * @return QueryBuilder
      */
