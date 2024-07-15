@@ -176,11 +176,10 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
      * @param QueryBuilder $queryBuilder
      * @param string $field
      * @param string $resourceClass
-     * @param bool $strict = true : get only published documents
      * @return QueryBuilder
      */
 
-    private function adnWherePublishedOrAccepted(QueryBuilder $queryBuilder, string $field, string $resourceClass, bool $strict = true): QueryBuilder
+    private function adnWherePublished(QueryBuilder $queryBuilder, string $field, string $resourceClass): QueryBuilder
     {
         $parameters = $queryBuilder->getParameters()->getValues();
 
@@ -197,18 +196,11 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
         }
 
-
-        if (!$strict) {
-            $this->andOrExp($queryBuilder, $field, array_merge(Paper::STATUS_ACCEPTED, [Paper::STATUS_PUBLISHED]));
-        } else {
-            $queryBuilder->
-            andWhere("$field= :published")->
-            setParameter('published', Paper::STATUS_PUBLISHED);
-
-        }
+        $queryBuilder->
+        andWhere("$field= :published")->
+        setParameter('published', Paper::STATUS_PUBLISHED);
 
         return $queryBuilder;
-
     }
 
     private function adnWhereAcceptedOnly(QueryBuilder $queryBuilder, string $alias): QueryBuilder
@@ -236,10 +228,10 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 ) {
                     $this->adnWhereAcceptedOnly($queryBuilder, $alias);
                 } else {
-                    $this->adnWherePublishedOrAccepted($queryBuilder, "$alias.status", $resourceClass, !$context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE]);
+                    $this->adnWherePublished($queryBuilder, "$alias.status", $resourceClass, false);
                 }
             } else {
-                $this->adnWherePublishedOrAccepted($queryBuilder, 'papers_a1.status', $resourceClass);
+                $this->adnWherePublished($queryBuilder, 'papers_a1.status', $resourceClass);
             }
 
             $rvId = $context['filters']['rvid'] ?? null;
@@ -331,7 +323,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
             } else {
 
-                $this->adnWherePublishedOrAccepted($queryBuilder, 'papers_a1.status', $resourceClass);
+                $this->adnWherePublished($queryBuilder, 'papers_a1.status', $resourceClass);
             }
 
         }
