@@ -6,6 +6,8 @@ use App\Entity\Review;
 
 final class AppConstants
 {
+    public const IS_APP_ITEM = 'isAppItem';
+    public const IS_APP_COLLECTION = 'isAppCollection';
     public const ORDER_DESC = 'DESC';
     public const AVAILABLE_FILTERS = ['rvid', 'repoid', 'status', 'submissionDate', 'withDetails', 'startAfterDate', 'flag', AppConstants::YEAR_PARAM];
     public const WITH_DETAILS = 'withDetails';
