@@ -331,6 +331,7 @@ class Review
     public const TABLE = 'REVIEW';
     public const PORTAL_ID = 0;
     public const STATUS_DISABLED = 0;
+    public const STATUS_ENABLED = 1;
     public const URI_TEMPLATE = '/journals/';
 
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]

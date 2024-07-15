@@ -46,7 +46,7 @@ class BrowseStateProvider implements ProviderInterface
 
         if ($code) {
 
-            $journal = $this->entityManager->getRepository(Review::class)->findOneBy(['code' => $code]);
+            $journal = $this->entityManager->getRepository(Review::class)->getJournalByIdentifier($code);
 
             if (!$journal) {
                 throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $code));

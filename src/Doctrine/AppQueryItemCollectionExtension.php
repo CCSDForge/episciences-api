@@ -59,7 +59,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         $rvCode = $context['filters']['rvcode'] ?? null;
 
         if ($rvCode) {
-            $journal = $queryBuilder->getEntityManager()->getRepository(Review::class)->findOneBy(['code' => $rvCode]);
+            $journal = $queryBuilder->getEntityManager()->getRepository(Review::class)->getJournalByIdentifier($rvCode);
             if (!$journal) {
                 throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $rvCode));
             }

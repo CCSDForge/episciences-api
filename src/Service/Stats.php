@@ -532,7 +532,7 @@ class Stats
      */
     public function getJournal(array $context): ?Review
     {
-        return $this->entityManager->getRepository(Review::class)->findOneBy($context);
+        return $this->entityManager->getRepository(Review::class)->getJournalByIdentifier($context['code']);
     }
 
     /**

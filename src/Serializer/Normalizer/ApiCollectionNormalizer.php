@@ -52,7 +52,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         $rvCode = $parsedUri['rvcode'] ?? null;
 
         if ($rvCode) {
-            $journal = $this->entityManager->getRepository(Review::class)->findOneBy(['code' => $rvCode]);
+            $journal = $this->entityManager->getRepository(Review::class)->getJournalByIdentifier($rvCode);
         }
 
         $hydraMember = $data['hydra:member'] ?? [];
@@ -120,10 +120,20 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         }
 
         if ($operationClass === Statistic::class) {
+            $id = $data['@id'] ?? null;
             $repo = $this->entityManager->getRepository(Paper::class);
             $years = $repo->getYearRange($rvId);
             rsort($years);
-            $data[sprintf('hydra:%s', RangeInterface::RANGE)] = ['years' => $years, 'indicators' => array_values(Statistic::AVAILABLE_INDICATORS)];
+            $range['years'] = $years;
+
+            if ($id === Statistic::STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER) {
+                $range['indicators'] = array_values(Statistic::AVAILABLE_PUBLICATION_INDICATORS);
+
+            } elseif ($id === Statistic::EVALUATION_GET_COLLECTION_OPERATION_IDENTIFIER) {
+                $range['indicators'] = array_values(Statistic::EVAL_INDICATORS);
+            }
+
+            $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $range;
 
         } elseif ($operationClass === Paper::class) {
             $rangeType = (new RangeType())

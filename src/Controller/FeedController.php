@@ -21,7 +21,7 @@ class FeedController extends AbstractController
 
         $code = (string) $request->get('code');
 
-        $journal = $entityManager->getRepository(Review::class)->findOneBy(['code' => $code]);
+        $journal = $entityManager->getRepository(Review::class)->getJournalByIdentifier($code);
 
         if (!$journal) {
             throw new ResourceNotFoundException(sprintf('Oops! Feed cannot be generated: not found Journal %s', $code ));

@@ -43,7 +43,7 @@ class JWTSubscriber implements EventSubscriberInterface
         $rvCode = $postedContent['code'] ?? null;
 
         if ($rvCode) {
-            $currentReview = $this->doctrine->getRepository(Review::class)->findOneBy(['code' => $rvCode]);
+            $currentReview = $this->doctrine->getRepository(Review::class)->getJournalByIdentifier($rvCode);
 
             if ($currentReview && $currentReview->getStatus()) {
                 $rvId = $currentReview->getRvid();

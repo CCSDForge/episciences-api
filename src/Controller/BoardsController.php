@@ -48,7 +48,7 @@ class BoardsController extends AbstractController
             $code = $request->get('code');
 
             if ($code) {
-                $journal = $entityManager->getRepository(Review::class)->findOneBy(['code' => $code]);
+                $journal = $entityManager->getRepository(Review::class)->getJournalByIdentifier($code);
 
                 if (!$journal) {
                     throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $code));
