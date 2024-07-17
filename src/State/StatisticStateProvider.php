@@ -14,10 +14,18 @@ use App\Entity\UserInvitation;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\PapersRepository;
 use App\Resource\Statistic;
+use App\Service\Stats;
 use App\Traits\ToolsTrait;
+use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 
 class StatisticStateProvider extends AbstractStateDataProvider implements ProviderInterface
 {
+    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, protected Stats $statsService,)
+    {
+        parent::__construct($entityManager, $logger);
+    }
+
     use ToolsTrait;
 
     /**
@@ -30,6 +38,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
         $currentFilters = [];
 
+        $this->checkAndProcessFilters($context);
+
         $filters = $context['filters'] ?? [];
         $code = $filters['rvcode'] ?? null;
         $unit = $filters['unit'] ?? 'week';
@@ -37,7 +47,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
         if ($code) {
 
-            $journal = $this->entityManagerInterface->getRepository(Review::class)->getJournalByIdentifier($code);
+            $journal = $this->entityManager->getRepository(Review::class)->getJournalByIdentifier($code);
             if (!$journal) {
                 throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $code));
             }
@@ -53,7 +63,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $status = isset($filters['status']) ? array_unique((array)$filters['status']) : [];
 
         $years = isset($filters[AppConstants::YEAR_PARAM]) ? array_unique((array)$filters[AppConstants::YEAR_PARAM]) : [];
-        $availableYears = $this->entityManagerInterface->getRepository(Paper::class)->getYearRange($rvId);
+        $availableYears = $this->entityManager->getRepository(Paper::class)->getYearRange($rvId);
 
         $yearsDiff = $this->checkArrayEquality($availableYears, $years);
 
@@ -65,8 +75,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $flag = $filters['flag'] ?? null;
         $startAfterDate = $filters['startAfterDate'] ?? null;
 
-        $isPaginationEnabled = !isset($context['filters']['pagination']) || filter_var($context['filters']['pagination'], FILTER_VALIDATE_BOOLEAN);
-        $page = $context['filters']['page'] ?? 1;
+        $isPaginationEnabled = $context['filters']['pagination'];
+        $page = $context['filters']['page'];
         $firstResult = 0;
         $indicator = $filters['indicator'] ?? null;
 
@@ -107,7 +117,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                     }
 
                     if ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get']) {
-                        $nbSubmissionStatsQuery = $this->entityManagerInterface->getRepository(Paper::class)->submissionsQuery(['is' => $currentFilters])->getQuery();
+                        $nbSubmissionStatsQuery = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => $currentFilters])->getQuery();
                         $response[] = (new Statistic())
                             ->setName($indicator)
                             ->setValue((float)$nbSubmissionStatsQuery->getSingleScalarResult());
@@ -122,16 +132,16 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                     } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'] || $indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get']) {
                         $response[] = (new Statistic())
                             ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS[$indicator])
-                            ->setValue($this->entityManagerInterface->getRepository(PaperLog::class)->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, $indicator, $unit))
+                            ->setValue($this->entityManager->getRepository(PaperLog::class)->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, $indicator, $unit))
                             ->setUnit(strtolower($unit));
                     }
 
                 } else { // all submissions indicators
-                    $nbSubmissionStatsQuery = $this->entityManagerInterface->getRepository(Paper::class)->submissionsQuery(['is' => $currentFilters])->getQuery();
+                    $nbSubmissionStatsQuery = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => $currentFilters])->getQuery();
                     $nbSubmission = (float)$nbSubmissionStatsQuery->getSingleScalarResult();
-                    $nbPublished = (float)$this->entityManagerInterface->getRepository(Paper::class)->submissionsQuery(['is' => array_merge(['status' => Paper::STATUS_PUBLISHED], $currentFilters)])->getQuery()->getSingleScalarResult();
-                    $nbRefused = (float)$this->entityManagerInterface->getRepository(Paper::class)->submissionsQuery(['is' => array_merge(['status' => Paper::STATUS_REFUSED], $currentFilters)])->getQuery()->getSingleScalarResult();
-                    $nbAccepted = (float)$this->entityManagerInterface->getRepository(Paper::class)->submissionsQuery(['is' => array_merge(['status' => Paper::STATUS_ACCEPTED], $currentFilters)])->getQuery()->getSingleScalarResult();
+                    $nbPublished = (float)$this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => array_merge(['status' => Paper::STATUS_PUBLISHED], $currentFilters)])->getQuery()->getSingleScalarResult();
+                    $nbRefused = (float)$this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => array_merge(['status' => Paper::STATUS_REFUSED], $currentFilters)])->getQuery()->getSingleScalarResult();
+                    $nbAccepted = (float)$this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => array_merge(['status' => Paper::STATUS_ACCEPTED], $currentFilters)])->getQuery()->getSingleScalarResult();
 
                     $response[] = (new Statistic())
                         ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'])
@@ -145,11 +155,11 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
                     $response[] = (new Statistic())
                         ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'])
-                        ->setValue($this->entityManagerInterface->getRepository(PaperLog::class)->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'], $unit))
+                        ->setValue($this->entityManager->getRepository(PaperLog::class)->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'], $unit))
                         ->setUnit(strtolower($unit));
                     $response[] = (new Statistic())
                         ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get'])
-                        ->setValue($this->entityManagerInterface->getRepository(PaperLog::class)->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get'], $unit))
+                        ->setValue($this->entityManager->getRepository(PaperLog::class)->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get'], $unit))
                         ->setUnit(strtolower($unit));
 
                     $response[] = (new Statistic())
@@ -199,7 +209,9 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                 $firstResult = ($page - 1) * $maxResults;
             }
 
-            return new ArrayPaginator($response, $firstResult, $maxResults);
+            $paginator = new ArrayPaginator($response, $firstResult, $maxResults);
+            $this->checkSeekPosition($paginator, $maxResults );
+            return $paginator;
 
         }
 
@@ -212,10 +224,10 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $statsQuery = null;
 
         if ($operationName === 'nb-submissions_get') {
-            $statsQuery = $this->entityManagerInterface->getRepository(Paper::class)->submissionsQuery(['is' => $currentFilters])->getQuery();
+            $statsQuery = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => $currentFilters])->getQuery();
         } elseif ($operationName === 'median-submission-publication_get' || $operationName === 'median-submission-acceptance_get') {
             return $oStats
-                ->setValue($this->entityManagerInterface->getRepository(PaperLog::class)->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, Statistic::AVAILABLE_PUBLICATION_INDICATORS[$operationName], $unit))
+                ->setValue($this->entityManager->getRepository(PaperLog::class)->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, Statistic::AVAILABLE_PUBLICATION_INDICATORS[$operationName], $unit))
                 ->setUnit(strtolower($unit));
         } elseif ($operationName === 'acceptance-rate_get') {
             return $oStats->setValue($this->getAcceptanceRate($currentFilters));
@@ -236,13 +248,13 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $startAfterDate = $options['startAfterDate'] ?? null;
         $params = ['rvid' => $rvId, 'startAfterDate' => $startAfterDate, 'flag' => $flag, 'year' => $years];
 
-        $allSubmissions = (float)$this->entityManagerInterface->getRepository(Paper::class)->submissionsQuery(['is' => $params])->getQuery()->getSingleScalarResult();
+        $allSubmissions = (float)$this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => $params])->getQuery()->getSingleScalarResult();
 
         if (!$allSubmissions) {
             return null;
         }
 
-        $allAcceptedArticle = $this->entityManagerInterface->getRepository(PaperLog::class)->getNumberOfAcceptedArticlesQuery($rvId, $years, $startAfterDate);
+        $allAcceptedArticle = $this->entityManager->getRepository(PaperLog::class)->getNumberOfAcceptedArticlesQuery($rvId, $years, $startAfterDate);
 
         return round(($allAcceptedArticle / $allSubmissions) * 100, 2);
 
@@ -252,7 +264,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     private function getEvaluationStats(array $options = [], string $indicator = null): null|float|array
     {
         if (!$indicator) {
-            $result = $this->entityManagerInterface->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult();
+            $result = $this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult();
             $processed = $this->processResult($result);
             try {
                 $medianReviewsNumber = $this->getMedian($processed);
@@ -261,7 +273,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                 $medianReviewsNumber = null;
             }
             return [
-                Statistic::EVAL_INDICATORS['reviews-requested_get'] => count($this->entityManagerInterface->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult()),
+                Statistic::EVAL_INDICATORS['reviews-requested_get'] => count($this->entityManager->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult()),
                 Statistic::EVAL_INDICATORS['reviews-received_get'] => count($result),
                 Statistic::EVAL_INDICATORS['median-reviews-number_get'] => $medianReviewsNumber,
             ];
@@ -271,14 +283,14 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $result = null;
 
         if ($indicator === Statistic::EVAL_INDICATORS['reviews-requested_get']) {
-            $result = count($this->entityManagerInterface->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult());
+            $result = count($this->entityManager->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult());
 
         } elseif ($indicator === Statistic::EVAL_INDICATORS['reviews-received_get']) {
-            $result = count($this->entityManagerInterface->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult());
+            $result = count($this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult());
 
 
         } elseif ($indicator === Statistic::EVAL_INDICATORS['median-reviews-number_get']) {
-            $processed = $this->processResult($this->entityManagerInterface->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult());
+            $processed = $this->processResult($this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult());
             try {
                 $medianReviewsNumber = $this->getMedian($processed);
             } catch (\LengthException $e) {

@@ -11,19 +11,15 @@ use App\Resource\Facet;
 use App\Resource\SolrDoc;
 use App\Service\Solr;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Psr\Log\LoggerInterface;
 
-class BrowseStateProvider implements ProviderInterface
+class BrowseStateProvider extends AbstractStateDataProvider implements ProviderInterface
 {
     public const AUTHOR_FULlNAME = 'author_fullname';
 
-    private EntityManagerInterface $entityManager;
-    private Solr $solrSrv;
-
-    public function __construct(EntityManagerInterface $entityManager, Solr $solrSrv,)
+    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, protected Solr $solrSrv,)
     {
-        $this->entityManager = $entityManager;
-        $this->solrSrv = $solrSrv;
+        parent::__construct($entityManager, $logger);
 
     }
 
@@ -55,10 +51,12 @@ class BrowseStateProvider implements ProviderInterface
 
         }
 
-        $isPaginationEnabled = !isset($context['filters']['pagination']) || filter_var($context['filters']['pagination'], FILTER_VALIDATE_BOOLEAN);
-        $page = $context['filters']['page'] ?? 1;
-        $firstResult = 0;
+        $this->checkAndProcessFilters($context);
 
+        $isPaginationEnabled = $context['filters']['pagination'];
+        $page =  $context['filters']['page'];
+
+        $firstResult = 0;
         $maxResults = $operation->getPaginationMaximumItemsPerPage() ?: Solr::SOLR_MAX_RETURNED_FACETS_RESULTS;
 
 
@@ -112,11 +110,9 @@ class BrowseStateProvider implements ProviderInterface
 
         $paginator = new ArrayPaginator($authors, $firstResult, $maxResults);
 
-        if ($page < 1 || $page > $paginator->getLastPage()) {
-            throw new ResourceNotFoundException(sprintf('Oops! Seek position %s is out of range: page %s is not available', $firstResult, $page));
-        }
+        $this->checkSeekPosition($paginator, $maxResults );
 
-        return new ArrayPaginator($authors, $firstResult, $maxResults);
+        return $paginator;
 
     }
 }

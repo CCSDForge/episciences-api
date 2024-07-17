@@ -178,13 +178,18 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
      * @param QueryBuilder $queryBuilder
      * @param string $field
      * @param string $resourceClass
-     * @param bool $isItemOrCollection 
-     * @param bool $strict
+     * @param array $context
      * @return QueryBuilder
      */
 
-    private function adnWherePublished(QueryBuilder $queryBuilder, string $field, string $resourceClass, bool $isItemOrCollection = false, bool $strict = true): QueryBuilder
+    private function adnWherePublished(QueryBuilder $queryBuilder, string $field, string $resourceClass, array $context = []): QueryBuilder
     {
+
+        $allowBrowseAcceptedDocuments = isset($context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE]) && filter_var($context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE], FILTER_VALIDATE_BOOLEAN);
+        $isItem = isset($context[AppConstants::IS_APP_ITEM]) && filter_var($context[AppConstants::IS_APP_ITEM], FILTER_VALIDATE_BOOLEAN);
+
+        $strict = !$isItem || !$allowBrowseAcceptedDocuments;
+
         $parameters = $queryBuilder->getParameters()->getValues();
 
         if (!empty($parameters) && $resourceClass === Paper::class) {
@@ -200,14 +205,15 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
         }
 
-
-        if ($isItemOrCollection && !$strict) {
-            $this->andOrExp($queryBuilder, $field, array_merge(Paper::STATUS_ACCEPTED, [Paper::STATUS_PUBLISHED]));
-        } else {
+        if ($strict) {
             $queryBuilder->
             andWhere("$field= :published")->
             setParameter('published', Paper::STATUS_PUBLISHED);
-
+            if ($resourceClass === Paper::class) {
+                $queryBuilder->addOrderBy(sprintf("%s.publicationDate", $queryBuilder->getRootAliases()[0]), 'DESC');
+            }
+        } else {
+            $this->andOrExp($queryBuilder, $field, array_merge(Paper::STATUS_ACCEPTED, [Paper::STATUS_PUBLISHED]));
         }
 
         return $queryBuilder;
@@ -217,6 +223,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     private function adnWhereAcceptedOnly(QueryBuilder $queryBuilder, string $alias): QueryBuilder
     {
         $this->andOrExp($queryBuilder, sprintf('%s.status', $alias), Paper::STATUS_ACCEPTED);
+        $queryBuilder->addOrderBy(sprintf("%s.modificationDate", $alias), 'DESC');
         return $queryBuilder;
 
     }
@@ -230,18 +237,19 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
         if ($resourceClass === Paper::class || $resourceClass === Volume::class || $resourceClass === Section::class) {
             if ($resourceClass === Paper::class) {
-                $isOnlyAccepted = isset($context['filters']['only_accepted']) && filter_var($context['filters']['only_accepted'], FILTER_VALIDATE_BOOLEAN);
                 $allowBrowseAcceptedDocuments = isset($context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE]) && filter_var($context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE], FILTER_VALIDATE_BOOLEAN);
-                $isItemOrIsCollection = (isset($context[AppConstants::IS_APP_ITEM]) || isset($context[AppConstants::IS_APP_COLLECTION])) && filter_var($context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE], FILTER_VALIDATE_BOOLEAN);
+                $isOnlyAccepted = isset($context['filters']['only_accepted']) && filter_var($context['filters']['only_accepted'], FILTER_VALIDATE_BOOLEAN);
+                $isCollection = isset($context[AppConstants::IS_APP_COLLECTION]) && filter_var($context[AppConstants::IS_APP_COLLECTION], FILTER_VALIDATE_BOOLEAN);
 
                 if ( // for collection
                     $operationName === Paper::COLLECTION_NAME &&
-                    $isOnlyAccepted &&
-                    $context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE]
+                    $isCollection &&
+                    $allowBrowseAcceptedDocuments &&
+                    $isOnlyAccepted
                 ) {
                     $this->adnWhereAcceptedOnly($queryBuilder, $alias);
                 } else {
-                    $this->adnWherePublished($queryBuilder, "$alias.status", $resourceClass, $isItemOrIsCollection, !$allowBrowseAcceptedDocuments);
+                    $this->adnWherePublished($queryBuilder, "$alias.status", $resourceClass, $context);
                 }
             } else {
                 $this->adnWherePublished($queryBuilder, 'papers_a1.status', $resourceClass);
