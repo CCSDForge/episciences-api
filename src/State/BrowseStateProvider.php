@@ -11,6 +11,7 @@ use App\Resource\Facet;
 use App\Resource\SolrDoc;
 use App\Service\Solr;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class BrowseStateProvider implements ProviderInterface
 {
@@ -69,7 +70,7 @@ class BrowseStateProvider implements ProviderInterface
 
             $response = [];
 
-            foreach ($docs as $values){
+            foreach ($docs as $values) {
                 $response[] = new SolrDoc($values);
             }
 
@@ -107,6 +108,12 @@ class BrowseStateProvider implements ProviderInterface
         if ($isPaginationEnabled) {
             $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;
             $firstResult = ($page - 1) * $maxResults;
+        }
+
+        $paginator = new ArrayPaginator($authors, $firstResult, $maxResults);
+
+        if ($page < 1 || $page > $paginator->getLastPage()) {
+            throw new ResourceNotFoundException(sprintf('Oops! Seek position %s is out of range: page %s is not available', $firstResult, $page));
         }
 
         return new ArrayPaginator($authors, $firstResult, $maxResults);
