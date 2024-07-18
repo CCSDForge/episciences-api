@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Section;
 use App\Entity\Volume;
 use App\Traits\QueryTrait;
+use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Exception;
 use Doctrine\Persistence\ManagerRegistry;
@@ -14,6 +15,7 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class VolumeRepository extends ServiceEntityRepository implements RangeInterface
 {
+    use ToolsTrait;
 
     public function __construct(ManagerRegistry $registry)
     {
@@ -40,16 +42,29 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
 
     public function getTypes(int|string $journalIdentifier = null): array
     {
+        $distinctTypes = [];
         $qb = $this->createQueryBuilder('v');
         $qb->distinct();
         $qb->select("v.vol_type AS type");
+        $qb->andWhere('v.vol_type IS NOT NULL');
 
         if ($journalIdentifier) {
             $qb->andWhere('v.rvid = :rvId');
             $qb->setParameter('rvId', $journalIdentifier);
         }
-        $types = $qb->getQuery()->getResult();
-        return array_merge([], ...$types)['type'] ?? [];
+        $set = $qb->getQuery()->getResult();
+
+        foreach ($set as $type) {
+            $diff = $this->checkArrayEquality($distinctTypes, $type['type']);
+            $outOfDistinctTypes = $diff['arrayDiff']['out'];
+            if (!empty($outOfDistinctTypes)) {
+                foreach ($outOfDistinctTypes as $value) {
+                    $distinctTypes[] = $value;
+                }
+            }
+        }
+
+        return $distinctTypes;
 
     }
 
