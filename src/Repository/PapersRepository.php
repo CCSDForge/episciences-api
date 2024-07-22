@@ -368,7 +368,7 @@ class PapersRepository extends ServiceEntityRepository
     {
         $types = [];
         $qb = $this->createQueryBuilder('p');
-        $qb->select("DISTINCT JSON_UNQUOTE(JSON_EXTRACT(p.type, '$.title')) AS types");
+        $qb->select("DISTINCT JSON_UNQUOTE(JSON_EXTRACT(p.type, '$.title')) AS type");
         $qb->andWhere("JSON_EXTRACT(p.type, '$.title') IS NOT NULL");
         $this->andWhere($qb, $filters, $strict);
 
@@ -376,13 +376,13 @@ class PapersRepository extends ServiceEntityRepository
         $result = array_values($qb->getQuery()->getArrayResult());
 
         foreach ($result as $type) {
-            $type = strtolower($type['types']);
+            $type = strtolower($type['type']);
             if (!in_array($type, $types, true)) {
                 $types[] = $type;
             }
         }
 
-        natcasesort($types);
+        sort($types);
 
         return $types;
 
@@ -405,6 +405,7 @@ class PapersRepository extends ServiceEntityRepository
 
     private function andWhere(QueryBuilder $qb, array $filters = [], bool $strict = true): QueryBuilder
     {
+        $isOnlyAccepted = isset($filters['isOnlyAccepted']) && $filters['isOnlyAccepted'];
 
         foreach ($filters as $key => $value) {
 
@@ -433,8 +434,14 @@ class PapersRepository extends ServiceEntityRepository
         }
 
         if ($strict) {
-            $qb->andWhere('p.status =:status')
-                ->setParameter('status', Paper::STATUS_PUBLISHED);
+
+            if ($isOnlyAccepted) {
+                $this->andOrExp($qb, 'p.status', Paper::STATUS_ACCEPTED);
+            } else {
+                $qb->andWhere('p.status =:status')
+                    ->setParameter('status', Paper::STATUS_PUBLISHED);
+            }
+
         }
 
 
@@ -459,19 +466,19 @@ class PapersRepository extends ServiceEntityRepository
 
         $qb->andWhere("p.flag = :flag")->setParameter('flag', self::AVAILABLE_FLAG_VALUES[$flag]);
 
-        if ($rvId){
+        if ($rvId) {
             $qb->andWhere("p.rvid = :rvId")->setParameter('rvId', $rvId);
         }
 
         $result = $qb->getQuery()->getResult();
 
-        foreach(range($result[0]['minYear'], $result[0]['maxYear']) as $value) {
+        foreach (range($result[0]['minYear'], $result[0]['maxYear']) as $value) {
 
-            if($value < Stats::REF_YEAR){
+            if ($value < Stats::REF_YEAR) {
                 continue;
             }
 
-            $years[] =  $value;
+            $years[] = $value;
 
         }
 

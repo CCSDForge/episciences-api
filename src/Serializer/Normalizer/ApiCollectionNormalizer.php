@@ -50,6 +50,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         parse_str($requestUri, $parsedUri);
 
         $rvCode = $parsedUri['rvcode'] ?? null;
+        $isOnlyAccepted = isset($parsedUri['only_accepted']) && filter_var($parsedUri['only_accepted'], FILTER_VALIDATE_BOOLEAN);
 
         if ($rvCode) {
             $journal = $this->entityManager->getRepository(Review::class)->getJournalByIdentifier($rvCode);
@@ -76,6 +77,10 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 
         if (isset($parsedUri['vid'])) {
             $filters['vid'] = $parsedUri['vid'];
+        }
+
+        if ($isOnlyAccepted) {
+            $filters['isOnlyAccepted'] = true;
         }
 
         if (!empty($filters) && ($operationClass === Volume::class || $operationClass === Section::class) && $operation->getMethod() === 'GET') {
@@ -136,10 +141,18 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $range;
 
         } elseif ($operationClass === Paper::class) {
+
+            $isOnlyAccepted = $filters['isOnlyAccepted'] ?? false;
             $rangeType = (new RangeType())
-                ->setTypes($repo->getTypes(['rvid' => $rvId]))
-                ->setYears($repo->getRange(['rvid' => $rvId]));
-            $data[sprintf('hydra:%s', RangeInterface::RANGE)] = ['publicationYears' => $rangeType->getYears(), 'types' => $rangeType->getTypes()];
+                ->setTypes($repo->getTypes(['rvid' => $rvId, 'isOnlyAccepted' => $isOnlyAccepted]));
+
+            if (!$isOnlyAccepted) {
+                $rangeType->setYears($repo->getRange(['rvid' => $rvId]));
+                $range = ['publicationYears' => $rangeType->getYears()];
+            }
+
+            $range['types'] = $rangeType->getTypes();
+            $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $range;
 
         } elseif ($operationClass === News::class) {
             $data[sprintf('hydra:%s', RangeInterface::RANGE)] = ['years' => $repo ? (new Range())->setYears($repo->getRange($rvCode))->getYears() : []];

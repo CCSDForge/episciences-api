@@ -73,6 +73,17 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                         explode: false,
                     ),
                     new Parameter(
+                        name: 'only_accepted',
+                        in: 'query',
+                        description: 'If this is true, only accepted documents will be returned.',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                        schema: [
+                            'type' => 'boolean',
+                        ]
+                    ),
+                    new Parameter(
                         name: 'type',
                         in: 'query',
                         description: 'Paper type',
@@ -83,18 +94,6 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                             'type' => 'string',
                         ],
                         explode: false
-                    ),
-
-                    new Parameter(
-                        name: 'only_accepted',
-                        in: 'query',
-                        description: 'If this is true, only accepted documents will be returned.',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: true,
-                        schema: [
-                            'type' => 'boolean',
-                        ]
                     ),
                     new Parameter(
                         name: 'type[]',
@@ -131,7 +130,6 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 #[ApiFilter(SearchFilter::class, properties: self::FILTERS)]
 #[ApiFilter(DateFilter::class, properties: ['submissionDate'])]
 #[ApiFilter(DateFilter::class, properties: ['publicationDate'])]
-
 class Paper implements UserOwnedInterface
 {
     public const COLLECTION_NAME = '_api_/papers/_get_collection';
@@ -258,7 +256,6 @@ class Paper implements UserOwnedInterface
     #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-
     //#[ApiProperty(security: "is_granted('papers_manage', object)")]
     #[groups(
         [
@@ -269,7 +266,6 @@ class Paper implements UserOwnedInterface
 
 
     #[ORM\Column(name: 'PAPERID', type: 'integer', nullable: true, options: ['unsigned' => true])]
-
     #[groups(self::PAPERS_GROUPS)]
     private ?int $paperid;
 
@@ -277,28 +273,23 @@ class Paper implements UserOwnedInterface
     private array $type;
 
     #[ORM\Column(name: 'DOI', type: 'string', length: 250, nullable: true)]
-
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
-
     private ?string $doi;
 
 
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-
     private int $rvid;
 
 
     #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-
     private int $vid = 0;
 
 
     #[ORM\Column(name: 'SID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-
     private int $sid = 0;
 
 
@@ -307,33 +298,27 @@ class Paper implements UserOwnedInterface
 
 
     #[ORM\Column(name: 'STATUS', type: 'integer', nullable: false, options: ['unsigned' => true])]
-
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
-
     private int $status = 0;
 
 
     #[ORM\Column(name: 'IDENTIFIER', type: 'string', length: 500, nullable: false)]
-
     private string $identifier;
 
 
     #[ORM\Column(name: 'VERSION', type: 'float', precision: 10, scale: 0, nullable: false, options: ['default' => 1])]
-
     private $version = 1;
 
 
     #[ORM\Column(name: 'REPOID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-
     private int $repoid;
 
 
     #[ORM\Column(name: 'RECORD', type: 'text', length: 65535, nullable: false)]
-
     private string $record;
     #[ORM\Column(name: 'DOCUMENT', type: 'json', nullable: false)]
     //#[groups(self::PAPERS_GROUPS)]
@@ -343,25 +328,21 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         ]
     )]
-
     private array $document;
     #[ORM\Column(name: 'CONCEPT_IDENTIFIER', type: 'string', length: 500, nullable: true, options: ['comment' => 'This identifier represents all versions'])]
     private ?string $conceptIdentifier;
 
     #[ORM\Column(name: 'FLAG', type: 'string', length: 0, nullable: false, options: ['default' => 'submitted'])]
-
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private string $flag = 'submitted';
 
 
     #[ORM\Column(name: 'WHEN', type: 'datetime', nullable: false)]
-
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $when;
 
 
     #[ORM\Column(name: 'SUBMISSION_DATE', type: 'datetime', nullable: false)]
-
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $submissionDate;
 
@@ -372,7 +353,6 @@ class Paper implements UserOwnedInterface
 
 
     #[ORM\Column(name: 'PUBLICATION_DATE', type: 'datetime', nullable: true)]
-
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private ?DateTime $publicationDate;
 
@@ -389,7 +369,6 @@ class Paper implements UserOwnedInterface
 
     #[ORM\ManyToOne(targetEntity: Review::class, inversedBy: 'papers')]
     #[ORM\JoinColumn(name: 'RVID', referencedColumnName: 'RVID', nullable: false)]
-
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
