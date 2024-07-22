@@ -2,6 +2,7 @@
 
 
 namespace App\Traits;
+use App\AppConstants;
 use LengthException;
 
 trait ToolsTrait
@@ -117,6 +118,6 @@ trait ToolsTrait
         if (is_float($middleIndex)) {
             return $array[(int) $middleIndex];
         }
-        return ($array[$middleIndex] + $array[$middleIndex - 1]) / 2;
+        return round(($array[$middleIndex] + $array[$middleIndex - 1]) / 2, AppConstants::DEFAULT_PRECISION);
     }
 }
