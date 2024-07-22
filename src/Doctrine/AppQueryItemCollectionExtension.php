@@ -250,6 +250,12 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                     $this->adnWhereAcceptedOnly($queryBuilder, $alias);
                 } else {
                     $this->adnWherePublished($queryBuilder, "$alias.status", $resourceClass, $context);
+
+                    if (isset($context['filters'][AppConstants::YEAR_PARAM])) {
+                        $year = $this->processYears($context['filters'][AppConstants::YEAR_PARAM]);
+                        $this->andOrExp($queryBuilder, sprintf('YEAR(%s.%s)', $alias, 'publicationDate'), $year);
+                    }
+
                 }
             } else {
                 $this->adnWherePublished($queryBuilder, 'papers_a1.status', $resourceClass);

@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
-use ApiPlatform\Doctrine\Orm\Filter\BooleanFilter;
 use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
@@ -109,6 +108,35 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                             ]
                         ],
                         explode: true
+                    ),
+                    new Parameter(
+                        name: AppConstants::YEAR_PARAM,
+                        in: 'query',
+                        description: 'The Year of publication',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],explode: false,
+                        allowReserved: false
+                    ),
+                    new Parameter(
+                        name: 'year[]',
+                        in: 'query',
+                        description: 'The Year of publication',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'integer',
+                            ]
+                        ],
+                        explode: true,
+                        allowReserved: false,
+
                     ),
 
                 ],
