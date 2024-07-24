@@ -17,7 +17,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class Solr
 {
-    public const SOLR_MAX_RETURNED_FACETS_RESULTS = 1000;
+    public const SOLR_MAX_RETURNED_FACETS_RESULTS = 10000;
     public const SOLR_FACET_SEPARATOR = '_FacetSep_';
     private HttpClientInterface $client;
     private ?Review $journal;
