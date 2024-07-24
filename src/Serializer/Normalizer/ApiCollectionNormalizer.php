@@ -10,6 +10,7 @@ use App\Entity\Section;
 use App\Entity\Volume;
 use App\Repository\PapersRepository;
 use App\Repository\RangeInterface;
+use App\Resource\Browse;
 use App\Resource\Range;
 use App\Resource\RangeType;
 use App\Resource\Statistic;
@@ -120,12 +121,19 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         $rvId = $journal?->getRvid();
         $rvCode = $journal?->getCode();
 
+        $id = $data['@id'] ?? null;
+
         if ($operationClass === News::class || $operationClass === Volume::class | $operationClass === Paper::class) {
             $repo = $this->entityManager->getRepository($operationClass);
         }
 
-        if ($operationClass === Statistic::class) {
-            $id = $data['@id'] ?? null;
+        if($operationClass === Browse::class){
+
+            if($id  === Browse::BROWSE_AUTHORS_COLLECTION_IDENTIFIER){
+                $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $this->solrService->getCountArticlesByAuthorsFirstLetter();
+            }
+
+        }elseif ($operationClass === Statistic::class) {
             $repo = $this->entityManager->getRepository(Paper::class);
             $years = $repo->getYearRange($rvId);
             rsort($years);

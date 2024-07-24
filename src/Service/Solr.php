@@ -5,6 +5,7 @@ namespace App\Service;
 use ApiPlatform\Exception\RuntimeException;
 use App\Entity\Review;
 use App\Resource\Rss;
+use App\Traits\ToolsTrait;
 use Laminas\Feed\Writer\Feed;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
@@ -17,8 +18,16 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class Solr
 {
+    use ToolsTrait;
     public const SOLR_MAX_RETURNED_FACETS_RESULTS = 10000;
     public const SOLR_FACET_SEPARATOR = '_FacetSep_';
+    public const SOLR_OTHERS_FACET_SEPARATOR = 'Others_FacetSep_';
+    public const SOLR_OTHERS_PREFIX = 'Others';
+    public const SOLR_ALL_PREFIX = 'All';
+    public const SOLR_INDEX = 'index';
+    public const SOLR_COUNT = 'count';
+
+
     private HttpClientInterface $client;
     private ?Review $journal;
     private LoggerInterface $logger;
@@ -52,16 +61,33 @@ class Solr
         $facetFieldName = $params['facetFieldName'] ?? '';
         $facetLimit = $params['facetLimit'] ?? self::SOLR_MAX_RETURNED_FACETS_RESULTS;
 
+        $minCount = $params['minCount'] ?? 1;
+
         if (empty($facetFieldName)) {
             return null;
         }
 
         $journal = $this->getJournal();
 
+        if (isset($params['letter'])) {
 
-        $letter = $params['letter'] ?? 'all';
+            $letter = mb_ucfirst($params['letter']);
+
+            if (!in_array($letter, $this->getLettersRange(), true)) {
+                $letter = self::SOLR_ALL_PREFIX;
+            }
+
+        } else {
+            $letter = self::SOLR_ALL_PREFIX;
+        }
+
+        if ($letter === self::SOLR_OTHERS_PREFIX) {
+            $letter = self::SOLR_OTHERS_FACET_SEPARATOR;
+        }
+
+
         $search = $params['search'] ?? '';
-        $sortType = $params['sortType'] ?? 'index';
+        $sortType = $params['sortType'] ?? self::SOLR_INDEX;
 
         if ($sortType !== 'count') {
             $sortType = 'index';
@@ -70,14 +96,14 @@ class Solr
         $baseQueryString = $this->parameters->get('app.solr.host') . '/select/?';
 
         $baseQueryString .= 'q=*:*&rows=0&wt=phps&indent=false&facet=true&omitHeader=true&facet.limit=';
-        $baseQueryString .= $facetLimit . '&facet.mincount=1&facet.field={!key=list}';
+        $baseQueryString .= sprintf('%s&facet.mincount=%s&facet.field={!key=list}', $facetLimit, $minCount);
         $baseQueryString .= urlencode($facetFieldName);
 
         if ($journal) {
             $baseQueryString .= '&fq=revue_id_i:' . $journal->getRvid();
         }
 
-        if (mb_lcfirst($letter) !== 'all') {
+        if ($letter !== self::SOLR_ALL_PREFIX) {
             $baseQueryString .= '&facet.prefix=' . $letter;
         }
 
@@ -121,13 +147,12 @@ class Solr
             'facetFieldName' => '',
             'facetLimit' => Solr::SOLR_MAX_RETURNED_FACETS_RESULTS,
             'letter' => 'A',
-            'sortType' => 'index',
+            'sortType' => self::SOLR_INDEX,
             'search' => '',
+            'minCount' => 1
 
         ]): array
     {
-
-
         $query = $this->getSolrFacetQuery($params);
 
         if (!$query) {
@@ -154,6 +179,7 @@ class Solr
             $result = [];
 
             foreach ($list as $name => $count) {
+                $name = str_replace(self::SOLR_OTHERS_FACET_SEPARATOR, '', $name);
                 $exploded = explode(self::SOLR_FACET_SEPARATOR, $name);
                 if (count($exploded) > 1) {
                     $result[$exploded[0]]['name'] = $exploded[1];
@@ -284,6 +310,27 @@ class Solr
 
     }
 
+    /**
+     * Table of authors' 1st letters, with the number of articles for each letter
+     * @return array
+     */
 
+    public function getCountArticlesByAuthorsFirstLetter(): array
+    {
+        $params = ['facetFieldName' => 'authorFirstLetters_s', 'minCount' => 0];
+        $result = $this->setJournal($this->getJournal())->getSolrFacet($params);
+
+        if(!isset($result[self::SOLR_OTHERS_PREFIX])){
+            $result[self::SOLR_OTHERS_PREFIX] = 0;
+        }
+
+        return $result;
+    }
+
+
+    public function getLettersRange(): array
+    {
+        return array_merge(range('A', 'Z'), [self::SOLR_OTHERS_PREFIX, self::SOLR_ALL_PREFIX]);
+    }
 
 }

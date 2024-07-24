@@ -16,6 +16,8 @@ use App\State\BrowseStateProvider;
             uriTemplate: '/browse/authors/',
             formats: ['jsonld', 'json'],
             openapi: new OpenApiOperation(
+                operationId: 'test' ,
+
                 tags: [OpenApiFactory::OAF_TAGS['browse']],
                 summary: 'Browse by authors',
                 description: 'Browse by authors',
@@ -33,7 +35,7 @@ use App\State\BrowseStateProvider;
 
                     new Parameter(
                         name: 'letter', in: 'query',
-                        description: 'Prefixed with a letter: available values [A...Z, all]',
+                        description: self::AVAILABLE_VALUES_TO_PREFIX_DESCRIPTION,
                         required: false,
                         schema: [
                             "type" => 'string',
@@ -96,6 +98,8 @@ use App\State\BrowseStateProvider;
 )]
 class Browse
 {
+    public const AVAILABLE_VALUES_TO_PREFIX_DESCRIPTION = 'Prefixed with a letter: available values [A...Z, others, all]';
+    public const BROWSE_AUTHORS_COLLECTION_IDENTIFIER = '/api/browse/authors/';
     private ?Review $journal = null;
 
     public function getJournal(): ?Review

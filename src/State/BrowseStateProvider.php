@@ -57,7 +57,7 @@ class BrowseStateProvider extends AbstractStateDataProvider implements ProviderI
         $page =  $context['filters']['page'];
 
         $firstResult = 0;
-        $maxResults = $operation->getPaginationMaximumItemsPerPage() ?: Solr::SOLR_MAX_RETURNED_FACETS_RESULTS;
+        $maxResults = Solr::SOLR_MAX_RETURNED_FACETS_RESULTS;
 
 
         if (isset($uriVariables[self::AUTHOR_FULlNAME])) { // "browse/authors-search" collection
@@ -80,15 +80,18 @@ class BrowseStateProvider extends AbstractStateDataProvider implements ProviderI
             return new ArrayPaginator($response, $firstResult, $maxResults);
 
         }
+        $authorFs = 'authorLastNameFirstNamePrefixed_fs';
         // "browse/authors" collection
         $authors = [];
         $letter = isset($context['filters']['letter']) ? mb_ucfirst($context['filters']['letter']) : 'all';
+
         $search = isset($context['filters']['search']) ? mb_ucfirst($context['filters']['search']) : '';
 
         $sortType = $context['filters']['sort'] ?? 'index';
 
+
         $result = $this->solrSrv->setJournal($journal)->getSolrFacet([
-            'facetFieldName' => 'author_fullname_fs',
+            'facetFieldName' => $authorFs,
             'facetLimit' => $maxResults,
             'letter' => $letter,
             'sortType' => $sortType,
@@ -98,7 +101,7 @@ class BrowseStateProvider extends AbstractStateDataProvider implements ProviderI
 
         foreach ($result as $name => $count) {
             $author = (new Facet())
-                ->setField('author_fullname_fs')
+                ->setField($authorFs)
                 ->setValues(['name' => $name, 'count' => $count]);
             $authors[] = $author;
         }
@@ -110,7 +113,7 @@ class BrowseStateProvider extends AbstractStateDataProvider implements ProviderI
 
         $paginator = new ArrayPaginator($authors, $firstResult, $maxResults);
 
-        $this->checkSeekPosition($paginator, $maxResults );
+        $this->checkSeekPosition($paginator);
 
         return $paginator;
 

@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Volumes: search by list of values [type].
 - /api/boards: show only the following roles: 'editorial_board','scientific_board','former_member','technical_board','guest_editor','secretary','chief_editor' and 'editor'.
 ### Added
+- /browse/authors/: Addition of a table of authors' 1st letters + addition of an element to the 'Others' table, which will contain everything that doesn't fit into [A-Z].
 - Extensive research: GET /browse/authors?search=Bacc
 - new endpoint "/browse/authors-search/{author_fullname}": author search by text.
 - volumes & sections endpoints: returns the number of articles and the assigned editors.
