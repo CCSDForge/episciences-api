@@ -70,7 +70,7 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
 
     public function getCommitteeQuery(int $rvId, int $vid): string
     {
-        $sql = "SELECT uuid, CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid` FROM ( SELECT UID, VID, `WHEN` FROM ( SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua` INNER JOIN( SELECT `USER_ASSIGNMENT`.`ITEMID`, MAX(`WHEN`) AS `WHEN`, ITEMID as vid FROM `USER_ASSIGNMENT` WHERE (RVID = $rvId) AND (`USER_ASSIGNMENT`.`ITEMID` = $vid) AND(ITEM = 'volume') AND(ROLEID = 'editor') GROUP BY `ITEMID`, UID ) AS `r1` ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.`WHEN` WHERE (RVID = $rvId) AND (ua.ITEMID = $vid) AND (ITEM = 'volume') AND(ROLEID = 'editor') AND( STATUS = 'active' ) ) AS `r2` INNER JOIN VOLUME AS v ON v.RVID = r2.RVID AND v.VID = r2.ITEMID) AS `result` INNER JOIN USER AS `u` ON result.UID = u.UID  GROUP BY VID,uuid;";
+        $sql = "SELECT uuid, CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid` FROM ( SELECT UID, VID, `WHEN` FROM ( SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua` INNER JOIN( SELECT `USER_ASSIGNMENT`.`ITEMID`, MAX(`WHEN`) AS `WHEN`, ITEMID as vid FROM `USER_ASSIGNMENT` WHERE (RVID = $rvId) AND (`USER_ASSIGNMENT`.`ITEMID` = $vid) AND(ITEM = 'volume') AND(ROLEID = 'editor') GROUP BY `ITEMID`, UID ) AS `r1` ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.`WHEN` WHERE (RVID = $rvId) AND (ua.ITEMID = $vid) AND (ITEM = 'volume') AND(ROLEID = 'editor') AND( STATUS = 'active' ) ) AS `r2` INNER JOIN VOLUME AS v ON v.RVID = r2.RVID AND v.VID = r2.ITEMID) AS `result` INNER JOIN USER AS `u` ON result.UID = u.UID  GROUP BY VID,uuid ORDER BY u.SCREEN_NAME ASC;";
         return $sql;
 
     }

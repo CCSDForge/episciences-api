@@ -121,8 +121,7 @@ class UserRolesRepository extends ServiceEntityRepository
         $qb->andWhere("ur.roleid != :epiAdminRole")->setParameter('epiAdminRole', User::ROLE_ROOT);
         $qb->join("ur.user", 'u', Join::WITH, "ur.uid = u.uid");
 
-        $qb->addOrderBy('ur.uid', 'desc');
-        $qb->addOrderBy('LENGTH(ur.roleid)', 'asc');
+        $qb->addOrderBy('u.screenName', 'ASC');
 
         if ($rvId) {
             $qb->andWhere("ur.rvid = :rvId")->setParameter('rvId', $rvId);
