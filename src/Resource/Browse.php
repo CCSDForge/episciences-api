@@ -6,7 +6,6 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
-use App\Entity\Review;
 use App\OpenApi\OpenApiFactory;
 use App\State\BrowseStateProvider;
 
@@ -96,21 +95,8 @@ use App\State\BrowseStateProvider;
     output: Browse::class,
     provider: BrowseStateProvider::class
 )]
-class Browse
+class Browse extends AbstractBrowse
 {
     public const AVAILABLE_VALUES_TO_PREFIX_DESCRIPTION = 'Prefixed with a letter: available values [A...Z, others, all]';
     public const BROWSE_AUTHORS_COLLECTION_IDENTIFIER = '/api/browse/authors/';
-    private ?Review $journal = null;
-
-    public function getJournal(): ?Review
-    {
-        return $this->journal;
-    }
-
-    public function setJournal(?Review $journal = null): self
-    {
-        $this->journal = $journal;
-        return $this;
-    }
-
 }
