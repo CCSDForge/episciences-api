@@ -135,15 +135,13 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
                 if ((isset($context['filters']['type']) && $context['filters']['type'])) {
                     $tFilters = (array)$context['filters']['type'];
-
                     $volType = $this->processTypes($queryBuilder, $tFilters);
 
+                    $tFilters = array_merge($tFilters, [$volType]);
+
                     if ('' !== $volType) {
-                        $queryBuilder->andWhere("$alias.vol_type like :volType");
-                        $queryBuilder->setParameter('volType', '%' . $volType . '%');
+                        $this->andOrExp($queryBuilder, sprintf('%s.vol_type', $alias), $tFilters);
                     }
-
-
                 }
 
             }
