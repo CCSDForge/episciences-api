@@ -5,23 +5,14 @@ namespace App\State;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\ArrayPaginator;
 use ApiPlatform\State\ProviderInterface;
-use App\Entity\Review;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\Facet;
 use App\Resource\SolrDoc;
 use App\Service\Solr;
-use Doctrine\ORM\EntityManagerInterface;
-use Psr\Log\LoggerInterface;
 
-class BrowseStateProvider extends AbstractStateDataProvider implements ProviderInterface
+class BrowseStateProvider extends AbstractBrowseStateProvider implements ProviderInterface
 {
     public const AUTHOR_FULlNAME = 'author_fullname';
-
-    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, protected Solr $solrSrv,)
-    {
-        parent::__construct($entityManager, $logger);
-
-    }
 
     /**
      * @param Operation $operation
@@ -33,25 +24,8 @@ class BrowseStateProvider extends AbstractStateDataProvider implements ProviderI
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
-
-        $journal = null;
-        $code = $context['filters']['code'] ?? null;
-
-        if ($code === '{code}') {
-            $code = null;
-        }
-
-        if ($code) {
-
-            $journal = $this->entityManager->getRepository(Review::class)->getJournalByIdentifier($code);
-
-            if (!$journal) {
-                throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $code));
-            }
-
-        }
-
         $this->checkAndProcessFilters($context);
+        $journal = $context[self::CONTEXT_JOURNAL_KEY] ?? null;
 
         $isPaginationEnabled = $context['filters']['pagination'];
         $page =  $context['filters']['page'];

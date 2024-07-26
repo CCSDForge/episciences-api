@@ -19,19 +19,22 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 class Solr
 {
     use ToolsTrait;
+
     public const SOLR_MAX_RETURNED_FACETS_RESULTS = 10000;
     public const SOLR_FACET_SEPARATOR = '_FacetSep_';
     public const SOLR_OTHERS_FACET_SEPARATOR = 'Others_FacetSep_';
     public const SOLR_OTHERS_PREFIX = 'Others';
     public const SOLR_ALL_PREFIX = 'All';
     public const SOLR_INDEX = 'index';
-    public const SOLR_COUNT = 'count';
+    public const SOLR_FACET_COUNT = 'count';
+    public const SOLR_FACET_NAME = 'name';
 
 
-    private HttpClientInterface $client;
-    private ?Review $journal;
-    private LoggerInterface $logger;
-    private ParameterBagInterface $parameters;
+
+    protected HttpClientInterface $client;
+    protected ?Review $journal;
+    protected LoggerInterface $logger;
+    protected ParameterBagInterface $parameters;
 
     public function __construct(HttpClientInterface $client, LoggerInterface $logger, ParameterBagInterface $parameters)
     {
@@ -89,7 +92,7 @@ class Solr
         $search = $params['search'] ?? '';
         $sortType = $params['sortType'] ?? self::SOLR_INDEX;
 
-        if ($sortType !== 'count') {
+        if ($sortType !== self::SOLR_FACET_COUNT) {
             $sortType = 'index';
         }
 
@@ -182,8 +185,8 @@ class Solr
                 $name = str_replace(self::SOLR_OTHERS_FACET_SEPARATOR, '', $name);
                 $exploded = explode(self::SOLR_FACET_SEPARATOR, $name);
                 if (count($exploded) > 1) {
-                    $result[$exploded[0]]['name'] = $exploded[1];
-                    $result[$exploded[0]]['count'] = $count;
+                    $result[$exploded[0]][self::SOLR_FACET_NAME] = $exploded[1];
+                    $result[$exploded[0]][self::SOLR_FACET_COUNT] = $count;
                 } else {
                     $result[$name] = $count;
                 }
@@ -251,7 +254,7 @@ class Solr
 
 
                 foreach ($docEntry['author_fullname_s'] as $oneAuthor) {
-                    $entry->addAuthor(['name' => $oneAuthor]);
+                    $entry->addAuthor([self::SOLR_FACET_NAME => $oneAuthor]);
                 }
 
                 $entry->addCategory(['term' => $journal]);
@@ -284,9 +287,7 @@ class Solr
 
             );
             $response = $response->getContent();
-            $responseToArray = json_decode($response, true, 512, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-
-            return $responseToArray;
+            return json_decode($response, true, 512, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 
 
         } catch (\JsonException|TransportExceptionInterface|ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface $e) {
@@ -321,7 +322,7 @@ class Solr
         $params = ['facetFieldName' => 'authorFirstLetters_s', 'minCount' => 0];
         $result = $this->setJournal($this->getJournal())->getSolrFacet($params);
 
-        if(!isset($result[self::SOLR_OTHERS_PREFIX])){
+        if (!isset($result[self::SOLR_OTHERS_PREFIX])) {
             $result[self::SOLR_OTHERS_PREFIX] = 0;
         }
 

@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
+use App\OpenApi\OpenApiFactory;
 use App\Repository\PapersRepository;
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -43,6 +44,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
         new Get(
             uriTemplate: self::URI_TEMPLATE . '{docid}',
             openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['paper']],
                 summary: 'The paper identified by docid or paperid',
                 security: [['bearerAuth' => []],]
             ),
@@ -57,6 +59,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
         new GetCollection(
             uriTemplate: self::URI_TEMPLATE,
             openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['paper']],
                 summary: 'All Papers (In offline mode: only published papers )',
                 parameters: [
                     new Parameter(

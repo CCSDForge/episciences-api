@@ -3,13 +3,14 @@
 namespace App\State;
 
 use ApiPlatform\State\Pagination\PaginatorInterface;
+use App\Entity\Review;
 use App\Exception\ResourceNotFoundException;
-use App\Service\Stats;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
 abstract class AbstractStateDataProvider
 {
+    public const CONTEXT_JOURNAL_KEY = 'journal';
     public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger)
     {
 
@@ -29,11 +30,34 @@ abstract class AbstractStateDataProvider
 
     }
 
+    /**
+     * @throws ResourceNotFoundException
+     */
     public function checkAndProcessFilters(array &$context = []): void
     {
+        $context[self::CONTEXT_JOURNAL_KEY] = null;
 
         $context['filters']['page'] = (isset($context['filters']['page']) && (int)$context['filters']['page']) > 0 ? (int)$context['filters']['page'] : 1;
         $context['filters']['pagination'] = !isset($context['filters']['pagination']) || filter_var($context['filters']['pagination'], FILTER_VALIDATE_BOOLEAN);
+
+        $code = $context['filters']['code'] ?? null;
+
+
+        if ($code === '{code}') {
+            $code = null;
+        }
+
+        if ($code) {
+
+            $journal = $this->entityManager->getRepository(Review::class)->getJournalByIdentifier($code);
+            $context[self::CONTEXT_JOURNAL_KEY] = $journal;
+
+            if (!$journal) {
+                throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $code));
+            }
+
+        }
+
 
     }
 
