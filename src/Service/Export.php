@@ -18,7 +18,8 @@ class Export extends Solr
         self::DOAJ_FORMAT => 'text/xml',
         self::ZBJATS_FORMAT => 'text/xml',
         self::TEI_FORMAT => 'text/xml',
-        self::DC_FORMAT => 'text/xml'
+        self::DC_FORMAT => 'text/xml',
+        self::JSON_FORMAT => 'application/json'
     ];
 
     public const SOLR_CSL_PREFIX = 'doc_';
@@ -30,6 +31,7 @@ class Export extends Solr
     public const BIBTEX_FORMAT = 'bibtex';
     public const CSL_FORMAT = 'csl';
     public const OPENAIRE_FORMAT = 'openaire';
+    public const JSON_FORMAT = 'json';
 
 
     public const AVAILABLE_FORMATS = [
@@ -41,6 +43,7 @@ class Export extends Solr
         self::BIBTEX_FORMAT,
         self::CSL_FORMAT,
         self::OPENAIRE_FORMAT,
+        self::JSON_FORMAT,
     ];
 
 

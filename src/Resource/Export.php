@@ -2,13 +2,13 @@
 
 namespace App\Resource;
 
-use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\Controller\ExportController;
 use App\OpenApi\OpenApiFactory;
+use App\Service\Export as ExportAlias;
 
 #[ApiResource(
     operations: [
@@ -56,7 +56,7 @@ use App\OpenApi\OpenApiFactory;
                         allowEmptyValue: false,
                         schema: [
                             "type" => 'string',
-                            "default" => 'csl'
+                            "default" => ExportAlias::JSON_FORMAT
                         ],
                         style: "simple",
                         explode: false,

@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Paper;
 use App\Entity\Review;
 use App\Exception\ResourceNotFoundException;
 use App\Service\Export;
@@ -18,7 +19,7 @@ class ExportController extends AppAbstractController
     public function __invoke(Request $request, Export $solrSrv, EntityManagerInterface $entityManager): Response
     {
         $journal = null;
-        $code = (string) $request->get('code');
+        $code = (string)$request->get('code');
 
         $docId = (int)$request->attributes->get('docid');
         $format = (string)$request->attributes->get('format');
@@ -36,25 +37,31 @@ class ExportController extends AppAbstractController
             throw new ResourceNotFoundException($message);
         }
 
-        if ($code){
+        if ($code) {
 
             $journal = $entityManager->getRepository(Review::class)->getJournalByIdentifier($code);
             if (!$journal) {
-                throw new ResourceNotFoundException(sprintf('Oops! CSL cannot be generated: not found Journal %s', $code ));
+                throw new ResourceNotFoundException(sprintf('Oops! CSL cannot be generated: not found Journal %s', $code));
             }
 
         }
 
-
         $solrSrv->setJournal($journal);
 
-        $export = $solrSrv->getSolrCSLByFormat($docId, $format);
+        if ($format === Export::JSON_FORMAT) {
 
-        if(!$export){
-            throw new ResourceNotFoundException(sprintf('Oops! CSL cannot be generated: not found document %s', $docId ));
+            $export = $entityManager->getRepository(Paper::class)->paperToJson($docId, $journal?->getRvid());
+
+        } else {
+            $export = $solrSrv->getSolrCSLByFormat($docId, $format);
         }
 
-        return new Response($export, 200, ['Content-Type' => Export::HEADERS_FORMATS[$format]]);
+        if (!$export) {
+            $codeMessage = $code ? sprintf(' in selected Journal {%s}', $code) : '';
+            throw new ResourceNotFoundException(sprintf('Oops! CSL cannot be generated: the document %s does not exist or has not yet been published%s', $docId, $codeMessage));
+        }
+
+        return new Response($export, Response::HTTP_OK, ['Content-Type' => Export::HEADERS_FORMATS[$format]]);
 
     }
 }

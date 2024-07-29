@@ -11,6 +11,7 @@ use App\Service\Stats;
 use App\Traits\QueryTrait;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\AbstractQuery;
 use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\NoResultException;
 use Doctrine\ORM\QueryBuilder;
@@ -483,6 +484,47 @@ class PapersRepository extends ServiceEntityRepository
         }
 
         return $years;
+
+    }
+
+    /**
+     * @param int $docId
+     * @param int|null $rvId
+     * @param string $path
+     * @param bool $strict: only published
+     * @return string|null
+     */
+
+    public function paperToJson(int $docId, int $rvId = null, string $path = 'public_properties', bool $strict = true): ?string
+    {
+        $toJson = null;
+
+        $qb = $this->createQueryBuilder('p');
+
+        if ($path === 'all') {
+            $qb->select('p.document');
+        } else {
+            $qb->select(sprintf("JSON_UNQUOTE(JSON_EXTRACT(p.document, '$.%s')) AS toJson", $path));
+        }
+
+        $qb->andWhere('p.docid = :docId')->setParameter('docId', $docId);
+
+        if ($rvId) {
+            $qb->andWhere('p.rvid = :rvId')->setParameter('rvId', $rvId);
+        }
+
+        if ($strict) {
+            $qb->orWhere('p.paperid = :paperId')->setParameter('paperId', $docId);
+            $qb->andWhere('p.status = :status')->setParameter('status', Paper::STATUS_PUBLISHED);
+        }
+
+        try {
+            $toJson = $qb->getQuery()->getOneOrNullResult(AbstractQuery::HYDRATE_SCALAR_COLUMN);
+        } catch (NonUniqueResultException $e) {
+            $this->logger->critical($e->getMessage());
+        }
+
+        return $toJson;
 
     }
 
