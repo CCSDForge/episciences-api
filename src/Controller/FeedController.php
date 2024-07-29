@@ -32,7 +32,7 @@ class FeedController extends AbstractController
 
         $feed = $solrSrv->getSolrFeedRss();
 
-        return new Response($feed->export('rss'), 200, ['Content-Type' => 'text/xml']);
+        return new Response($feed->export('rss'), Response::HTTP_OK, ['Content-Type' => 'text/xml']);
 
     }
 
