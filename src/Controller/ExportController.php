@@ -58,7 +58,8 @@ class ExportController extends AppAbstractController
 
         if (!$export) {
             $codeMessage = $code ? sprintf(' in selected Journal {%s}', $code) : '';
-            throw new ResourceNotFoundException(sprintf('Oops! CSL cannot be generated: the document %s does not exist or has not yet been published%s', $docId, $codeMessage));
+            $specificToJsonMsg = $format === Export:: JSON_FORMAT ?  "article's document field is not null" : "the export format has been indexed correctly";
+            throw new ResourceNotFoundException(sprintf("Oops! CSL cannot be generated (first see if %s): the document %s does not exist or has not yet been published%s",$specificToJsonMsg, $docId, $codeMessage));
         }
 
         return new Response($export, Response::HTTP_OK, ['Content-Type' => Export::HEADERS_FORMATS[$format]]);
