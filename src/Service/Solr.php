@@ -28,6 +28,7 @@ class Solr
     public const SOLR_INDEX = 'index';
     public const SOLR_FACET_COUNT = 'count';
     public const SOLR_FACET_NAME = 'name';
+    public const SOLR_LABEL = 'label';
 
 
 

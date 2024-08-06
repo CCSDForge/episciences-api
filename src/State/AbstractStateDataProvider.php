@@ -11,6 +11,7 @@ use Psr\Log\LoggerInterface;
 abstract class AbstractStateDataProvider
 {
     public const CONTEXT_JOURNAL_KEY = 'journal';
+
     public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger)
     {
 
@@ -40,8 +41,14 @@ abstract class AbstractStateDataProvider
         $context['filters']['page'] = (isset($context['filters']['page']) && (int)$context['filters']['page']) > 0 ? (int)$context['filters']['page'] : 1;
         $context['filters']['pagination'] = !isset($context['filters']['pagination']) || filter_var($context['filters']['pagination'], FILTER_VALIDATE_BOOLEAN);
 
-        $code = $context['filters']['code'] ?? null;
+        if (isset($context['filters']['code'])) {
+            $code = $context['filters']['code'];
 
+        } elseif (isset($context['filters']['rvcode'])) {
+            $code = $context['filters']['rvcode'];
+        } else {
+            $code = null;
+        }
 
         if ($code === '{code}') {
             $code = null;

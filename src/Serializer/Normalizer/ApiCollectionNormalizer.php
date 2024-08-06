@@ -13,6 +13,7 @@ use App\Repository\RangeInterface;
 use App\Resource\Browse;
 use App\Resource\Range;
 use App\Resource\RangeType;
+use App\Resource\Search;
 use App\Resource\Statistic;
 use App\Traits\QueryTrait;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareInterface;
@@ -93,6 +94,11 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             $identifiers = $this->getIdentifiers($this->entityManager->getRepository($operationClass)->createQueryBuilder('alias'), $filters);
         }
 
+        if ($operationClass === Search::class && $parsedUri[Search::TERMS_PARAM]) {
+            $filters[Search::TERMS_PARAM] = $parsedUri[Search::TERMS_PARAM];
+        }
+
+
         $this->addHydraContext($data, $operationClass, $journal, $identifiers, $filters);
         $data['hydra:member'] = $hydraMember;
         return $data;
@@ -127,13 +133,13 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             $repo = $this->entityManager->getRepository($operationClass);
         }
 
-        if($operationClass === Browse::class){
+        if ($operationClass === Browse::class) {
 
-            if($id  === Browse::BROWSE_AUTHORS_COLLECTION_IDENTIFIER){
+            if ($id === Browse::BROWSE_AUTHORS_COLLECTION_IDENTIFIER) {
                 $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $this->solrService->getCountArticlesByAuthorsFirstLetter();
             }
 
-        }elseif ($operationClass === Statistic::class) {
+        } elseif ($operationClass === Statistic::class) {
             $repo = $this->entityManager->getRepository(Paper::class);
             $years = $repo->getYearRange($rvId);
             rsort($years);
@@ -182,8 +188,10 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
                 $data[sprintf('hydra:%s', PapersRepository::TOTAL_ARTICLE)] = $allPublishedArticles[PapersRepository::TOTAL_ARTICLE];
             }
 
+        } elseif ($operationClass === Search::class) {
+            $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $this->search->getAllFacets();
         }
-        asort($data);
+
     }
 
     public function setSerializer(SerializerInterface $serializer): void

@@ -17,7 +17,7 @@ use App\State\BrowseStateProvider;
             openapi: new OpenApiOperation(
                 operationId: 'test' ,
 
-                tags: [OpenApiFactory::OAF_TAGS['browse']],
+                tags: [OpenApiFactory::OAF_TAGS['browse_search']],
                 summary: 'Browse by authors',
                 description: 'Browse by authors',
                 parameters: [
@@ -67,7 +67,7 @@ use App\State\BrowseStateProvider;
             uriTemplate: '/browse/authors-search/{author_fullname}',
             formats: ['jsonld', 'json'],
             openapi: new OpenApiOperation(
-                tags: [OpenApiFactory::OAF_TAGS['browse']],
+                tags: [OpenApiFactory::OAF_TAGS['browse_search']],
                 summary: 'Author search by text',
                 description: 'Search authors by text ',
                 parameters: [

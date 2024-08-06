@@ -24,6 +24,7 @@
         "laminas/laminas-feed": "^2.22",
         "lexik/jwt-authentication-bundle": "^2.17",
         "nelmio/cors-bundle": "^2.2",
+        "nelmio/solarium-bundle": "^5.1",
         "phpdocumentor/reflection-docblock": "^5.3",
         "phpstan/phpdoc-parser": "^1.16",
         "scienta/doctrine-json-functions": "^6.1",

@@ -8,130 +8,83 @@ use Symfony\Component\Serializer\Annotation\Groups;
 class SolrDoc
 {
     use ToolsTrait;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+
+    public const COMMON_GROUPS = ['read:Browse:Authors:fullName', 'read:Search'];
+    public const DEFAULT_LANGUAGE = 'en';
+    #[groups(self::COMMON_GROUPS)]
     private array $author_fullname_fs;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private array $author_fullname_s;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
-
+    #[groups(self::COMMON_GROUPS)]
     private array $keyword_t;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
-
+    #[groups(self::COMMON_GROUPS)]
     private int $docid;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private int $paperid;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $doi_s;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $language_s;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $identifier_s;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private int $version_td;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $es_submission_date_tdate;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $es_publication_date_tdate;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $es_doc_url_s;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $es_pdf_url_s;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $publication_date_tdate;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $publication_date_year_fs;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $publication_date_month_fs;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $publication_date_day_fs;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private int $revue_id_i;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $revue_code_t;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $revue_title_s;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private array $paper_title_t;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
+    private string $fr_paper_title_t;
+    #[groups(self::COMMON_GROUPS)]
+    private string $en_paper_title_t;
+    #[groups(self::COMMON_GROUPS)]
     private array $abstract_t;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
+    private string $fr_abstract_t;
+    #[groups(self::COMMON_GROUPS)]
+    private string $en_abstract_t;
+    #[groups(self::COMMON_GROUPS)]
     private int $volume_id_i;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    private int $section_id_i;
+    #[groups(self::COMMON_GROUPS)]
     private int $volume_status_i;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $volume_fs;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $en_volume_title_t;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private array $volume_title_t;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
-
+    #[groups(self::COMMON_GROUPS)]
     private string $fr_volume_title_t;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private string $indexing_date_tdate;
-    #[groups(
-        ['read:Browse:Authors:fullName']
-    )]
+    #[groups(self::COMMON_GROUPS)]
     private int $_version_;
 
+    public function __construct(array $options = [])
+    {
+        $this->setOptions($options);
+    }
 
 
     /**
@@ -241,9 +194,13 @@ class SolrDoc
     /**
      * @param string $language_s
      */
-    public function setLanguageS(string $language_s): void
+    public function setLanguageS(string $language_s = self::DEFAULT_LANGUAGE): void
     {
-        $this->language_s = $language_s;
+        if ($language_s !== 'false') {
+            $this->language_s = $language_s;
+        } else {
+            $this->language_s = self::DEFAULT_LANGUAGE;
+        }
     }
 
     /**
@@ -496,6 +453,22 @@ class SolrDoc
     /**
      * @return int
      */
+    public function getSectionIdI(): int
+    {
+        return $this->section_id_i;
+    }
+
+    /**
+     * @param int $section_id_i
+     */
+    public function setSectionIdI(int $section_id_i): void
+    {
+        $this->section_id_i = $section_id_i;
+    }
+
+    /**
+     * @return int
+     */
     public function getVolumeStatusI(): int
     {
         return $this->volume_status_i;
@@ -590,6 +563,70 @@ class SolrDoc
     }
 
     /**
+     * @return string
+     */
+    public function getFrPaperTitleT(): string
+    {
+        return $this->fr_paper_title_t;
+    }
+
+    /**
+     * @param string $fr_paper_title_t
+     */
+    public function setFrPaperTitleT(string $fr_paper_title_t): void
+    {
+        $this->fr_paper_title_t = $fr_paper_title_t;
+    }
+
+    /**
+     * @return string
+     */
+    public function getEnPaperTitleT(): string
+    {
+        return $this->en_paper_title_t;
+    }
+
+    /**
+     * @param string $en_paper_title_t
+     */
+    public function setEnPaperTitleT(string $en_paper_title_t): void
+    {
+        $this->en_paper_title_t = $en_paper_title_t;
+    }
+
+    /**
+     * @return string
+     */
+    public function getFrAbstractT(): string
+    {
+        return $this->fr_abstract_t;
+    }
+
+    /**
+     * @param string $fr_abstract_t
+     */
+    public function setFrAbstractT(string $fr_abstract_t): void
+    {
+        $this->fr_abstract_t = $fr_abstract_t;
+    }
+
+    /**
+     * @return string
+     */
+    public function getEnAbstractT(): string
+    {
+        return $this->en_abstract_t;
+    }
+
+    /**
+     * @param string $en_abstract_t
+     */
+    public function setEnAbstractT(string $en_abstract_t): void
+    {
+        $this->en_abstract_t = $en_abstract_t;
+    }
+
+    /**
      * @return int
      */
     public function getVersion(): int
@@ -603,11 +640,6 @@ class SolrDoc
     public function setVersion(int $version_): void
     {
         $this->_version_ = $version_;
-    }
-
-    public function __construct(array $options = [])
-    {
-        $this->setOptions($options);
     }
 
     public function setOptions(array $options): void

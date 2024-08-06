@@ -39,6 +39,11 @@ services:
         class: App\Security\AppCustomJWTAuthenticator
         parent: lexik_jwt_authentication.security.jwt_authenticator
 
+    App\Service\Solarium\Client:
+        arguments: ['@solarium.adapter.default']
+        parent: solarium.client.default
+
+
     'App\Serializer\Normalizer\ApiCollectionNormalizer':
         decorates: 'api_platform.hydra.normalizer.collection'
         arguments: [ '@App\Serializer\Normalizer\ApiCollectionNormalizer.inner' ]
