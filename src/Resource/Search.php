@@ -192,7 +192,8 @@ use App\State\SearchStateProvider;
             ),
             normalizationContext: [
                 'groups' => ['read:Search']
-            ]
+            ],
+            output: SolrDoc::class,
         )
 
     ],
