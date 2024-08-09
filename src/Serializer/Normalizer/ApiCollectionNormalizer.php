@@ -60,9 +60,13 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 
         $hydraMember = $data['hydra:member'] ?? [];
 
+        if ($operationClass === Search::class && $parsedUri[Search::TERMS_PARAM]) {
+            $filters[Search::TERMS_PARAM] = $parsedUri[Search::TERMS_PARAM];
+        }
+
 
         if (empty($hydraMember)) {
-            $this->addHydraContext($data, $operationClass, $journal, $filters);
+            $this->addHydraContext($data, $operationClass, $journal, [], $filters);
             return $data;
         }
 
@@ -93,11 +97,6 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 
             $identifiers = $this->getIdentifiers($this->entityManager->getRepository($operationClass)->createQueryBuilder('alias'), $filters);
         }
-
-        if ($operationClass === Search::class && $parsedUri[Search::TERMS_PARAM]) {
-            $filters[Search::TERMS_PARAM] = $parsedUri[Search::TERMS_PARAM];
-        }
-
 
         $this->addHydraContext($data, $operationClass, $journal, $identifiers, $filters);
         $data['hydra:member'] = $hydraMember;
