@@ -189,7 +189,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             }
 
         } elseif ($operationClass === Search::class) {
-            $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $this->search->getAllFacets();
+            $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $this->search->getAllFacets($filters[Search::TERMS_PARAM]);
         }
 
     }

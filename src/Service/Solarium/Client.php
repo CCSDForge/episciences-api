@@ -24,11 +24,11 @@ class Client extends \Solarium\Client
     public const TAG_SEPARATOR = '__';
 
 
-    public function getAllFacets(): array
+    public function getAllFacets(string $q = Search::DEFAULT_TERMS): array
     {
         $allFacetsArray = [];
         $facets = $this->getSolrConfig('solr.es.facets');
-        $this->buildSearchQuery()->addFilters()->addFacets();
+        $this->buildSearchQuery($q)->addFilters()->addFacets();
         $result = $this->select($this->getQuery());
 
         foreach ($facets as $facet) {
