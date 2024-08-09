@@ -28,7 +28,7 @@ class Client extends \Solarium\Client
     {
         $allFacetsArray = [];
         $facets = $this->getSolrConfig('solr.es.facets');
-        $this->buildSearchQuery()->addFacets();
+        $this->buildSearchQuery()->addFilters()->addFacets();
         $result = $this->select($this->getQuery());
 
         foreach ($facets as $facet) {
