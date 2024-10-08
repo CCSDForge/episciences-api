@@ -14,13 +14,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
+
+## Unreleased
 ### Changed
 - Return all volume's metadata on GET /volumes.
 - Possibility of retrieving all accepted documents: /api/papers/?rvcode=rvcode&only_accepted=true
 - "range" endpoints are no longer required: they have been merged with the "news" and "volumes" endpoints.
 - Volumes: search by list of values [type].
 - /api/boards: show only the following roles: 'editorial_board','scientific_board','former_member','technical_board','guest_editor','secretary','chief_editor' and 'editor'.
+- automatic generation of the deployment tag
+- JSON representation of document:
+  - New class attribute Paper::document () ;
+  - New query filter 'status' (/papers endpoint) ;
+  - Do not expose duplicate informations available now in 'document' attribute
+  - In offline mode, a document can be retrieved using either DocID or PaperID.
+  - Do not include article's details when collecting all documents
+
 ### Added
+- added robots.txt to disallow all bots
 - Search endpoint: /api/search/
 - Export endpoint: /api/papers/export/{docid}/{format}.
 - /browse/authors/: Addition of a table of authors' 1st letters + addition of an element to the 'Others' table, which will contain everything that doesn't fit into [A-Z].
@@ -44,16 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   1. Boards (/api/journals/boards/{code})
   2. Pages (/api/pages; /api/pages/{id})
   3. News (/api/news; /api/news/{id})
-
-## Unreleased
-### Changed
-- automatic generation of the deployment tag
-- JSON representation of document: 
-  - New class attribute Paper::document () ;
-  - New query filter 'status' (/papers endpoint) ;
-  - Do not expose duplicate informations available now in 'document' attribute
-  - In offline mode, a document can be retrieved using either DocID or PaperID.
-  - Do not include article's details when collecting all documents
 
 ## v1.1.9 2024-04-19
 ### Fixed
