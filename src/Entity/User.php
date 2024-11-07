@@ -286,7 +286,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     private Collection $papers;
 
     #[Groups(['read:User', 'read:Me', 'read:Boards'])]
-    private ?string $picture;
+    private ?string $picture = null;
 
     /**
      * @var Collection<int, News>
@@ -692,7 +692,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this;
     }
 
-    public function getPicture(): string
+    public function getPicture(): ?string
     {
         return $this->picture;
     }
