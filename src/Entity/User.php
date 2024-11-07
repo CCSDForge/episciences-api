@@ -630,10 +630,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this;
     }
 
-    private function processPicturePath(string $format = 'jpg'): void
+    public function processPicturePath(?string $pictureDir = null, string $prefix = '', string $format = 'jpg'): self
     {
-        $cleanedUuid = str_replace('-', '', $this->getUuid());
-        $this->setPicture(sprintf('/user/picture/%s/%s.%s',wordwrap($cleanedUuid, 2, DIRECTORY_SEPARATOR, true), $cleanedUuid, $format));
+        if ($pictureDir && $this->getUuid()) {
+            $cleanedUuid = str_replace('-', '', $this->getUuid());
+            $wrap = wordwrap($cleanedUuid, 2, DIRECTORY_SEPARATOR, true);
+            $picturePath = sprintf('%s%s/%s%s.%s', $pictureDir, $wrap, $cleanedUuid, $prefix, $format);
+            if ($this->hasPicture($picturePath)) {
+                $this->setPicture(sprintf('/user/picture/%s/%s%s.%s', $wrap, $cleanedUuid, $prefix, $format));
+            }
+
+        }
+        return $this;
     }
 
     public static function createFromPayload($username, array $payload): User
@@ -689,9 +697,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this->picture;
     }
 
-    public function setPicture(?string $picture = null): self
+    public function setPicture(?string $picturePath = null): self
     {
-        $this->picture = $picture;
+        $this->picture = $picturePath;
         return $this;
     }
 
@@ -743,8 +751,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public function setUuid(string $uuid): static
     {
         $this->uuid = $uuid;
-        $this->processPicturePath();
-
         return $this;
     }
 
@@ -760,4 +766,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         }
     }
 
+
+    public function hasPicture(string $picturePath): bool
+    {
+        return is_readable($picturePath);
+    }
 }

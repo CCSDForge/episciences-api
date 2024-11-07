@@ -4,8 +4,10 @@ namespace App\Serializer\Normalizer;
 
 use App\Entity\AbstractVolumeSection;
 use App\Entity\EntityIdentifierInterface;
+use App\Entity\User;
 use App\Repository\PapersRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Component\Serializer\SerializerAwareInterface;
@@ -14,7 +16,7 @@ use Symfony\Component\Serializer\SerializerInterface;
 class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
 {
 
-    public function __construct(private readonly NormalizerInterface $decorated, private readonly EntityManagerInterface $entityManager)
+    public function __construct(private readonly NormalizerInterface $decorated, private readonly EntityManagerInterface $entityManager, private ParameterBagInterface $parameters)
     {
 
     }
@@ -39,6 +41,14 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
             $object->setTotalPublishedArticles(count($data['papers'] ?? []) ?? 0);
             $data['committee'] = $object->getCommittee();
             $data[PapersRepository::TOTAL_ARTICLE] = $object->getTotalPublishedArticles();
+        } elseif ($object instanceof User) {
+
+            $object->processPicturePath($this->parameters->get('app.user.picture.path'));
+
+            if($object->getPicture()){
+                $data['picture'] = $object->getPicture();
+            }
+
         }
 
         return $data;

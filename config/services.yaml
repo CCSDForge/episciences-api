@@ -5,6 +5,7 @@
 # https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
 parameters:
     app.solr.host: '%env(APP_SOLR_HOST)%'
+    app.user.picture.path: '%env(USER_PICTURE_PATH)%'
 
 services:
     # default configuration for services in *this* file
