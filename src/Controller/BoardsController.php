@@ -113,6 +113,7 @@ class BoardsController extends AbstractController
                         $currentUser = $current['user'];
 
                         $options = [
+                            'pictureDir' => $this->getParameter('app.user.picture.path'),
                             'uid' => $uid,
                             'uuid' => $currentUser['uuid'],
                             'langueid' => $currentUser['langueid'],

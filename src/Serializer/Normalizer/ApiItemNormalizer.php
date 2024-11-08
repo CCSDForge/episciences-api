@@ -41,14 +41,6 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
             $object->setTotalPublishedArticles(count($data['papers'] ?? []) ?? 0);
             $data['committee'] = $object->getCommittee();
             $data[PapersRepository::TOTAL_ARTICLE] = $object->getTotalPublishedArticles();
-        } elseif ($object instanceof User) {
-
-            $object->processPicturePath($this->parameters->get('app.user.picture.path'));
-
-            if($object->getPicture()){
-                $data['picture'] = $object->getPicture();
-            }
-
         }
 
         return $data;

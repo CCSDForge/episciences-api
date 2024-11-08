@@ -147,6 +147,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public const USERS_REVIEW_ID_FILTER = 'userRoles.rvid';
     public const FILTERS = [self::USERS_REVIEW_ID_FILTER => 'exact'];
 
+    private ?string $pictureDir = null;
+
     #[Groups(['read:Me',])]
     private ?int $currentJournalID = null;
 
@@ -630,12 +632,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this;
     }
 
-    public function processPicturePath(?string $pictureDir = null, string $prefix = '', string $format = 'jpg'): self
+    public function processPicturePath(string $prefix = '', string $format = 'jpg'): self
     {
-        if ($pictureDir && $this->getUuid()) {
+        if ($this->pictureDir && $this->getUuid()) {
             $cleanedUuid = str_replace('-', '', $this->getUuid());
             $wrap = wordwrap($cleanedUuid, 2, DIRECTORY_SEPARATOR, true);
-            $picturePath = sprintf('%s%s/%s%s.%s', $pictureDir, $wrap, $cleanedUuid, $prefix, $format);
+            $picturePath = sprintf('%s%s/%s%s.%s', $this->pictureDir, $wrap, $cleanedUuid, $prefix, $format);
             if ($this->hasPicture($picturePath)) {
                 $this->setPicture(sprintf('/user/picture/%s/%s%s.%s', $wrap, $cleanedUuid, $prefix, $format));
             }
@@ -751,6 +753,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public function setUuid(string $uuid): static
     {
         $this->uuid = $uuid;
+        $this->processPicturePath();
         return $this;
     }
 
@@ -770,5 +773,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public function hasPicture(string $picturePath): bool
     {
         return is_readable($picturePath);
+    }
+
+    public function getPictureDir(): ?string
+    {
+        return $this->pictureDir;
+    }
+
+    public function setPictureDir(?string $pictureDir = null): self
+    {
+        $this->pictureDir = $pictureDir;
+        return $this;
     }
 }
