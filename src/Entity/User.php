@@ -638,7 +638,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         if ($this->pictureDir && $this->getUuid()) {
             $cleanedUuid = str_replace('-', '', $this->getUuid());
             $wrap = wordwrap($cleanedUuid, 2, DIRECTORY_SEPARATOR, true);
-            $picturePath = sprintf('%s%s/%s%s.%s', $this->pictureDir, $wrap, $cleanedUuid, $prefix, $format);
+            $picturePath = sprintf('%s%s/%s%s.%s', $this->pictureDir, $wrap, $prefix, $cleanedUuid, $format);
             if ($this->hasPicture($picturePath)) {
                 if ($encoderType) {
                     $imageData = null;
