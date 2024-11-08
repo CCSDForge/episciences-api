@@ -6,6 +6,7 @@ use App\Entity\Review;
 
 final class AppConstants
 {
+    public const BASE_64 = 'base64';
     public const DEFAULT_PRECISION = 0;
     public const IS_APP_ITEM = 'isAppItem';
     public const IS_APP_COLLECTION = 'isAppCollection';

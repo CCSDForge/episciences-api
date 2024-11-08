@@ -632,16 +632,30 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this;
     }
 
-    public function processPicturePath(string $prefix = '', string $format = 'jpg'): self
+    public function processPicturePath(string $encoderType = AppConstants::BASE_64, string $prefix = '', string $format = 'jpg'): self
     {
         if ($this->pictureDir && $this->getUuid()) {
             $cleanedUuid = str_replace('-', '', $this->getUuid());
             $wrap = wordwrap($cleanedUuid, 2, DIRECTORY_SEPARATOR, true);
             $picturePath = sprintf('%s%s/%s%s.%s', $this->pictureDir, $wrap, $cleanedUuid, $prefix, $format);
             if ($this->hasPicture($picturePath)) {
-                $this->setPicture(sprintf('/user/picture/%s/%s%s.%s', $wrap, $cleanedUuid, $prefix, $format));
-            }
+                if ($encoderType) {
+                    $imageData = null;
+                    $image = file_get_contents($picturePath);
+                    if ($image) {
 
+                        if ($encoderType === AppConstants::BASE_64) {
+                            $imageData = base64_encode($image);
+                        }
+
+                        if ($imageData) {
+                            $this->setPicture(sprintf('data:image/%s;%s,%s', $format, $encoderType, $imageData));
+                        }
+                    }
+                } else {
+                    $this->setPicture(sprintf('/user/picture/%s/%s%s.%s', $wrap, $cleanedUuid, $prefix, $format));
+                }
+            }
         }
         return $this;
     }
