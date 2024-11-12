@@ -17,7 +17,7 @@ class UserRoles
 
     public const TECHNICAL_BOARD = 'technical_board';
     public const EDITORIAL_BOARD = 'editorial_board';
-    public const SCIENTIFIC_BOARD = 'scientific_board';
+    public const SCIENTIFIC_BOARD = 'scientific_advisory_board';
     public const FORMER_MEMBER = 'former_member';
 
     public const ROLE_GUEST_EDITOR = 'guest_editor';
