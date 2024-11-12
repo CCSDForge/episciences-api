@@ -8,7 +8,6 @@ use App\Entity\Section;
 use App\Entity\User;
 use App\Entity\UserRoles;
 use App\Exception\ResourceNotFoundException;
-use App\Resource\Boards;
 use App\Service\Solr;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
@@ -113,7 +112,6 @@ class BoardsController extends AbstractController
                         $currentUser = $current['user'];
 
                         $options = [
-                            'pictureDir' => $this->getParameter('app.user.picture.path'),
                             'uid' => $uid,
                             'uuid' => $currentUser['uuid'],
                             'langueid' => $currentUser['langueid'],

@@ -148,8 +148,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public const USERS_REVIEW_ID_FILTER = 'userRoles.rvid';
     public const FILTERS = [self::USERS_REVIEW_ID_FILTER => 'exact'];
 
-    private ?string $pictureDir = null;
-
     #[Groups(['read:Me',])]
     private ?int $currentJournalID = null;
 
@@ -633,12 +631,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this;
     }
 
-    public function processPicturePath(string $encoderType = AppConstants::BASE_64, string $prefix = '', string $format = 'jpg'): self
+    public function processPicturePath(?string $pictureDir = null, string $encoderType = AppConstants::BASE_64, string $prefix = '', string $format = 'jpg'): self
     {
-        if ($this->pictureDir && $this->getUuid()) {
+
+        if ($pictureDir && $this->getUuid()) {
             $cleanedUuid = str_replace('-', '', $this->getUuid());
             $wrap = wordwrap($cleanedUuid, 2, DIRECTORY_SEPARATOR, true);
-            $picturePath = sprintf('%s%s/%s%s.%s', $this->pictureDir, $wrap, $prefix, $cleanedUuid, $format);
+            $picturePath = sprintf('%s%s/%s%s.%s', $pictureDir, $wrap, $prefix, $cleanedUuid, $format);
             if ($this->hasPicture($picturePath)) {
                 if ($encoderType) {
                     $imageData = null;
@@ -651,11 +650,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
                         }
 
                         if ($imageData) {
-                            $this->setPicture(sprintf('data:%s;%s,%s', $mimeType, $encoderType, $imageData));
+                            $this->picture = sprintf('data:%s;%s,%s', $mimeType, $encoderType, $imageData);
                         }
                     }
                 } else {
-                    $this->setPicture(sprintf('/user/picture/%s/%s%s.%s', $wrap, $cleanedUuid, $prefix, $format));
+                    $this->picture = sprintf('/user/picture/%s/%s%s.%s', $wrap, $cleanedUuid, $prefix, $format);
                 }
             }
         }
@@ -715,12 +714,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this->picture;
     }
 
-    public function setPicture(?string $picturePath = null): self
-    {
-        $this->picture = $picturePath;
-        return $this;
-    }
-
     /**
      * @return Collection<int, News>
      */
@@ -769,7 +762,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public function setUuid(string $uuid): static
     {
         $this->uuid = $uuid;
-        $this->processPicturePath();
         return $this;
     }
 
@@ -789,16 +781,5 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public function hasPicture(string $picturePath): bool
     {
         return is_readable($picturePath);
-    }
-
-    public function getPictureDir(): ?string
-    {
-        return $this->pictureDir;
-    }
-
-    public function setPictureDir(?string $pictureDir = null): self
-    {
-        $this->pictureDir = $pictureDir;
-        return $this;
     }
 }
