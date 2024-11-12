@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "83967892939b65d4f16ccd51c276ada0",
+    "content-hash": "81a56e61e91155cd5cbe0fc36474ba47",
     "packages": [
         {
             "name": "api-platform/core",
@@ -2849,16 +2849,16 @@
         },
         {
             "name": "phpdocumentor/reflection-docblock",
-            "version": "5.5.1",
+            "version": "5.6.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpDocumentor/ReflectionDocBlock.git",
-                "reference": "0c70d2c566e899666f367ab7b80986beb3581e6f"
+                "reference": "f3558a4c23426d12bffeaab463f8a8d8b681193c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpDocumentor/ReflectionDocBlock/zipball/0c70d2c566e899666f367ab7b80986beb3581e6f",
-                "reference": "0c70d2c566e899666f367ab7b80986beb3581e6f",
+                "url": "https://api.github.com/repos/phpDocumentor/ReflectionDocBlock/zipball/f3558a4c23426d12bffeaab463f8a8d8b681193c",
+                "reference": "f3558a4c23426d12bffeaab463f8a8d8b681193c",
                 "shasum": ""
             },
             "require": {
@@ -2867,7 +2867,7 @@
                 "php": "^7.4 || ^8.0",
                 "phpdocumentor/reflection-common": "^2.2",
                 "phpdocumentor/type-resolver": "^1.7",
-                "phpstan/phpdoc-parser": "^1.7",
+                "phpstan/phpdoc-parser": "^1.7|^2.0",
                 "webmozart/assert": "^1.9.1"
             },
             "require-dev": {
@@ -2907,29 +2907,29 @@
             "description": "With this component, a library can provide support for annotations via DocBlocks or otherwise retrieve information that is embedded in a DocBlock.",
             "support": {
                 "issues": "https://github.com/phpDocumentor/ReflectionDocBlock/issues",
-                "source": "https://github.com/phpDocumentor/ReflectionDocBlock/tree/5.5.1"
+                "source": "https://github.com/phpDocumentor/ReflectionDocBlock/tree/5.6.0"
             },
-            "time": "2024-11-06T11:58:54+00:00"
+            "time": "2024-11-12T11:25:25+00:00"
         },
         {
             "name": "phpdocumentor/type-resolver",
-            "version": "1.9.0",
+            "version": "1.10.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpDocumentor/TypeResolver.git",
-                "reference": "1fb5ba8d045f5dd984ebded5b1cc66f29459422d"
+                "reference": "679e3ce485b99e84c775d28e2e96fade9a7fb50a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpDocumentor/TypeResolver/zipball/1fb5ba8d045f5dd984ebded5b1cc66f29459422d",
-                "reference": "1fb5ba8d045f5dd984ebded5b1cc66f29459422d",
+                "url": "https://api.github.com/repos/phpDocumentor/TypeResolver/zipball/679e3ce485b99e84c775d28e2e96fade9a7fb50a",
+                "reference": "679e3ce485b99e84c775d28e2e96fade9a7fb50a",
                 "shasum": ""
             },
             "require": {
                 "doctrine/deprecations": "^1.0",
                 "php": "^7.3 || ^8.0",
                 "phpdocumentor/reflection-common": "^2.0",
-                "phpstan/phpdoc-parser": "^1.18"
+                "phpstan/phpdoc-parser": "^1.18|^2.0"
             },
             "require-dev": {
                 "ext-tokenizer": "*",
@@ -2965,9 +2965,9 @@
             "description": "A PSR-5 based resolver of Class names, Types and Structural Element Names",
             "support": {
                 "issues": "https://github.com/phpDocumentor/TypeResolver/issues",
-                "source": "https://github.com/phpDocumentor/TypeResolver/tree/1.9.0"
+                "source": "https://github.com/phpDocumentor/TypeResolver/tree/1.10.0"
             },
-            "time": "2024-11-03T20:11:34+00:00"
+            "time": "2024-11-09T15:12:26+00:00"
         },
         {
             "name": "phpstan/phpdoc-parser",
@@ -3484,16 +3484,16 @@
         },
         {
             "name": "scienta/doctrine-json-functions",
-            "version": "6.2.0",
+            "version": "6.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/ScientaNL/DoctrineJsonFunctions.git",
-                "reference": "9e7752c230edddaaf2f3c204152e498243bdbfa4"
+                "reference": "554b2fd281e976a791501fc4753ffd4c5891ec62"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ScientaNL/DoctrineJsonFunctions/zipball/9e7752c230edddaaf2f3c204152e498243bdbfa4",
-                "reference": "9e7752c230edddaaf2f3c204152e498243bdbfa4",
+                "url": "https://api.github.com/repos/ScientaNL/DoctrineJsonFunctions/zipball/554b2fd281e976a791501fc4753ffd4c5891ec62",
+                "reference": "554b2fd281e976a791501fc4753ffd4c5891ec62",
                 "shasum": ""
             },
             "require": {
@@ -3505,6 +3505,10 @@
             },
             "require-dev": {
                 "doctrine/coding-standard": "^9.0 || ^10.0 || ^11.0 || ^12.0",
+                "phpstan/extension-installer": "^1.4",
+                "phpstan/phpstan": "^1.12",
+                "phpstan/phpstan-doctrine": "^1.4",
+                "phpstan/phpstan-phpunit": "^1.4",
                 "phpunit/phpunit": "^10.1",
                 "psalm/plugin-phpunit": "^0.18",
                 "slevomat/coding-standard": "~8",
@@ -3546,9 +3550,9 @@
             ],
             "support": {
                 "issues": "https://github.com/ScientaNL/DoctrineJsonFunctions/issues",
-                "source": "https://github.com/ScientaNL/DoctrineJsonFunctions/tree/6.2.0"
+                "source": "https://github.com/ScientaNL/DoctrineJsonFunctions/tree/6.3.0"
             },
-            "time": "2024-10-17T07:21:06+00:00"
+            "time": "2024-11-08T12:33:19+00:00"
         },
         {
             "name": "solarium/solarium",
@@ -6498,16 +6502,16 @@
         },
         {
             "name": "symfony/requirements-checker",
-            "version": "v2.0.1",
+            "version": "v2.0.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/requirements-checker.git",
-                "reference": "cf8893f384348a338157d637e170fe8fb2356016"
+                "reference": "10e35b45057bd44ad1bffbde9e92fe1bb11d7a3b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/requirements-checker/zipball/cf8893f384348a338157d637e170fe8fb2356016",
-                "reference": "cf8893f384348a338157d637e170fe8fb2356016",
+                "url": "https://api.github.com/repos/symfony/requirements-checker/zipball/10e35b45057bd44ad1bffbde9e92fe1bb11d7a3b",
+                "reference": "10e35b45057bd44ad1bffbde9e92fe1bb11d7a3b",
                 "shasum": ""
             },
             "require": {
@@ -6517,11 +6521,6 @@
                 "bin/requirements-checker"
             ],
             "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-main": "2.0.x-dev"
-                }
-            },
             "autoload": {
                 "psr-4": {
                     "Symfony\\Requirements\\": "src/"
@@ -6544,7 +6543,7 @@
             ],
             "support": {
                 "issues": "https://github.com/symfony/requirements-checker/issues",
-                "source": "https://github.com/symfony/requirements-checker/tree/v2.0.1"
+                "source": "https://github.com/symfony/requirements-checker/tree/v2.0.2"
             },
             "funding": [
                 {
@@ -6560,7 +6559,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2021-11-30T16:18:33+00:00"
+            "time": "2024-11-09T08:04:39+00:00"
         },
         {
             "name": "symfony/routing",
@@ -8664,16 +8663,16 @@
         },
         {
             "name": "phpstan/phpstan",
-            "version": "1.12.8",
+            "version": "1.12.10",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpstan/phpstan.git",
-                "reference": "f6a60a4d66142b8156c9da923f1972657bc4748c"
+                "reference": "fc463b5d0fe906dcf19689be692c65c50406a071"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/f6a60a4d66142b8156c9da923f1972657bc4748c",
-                "reference": "f6a60a4d66142b8156c9da923f1972657bc4748c",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/fc463b5d0fe906dcf19689be692c65c50406a071",
+                "reference": "fc463b5d0fe906dcf19689be692c65c50406a071",
                 "shasum": ""
             },
             "require": {
@@ -8718,20 +8717,20 @@
                     "type": "github"
                 }
             ],
-            "time": "2024-11-06T19:06:49+00:00"
+            "time": "2024-11-11T15:37:09+00:00"
         },
         {
             "name": "rector/rector",
-            "version": "1.2.9",
+            "version": "1.2.10",
             "source": {
                 "type": "git",
                 "url": "https://github.com/rectorphp/rector.git",
-                "reference": "7923bd5e48f8c26a922df91f7174f5bca2b3671d"
+                "reference": "40f9cf38c05296bd32f444121336a521a293fa61"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/rectorphp/rector/zipball/7923bd5e48f8c26a922df91f7174f5bca2b3671d",
-                "reference": "7923bd5e48f8c26a922df91f7174f5bca2b3671d",
+                "url": "https://api.github.com/repos/rectorphp/rector/zipball/40f9cf38c05296bd32f444121336a521a293fa61",
+                "reference": "40f9cf38c05296bd32f444121336a521a293fa61",
                 "shasum": ""
             },
             "require": {
@@ -8769,7 +8768,7 @@
             ],
             "support": {
                 "issues": "https://github.com/rectorphp/rector/issues",
-                "source": "https://github.com/rectorphp/rector/tree/1.2.9"
+                "source": "https://github.com/rectorphp/rector/tree/1.2.10"
             },
             "funding": [
                 {
@@ -8777,7 +8776,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2024-11-04T18:26:57+00:00"
+            "time": "2024-11-08T13:59:10+00:00"
         },
         {
             "name": "roave/security-advisories",
@@ -8785,12 +8784,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/Roave/SecurityAdvisories.git",
-                "reference": "54f5b5d225a5c90b86985bb4c563e9b284364687"
+                "reference": "e63317470a1b96346be224a68f9e64567e1001c3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Roave/SecurityAdvisories/zipball/54f5b5d225a5c90b86985bb4c563e9b284364687",
-                "reference": "54f5b5d225a5c90b86985bb4c563e9b284364687",
+                "url": "https://api.github.com/repos/Roave/SecurityAdvisories/zipball/e63317470a1b96346be224a68f9e64567e1001c3",
+                "reference": "e63317470a1b96346be224a68f9e64567e1001c3",
                 "shasum": ""
             },
             "conflict": {
@@ -8975,6 +8974,7 @@
                 "feehi/cms": "<=2.1.1",
                 "feehi/feehicms": "<=2.1.1",
                 "fenom/fenom": "<=2.12.1",
+                "filament/actions": ">=3.2,<3.2.123",
                 "filament/infolists": ">=3,<3.2.115",
                 "filament/tables": ">=3,<3.2.115",
                 "filegator/filegator": "<7.8",
@@ -9166,7 +9166,7 @@
                 "mojo42/jirafeau": "<4.4",
                 "mongodb/mongodb": ">=1,<1.9.2",
                 "monolog/monolog": ">=1.8,<1.12",
-                "moodle/moodle": "<4.3.5|>=4.4.0.0-beta,<4.4.1",
+                "moodle/moodle": "<4.3.6|>=4.4.0.0-beta,<4.4.2",
                 "mos/cimage": "<0.7.19",
                 "movim/moxl": ">=0.8,<=0.10",
                 "movingbytes/social-network": "<=1.2.1",
@@ -9617,7 +9617,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2024-11-07T09:04:54+00:00"
+            "time": "2024-11-07T19:04:57+00:00"
         },
         {
             "name": "symfony/maker-bundle",
@@ -9947,7 +9947,8 @@
         "php": "^8.2",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "ext-json": "*"
+        "ext-json": "*",
+        "ext-fileinfo": "*"
     },
     "platform-dev": {},
     "plugin-api-version": "2.6.0"
