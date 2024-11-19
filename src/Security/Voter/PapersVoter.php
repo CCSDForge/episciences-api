@@ -89,6 +89,9 @@ class PapersVoter extends Voter
         /** @var User $author */
         $author = $paper->getUser();
 
+
+        $isCoiEnabled = $paper->getReview()?->getSetting('isCoiEnabled');
+
         $isSecretary = $this->security->isGranted('ROLE_SECRETARY');//according to role hierarchy: not use $authenticatedUser->hasRole()
         $isEditor = in_array($authenticatedUser->getUid(), $paper->getEditors(), true);
         $isCopyEditor = in_array($authenticatedUser->getUid(), $paper->getCopyEditors(), true);

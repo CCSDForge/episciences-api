@@ -387,7 +387,7 @@ class Review
     #[ORM\OneToMany(mappedBy: 'review', targetEntity: Paper::class)]
     private Collection $papers;
 
-    #[ORM\OneToMany(mappedBy: 'review', targetEntity: ReviewSetting::class)]
+    #[ORM\OneToMany(mappedBy: 'review', targetEntity: ReviewSetting::class, fetch: "EAGER")]
     #[Groups(
         [
             'read:Review',
@@ -522,5 +522,18 @@ class Review
         }
 
         return $this;
+    }
+
+    public function getSetting(string $key): ?string
+    {
+
+        foreach ($this->settings->getValues() as $objectSetting){
+            if($key === $objectSetting->getSetting()){
+                return $objectSetting->getValue();
+            }
+        }
+
+        return null;
+
     }
 }
