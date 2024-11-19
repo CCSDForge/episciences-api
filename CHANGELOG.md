@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -->
 
 ## Unreleased
+### fixed
+ - In some situations (COI enabled), the API return does not contain any private data (/papers/11072 @jtcam)
 ### Changed
 - Return all volume's metadata on GET /volumes.
 - Possibility of retrieving all accepted documents: /api/papers/?rvcode=rvcode&only_accepted=true
