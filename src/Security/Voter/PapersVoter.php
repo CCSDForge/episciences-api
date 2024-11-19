@@ -3,6 +3,7 @@
 namespace App\Security\Voter;
 
 use App\Entity\Paper;
+use App\Entity\PaperConflicts;
 use App\Entity\User;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -28,14 +29,16 @@ class PapersVoter extends Voter
     protected function supports(string $attribute, mixed $subject): bool
     {
         return in_array($attribute, [
-            self::PAPERS_EDIT, self::PAPERS_VIEW, self::PAPERS_MANAGE,self::PAPERS_REVIEW, self::PAPERS_FOLLOW
+                self::PAPERS_EDIT, self::PAPERS_VIEW, self::PAPERS_MANAGE, self::PAPERS_REVIEW, self::PAPERS_FOLLOW
             ]) && $subject instanceof Paper;
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token): bool
     {
 
-        if ($this->security->isGranted('ROLE_EPIADMIN')) {
+        if (
+            $this->security->isGranted('ROLE_EPIADMIN')
+        ) {
             return true;
         }
 
@@ -43,6 +46,19 @@ class PapersVoter extends Voter
         // if the user is anonymous, do not grant access
         if (!$authenticatedUser instanceof User) {
             return false;
+        }
+
+        if (
+            $this->security->isGranted('ROLE_ADMINISTRATOR') &&
+            !(
+                $authenticatedUser->hasRole(User::ROLE_SECRETARY, $subject->getRvid()) ||
+                $authenticatedUser->hasRole(User::ROLE_EDITOR_IN_CHIEF, $subject->getRvid()) ||
+                $authenticatedUser->hasRole(User::ROLE_GUEST_EDITOR, $subject->getRvid()) ||
+                $authenticatedUser->hasRole(User::ROLE_EDITOR, $subject->getRvid()) ||
+                $authenticatedUser->hasRole(User::ROLE_COPY_EDITOR, $subject->getRvid())
+            )
+        ) {
+            return true;
         }
 
         // check conditions and return true to grant permission
@@ -57,24 +73,20 @@ class PapersVoter extends Voter
 
     }
 
-    private function canView(User $user, Paper $paper): bool
+    private function canView(User $authenticatedUser, Paper $paper): bool
     {
-        /** @var User $subjectUser */
-        $subjectUser = $paper->getUser();
 
-
-        $isEditor = in_array($subjectUser->getUid(), $paper->getEditors(), true);
-        $isReviewer = in_array($subjectUser->getUid(), $paper->getReviewers(), true);
-        $isCopyEditor = in_array($subjectUser->getUid(), $paper->getCopyEditors(), true);
-        $isCoAuthor = in_array($subjectUser->getUid(), $paper->getCoAuthors(), true);
-        $hasConflict = $paper->getConflicts()->containsKey($subjectUser->getUid());
+        $isEditor = in_array($authenticatedUser->getUid(), $paper->getEditors(), true);
+        $isReviewer = in_array($authenticatedUser->getUid(), $paper->getReviewers(), true);
+        $isCopyEditor = in_array($authenticatedUser->getUid(), $paper->getCopyEditors(), true);
+        $isCoAuthor = in_array($authenticatedUser->getUid(), $paper->getCoAuthors(), true);
 
         return
-            $user->hasRole(User::ROLE_SECRETARY, $paper->getRvid()) ||
+            $authenticatedUser->hasRole(User::ROLE_SECRETARY, $paper->getRvid()) ||
             (
-                !$hasConflict &&
+                !$this->hasConflict($authenticatedUser, $paper) &&
                 (
-                    $subjectUser->getUid() === $user->getUid() ||
+                    $paper->getUid() === $authenticatedUser->getUid() ||
                     $isCoAuthor ||
                     $isCopyEditor ||
                     $isReviewer ||
@@ -85,25 +97,17 @@ class PapersVoter extends Voter
 
     private function canEdit(User $authenticatedUser, Paper $paper): bool
     {
-
-        /** @var User $author */
-        $author = $paper->getUser();
-
-
-        $isCoiEnabled = $paper->getReview()?->getSetting('isCoiEnabled');
-
         $isSecretary = $this->security->isGranted('ROLE_SECRETARY');//according to role hierarchy: not use $authenticatedUser->hasRole()
         $isEditor = in_array($authenticatedUser->getUid(), $paper->getEditors(), true);
         $isCopyEditor = in_array($authenticatedUser->getUid(), $paper->getCopyEditors(), true);
-        $hasConflict = $paper->getConflicts()->containsKey($authenticatedUser->getUid());
 
         return
 
             (
-                !$hasConflict &&
+                !$this->hasConflict($authenticatedUser, $paper) &&
                 (
                     $isSecretary ||
-                    $author->getUid() === $authenticatedUser->getUid() ||
+                    $paper->getUid() === $authenticatedUser->getUid() ||
                     $isCopyEditor ||
                     $isEditor
                 )
@@ -114,20 +118,14 @@ class PapersVoter extends Voter
 
     private function canReview(User $authenticatedUser, Paper $paper): bool
     {
-        /** @var User $subjectUser */
-        $subjectUser = $paper->getUser();
-
-
-        $isEditor = in_array($subjectUser->getUid(), $paper->getEditors(), true);
-        $isReviewer = in_array($subjectUser->getUid(), $paper->getReviewers(), true);
-
-        $hasConflict = $paper->getConflicts()->containsKey($subjectUser->getUid());
+        $isEditor = in_array($authenticatedUser->getUid(), $paper->getEditors(), true);
+        $isReviewer = in_array($authenticatedUser->getUid(), $paper->getReviewers(), true);
 
         return
 
             (
-                !$hasConflict &&
-                $subjectUser->getUid() !== $authenticatedUser->getUid()
+                !$this->hasConflict($authenticatedUser, $paper) &&
+                $paper->getUid() !== $authenticatedUser->getUid()
                 &&
                 (
                     $authenticatedUser->hasRole(User::ROLE_SECRETARY, $paper->getRvid()) ||
@@ -140,20 +138,24 @@ class PapersVoter extends Voter
 
     private function canFollow(User $authenticatedUser, Paper $paper): bool
     {
-        /** @var User $subjectUser */
-        $subjectUser = $paper->getUser();
-        $hasConflict = $paper->getConflicts()->containsKey($subjectUser->getUid());
-
-        return $hasConflict && $authenticatedUser->hasRole(User::ROLE_EDITOR, $paper->getRvid());
-
+        return $this->hasConflict($authenticatedUser, $paper) && $authenticatedUser->hasRole(User::ROLE_EDITOR, $paper->getRvid());
     }
 
     private function canManage(User $authenticatedUser, Paper $paper): bool
     {
-        /** @var User $author */
-        $author = $paper->getUser();
+        return $paper->getUid() !== $authenticatedUser->getUid() && $this->canEdit($authenticatedUser, $paper);
+    }
 
-        return $author->getUid() !== $authenticatedUser->getUid() && $this->canEdit($authenticatedUser, $paper);
+    private function hasConflict(User $authenticatedUser, Paper $currentPaper): bool
+    {
+        $isCoiEnabled = $currentPaper->getReview()?->getSetting('isCoiEnabled');
+
+        if(!$isCoiEnabled){
+            return false;
+        }
+
+        return !array_key_exists($authenticatedUser->getUid(), $currentPaper->getConflicts()->get(PaperConflicts::AVAILABLE_ANSWER['no']));
+
     }
 
 }

@@ -912,10 +912,15 @@ class Paper implements UserOwnedInterface
         /** @var PaperConflicts $conflict */
 
         foreach ($this->conflicts as $conflict) {
-            $conflicts[$conflict->getBy()] = $conflict;
+
+            if($conflict instanceof PaperConflicts){
+                $conflicts[$conflict->getAnswer()][$conflict->getBy()] = $conflict;
+            }
         }
 
-        $this->conflicts = new ArrayCollection($conflicts);
+        if(!empty($conflicts)){
+            $this->conflicts = new ArrayCollection($conflicts);
+        }
 
 
     }

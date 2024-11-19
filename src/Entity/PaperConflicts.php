@@ -16,6 +16,11 @@ use Symfony\Component\Serializer\Attribute\Groups;
 class PaperConflicts
 {
     public const TABLE = 'paper_conflicts';
+    public const AVAILABLE_ANSWER = [
+        'yes' => 'yes',
+        'no' => 'no',
+        'later' => 'later'
+    ];
 
     #[ORM\Column(name: 'cid', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
