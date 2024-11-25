@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "api-platform/core",
-            "version": "v3.4.6",
+            "version": "v3.4.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/api-platform/core.git",
-                "reference": "f251ed152d8c3709cef177a6ce5e0f34c7abb680"
+                "reference": "717c7e5d5410f1d8b26381cd546c70860e454d37"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/api-platform/core/zipball/f251ed152d8c3709cef177a6ce5e0f34c7abb680",
-                "reference": "f251ed152d8c3709cef177a6ce5e0f34c7abb680",
+                "url": "https://api.github.com/repos/api-platform/core/zipball/717c7e5d5410f1d8b26381cd546c70860e454d37",
+                "reference": "717c7e5d5410f1d8b26381cd546c70860e454d37",
                 "shasum": ""
             },
             "require": {
@@ -223,9 +223,9 @@
             ],
             "support": {
                 "issues": "https://github.com/api-platform/core/issues",
-                "source": "https://github.com/api-platform/core/tree/v3.4.6"
+                "source": "https://github.com/api-platform/core/tree/v3.4.7"
             },
-            "time": "2024-11-15T09:41:19+00:00"
+            "time": "2024-11-22T11:02:47+00:00"
         },
         {
             "name": "beberlei/doctrineextensions",
