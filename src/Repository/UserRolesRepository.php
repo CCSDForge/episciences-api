@@ -6,6 +6,7 @@ namespace App\Repository;
 use App\Entity\User;
 use App\Entity\UserRoles;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
@@ -17,7 +18,6 @@ use Psr\Log\LoggerInterface;
  * @method UserRoles[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
  */
-
 class UserRolesRepository extends ServiceEntityRepository
 {
     public const USER_ROLES_ALIAS = 'ur';
@@ -84,6 +84,48 @@ class UserRolesRepository extends ServiceEntityRepository
             $qb->addGroupBy("$userRolesAlias.roleid");
         }
 
+        return $qb;
+    }
+
+
+    public function joinUserRolesQuery(int $rvId = null): QueryBuilder
+    {
+
+        $qb = $this->communBoardsQuery($rvId);
+        $qb->select("ur,u");
+        return $qb;
+
+    }
+
+    public function boardsUsersQuery(int $rvId = null): QueryBuilder
+    {
+
+        $qb = $this->communBoardsQuery($rvId);
+
+        $qb->andWhere("ur.roleid = :ebRoleId OR ur.roleid = :forRoleId OR ur.roleid = :sciRoleId OR ur.roleid = :tecRoleId")
+            ->setParameter('ebRoleId', UserRoles::EDITORIAL_BOARD)
+            ->setParameter('forRoleId', UserRoles::FORMER_MEMBER)
+            ->setParameter('sciRoleId', UserRoles::SCIENTIFIC_BOARD)
+            ->setParameter('tecRoleId', UserRoles::TECHNICAL_BOARD);
+
+        $qb->select("ur.uid, ur.roleid");
+
+        return $qb;
+
+    }
+
+    public function communBoardsQuery(int $rvId = null): QueryBuilder
+    {
+
+        $qb = $this->createQueryBuilder("ur");
+        $qb->andWhere("ur.roleid != :epiAdminRole")->setParameter('epiAdminRole', User::ROLE_ROOT);
+        $qb->join("ur.user", 'u', Join::WITH, "ur.uid = u.uid");
+
+        $qb->addOrderBy('u.lastname', 'ASC');
+
+        if ($rvId) {
+            $qb->andWhere("ur.rvid = :rvId")->setParameter('rvId', $rvId);
+        }
         return $qb;
     }
 

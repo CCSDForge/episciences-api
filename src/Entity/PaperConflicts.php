@@ -16,6 +16,11 @@ use Symfony\Component\Serializer\Attribute\Groups;
 class PaperConflicts
 {
     public const TABLE = 'paper_conflicts';
+    public const AVAILABLE_ANSWER = [
+        'yes' => 'yes',
+        'no' => 'no',
+        'later' => 'later'
+    ];
 
     #[ORM\Column(name: 'cid', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
@@ -70,7 +75,7 @@ class PaperConflicts
 
     #[ORM\ManyToOne( fetch: 'EAGER', inversedBy: 'conflicts')]
     #[ORM\JoinColumn(name: 'paper_id', referencedColumnName: 'PAPERID', nullable: true)]
-    private ?Papers $papers = null;
+    private ?Paper $papers = null;
 
     public function getCid(): ?int
     {
@@ -137,12 +142,12 @@ class PaperConflicts
         return $this;
     }
 
-    public function getPapers(): ?Papers
+    public function getPapers(): ?Paper
     {
         return $this->papers;
     }
 
-    public function setPapers(?Papers $papers): self
+    public function setPapers(?Paper $papers): self
     {
         $this->papers = $papers;
 

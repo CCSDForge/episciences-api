@@ -3,19 +3,14 @@
 
 namespace App\Traits;
 
+use Doctrine\ORM\EntityManagerInterface;
+
 trait CheckExistingResourceTrait
 {
-    use ToolsTrait;
-    /**
-     * @param string $className
-     * @param array $criteria
-     * @return object|null
-     */
-    final public function check(string $className, array $criteria): ?object
-    {
-        return $this->entityManagerInterface->getRepository($className)->findOneBy($criteria);
+    public function __construct( private readonly EntityManagerInterface $entityManagerInterface){
 
     }
+    use ToolsTrait;
 
     /**
      * @param array $available

@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\AppConstants;
+use App\Repository\UserAssignmentRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -10,7 +11,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Table(name: 'USER_ASSIGNMENT')]
 #[ORM\Index(columns: ['ITEMID"'], name: 'FK_ITEMID_idx')]
 #[ORM\Index(columns: ['UID"'], name: 'FK_UID_idx')]
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: UserAssignmentRepository::class)]
 
 class UserAssignment
 {
@@ -111,7 +112,7 @@ class UserAssignment
 
     #[ORM\ManyToOne(inversedBy: 'assignments')]
     #[ORM\JoinColumn(name: 'ITEMID', referencedColumnName: 'DOCID', nullable: false)]
-    private ?Papers $papers = null;
+    private ?Paper $papers = null;
 
     public function getId(): ?int
     {
@@ -238,12 +239,12 @@ class UserAssignment
         return $this;
     }
 
-    public function getPapers(): ?Papers
+    public function getPapers(): ?Paper
     {
         return $this->papers;
     }
 
-    public function setPapers(?Papers $papers): self
+    public function setPapers(?Paper $papers): self
     {
         $this->papers = $papers;
 

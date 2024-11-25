@@ -4,6 +4,8 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
 parameters:
+    app.solr.host: '%env(APP_SOLR_HOST)%'
+    app.user.picture.path: '%env(USER_PICTURE_PATH)%'
 
 services:
     # default configuration for services in *this* file
@@ -38,10 +40,19 @@ services:
         class: App\Security\AppCustomJWTAuthenticator
         parent: lexik_jwt_authentication.security.jwt_authenticator
 
-    'App\Serializer\ApiNormalizer': # JSON-LD format
+    App\Service\Solarium\Client:
+        arguments: ['@solarium.adapter.default']
+        parent: solarium.client.default
+
+
+    'App\Serializer\Normalizer\ApiCollectionNormalizer':
+        decorates: 'api_platform.hydra.normalizer.collection'
+        arguments: [ '@App\Serializer\Normalizer\ApiCollectionNormalizer.inner' ]
+
+    'App\Serializer\Normalizer\ApiItemNormalizer': # JSON-LD format
         decorates: 'api_platform.jsonld.normalizer.item'
 
-    'app.serializer.normalizer.item.json': #JSONformat
-        class: 'App\Serializer\ApiNormalizer'
-        decorates: 'api_platform.serializer.normalizer.item'
+#    'app.serializer.normalizer.item.json': #JSONformat
+#        class: 'App\Serializer\Normalizer\ApiItemNormalizer'
+#        decorates: 'api_platform.serializer.normalizer.item'
 

@@ -5,7 +5,7 @@ namespace App\Service;
 use App\AppConstants;
 use App\DataProvider\ReviewStatsDataProvider;
 use App\Entity\PaperLog;
-use App\Entity\Papers;
+use App\Entity\Paper;
 use App\Entity\Review;
 use App\Entity\User;
 use App\Repository\PaperLogRepository;
@@ -47,16 +47,16 @@ class Stats
 
         $result = new DashboardOutput();
 
-        $papersRepo = $this->entityManager->getRepository(Papers::class);
+        $papersRepo = $this->entityManager->getRepository(Paper::class);
 
         $submissions = $this->getSubmissionsStat($filters);
         $submissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters);
-        $publicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Papers::STATUS_PUBLISHED);
+        $publicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED);
 
 
         $totalPublished = $papersRepo
             ->submissionsQuery([
-                'is' => array_merge($filters['is'], ['status' => Papers::STATUS_PUBLISHED])
+                'is' => array_merge($filters['is'], ['status' => Paper::STATUS_PUBLISHED])
             ])
             ->getQuery()
             ->getSingleScalarResult();
@@ -109,7 +109,7 @@ class Stats
      * @return AbstractStatResource
      */
 
-    public function getDelayBetweenSubmissionAndLatestStatus(array $filters = [], int $latestStatus = Papers::STATUS_ACCEPTED): AbstractStatResource
+    public function getDelayBetweenSubmissionAndLatestStatus(array $filters = [], int $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED): AbstractStatResource
     {
 
         $year = null;
@@ -141,13 +141,13 @@ class Stats
             $startDate = $filters['is'][AppConstants::START_AFTER_DATE];
         }
 
-        $statResource = $latestStatus === Papers::STATUS_PUBLISHED ? new SubmissionPublicationDelayOutput() : new SubmissionAcceptanceDelayOutput();
+        $statResource = $latestStatus === Paper::STATUS_PUBLISHED ? new SubmissionPublicationDelayOutput() : new SubmissionAcceptanceDelayOutput();
 
         $statResource->setDetails([]);
         $statResource->setAvailableFilters(ReviewStatsDataProvider::AVAILABLE_FILTERS);
         $statResource->setRequestedFilters($filters['is']);
         $statResourceName = 'submission';
-        $statResourceName .= $latestStatus === Papers::STATUS_PUBLISHED ? 'Publication' : 'Acceptance';
+        $statResourceName .= $latestStatus === Paper::STATUS_PUBLISHED ? 'Publication' : 'Acceptance';
         $statResourceName .= 'Time';
         $statResource->setName($statResourceName);
 
@@ -240,10 +240,10 @@ class Stats
 
         $userRepository = $this->entityManager->getRepository(User::class);
 
-        $userStats = $userRepository->findByReviewQuery($rvId, $uid, $role, $withDetails, $registrationYear)->getQuery()->getArrayResult();
+        $userStats = $userRepository->findByReviewQuery($rvId, $withDetails, $role, $uid, $registrationYear)->getQuery()->getArrayResult();
 
         try {
-            $nbUsers = (int)$userRepository->findByReviewQuery($rvId, $uid, $role, false, $registrationYear)->getQuery()->getSingleScalarResult();
+            $nbUsers = (int)$userRepository->findByReviewQuery($rvId, false, $role, $uid, $registrationYear)->getQuery()->getSingleScalarResult();
         } catch (NoResultException | NonUniqueResultException $e) {
             $nbUsers = null;
             $this->logger->error($e->getMessage());
@@ -308,7 +308,7 @@ class Stats
 
         $details = [];
 
-        $papersRepository = $this->entityManager->getRepository(Papers::class);
+        $papersRepository = $this->entityManager->getRepository(Paper::class);
 
         try {
             $nbSubmissions = (int)$papersRepository->submissionsQuery($filters)->getQuery()->getSingleScalarResult();
@@ -417,7 +417,7 @@ class Stats
 
             $navFiltersWithoutYear = $filters;
             unset($navFiltersWithoutYear['is']['submissionDate']);
-            $relevantYears= $papersRepository->getAvailableSubmissionYears($navFiltersWithoutYear);
+            $relevantYears= $papersRepository->getSubmissionYearRange($navFiltersWithoutYear);
 
             $details['years']['statSinceRef'] = self::REF_YEAR;
             $details['years']['relevantYears'] = $relevantYears;
@@ -443,11 +443,11 @@ class Stats
      */
     public function getSubmissionByYearStats(array $filters, mixed $rvId, array &$details = []): void
     {
-        $papersRepository = $this->entityManager->getRepository(Papers::class);
+        $papersRepository = $this->entityManager->getRepository(Paper::class);
         $startAfterDate = $filters['is']['startAfterDate'] ?? null;
         $repositories = $papersRepository->getAvailableRepositories($filters);
 
-        foreach ($papersRepository->getAvailableSubmissionYears($filters) as $year) { // pour le dashboard
+        foreach ($papersRepository->getSubmissionYearRange($filters) as $year) { // pour le dashboard
             try {
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $papersRepository->
                 submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->
@@ -459,7 +459,7 @@ class Stats
                     [
                         'is' => [
                             'rvid' => $rvId,
-                            'status' => Papers::STATUS_PUBLISHED,
+                            'status' => Paper::STATUS_PUBLISHED,
                             AppConstants::SUBMISSION_DATE => $year,
                             AppConstants::START_AFTER_DATE
                         ]
@@ -492,23 +492,28 @@ class Stats
     }
 
 
-    public function getTotalNumberOfPapersByStatus($rvId = null, bool $isSubmittedSameYear = true, $as = self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Papers::STATUS_ACCEPTED): array
+    public function getTotalNumberOfPapersByStatus($rvId = null, bool $isSubmittedSameYear = true, $as = self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): array
     {
 
         try {
             $stmt = $this->entityManager->getRepository(PaperLog::class)->totalNumberOfPapersByStatus($isSubmittedSameYear, $as, $status);
 
-            if ($stmt && $rvId) {
+            if ($stmt) {
 
-                //before reformat data : [ 8 => [0 => ["year" => 2023, PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [], ... ]
-                return $this->reformatPaperLogData(
-                    $this->applyFilterBy($stmt->executeQuery()->fetchAllAssociative(), 'rvid', $rvId),
-                    null, $as, 'average'
-                );
+                if ($rvId) {
 
-                //after: [8 => [ 2023 => [PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [2022 => ], .....
+                    //before reformat data : [ 8 => [0 => ["year" => 2023, PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [], ... ]
+                    return $this->reformatPaperLogData(
+                        $this->applyFilterBy($stmt->executeQuery()->fetchAllAssociative(), 'rvid', $rvId),
+                        null, $as, 'average'
+                    );
+
+                    //after: [8 => [ 2023 => [PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [2022 => ], .....
 
 
+                }
+
+                return $stmt->executeQuery()->fetchAllAssociative();
             }
 
         } catch (Exception $e) {
@@ -527,7 +532,7 @@ class Stats
      */
     public function getJournal(array $context): ?Review
     {
-        return $this->entityManager->getRepository(Review::class)->findOneBy($context);
+        return $this->entityManager->getRepository(Review::class)->getJournalByIdentifier($context['code']);
     }
 
     /**
@@ -559,9 +564,9 @@ class Stats
             $nbSubmissions = $value['nbSubmissions'] ?? 0;
 
             if ($rvId === null) {
-                $result[$year][$this->metadataSources->getLabel($repoId)][Papers::STATUS_DICTIONARY[$status]]['nbSubmissions'] = $nbSubmissions;
+                $result[$year][$this->metadataSources->getLabel($repoId)][Paper::STATUS_DICTIONARY[$status]]['nbSubmissions'] = $nbSubmissions;
             } else {
-                $result[$rvId][$year][$this->metadataSources->getLabel($repoId)][Papers::STATUS_DICTIONARY[$status]]['nbSubmissions'] = $nbSubmissions;
+                $result[$rvId][$year][$this->metadataSources->getLabel($repoId)][Paper::STATUS_DICTIONARY[$status]]['nbSubmissions'] = $nbSubmissions;
             }
         }
 

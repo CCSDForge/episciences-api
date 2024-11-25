@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
@@ -10,7 +11,9 @@ use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
+use App\OpenApi\OpenApiFactory;
 use App\Repository\PapersRepository;
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -41,7 +44,8 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
         new Get(
             uriTemplate: self::URI_TEMPLATE . '{docid}',
             openapi: new OpenApiOperation(
-                summary: 'Article',
+                tags: [OpenApiFactory::OAF_TAGS['paper']],
+                summary: 'The paper identified by docid or paperid',
                 security: [['bearerAuth' => []],]
             ),
 
@@ -55,7 +59,90 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
         new GetCollection(
             uriTemplate: self::URI_TEMPLATE,
             openapi: new OpenApiOperation(
-                summary: 'All Papers',
+                tags: [OpenApiFactory::OAF_TAGS['paper']],
+                summary: 'All Papers (In offline mode: only published papers )',
+                parameters: [
+                    new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal Code (ex. epijinfo)',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                        ],
+                        explode: false,
+                    ),
+                    new Parameter(
+                        name: 'only_accepted',
+                        in: 'query',
+                        description: 'If this is true, only accepted documents will be returned.',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                        schema: [
+                            'type' => 'boolean',
+                        ]
+                    ),
+                    new Parameter(
+                        name: 'type',
+                        in: 'query',
+                        description: 'Paper type',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                        ],
+                        explode: false
+                    ),
+                    new Parameter(
+                        name: 'type[]',
+                        in: 'query',
+                        description: 'Paper types',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'string'
+                            ]
+                        ],
+                        explode: true
+                    ),
+                    new Parameter(
+                        name: AppConstants::YEAR_PARAM,
+                        in: 'query',
+                        description: 'The Year of publication',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],explode: false,
+                        allowReserved: false
+                    ),
+                    new Parameter(
+                        name: 'year[]',
+                        in: 'query',
+                        description: 'The Year of publication',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'integer',
+                            ]
+                        ],
+                        explode: true,
+                        allowReserved: false,
+
+                    ),
+
+                ],
                 security: [['bearerAuth' => []],]
             ),
             normalizationContext: [
@@ -72,8 +159,11 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 
 )]
 #[ApiFilter(SearchFilter::class, properties: self::FILTERS)]
-class Papers implements UserOwnedInterface
+#[ApiFilter(DateFilter::class, properties: ['submissionDate'])]
+#[ApiFilter(DateFilter::class, properties: ['publicationDate'])]
+class Paper implements UserOwnedInterface
 {
+    public const COLLECTION_NAME = '_api_/papers/_get_collection';
     public const FILTERS = [
         'rvid' => AppConstants::FILTER_TYPE_EXACT,
         'doi' => AppConstants::FILTER_TYPE_EXACT,
@@ -82,7 +172,8 @@ class Papers implements UserOwnedInterface
         'vid' => AppConstants::FILTER_TYPE_EXACT,
         'sid' => AppConstants::FILTER_TYPE_EXACT,
         'repoid' => AppConstants::FILTER_TYPE_EXACT,
-        'flag' => AppConstants::FILTER_TYPE_EXACT
+        'flag' => AppConstants::FILTER_TYPE_EXACT,
+        'status' => AppConstants::FILTER_TYPE_EXACT,
     ];
 
     public const TABLE = 'PAPERS';
@@ -91,7 +182,7 @@ class Papers implements UserOwnedInterface
     public const STATUS_OK_FOR_REVIEWING = 1; // reviewers have been assigned, but did not start their reports
     public const STATUS_BEING_REVIEWED = 2; // rating has begun (at least one reviewer has starter working on his rating report)
     public const STATUS_REVIEWED = 3; // rating is finished (all reviewers)
-    public const STATUS_ACCEPTED = 4;
+    public const STATUS_STRICTLY_ACCEPTED = 4;
     public const STATUS_REFUSED = 5;
     public const STATUS_OBSOLETE = 6;
     public const STATUS_WAITING_FOR_MINOR_REVISION = 7;
@@ -131,8 +222,8 @@ class Papers implements UserOwnedInterface
         AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0]
     ];
 
-    public const ACCEPTED_SUBMISSIONS = [
-        self::STATUS_ACCEPTED, // 4
+    public const STATUS_ACCEPTED = [
+        self::STATUS_STRICTLY_ACCEPTED, // 4
         self::STATUS_CE_WAITING_FOR_AUTHOR_SOURCES, // 18
         self::STATUS_CE_AUTHOR_SOURCES_SUBMITTED, // 19
         self::STATUS_CE_WAITING_AUTHOR_FINAL_VERSION, // 21
@@ -152,10 +243,10 @@ class Papers implements UserOwnedInterface
 
     public const STATUS_DICTIONARY = [
         self::STATUS_SUBMITTED => 'submitted',
-        self::STATUS_OK_FOR_REVIEWING => 'waitingFor reviewing',
+        self::STATUS_OK_FOR_REVIEWING => 'waitingForReviewing',
         self::STATUS_BEING_REVIEWED => 'underReview',
         self::STATUS_REVIEWED => 'reviewed',
-        self::STATUS_ACCEPTED => 'accepted',
+        self::STATUS_STRICTLY_ACCEPTED => 'strictly_accepted',
         self::STATUS_PUBLISHED => 'published',
         self::STATUS_REFUSED => 'refused',
         self::STATUS_OBSOLETE => 'obsolete',
@@ -189,13 +280,19 @@ class Papers implements UserOwnedInterface
         self::STATUS_ACCEPTED_WAITING_FOR_AUTHOR_VALIDATION => "AcceptedWaitingForAuthorsValidation",
         self::STATUS_APPROVED_BY_AUTHOR_WAITING_FOR_FINAL_PUBLICATION => "'AcceptedWaitingForFinalPublication'",
         self::STATUS_REMOVED => 'deletedByTheJournal',
+
     ];
 
 
     #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    #[groups(self::PAPERS_GROUPS)]
+    //#[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+        ]
+    )]
     private int $docid;
 
 
@@ -203,33 +300,27 @@ class Papers implements UserOwnedInterface
     #[groups(self::PAPERS_GROUPS)]
     private ?int $paperid;
 
+    #[ORM\Column(name: 'TYPE', type: 'json', nullable: true)]
+    private array $type;
 
     #[ORM\Column(name: 'DOI', type: 'string', length: 250, nullable: true)]
-    #[groups(self::PAPERS_GROUPS)]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+        ]
+    )]
     private ?string $doi;
 
 
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
-        ]
-    )]
     private int $rvid;
 
 
     #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    #[groups(
-        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0]
-    )]
     private int $vid = 0;
 
 
     #[ORM\Column(name: 'SID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    #[groups(
-        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0]
-    )]
     private int $sid = 0;
 
 
@@ -238,70 +329,51 @@ class Papers implements UserOwnedInterface
 
 
     #[ORM\Column(name: 'STATUS', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    #[groups(self::PAPERS_GROUPS)]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+        ]
+    )]
     private int $status = 0;
 
 
     #[ORM\Column(name: 'IDENTIFIER', type: 'string', length: 500, nullable: false)]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
-        ])]
     private string $identifier;
 
 
     #[ORM\Column(name: 'VERSION', type: 'float', precision: 10, scale: 0, nullable: false, options: ['default' => 1])]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
-        ])]
     private $version = 1;
 
 
     #[ORM\Column(name: 'REPOID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
-        ])]
     private int $repoid;
 
 
     #[ORM\Column(name: 'RECORD', type: 'text', length: 65535, nullable: false)]
-    #[groups(
-        [AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],]
-    )]
     private string $record;
-    #[ORM\Column(name: 'CONCEPT_IDENTIFIER', type: 'string', length: 500, nullable: true, options: ['comment' => 'This identifier represents all versions'])]
-    private ?string $conceptIdentifier;
+    #[ORM\Column(name: 'DOCUMENT', type: 'json', nullable: false)]
+    //#[groups(self::PAPERS_GROUPS)]
 
-    #[ORM\Column(name: 'FLAG', type: 'string', length: 0, nullable: false, options: ['default' => 'submitted'])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         ]
     )]
+    private array $document;
+    #[ORM\Column(name: 'CONCEPT_IDENTIFIER', type: 'string', length: 500, nullable: true, options: ['comment' => 'This identifier represents all versions'])]
+    private ?string $conceptIdentifier;
+
+    #[ORM\Column(name: 'FLAG', type: 'string', length: 0, nullable: false, options: ['default' => 'submitted'])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private string $flag = 'submitted';
 
 
     #[ORM\Column(name: 'WHEN', type: 'datetime', nullable: false)]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-        ]
-    )]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $when;
 
 
     #[ORM\Column(name: 'SUBMISSION_DATE', type: 'datetime', nullable: false)]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-        ])]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $submissionDate;
 
@@ -312,11 +384,6 @@ class Papers implements UserOwnedInterface
 
 
     #[ORM\Column(name: 'PUBLICATION_DATE', type: 'datetime', nullable: true)]
-    #[groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
-        ])]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private ?DateTime $publicationDate;
 
@@ -326,7 +393,6 @@ class Papers implements UserOwnedInterface
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
         ])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private UserInterface $user;
@@ -336,9 +402,9 @@ class Papers implements UserOwnedInterface
     #[ORM\JoinColumn(name: 'RVID', referencedColumnName: 'RVID', nullable: false)]
     #[groups(
         [
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
-        ])]
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+        ]
+    )]
     private Review $review;
 
     #[ORM\ManyToOne(targetEntity: Section::class, inversedBy: 'papers')]
@@ -354,26 +420,22 @@ class Papers implements UserOwnedInterface
     private Collection $assignments;
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $editors = [];
 
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $reviewers = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $copyEditors = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-        AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $coAuthors = [];
@@ -382,7 +444,6 @@ class Papers implements UserOwnedInterface
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
         ]
     )]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
@@ -630,9 +691,9 @@ class Papers implements UserOwnedInterface
 
     /**
      * @param string $flag
-     * @return Papers
+     * @return Paper
      */
-    public function setFlag(string $flag): Papers
+    public function setFlag(string $flag): Paper
     {
         $this->flag = $flag;
         return $this;
@@ -705,7 +766,7 @@ class Papers implements UserOwnedInterface
 
     /**
      * @param array $editors
-     * @return Papers
+     * @return Paper
      */
     public function setEditors(array $editors): self
     {
@@ -728,7 +789,7 @@ class Papers implements UserOwnedInterface
 
     /**
      * @param array $reviewers
-     * @return Papers
+     * @return Paper
      */
     public function setReviewers(array $reviewers): self
     {
@@ -783,7 +844,7 @@ class Papers implements UserOwnedInterface
 
     /**
      * @param array $copyEditors
-     * @return Papers
+     * @return Paper
      */
     public function setCopyEditors(array $copyEditors): self
     {
@@ -805,7 +866,7 @@ class Papers implements UserOwnedInterface
 
     /**
      * @param array $coAuthors
-     * @return Papers
+     * @return Paper
      */
     public function setCoAuthors(array $coAuthors): self
     {
@@ -851,10 +912,15 @@ class Papers implements UserOwnedInterface
         /** @var PaperConflicts $conflict */
 
         foreach ($this->conflicts as $conflict) {
-            $conflicts[$conflict->getBy()] = $conflict;
+
+            if($conflict instanceof PaperConflicts){
+                $conflicts[$conflict->getAnswer()][$conflict->getBy()] = $conflict;
+            }
         }
 
-        $this->conflicts = new ArrayCollection($conflicts);
+        if(!empty($conflicts)){
+            $this->conflicts = new ArrayCollection($conflicts);
+        }
 
 
     }
@@ -877,6 +943,30 @@ class Papers implements UserOwnedInterface
             array_keys($this->getCopyEditors())
         );
 
+    }
+
+    public function getDocument(): array
+    {
+        return $this->document;
+    }
+
+    public function setDocument(array $document): self
+    {
+        $this->document = $document;
+        return $this;
+    }
+
+
+    public function getType(): ?array
+    {
+        return $this->type;
+    }
+
+
+    public function setType(array $type = null): self
+    {
+        $this->type = $type;
+        return $this;
     }
 
 }

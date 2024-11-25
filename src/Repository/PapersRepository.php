@@ -4,24 +4,33 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\AppConstants;
-use App\Entity\Papers;
+use App\Entity\Paper;
+use App\Entity\Section;
+use App\Entity\Volume;
 use App\Service\Stats;
+use App\Traits\QueryTrait;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\AbstractQuery;
+use Doctrine\ORM\NonUniqueResultException;
+use Doctrine\ORM\NoResultException;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 
 /**
- * @method Papers|null find($id, $lockMode = null, $lockVersion = null)
- * @method Papers|null findOneBy(array $criteria, array $orderBy = null)
- * @method Papers[]    findAll()
- * @method Papers[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+ * @method Paper|null find($id, $lockMode = null, $lockVersion = null)
+ * @method Paper|null findOneBy(array $criteria, array $orderBy = null)
+ * @method Paper[]    findAll()
+ * @method Paper[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
  */
 class PapersRepository extends ServiceEntityRepository
 {
     use ToolsTrait;
+    use QueryTrait;
+
+    public const TOTAL_ARTICLE = 'totalPublishedArticles';
 
     public const PAPERS_ALIAS = 'p';
     public const LOCAL_REPOSITORY = 0;
@@ -38,7 +47,7 @@ class PapersRepository extends ServiceEntityRepository
 
     public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
     {
-        parent::__construct($registry, Papers::class);
+        parent::__construct($registry, Paper::class);
         $this->logger = $logger;
     }
 
@@ -48,6 +57,7 @@ class PapersRepository extends ServiceEntityRepository
      * @param bool $excludeTmpVersions
      * @param string $fieldDateToBeUsed (default = submissionDate): l'année prise en compte est l'année de la première soumission
      * @param bool $excludeImportedPapers
+     * @param string|null $flag
      * @return QueryBuilder
      */
     public function submissionsQuery(array $filters = [], bool $excludeTmpVersions = false, string $fieldDateToBeUsed = 'submissionDate', bool $excludeImportedPapers = false, string $flag = null): QueryBuilder
@@ -61,10 +71,13 @@ class PapersRepository extends ServiceEntityRepository
 
 
         $qb->andWhere('p.status != :obsolete');
-        $qb->setParameter('obsolete', Papers::STATUS_OBSOLETE);
+        $qb->setParameter('obsolete', Paper::STATUS_OBSOLETE);
 
         $qb->andWhere('p.status != :deleted');
-        $qb->setParameter('deleted', Papers::STATUS_DELETED);
+        $qb->setParameter('deleted', Paper::STATUS_DELETED);
+
+        $qb->andWhere('p.status != :removed');
+        $qb->setParameter('removed', Paper::STATUS_REMOVED);
 
         if ($excludeTmpVersions) {
             $qb
@@ -116,10 +129,10 @@ class PapersRepository extends ServiceEntityRepository
         }
 
         $qb->andWhere('p.status != :obsolete');
-        $qb->setParameter('obsolete', Papers::STATUS_OBSOLETE);
+        $qb->setParameter('obsolete', Paper::STATUS_OBSOLETE);
 
         $qb->andWhere('p.status != :deleted');
-        $qb->setParameter('deleted', Papers::STATUS_DELETED);
+        $qb->setParameter('deleted', Paper::STATUS_DELETED);
 
         $qb->orderBy('year', 'ASC');
         $qb->addOrderBy('p.rvid', 'ASC');
@@ -161,11 +174,19 @@ class PapersRepository extends ServiceEntityRepository
 
                 if (
                     $name === AppConstants::SUBMISSION_DATE ||
-                    $name === AppConstants::START_AFTER_DATE
+                    $name === AppConstants::START_AFTER_DATE ||
+                    $name === AppConstants::YEAR_PARAM
                 ) {
 
-                    if ($name === AppConstants::SUBMISSION_DATE) { // stats by year
-                        $qb->andWhere('YEAR(' . self::PAPERS_ALIAS . '.' . $date . ') =:' . $name);
+                    if (
+                        $name === AppConstants::SUBMISSION_DATE
+                        || $name === AppConstants::YEAR_PARAM // @see statisticStateProvider
+                    ) {
+                        if ($name === AppConstants::SUBMISSION_DATE) { // old stats by year @see PapersStatsProvider
+                            $qb->andWhere('YEAR(' . self::PAPERS_ALIAS . '.' . $date . ') =:' . $name);
+                        } else {
+                            $this->andOrExp($qb, sprintf('YEAR(%s.%s)', self::PAPERS_ALIAS, $date), $value);
+                        }
                     } else {
                         $qb->andWhere(self::PAPERS_ALIAS . '.' . $date . ' >=:' . $name);
                     }
@@ -176,14 +197,17 @@ class PapersRepository extends ServiceEntityRepository
                     $qb->andWhere(self::PAPERS_ALIAS . '.' . $name . ' =:' . $name);
                 }
 
-                $qb->setParameter($name, $value);
+                if ($name !== AppConstants::YEAR_PARAM) {
+                    $qb->setParameter($name, $value);
+                }
+
             }
         }
 
         return $qb;
     }
 
-    public function getAvailableSubmissionYears(array $filters = null, string $flag = null): array
+    public function getSubmissionYearRange(array $filters = null, string $flag = null): array
     {
 
         $years = [];
@@ -210,7 +234,6 @@ class PapersRepository extends ServiceEntityRepository
             $years[] = $value['year'];
 
         }
-
 
         return array_filter($years, static function ($value) {
             return $value >= Stats::REF_YEAR;
@@ -243,6 +266,266 @@ class PapersRepository extends ServiceEntityRepository
         }
 
         return $repositories;
+    }
+
+    /**
+     * @param string $resourceClass
+     * @param int $status
+     * @param int|array|null $identifiers
+     * @param array $filters
+     * @return QueryBuilder
+     */
+
+
+    public function getTotalArticlesBySectionOrVolumeQuery(string $resourceClass = Section::class, int $status = Paper::STATUS_PUBLISHED, int|array $identifiers = null, array $filters = []): QueryBuilder
+    {
+
+        $withoutIdentifier = empty($identifiers);
+
+        $tableId = 'sid';
+
+        if ($resourceClass === Volume::class) {
+            $tableId = 'vid';
+        }
+
+        $qb = $this->createQueryBuilder(self::PAPERS_ALIAS);
+
+        if (!$withoutIdentifier) {
+
+            if (is_int($identifiers)) {
+                $identifiers = (array)$identifiers;
+            }
+
+            $qb->select(sprintf('COUNT(DISTINCT(%s.paperid)) AS %s', self::PAPERS_ALIAS, self::TOTAL_ARTICLE));
+        } else {
+            $qb->select(sprintf('%s.rvid, %s.%s, COUNT(DISTINCT(%s.paperid)) AS %s', self::PAPERS_ALIAS, self::PAPERS_ALIAS, $tableId, self::PAPERS_ALIAS, self::TOTAL_ARTICLE));
+        }
+
+        $qb->andWhere(sprintf('%s.status =:status', self::PAPERS_ALIAS))
+            ->andWhere(sprintf('%s.%s != 0', self::PAPERS_ALIAS, $tableId))
+            ->setParameter('status', $status);
+
+
+        if (!$withoutIdentifier) {
+
+            $orExp = $qb->expr()->orX();
+
+            foreach ($identifiers as $val) {
+                $val = (int)$val;
+                $orExp->add($qb->expr()->eq(sprintf("%s.%s", self::PAPERS_ALIAS, $tableId), $val));
+            }
+
+            $qb->andWhere($orExp);
+        } else {
+            $qb->addGroupBy(sprintf('%s.rvid', self::PAPERS_ALIAS));
+            $qb->addGroupBy(sprintf('%s.%s', self::PAPERS_ALIAS, $tableId));
+            $qb->addOrderBy(sprintf('%s.rvid', self::PAPERS_ALIAS), 'DESC');
+        }
+
+        return $qb;
+
+    }
+
+
+    public function getTotalArticleBySectionOrVolume(string $resourceClass = Section::class, int $status = Paper::STATUS_PUBLISHED, int|array $identifiers = null, int $rvId = null, array $filters = []): array|float|bool|int|string|null
+    {
+
+        $resultQuery = $this->getTotalArticlesBySectionOrVolumeQuery($resourceClass, $status, $identifiers, $filters)->getQuery();
+
+        if (!empty($identifiers)) {
+            try {
+                return [self::TOTAL_ARTICLE => $resultQuery->getSingleScalarResult()];
+            } catch (NoResultException|NonUniqueResultException $e) {
+                $this->logger->critical($e->getMessage());
+                return [self::TOTAL_ARTICLE => null];
+            }
+        }
+
+        $result = $resultQuery->getArrayResult();
+
+        $assoc[self::TOTAL_ARTICLE] = 0;
+
+        foreach ($result as $values) {
+
+            $key = $resourceClass === Section::class ? 'sid' : 'vid';
+
+            $currentRvId = $values['rvid'] ?? null;
+
+            if ($currentRvId) {
+                $assoc[$currentRvId][self::TOTAL_ARTICLE] = $assoc[$currentRvId][self::TOTAL_ARTICLE] ?? 0;
+                $assoc[self::TOTAL_ARTICLE] += $values[self::TOTAL_ARTICLE]; // all platform
+                $assoc[$currentRvId][self::TOTAL_ARTICLE] += $values[self::TOTAL_ARTICLE];
+                $assoc[$currentRvId][$values[$key]][self::TOTAL_ARTICLE] = $values[self::TOTAL_ARTICLE];
+            } else {
+                $assoc[$values[$key]] = $values[self::TOTAL_ARTICLE];
+            }
+
+        }
+
+        return $rvId ? $assoc[$rvId] : $assoc;
+    }
+
+    public function getTypes(array $filters = [], bool $strict = true): array
+    {
+        $types = [];
+        $qb = $this->createQueryBuilder('p');
+        $qb->select("DISTINCT JSON_UNQUOTE(JSON_EXTRACT(p.type, '$.title')) AS type");
+        $qb->andWhere("JSON_EXTRACT(p.type, '$.title') IS NOT NULL");
+        $this->andWhere($qb, $filters, $strict);
+
+
+        $result = array_values($qb->getQuery()->getArrayResult());
+
+        foreach ($result as $type) {
+            $type = strtolower($type['type']);
+            if (!in_array($type, $types, true)) {
+                $types[] = $type;
+            }
+        }
+
+        sort($types);
+
+        return $types;
+
+    }
+
+    public function getRange(array $filters = []): array
+    {
+        $qb = $this->createQueryBuilder('p');
+        $qb->distinct();
+        $qb->select("YEAR(p.publicationDate) AS year");
+
+        $this->andWhere($qb, $filters);
+
+        $qb->orderBy('year', 'DESC');
+
+        return $qb->getQuery()->getResult();
+
+    }
+
+
+    private function andWhere(QueryBuilder $qb, array $filters = [], bool $strict = true): QueryBuilder
+    {
+        $isOnlyAccepted = isset($filters['isOnlyAccepted']) && $filters['isOnlyAccepted'];
+
+        foreach ($filters as $key => $value) {
+
+            if ($key !== 'rvid' && $key !== 'sid' && $key !== 'vid') {
+                continue;
+            }
+
+            $value = (int)$value;
+
+            if ($value) {
+                if ($key === 'rvid') {
+                    $qb->andWhere('p.rvid = :rvId');
+                    $qb->setParameter('rvId', $value);
+                } elseif ($key === 'vid') {
+
+                    $qb->andWhere('p.vid = :vId');
+                    $qb->setParameter('vId', $value);
+                } elseif ($key === 'sid') {
+                    $qb->andWhere('p.sid = :sId');
+                    $qb->setParameter('sId', $value);
+
+                }
+
+            }
+
+        }
+
+        if ($strict) {
+
+            if ($isOnlyAccepted) {
+                $this->andOrExp($qb, 'p.status', Paper::STATUS_ACCEPTED);
+            } else {
+                $qb->andWhere('p.status =:status')
+                    ->setParameter('status', Paper::STATUS_PUBLISHED);
+            }
+
+        }
+
+
+        return $qb;
+    }
+
+    /**
+     * Generates a range of years between the date of first submission and the date of last publication.
+     * @param int|null $rvId
+     * @param string $flag
+     * @return array
+     */
+
+    public function getYearRange(int $rvId = null, string $flag = 'submitted'): array
+    {
+
+        $years = [];
+        $qb = $this->getEntityManager()->createQueryBuilder();
+        $qb->from(Paper::class, 'p');
+        $qb->addSelect("YEAR(MIN(p.submissionDate)) as minYear ");
+        $qb->addSelect("YEAR(Max(p.publicationDate)) as maxYear");
+
+        $qb->andWhere("p.flag = :flag")->setParameter('flag', self::AVAILABLE_FLAG_VALUES[$flag]);
+
+        if ($rvId) {
+            $qb->andWhere("p.rvid = :rvId")->setParameter('rvId', $rvId);
+        }
+
+        $result = $qb->getQuery()->getResult();
+
+        foreach (range($result[0]['minYear'], $result[0]['maxYear']) as $value) {
+
+            if ($value < Stats::REF_YEAR) {
+                continue;
+            }
+
+            $years[] = $value;
+
+        }
+
+        return $years;
+
+    }
+
+    /**
+     * @param int $docId
+     * @param int|null $rvId
+     * @param string $path
+     * @param bool $strict: only published
+     * @return string|null
+     */
+
+    public function paperToJson(int $docId, int $rvId = null, string $path = 'public_properties', bool $strict = true): ?string
+    {
+        $toJson = null;
+
+        $qb = $this->createQueryBuilder('p');
+
+        if ($path === 'all') {
+            $qb->select('p.document');
+        } else {
+            $qb->select(sprintf("JSON_UNQUOTE(JSON_EXTRACT(p.document, '$.%s')) AS toJson", $path));
+        }
+
+        $qb->andWhere('p.docid = :docId')->setParameter('docId', $docId);
+
+        if ($rvId) {
+            $qb->andWhere('p.rvid = :rvId')->setParameter('rvId', $rvId);
+        }
+
+        if ($strict) {
+            $qb->orWhere('p.paperid = :paperId')->setParameter('paperId', $docId);
+            $qb->andWhere('p.status = :status')->setParameter('status', Paper::STATUS_PUBLISHED);
+        }
+
+        try {
+            $toJson = $qb->getQuery()->getOneOrNullResult(AbstractQuery::HYDRATE_SCALAR_COLUMN);
+        } catch (NonUniqueResultException $e) {
+            $this->logger->critical($e->getMessage());
+        }
+
+        return $toJson;
+
     }
 
 }

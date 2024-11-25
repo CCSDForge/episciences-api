@@ -9,6 +9,9 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
+use App\Controller\BoardsController;
+use App\Controller\FeedController;
+use App\Resource\Boards;
 use App\Resource\DashboardOutput;
 use App\Resource\SubmissionAcceptanceDelayOutput;
 use App\Resource\SubmissionOutput;
@@ -30,6 +33,51 @@ use App\OpenApi\OpenApiFactory;
 #[ORM\UniqueConstraint(name: 'U_CODE', columns: ['CODE'])]
 #[ORM\Entity(repositoryClass: ReviewRepository::class)]
 #[ApiResource(
+    uriTemplate: self::URI_TEMPLATE . '{code}',
+    operations: [
+        new GetCollection(
+            uriTemplate: self::URI_TEMPLATE . 'boards/{code}',
+            openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['review']],
+                summary: 'Boards',
+                description: 'Editorial board',
+            ),
+
+            normalizationContext: [
+                'groups' => ['read:Boards']
+            ],
+            read: false,
+        ),
+    ],
+    controller: BoardsController::class,
+    output: Boards::class
+
+)]
+#[ApiResource(
+    uriTemplate: '/feed/rss/{code}',
+    operations: [
+        new GetCollection(
+            openapi: new OpenApiOperation(
+                tags: ['Feed'],
+                summary: 'Feed RSS',
+                description: 'Feed RSS',
+            ),
+            paginationEnabled: false,
+            paginationClientEnabled: false,
+            paginationClientItemsPerPage: false,
+            normalizationContext: [
+                'groups' => ['read:Feed']
+            ],
+            read: false,
+
+        ),
+    ],
+    formats: ['xml'],
+    controller: FeedController::class
+
+)
+]
+#[ApiResource(
     operations: [
         new Get(
             uriTemplate: self::URI_TEMPLATE . '{code}',
@@ -44,8 +92,9 @@ use App\OpenApi\OpenApiFactory;
                 'groups' => ['read:Review']
             ],
 
-            #security: "is_granted('ROLE_SECRETARY')",
+        #security: "is_granted('ROLE_SECRETARY')",
         ),
+
         new GetCollection(
             uriTemplate: self::URI_TEMPLATE,
             openapi: new OpenApiOperation(
@@ -282,6 +331,7 @@ class Review
     public const TABLE = 'REVIEW';
     public const PORTAL_ID = 0;
     public const STATUS_DISABLED = 0;
+    public const STATUS_ENABLED = 1;
     public const URI_TEMPLATE = '/journals/';
 
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
@@ -303,11 +353,10 @@ class Review
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
-            'read:Reviews', 'read:Review'
+            'read:Reviews', 'read:Review', 'read:Browse:Authors'
         ]
     )]
     #[ApiProperty(identifier: true)]
-
     private string $code;
 
 
@@ -335,10 +384,10 @@ class Review
     private int $piwikid;
 
 
-    #[ORM\OneToMany(mappedBy: 'review', targetEntity: Papers::class)]
+    #[ORM\OneToMany(mappedBy: 'review', targetEntity: Paper::class)]
     private Collection $papers;
 
-    #[ORM\OneToMany(mappedBy: 'review', targetEntity: ReviewSetting::class)]
+    #[ORM\OneToMany(mappedBy: 'review', targetEntity: ReviewSetting::class, fetch: "EAGER")]
     #[Groups(
         [
             'read:Review',
@@ -427,7 +476,7 @@ class Review
         return $this->papers;
     }
 
-    public function addPaper(Papers $paper): self
+    public function addPaper(Paper $paper): self
     {
         if (!$this->papers->contains($paper)) {
             $this->papers[] = $paper;
@@ -437,7 +486,7 @@ class Review
         return $this;
     }
 
-    public function removePaper(Papers $paper): self
+    public function removePaper(Paper $paper): self
     {
         // set the owning side to null (unless already changed)
         if ($this->papers->removeElement($paper) && $paper->getReview() === $this) {
@@ -473,5 +522,18 @@ class Review
         }
 
         return $this;
+    }
+
+    public function getSetting(string $key): ?string
+    {
+
+        foreach ($this->settings->getValues() as $objectSetting){
+            if($key === $objectSetting->getSetting()){
+                return $objectSetting->getValue();
+            }
+        }
+
+        return null;
+
     }
 }

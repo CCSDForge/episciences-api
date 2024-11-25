@@ -4,7 +4,8 @@ namespace App\DataProvider;
 
 use ApiPlatform\Metadata\Operation;
 use App\AppConstants;
-use App\Entity\Papers;
+use App\Entity\Paper;
+use App\Exception\ResourceNotFoundException;
 use App\Resource\AbstractStatResource;
 use App\Service\Stats;
 use App\Traits\CheckExistingResourceTrait;
@@ -37,7 +38,7 @@ abstract class AbstractDataProvider
             $journal = $this->statsService->getJournal($context['uri_variables']);
 
             if (!$journal) {
-                return null;
+                throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $context['uri_variables']['code']));
             }
 
 
@@ -51,7 +52,7 @@ abstract class AbstractDataProvider
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][2]) {
                 $result = $this->statsService->getDelayBetweenSubmissionAndLatestStatus($filters);
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][3]) {
-                $result = $this->statsService->getDelayBetweenSubmissionAndLatestStatus($filters, Papers::STATUS_PUBLISHED);
+                $result = $this->statsService->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED);
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][0]) {
                 $result = $this->statsService->getDashboard($context, $filters);
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][4]) {

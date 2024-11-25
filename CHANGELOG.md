@@ -14,9 +14,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
+
 ## Unreleased
+### fixed
+ - In some situations (COI enabled), the API return does not contain any private data (/papers/11072 @jtcam)
 ### Changed
+- Return all volume's metadata on GET /volumes.
+- Possibility of retrieving all accepted documents: /api/papers/?rvcode=rvcode&only_accepted=true
+- "range" endpoints are no longer required: they have been merged with the "news" and "volumes" endpoints.
+- Volumes: search by list of values [type].
+- /api/boards: show only the following roles: 'editorial_board','scientific_board','former_member','technical_board','guest_editor','secretary','chief_editor' and 'editor'.
 - automatic generation of the deployment tag
+- JSON representation of document:
+  - New class attribute Paper::document () ;
+  - New query filter 'status' (/papers endpoint) ;
+  - Do not expose duplicate informations available now in 'document' attribute
+  - In offline mode, a document can be retrieved using either DocID or PaperID.
+  - Do not include article's details when collecting all documents
+
+### Added
+- added robots.txt to disallow all bots
+- Search endpoint: /api/search/
+- Export endpoint: /api/papers/export/{docid}/{format}.
+- /browse/authors/: Addition of a table of authors' 1st letters + addition of an element to the 'Others' table, which will contain everything that doesn't fit into [A-Z].
+- Extensive research: GET /browse/authors?search=Bacc
+- new endpoint "/browse/authors-search/{author_fullname}": author search by text.
+- volumes & sections endpoints: returns the number of articles and the assigned editors.
+- new query parameter for volumes and sections
+- type range for volumes
+- New attribute Volume::vol_number (volume number)
+- Year range endpoints: Year filter is now dynamically build for News & volumes.
+- New endpoint: /browse/authors/
+- New Feed RSS endpoint.
+- Set "pagination_maximum_items_per_page" to 1000 & "pagination_items_per_page" to 30.
+- NEWS PAGE - Sorted by DESC date_creation
+- Allow number of elements to be paginated client-side
+- Volumes endpoint: add year & type filters
+- News endpoint: add year filter.
+- new field user's uuid
+- Sections information to editorial Staff members
+- New endpoints:
+  1. Boards (/api/journals/boards/{code})
+  2. Pages (/api/pages; /api/pages/{id})
+  3. News (/api/news; /api/news/{id})
 
 ## v1.1.9 2024-04-19
 ### Fixed

@@ -2,13 +2,20 @@
 
 namespace App\Entity;
 
+use App\Repository\UserInvitationRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 
-#[ORM\Table(name: 'USER_INVITATION')]
+#[ORM\Table(name: self::TABLE)]
 #[ORM\Index(columns: ['TOKEN'], name: 'TOKEN')]
+#[ORM\Index(columns: ['STATUS'], name: 'TOKEN')]
+#[ORM\Index(columns: ['SENDER_UID'], name: 'SENDER_UID')]
+#[ORM\Entity(repositoryClass: UserInvitationRepository::class)]
+
+
 class UserInvitation
 {
+    public const TABLE = 'USER_INVITATION';
 
     #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]

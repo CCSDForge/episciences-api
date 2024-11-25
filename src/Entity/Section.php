@@ -7,8 +7,10 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\OpenApi\OpenApiFactory;
+use App\Repository\SectionRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -20,7 +22,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Index(columns: ['RVID'], name: 'FK_CONFID_idx')]
 #[ORM\Index(columns: ['POSITION'], name: 'POSITION')]
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: SectionRepository::class)]
 #[ApiResource(
     operations: [
 
@@ -42,18 +44,34 @@ use Symfony\Component\Serializer\Attribute\Groups;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Sections list',
+                parameters: [
+                    new Parameter(
+                        name: 'rvcode',
+                        in: 'query',
+                        description: 'Journal Code (ex. epijinfo)',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                        ],
+                        explode: false,
+                    ),
+                ],
                 security: [['bearerAuth' => []],]
 
             ),
+            order: ['rvid' => AppConstants::ORDER_DESC, 'sid' => AppConstants::ORDER_DESC],
             normalizationContext: [
                 'groups' => [AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0]],
             ],
+
         ),
 
 
     ]
 )]
-class Section
+class Section extends AbstractVolumeSection implements EntityIdentifierInterface
 {
     public const TABLE = 'SECTION';
     public const DEFAULT_URI_TEMPLATE = '/sections{._format}';
@@ -63,12 +81,27 @@ class Section
     #[ORM\Column(name: 'SID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0],
+            'read:Boards'
+        ]
+
+    )]
     private int $sid;
 
     /**
      * @var int
      */
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0],
+        ]
+
+    )]
     private int $rvid;
 
     /**
@@ -81,7 +114,8 @@ class Section
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0]
+            AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0],
+            'read:Boards'
         ]
 
     )]
@@ -97,7 +131,7 @@ class Section
     )]
     private ?array $descriptions;
 
-    #[ORM\OneToMany(mappedBy: 'section', targetEntity: Papers::class)]
+    #[ORM\OneToMany(mappedBy: 'section', targetEntity: Paper::class)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
@@ -119,8 +153,10 @@ class Section
     )]
     private Collection $settings;
 
-    public function __construct()
+    public function __construct(array $options = [])
     {
+        parent::__construct($options);
+
         $this->papers = new ArrayCollection();
         $this->settings = new ArrayCollection();
     }
@@ -155,7 +191,7 @@ class Section
         return $this->titles;
     }
 
-    public function setTitles(?array $titles): self
+    public function setTitles(?array $titles = null): self
     {
         $this->titles = $titles;
         return $this;
@@ -166,13 +202,13 @@ class Section
         return $this->descriptions;
     }
 
-    public function setDescriptions(?array $descriptions): self
+    public function setDescriptions(?array $descriptions = null): self
     {
         $this->descriptions = $descriptions;
         return $this;
     }
 
-    public function addPaper(Papers $paper): self
+    public function addPaper(Paper $paper): self
     {
         if (!$this->papers->contains($paper)) {
             $this->papers->add($paper);
@@ -182,7 +218,7 @@ class Section
         return $this;
     }
 
-    public function removePaper(Papers $paper): self
+    public function removePaper(Paper $paper): self
     {
         // set the owning side to null (unless already changed)
         if ($this->papers->removeElement($paper) && $paper->getSection() === $this) {
@@ -230,10 +266,15 @@ class Section
         return $this->sid;
     }
 
-    public function setSid(int $sid): void
+    public function setSid(int $sid): self
     {
         $this->sid = $sid;
+        return $this;
     }
 
 
+    public function getIdentifier(): ?int
+    {
+        return $this->getSid();
+    }
 }

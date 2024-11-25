@@ -15,9 +15,11 @@ class OpenApiFactory implements OpenApiFactoryInterface
     public const OAF_TAGS = [
         'auth' => 'Sign in - Myspace',
         'stats' => 'Statistics',
-        'review' => 'Journals',
+        'review' => 'Journals | Boards',
         'user' => 'User',
         'sections_volumes' => 'Sections | Volumes',
+        'browse_search' => 'Browse | Search',
+        'paper' => 'Papers'
     ];
     public const JWT_POST_LOGIN_OPERATION_ID = 'login_check_post';
     public const USER_GET_COLLECTION_PATH = '/api/users';

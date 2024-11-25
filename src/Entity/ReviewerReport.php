@@ -2,66 +2,60 @@
 
 namespace App\Entity;
 
+use App\Repository\ReviewerReportRepository;
+use DateTimeInterface;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
  * ReviewerReport
- *
- * @ORM\Table(name="REVIEWER_REPORT", uniqueConstraints={@ORM\UniqueConstraint(name="UID", columns={"UID", "DOCID"})}, indexes={@ORM\Index(name="ONBEHALF_UID", columns={"ONBEHALF_UID"})})
- * @ORM\Entity
  */
+#[ORM\Table(name: self::TABLE)]
+#[ORM\Index(columns: ['ONBEHALF_UID'], name: 'ONBEHALF_UID')]
+#[ORM\UniqueConstraint(name: 'UID', columns: ['UID', 'DOCID'])]
+#[ORM\Entity(repositoryClass: ReviewerReportRepository::class)]
 class ReviewerReport
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="ID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
-    private $id;
+    public const TABLE = 'REVIEWER_REPORT';  // rating has not started yet
+    public const STATUS_PENDING = 0;  // rating is in progress
+    public const STATUS_WIP = 1;
+    public const STATUS_COMPLETED = 2; // rating is completed
+
+    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
+    private int $id;
 
     /**
      * @var int
-     *
-     * @ORM\Column(name="UID", type="integer", nullable=false, options={"unsigned"=true})
      */
-    private $uid;
+    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    private int $uid;
 
     /**
      * @var int|null
-     *
-     * @ORM\Column(name="ONBEHALF_UID", type="integer", nullable=true, options={"unsigned"=true,"comment"="Mis à jour [!= de NULL] uniquement si l’évaluation est faite à la place de relecteur UID"})
      */
-    private $onbehalfUid;
+    #[ORM\Column(name: 'ONBEHALF_UID', type: 'integer', nullable: true, options: ['unsigned' => true, 'comment' => 'Mis à jour [!= de NULL] uniquement si l’évaluation est faite à la place de relecteur UID'])]
+    private ?int $onbehalfUid;
 
     /**
      * @var int
-     *
-     * @ORM\Column(name="DOCID", type="integer", nullable=false, options={"unsigned"=true})
      */
-    private $docid;
+    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    private int $docid;
 
     /**
      * @var int
-     *
-     * @ORM\Column(name="STATUS", type="integer", nullable=false, options={"unsigned"=true})
      */
-    private $status;
+    #[ORM\Column(name: 'STATUS', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    private int $status;
 
-    /**
-     * @var \DateTime
-     *
-     * @ORM\Column(name="CREATION_DATE", type="datetime", nullable=false)
-     */
-    private $creationDate;
 
-    /**
-     * @var \DateTime|null
-     *
-     * @ORM\Column(name="UPDATE_DATE", type="datetime", nullable=true)
-     */
-    private $updateDate;
+    #[ORM\Column(name: 'CREATION_DATE', type: 'datetime', nullable: false)]
+    private DateTimeInterface $creationDate;
+
+
+    #[ORM\Column(name: 'UPDATE_DATE', type: 'datetime', nullable: true)]
+    private ?DateTimeInterface $updateDate;
 
     public function getId(): ?int
     {

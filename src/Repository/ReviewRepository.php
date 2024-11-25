@@ -19,4 +19,23 @@ class ReviewRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Review::class);
     }
+
+
+    /**
+     * @param string|int|null $identifier
+     * @param bool $strict [true: only enabled journals]
+     * @return Review|null
+     */
+    public function getJournalByIdentifier(string|int $identifier = null, bool $strict = true): ?Review
+    {
+        $criteria = is_int($identifier) ? ['rvid' => $identifier] : ['code' => $identifier] ;
+
+        if($strict){
+            $criteria['status'] = Review::STATUS_ENABLED;
+        }
+
+        return $this->findOneBy($criteria);
+
+    }
+
 }

@@ -13,10 +13,13 @@ use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\Controller\PapersController;
 use App\Repository\UserRepository;
+use App\Traits\ToolsTrait;
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use finfo;
 use Lexik\Bundle\JWTAuthenticationBundle\Security\User\JWTUserInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -29,6 +32,15 @@ use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\OpenApi\OpenApiFactory;
 
 #[ORM\Table(name: self::TABLE)]
+#[ORM\UniqueConstraint(name: 'uuid', columns: ['uuid'])]
+#[ORM\UniqueConstraint(name: 'U_USERNAME', columns: ['USERNAME'])]
+#[ORM\Index(columns: ['IS_VALID'], name: 'IS_VALID')]
+#[ORM\Index(columns: ['API_PASSWORD'], name: 'API_PASSWORD')]
+#[ORM\Index(columns: ['FIRSTNAME'], name: 'FIRSTNAME')]
+#[ORM\Index(columns: ['LASTNAME'], name: 'LASTNAME')]
+#[ORM\Index(columns: ['SCREEN_NAME'], name: 'SCREEN_NAME')]
+#[ORM\Index(columns: ['EMAIL'], name: 'EMAIL')]
+#[ORM\Index(columns: ['REGISTRATION_DATE'], name: 'REGISTRATION_DATE')]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ApiResource(
     operations: [
@@ -121,15 +133,18 @@ use App\OpenApi\OpenApiFactory;
 
 
 )]
-
 #[ApiFilter(SearchFilter::class, properties: self::FILTERS)]
 class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUserInterface
 {
+    use ToolsTrait;
+
     public const TABLE = 'USER';
     public const ROLE_ROOT = 'epiadmin';
     public const ROLE_SECRETARY = 'secretary';
     public const ROLE_ADMINISTRATOR = 'administrator';
     public const ROLE_EDITOR_IN_CHIEF = 'chief_editor';
+    public const ROLE_GUEST_EDITOR = 'guest_editor';
+    public const ROLE_COPY_EDITOR = 'copy_editor';
     public const ROLE_EDITOR = 'editor';
     public const EPISCIENCES_UID = 666;
     public const USERS_REVIEW_ID_FILTER = 'userRoles.rvid';
@@ -141,41 +156,54 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     /**
      * @var array
      */
-    #[Groups(['read:User', 'read:Me'])]
+    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
     private array $roles;
 
     #[ORM\Id]
-    #[ORM\Column(name: "UID", type: "integer", nullable: false, options: ['unsigned'=> true])]
+    #[ORM\Column(name: "UID", type: "integer", nullable: false, options: ['unsigned' => true])]
     #[ORM\GeneratedValue]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0]
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+            'read:Boards'
         ])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private int $uid;
 
+    #[ORM\Column(type: Types::GUID)]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+            'read:Boards'
+        ])]
+    private ?string $uuid = null;
 
-    #[ORM\Column(name:"LANGUEID",type: "string", length: 2, nullable: false, options: ['default' => 'fr'])]
+
+    #[ORM\Column(name: "LANGUEID", type: "string", length: 2, nullable: false, options: ['default' => 'fr'])]
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-        'read:Me',
+        'read:Me', 'read:Boards'
     ])]
     private string $langueid = 'fr';
-    #[ORM\Column(name:"SCREEN_NAME", type: 'string', length: 250, nullable: false) ]
+    #[ORM\Column(name: "SCREEN_NAME", type: 'string', length: 250, nullable: false)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
-            'read:Me'
+            'read:Me', 'read:Boards', 'read:News', 'read:News:Collection',
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+
         ])]
     private string $screenName;
 
 
-    #[ORM\Column(name:"USERNAME", type: 'string', length: 100, nullable: false)]
+    #[ORM\Column(name: "USERNAME", type: 'string', length: 100, nullable: false)]
     #[ApiProperty(security: "is_granted('ROLE_MEMBER')")]
     #[Groups(['read:Me'])]
     private ?string $username = '';
@@ -185,11 +213,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     private ?string $password;
 
 
-    #[ORM\Column(name: "EMAIL", type: 'string', length: 320,  nullable: false, options: [])]
+    #[ORM\Column(name: "EMAIL", type: 'string', length: 320, nullable: false, options: [])]
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-        'read:Me',
+        'read:Me', 'read:Boards'
     ])]
     private $email;
 
@@ -198,26 +226,26 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-        'read:Me',
+        'read:Me', 'read:Boards'
     ])]
     private $civ;
 
     #[ORM\Column(name: "LASTNAME", type: 'string', length: 100, nullable: false)]
-    #[Groups(['read:User', 'read:Me'])]
+    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
     private $lastname;
 
 
     #[ORM\Column(name: "FIRSTNAME", type: 'string', length: 100, nullable: true)]
-    #[Groups(['read:User', 'read:Me'])]
+    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
     private $firstname;
 
-       #[ORM\Column(name: "MIDDLENAME", type: 'string', length: 100, nullable: true)]
-    #[Groups(['read:User', 'read:Me'])]
+    #[ORM\Column(name: "MIDDLENAME", type: 'string', length: 100, nullable: true)]
+    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
     private $middlename;
 
 
     #[ORM\Column(
-        name:"REGISTRATION_DATE", type: "datetime", nullable: true, options: ['comment' => 'Date de création du compte']
+        name: "REGISTRATION_DATE", type: "datetime", nullable: true, options: ['comment' => 'Date de création du compte']
     )]
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
@@ -231,6 +259,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private $modificationDate;
 
+
+    #[ORM\Column(name: "ORCID", type: 'string', length: 19, nullable: true)]
+    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    private $orcid = null;
+
+    #[ORM\Column(name: 'ADDITIONAL_PROFILE_INFORMATION', type: 'json', nullable: true)]
+    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    private ?array $additionalProfileInformation;
 
     #[ORM\Column(name: "IS_VALID", type: "boolean", nullable: false)]
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
@@ -248,15 +284,32 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     private Collection $userRoles;
 
 
-    #[ORM\OneToMany(mappedBy: "user", targetEntity: Papers::class)]
+    #[ORM\OneToMany(mappedBy: "user", targetEntity: Paper::class)]
     #[Groups(['read:User', 'read:Me'])]
     private Collection $papers;
 
-    public function __construct()
+    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    private ?string $picture = null;
+
+    /**
+     * @var Collection<int, News>
+     */
+    #[ORM\OneToMany(mappedBy: 'creator', targetEntity: News::class)]
+    #[Groups(['read:User', 'read:Me'])]
+    private Collection $news;
+    #[Groups(['read:Boards'])]
+    private ?array $assignedSections;
+
+    public function __construct($options = [])
     {
         $this->roles = [];
         $this->userRoles = new ArrayCollection();
         $this->papers = new ArrayCollection();
+        $this->news = new ArrayCollection();
+
+        $this->setOptions($options);
+
+
     }
 
     public function getUid(): ?int
@@ -503,7 +556,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this->papers;
     }
 
-    public function addPaper(Papers $paper): self
+    public function addPaper(Paper $paper): self
     {
         if (!$this->papers->contains($paper)) {
             $this->papers[] = $paper;
@@ -513,7 +566,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this;
     }
 
-    public function removePaper(Papers $paper): self
+    public function removePaper(Paper $paper): self
     {
         // set the owning side to null (unless already changed)
         if ($this->papers->removeElement($paper) && $paper->getUser() === $this) {
@@ -558,12 +611,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         foreach ($elements as $userRole) {
 
             $currentRole = $prefix . strtoupper($userRole->getRoleid());
-
-//            if ($currentRole === $prefix . strtoupper(self::ROLE_ROOT)){ 
-//                $roles[] = $currentRole;
-//                return $roles;
-//            }
-
             $roles[$userRole->getRvid()][] = $currentRole;
         }
         return ($rvId === null || !array_key_exists($rvId, $roles)) ? ['ROLE_USER'] : $roles[$rvId];
@@ -586,11 +633,41 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this;
     }
 
+    public function processPicturePath(?string $pictureDir = null, string $encoderType = AppConstants::BASE_64, string $prefix = '', string $format = 'jpg'): self
+    {
+
+        if ($pictureDir && $this->getUuid()) {
+            $cleanedUuid = str_replace('-', '', $this->getUuid());
+            $wrap = wordwrap($cleanedUuid, 2, DIRECTORY_SEPARATOR, true);
+            $picturePath = sprintf('%s%s/%s%s.%s', $pictureDir, $wrap, $prefix, $cleanedUuid, $format);
+            if ($this->hasPicture($picturePath)) {
+                if ($encoderType) {
+                    $imageData = null;
+                    $image = file_get_contents($picturePath);
+                    if ($image) {
+                        $fileInfo = new finfo(FILEINFO_MIME_TYPE);
+                        $mimeType = $fileInfo->buffer($image);
+                        if ($encoderType === AppConstants::BASE_64) {
+                            $imageData = base64_encode($image);
+                        }
+
+                        if ($imageData) {
+                            $this->picture = sprintf('data:%s;%s,%s', $mimeType, $encoderType, $imageData);
+                        }
+                    }
+                } else {
+                    $this->picture = sprintf('/user/picture/%s/%s%s.%s', $wrap, $cleanedUuid, $prefix, $format);
+                }
+            }
+        }
+        return $this;
+    }
+
     public static function createFromPayload($username, array $payload): User
     {
         $user = new User();
         $user->setUid($payload['uid'] ?? null);
-        $user->setUsername($payload['username'] ??  null);
+        $user->setUsername($payload['username'] ?? null);
         $user->setRoles($payload['roles'] ?? []);
         $user->setCurrentJournalID($payload['rvId']);
         return $user;
@@ -610,5 +687,101 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public function getCurrentJournalID(): ?int
     {
         return $this->currentJournalID;
+    }
+
+    public function getAdditionalProfileInformation(): ?array
+    {
+        return $this->additionalProfileInformation;
+    }
+
+    public function setAdditionalProfileInformation(array $additionalProfileInformation = null): self
+    {
+        $this->additionalProfileInformation = $additionalProfileInformation;
+        return $this;
+    }
+
+    public function getOrcid(): ?string
+    {
+        return $this->orcid;
+    }
+
+    public function setOrcid(string $orcid = null): self
+    {
+        $this->orcid = $orcid;
+        return $this;
+    }
+
+    public function getPicture(): ?string
+    {
+        return $this->picture;
+    }
+
+    /**
+     * @return Collection<int, News>
+     */
+    public function getNews(): Collection
+    {
+        return $this->news;
+    }
+
+    public function addNews(News $news): static
+    {
+        if (!$this->news->contains($news)) {
+            $this->news->add($news);
+            $news->setCreator($this);
+        }
+
+        return $this;
+    }
+
+    public function removeNews(News $news): static
+    {
+        if ($this->news->removeElement($news)) {
+            // set the owning side to null (unless already changed)
+            if ($news->getCreator() === $this) {
+                $news->setCreator(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getAssignedSections(): ?array
+    {
+        return $this->assignedSections;
+    }
+
+    public function setAssignedSections(?array $assignedSections = null): void
+    {
+        $this->assignedSections = $assignedSections;
+    }
+
+    public function getUuid(): ?string
+    {
+        return $this->uuid;
+    }
+
+    public function setUuid(string $uuid): static
+    {
+        $this->uuid = $uuid;
+        return $this;
+    }
+
+    public function setOptions(array $options): void
+    {
+        $classMethods = get_class_methods($this);
+        foreach ($options as $key => $value) {
+            $key = self::convertToCamelCase($key, '_', true);
+            $method = 'set' . $key;
+            if (in_array($method, $classMethods, true)) {
+                $this->$method($value);
+            }
+        }
+    }
+
+
+    public function hasPicture(string $picturePath): bool
+    {
+        return is_readable($picturePath);
     }
 }

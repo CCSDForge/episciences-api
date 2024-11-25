@@ -3,12 +3,15 @@ api_platform:
     defaults:
         #By default, API Platform generates all URLs as absolute paths to the base URL.
         url_generation_strategy: !php/const ApiPlatform\Api\UrlGeneratorInterface::ABS_PATH
-        pagination_client_enabled: true #Disabling the Pagination Client-side Globally
+        pagination_client_enabled: true #Enabling Pagination Client-side Globally
+        pagination_client_items_per_page: true
+        pagination_maximum_items_per_page: 1000
+        pagination_items_per_page: 30
         item_Operations: ~
         collection_Operations: ~
         normalization_context:
             # Default value to omit null values in conformance with the JSON Merge Patch RFC.
-            skip_null_values: false
+            skip_null_values: true
     # The title of the API.
     title: 'Episciences API'
     # The description of the API.
@@ -20,9 +23,13 @@ api_platform:
         jsonld: ['application/ld+json']
         json: ['application/json']
         html: ['text/html']
+        xml: ['application/xml']
 
     # Set this to false if you want Webby to disappear.
     show_webby: false
+    #Since api-platform/core 3.3: Setting the value of "use_symfony_listeners" will be mandatory in 4.0 as it will default to "false".
+    #Use "true" if you use Symfony Controllers or Event Listeners.
+    use_symfony_listeners: true
     openapi:
         # The contact information for the exposed API.
         contact:
@@ -55,4 +62,4 @@ api_platform:
     keep_legacy_inflector: false
     exception_to_status:
         # Custom mapping
-        App\Exception\StatResourceNotFoundException : 404
+        App\Exception\ResourceNotFoundException : 404
