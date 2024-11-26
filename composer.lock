@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "api-platform/core",
-            "version": "v3.4.6",
+            "version": "v3.4.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/api-platform/core.git",
-                "reference": "f251ed152d8c3709cef177a6ce5e0f34c7abb680"
+                "reference": "717c7e5d5410f1d8b26381cd546c70860e454d37"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/api-platform/core/zipball/f251ed152d8c3709cef177a6ce5e0f34c7abb680",
-                "reference": "f251ed152d8c3709cef177a6ce5e0f34c7abb680",
+                "url": "https://api.github.com/repos/api-platform/core/zipball/717c7e5d5410f1d8b26381cd546c70860e454d37",
+                "reference": "717c7e5d5410f1d8b26381cd546c70860e454d37",
                 "shasum": ""
             },
             "require": {
@@ -223,9 +223,9 @@
             ],
             "support": {
                 "issues": "https://github.com/api-platform/core/issues",
-                "source": "https://github.com/api-platform/core/tree/v3.4.6"
+                "source": "https://github.com/api-platform/core/tree/v3.4.7"
             },
-            "time": "2024-11-15T09:41:19+00:00"
+            "time": "2024-11-22T11:02:47+00:00"
         },
         {
             "name": "beberlei/doctrineextensions",
@@ -1851,34 +1851,34 @@
         },
         {
             "name": "gesdinet/jwt-refresh-token-bundle",
-            "version": "v1.3.0",
+            "version": "v1.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/markitosgv/JWTRefreshTokenBundle.git",
-                "reference": "83d687cc461b4bdae9ffc6efda97464093cae739"
+                "reference": "a47a373ec0838394bd9c1642c51be39b9c41da84"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/markitosgv/JWTRefreshTokenBundle/zipball/83d687cc461b4bdae9ffc6efda97464093cae739",
-                "reference": "83d687cc461b4bdae9ffc6efda97464093cae739",
+                "url": "https://api.github.com/repos/markitosgv/JWTRefreshTokenBundle/zipball/a47a373ec0838394bd9c1642c51be39b9c41da84",
+                "reference": "a47a373ec0838394bd9c1642c51be39b9c41da84",
                 "shasum": ""
             },
             "require": {
                 "doctrine/persistence": "^1.3.3|^2.0|^3.0",
                 "lexik/jwt-authentication-bundle": "^2.0|^3.0",
                 "php": ">=7.4",
-                "symfony/config": "^4.4|^5.4|^6.0|^7.0",
-                "symfony/console": "^4.4|^5.4|^6.0|^7.0",
-                "symfony/dependency-injection": "^4.4|^5.4|^6.0|^7.0",
+                "symfony/config": "^5.4|^6.0|^7.0",
+                "symfony/console": "^5.4|^6.0|^7.0",
+                "symfony/dependency-injection": "^5.4|^6.0|^7.0",
                 "symfony/deprecation-contracts": "^2.1|^3.0",
-                "symfony/event-dispatcher": "^4.4|^5.4|^6.0|^7.0",
-                "symfony/http-foundation": "^4.4|^5.4|^6.0|^7.0",
-                "symfony/http-kernel": "^4.4|^5.4|^6.0|^7.0",
+                "symfony/event-dispatcher": "^5.4|^6.0|^7.0",
+                "symfony/http-foundation": "^5.4|^6.0|^7.0",
+                "symfony/http-kernel": "^5.4|^6.0|^7.0",
                 "symfony/polyfill-php80": "^1.15",
-                "symfony/property-access": "^4.4|^5.4|^6.0|^7.0",
-                "symfony/security-bundle": "^4.4|^5.4|^6.0|^7.0",
-                "symfony/security-core": "^4.4|^5.4|^6.0|^7.0",
-                "symfony/security-http": "^4.4|^5.4|^6.0|^7.0"
+                "symfony/property-access": "^5.4|^6.0|^7.0",
+                "symfony/security-bundle": "^5.4|^6.0|^7.0",
+                "symfony/security-core": "^5.4|^6.0|^7.0",
+                "symfony/security-http": "^5.4|^6.0|^7.0"
             },
             "conflict": {
                 "doctrine/mongodb-odm": "<2.2",
@@ -1888,12 +1888,12 @@
                 "doctrine/annotations": "^1.13|^2.0",
                 "doctrine/cache": "^1.11|^2.0",
                 "doctrine/mongodb-odm": "^2.2",
-                "doctrine/orm": "^2.7",
+                "doctrine/orm": "^2.7|^3.0",
                 "matthiasnoback/symfony-config-test": "^4.2|^5.0",
                 "matthiasnoback/symfony-dependency-injection-test": "^4.2|^5.0",
                 "phpunit/phpunit": "^9.5",
-                "symfony/cache": "^4.4|^5.4|^6.0|^7.0",
-                "symfony/security-guard": "^4.4|^5.4"
+                "symfony/cache": "^5.4|^6.0|^7.0",
+                "symfony/security-guard": "^5.4"
             },
             "type": "symfony-bundle",
             "extra": {
@@ -1925,26 +1925,26 @@
             ],
             "support": {
                 "issues": "https://github.com/markitosgv/JWTRefreshTokenBundle/issues",
-                "source": "https://github.com/markitosgv/JWTRefreshTokenBundle/tree/v1.3.0"
+                "source": "https://github.com/markitosgv/JWTRefreshTokenBundle/tree/v1.4.0"
             },
-            "time": "2024-01-10T19:40:34+00:00"
+            "time": "2024-11-23T09:58:58+00:00"
         },
         {
             "name": "halaxa/json-machine",
-            "version": "1.1.4",
+            "version": "1.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/halaxa/json-machine.git",
-                "reference": "5147f38f74d7ab3e27733e3f3bdabbd2fd28e3fa"
+                "reference": "c889fdff2d5a51affae0033464ff24b0ae936b72"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/halaxa/json-machine/zipball/5147f38f74d7ab3e27733e3f3bdabbd2fd28e3fa",
-                "reference": "5147f38f74d7ab3e27733e3f3bdabbd2fd28e3fa",
+                "url": "https://api.github.com/repos/halaxa/json-machine/zipball/c889fdff2d5a51affae0033464ff24b0ae936b72",
+                "reference": "c889fdff2d5a51affae0033464ff24b0ae936b72",
                 "shasum": ""
             },
             "require": {
-                "php": "7.0 - 8.3"
+                "php": "7.2 - 8.4"
             },
             "require-dev": {
                 "ext-json": "*",
@@ -1958,6 +1958,9 @@
             },
             "type": "library",
             "autoload": {
+                "files": [
+                    "src/functions.php"
+                ],
                 "psr-4": {
                     "JsonMachine\\": "src/"
                 },
@@ -1978,7 +1981,7 @@
             "description": "Efficient, easy-to-use and fast JSON pull parser",
             "support": {
                 "issues": "https://github.com/halaxa/json-machine/issues",
-                "source": "https://github.com/halaxa/json-machine/tree/1.1.4"
+                "source": "https://github.com/halaxa/json-machine/tree/1.2.0"
             },
             "funding": [
                 {
@@ -1986,20 +1989,20 @@
                     "type": "other"
                 }
             ],
-            "time": "2023-11-28T21:12:40+00:00"
+            "time": "2024-11-24T12:48:58+00:00"
         },
         {
             "name": "laminas/laminas-code",
-            "version": "4.15.1",
+            "version": "4.16.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laminas/laminas-code.git",
-                "reference": "877ad42fe9c164785182fca8afa3f416a056884d"
+                "reference": "1793e78dad4108b594084d05d1fb818b85b110af"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laminas/laminas-code/zipball/877ad42fe9c164785182fca8afa3f416a056884d",
-                "reference": "877ad42fe9c164785182fca8afa3f416a056884d",
+                "url": "https://api.github.com/repos/laminas/laminas-code/zipball/1793e78dad4108b594084d05d1fb818b85b110af",
+                "reference": "1793e78dad4108b594084d05d1fb818b85b110af",
                 "shasum": ""
             },
             "require": {
@@ -2049,7 +2052,7 @@
                     "type": "community_bridge"
                 }
             ],
-            "time": "2024-10-25T10:15:16+00:00"
+            "time": "2024-11-20T13:15:13+00:00"
         },
         {
             "name": "laminas/laminas-escaper",
@@ -8787,12 +8790,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/Roave/SecurityAdvisories.git",
-                "reference": "a9bc7b738c9920998fc740d686488f6f76ff9f90"
+                "reference": "b33a18b5d222c63472a4b41f6fa3e15e591c9595"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Roave/SecurityAdvisories/zipball/a9bc7b738c9920998fc740d686488f6f76ff9f90",
-                "reference": "a9bc7b738c9920998fc740d686488f6f76ff9f90",
+                "url": "https://api.github.com/repos/Roave/SecurityAdvisories/zipball/b33a18b5d222c63472a4b41f6fa3e15e591c9595",
+                "reference": "b33a18b5d222c63472a4b41f6fa3e15e591c9595",
                 "shasum": ""
             },
             "conflict": {
@@ -9312,7 +9315,7 @@
                 "rap2hpoutre/laravel-log-viewer": "<0.13",
                 "react/http": ">=0.7,<1.9",
                 "really-simple-plugins/complianz-gdpr": "<6.4.2",
-                "redaxo/source": "<=5.17.1",
+                "redaxo/source": "<5.18",
                 "remdex/livehelperchat": "<4.29",
                 "reportico-web/reportico": "<=8.1",
                 "rhukster/dom-sanitizer": "<1.0.7",
@@ -9621,7 +9624,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2024-11-19T18:06:41+00:00"
+            "time": "2024-11-19T21:04:39+00:00"
         },
         {
             "name": "symfony/maker-bundle",
