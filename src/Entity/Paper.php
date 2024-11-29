@@ -245,7 +245,7 @@ class Paper implements UserOwnedInterface
         self::STATUS_SUBMITTED => 'submitted',
         self::STATUS_OK_FOR_REVIEWING => 'waitingForReviewing',
         self::STATUS_BEING_REVIEWED => 'underReview',
-        self::STATUS_REVIEWED => 'reviewed',
+        self::STATUS_REVIEWED => 'reviewed pending editorial decision',
         self::STATUS_STRICTLY_ACCEPTED => 'strictly_accepted',
         self::STATUS_PUBLISHED => 'published',
         self::STATUS_REFUSED => 'refused',
