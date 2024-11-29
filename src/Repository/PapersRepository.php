@@ -495,7 +495,7 @@ class PapersRepository extends ServiceEntityRepository
      * @return string|null
      */
 
-    public function paperToJson(int $docId, int $rvId = null, string $path = 'public_properties', bool $strict = true): ?string
+    public function paperToJson(int $docId, int $rvId = null, string $path = 'all', bool $strict = true): ?string
     {
         $toJson = null;
 
