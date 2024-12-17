@@ -641,20 +641,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
             $wrap = wordwrap($cleanedUuid, 2, DIRECTORY_SEPARATOR, true);
             $picturePath = sprintf('%s%s/%s%s.%s', $pictureDir, $wrap, $prefix, $cleanedUuid, $format);
             if ($this->hasPicture($picturePath)) {
-                if ($encoderType) {
-                    $imageData = null;
-                    $image = file_get_contents($picturePath);
-                    if ($image) {
-                        $fileInfo = new finfo(FILEINFO_MIME_TYPE);
-                        $mimeType = $fileInfo->buffer($image);
-                        if ($encoderType === AppConstants::BASE_64) {
-                            $imageData = base64_encode($image);
-                        }
-
-                        if ($imageData) {
-                            $this->picture = sprintf('data:%s;%s,%s', $mimeType, $encoderType, $imageData);
-                        }
-                    }
+                if ($encoderType === AppConstants::BASE_64) {
+                    $this->picture = $this->toBase64($picturePath);
                 } else {
                     $this->picture = sprintf('/user/picture/%s/%s%s.%s', $wrap, $cleanedUuid, $prefix, $format);
                 }
