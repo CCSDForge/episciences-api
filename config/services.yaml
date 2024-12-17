@@ -6,6 +6,7 @@
 parameters:
     app.solr.host: '%env(APP_SOLR_HOST)%'
     app.user.picture.path: '%env(USER_PICTURE_PATH)%'
+    app.files.path: '%env(FILES_PATH)%'
 
 services:
     # default configuration for services in *this* file

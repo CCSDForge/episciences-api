@@ -9,7 +9,6 @@ use App\Entity\Paper;
 use App\Entity\User;
 use App\Exception\MissingRequestParameterException;
 use Doctrine\ORM\EntityManagerInterface;
-use JetBrains\PhpStorm\NoReturn;
 use Symfony\Component\HttpFoundation\Request;
 
 class PapersController
@@ -21,7 +20,6 @@ class PapersController
      * @return bool
      * @throws MissingRequestParameterException
      */
-    #[NoReturn]
     public function __invoke(EntityManagerInterface $entityManager, Request $request = null): bool
     {
 

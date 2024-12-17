@@ -5,13 +5,12 @@ namespace App\EventSubscriber;
 use App\Entity\RefreshToken;
 use App\Entity\User;
 use Gesdinet\JWTRefreshTokenBundle\Security\Http\Authenticator\Token\PostRefreshTokenAuthenticationToken;
-use JetBrains\PhpStorm\NoReturn;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Security\Core\Event\AuthenticationSuccessEvent;
 
 class OnSecurityAuthenticationSuccessSubscriber implements EventSubscriberInterface
 {
-    #[NoReturn] public function onSecurityAuthenticationSuccess(AuthenticationSuccessEvent $event): void
+    public function onSecurityAuthenticationSuccess(AuthenticationSuccessEvent $event): void
     {
         /** @var PostRefreshTokenAuthenticationToken $postRefreshTokenAuthenticationToken */
         $postRefreshTokenAuthenticationToken = $event->getAuthenticationToken();
