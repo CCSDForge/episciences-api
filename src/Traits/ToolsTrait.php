@@ -3,6 +3,7 @@
 
 namespace App\Traits;
 use App\AppConstants;
+use finfo;
 use LengthException;
 
 trait ToolsTrait
@@ -120,4 +121,38 @@ trait ToolsTrait
         }
         return round(($array[$middleIndex] + $array[$middleIndex - 1]) / 2, AppConstants::DEFAULT_PRECISION);
     }
+
+
+    public function isJson($string): bool
+    {
+        try {
+            json_decode($string, false, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            return false;
+        }
+        return true;
+    }
+
+    public function toBase64(string $filePath): ?string
+    {
+
+        if (
+            $filePath === '.' ||
+            $filePath === '..' ||
+            !is_file($filePath)
+        ) {
+            return null;
+        }
+
+        $content = file_get_contents($filePath);
+
+        if ($content) {
+            $fileInfo = new finfo(FILEINFO_MIME_TYPE);
+            $mimeType = $fileInfo->buffer($content);
+            return sprintf('data:%s;%s,%s', $mimeType, AppConstants::BASE_64, base64_encode($content));
+        }
+
+        return null;
+    }
+
 }

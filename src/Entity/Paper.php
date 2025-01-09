@@ -19,7 +19,6 @@ use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use JetBrains\PhpStorm\NoReturn;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Attribute\Context;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -291,6 +290,7 @@ class Paper implements UserOwnedInterface
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0]
         ]
     )]
     private int $docid;
@@ -334,8 +334,14 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
-    private int $status = 0;
+    private int $status = self::STATUS_SUBMITTED;
 
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
+        ]
+    )]
+    private string $statusLabel = self::STATUS_DICTIONARY[self::STATUS_SUBMITTED];
 
     #[ORM\Column(name: 'IDENTIFIER', type: 'string', length: 500, nullable: false)]
     private string $identifier;
@@ -449,13 +455,26 @@ class Paper implements UserOwnedInterface
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private Collection $conflicts;
 
-    #[NoReturn]
+    /**
+     * @var Collection<int, PaperComment>
+     */
+    #[ORM\OneToMany(mappedBy: 'paper', targetEntity: PaperComment::class, orphanRemoval: true)]
+    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
+        ]
+    )]
+    #[ORM\OrderBy(['when' => 'DESC'])]
+    private Collection $comments;
+
     public function __construct()
     {
         $this->when = new DateTime();
         $this->submissionDate = new DateTime();
         $this->assignments = new ArrayCollection();
         $this->conflicts = new ArrayCollection();
+        $this->comments = new ArrayCollection();
     }
 
 
@@ -541,10 +560,25 @@ class Paper implements UserOwnedInterface
         return $this->status;
     }
 
+    /**
+     * @return string
+     */
+    public function getStatusLabel(): string
+    {
+        return $this->statusLabel;
+    }
+
+
     public function setStatus(int $status): self
     {
         $this->status = $status;
 
+        return $this;
+    }
+
+    public function setStatusLabel(string $statusLabel = self::STATUS_DICTIONARY[self::STATUS_SUBMITTED]): self
+    {
+        $this->statusLabel = $statusLabel;
         return $this;
     }
 
@@ -966,6 +1000,34 @@ class Paper implements UserOwnedInterface
     public function setType(array $type = null): self
     {
         $this->type = $type;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, PaperComment>
+     */
+    public function getComments(): Collection
+    {
+        return $this->comments;
+    }
+
+    public function addComment(PaperComment $comment): static
+    {
+        if (!$this->comments->contains($comment)) {
+            $this->comments->add($comment);
+            $comment->setPaper($this);
+        }
+
+        return $this;
+    }
+
+    public function removeComment(PaperComment $comment): static
+    {
+        // set the owning side to null (unless already changed)
+        if ($this->comments->removeElement($comment) && $comment->getPaper() === $this) {
+            $comment->setPaper($this);
+        }
+
         return $this;
     }
 
