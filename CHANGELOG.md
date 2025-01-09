@@ -15,11 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 
-## v1.2.0 2024-11-25
 
+## v1.2.1 2025-01-09
+### Changed
+- Updated label for status 'reviewed' has been updated to 'reviewed pending editorial decision'
+- Updated API Platform component and related project dependencies 
+
+## v1.2.0 2024-11-25
 ### Fixed
  - In some situations (COI enabled), the API return does not contain any private data (/papers/11072 @jtcam)
-
+ - truncated uid identifier in hydra metadata "@id": uid identifier is now serialized
 ### Changed
 - Return all volume's metadata on GET /volumes.
 - Possibility of retrieving all accepted documents: /api/papers/?rvcode=rvcode&only_accepted=true

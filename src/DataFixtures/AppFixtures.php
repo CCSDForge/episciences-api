@@ -16,7 +16,7 @@ class AppFixtures extends Fixture
         $this->passwordHasher = $passwordHasher;
     }
 
-    public function load(ObjectManager $manager)
+    public function load(ObjectManager $manager): void
     {
         // $product = new Product();
         // $manager->persist($product);
