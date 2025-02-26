@@ -22,7 +22,6 @@ use App\Entity\Volume;
 use App\Exception\ResourceNotFoundException;
 use App\Traits\QueryTrait;
 use Doctrine\ORM\QueryBuilder;
-use JetBrains\PhpStorm\NoReturn;
 use Symfony\Bundle\SecurityBundle\Security;
 
 class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, QueryCollectionExtensionInterface
@@ -45,8 +44,6 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
      * @return void
      * @throws ResourceNotFoundException
      */
-
-    #[NoReturn]
     public function applyToCollection(
         QueryBuilder                $queryBuilder,
         QueryNameGeneratorInterface $queryNameGenerator,

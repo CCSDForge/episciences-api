@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
  - In some situations (COI enabled), the API return does not contain any private data (/papers/11072 @jtcam)
  - truncated uid identifier in hydra metadata "@id": uid identifier is now serialized
+ - It is now possible to retrieve all comments associated with an article, including attached files.
+ - New "Paper::statusLabel" attribut: serialised when the collection of papers is retrieved.
 ### Changed
 - Return all volume's metadata on GET /volumes.
 - Possibility of retrieving all accepted documents: /api/papers/?rvcode=rvcode&only_accepted=true

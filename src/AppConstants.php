@@ -121,7 +121,21 @@ final class AppConstants
                         ]
                     ]
 
+                ],
+                'comment' => [
+                    'item' => [
+                        'read' => [
+                            'read:Comment'
+                        ]
+                    ],
+                    'collection' => [
+                        'read' => [
+                            'read:Comments'
+                        ]
+                    ]
+
                 ]
+
             ]]
 
     ];

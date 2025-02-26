@@ -19,7 +19,6 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use finfo;
 use Lexik\Bundle\JWTAuthenticationBundle\Security\User\JWTUserInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -641,20 +640,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
             $wrap = wordwrap($cleanedUuid, 2, DIRECTORY_SEPARATOR, true);
             $picturePath = sprintf('%s%s/%s%s.%s', $pictureDir, $wrap, $prefix, $cleanedUuid, $format);
             if ($this->hasPicture($picturePath)) {
-                if ($encoderType) {
-                    $imageData = null;
-                    $image = file_get_contents($picturePath);
-                    if ($image) {
-                        $fileInfo = new finfo(FILEINFO_MIME_TYPE);
-                        $mimeType = $fileInfo->buffer($image);
-                        if ($encoderType === AppConstants::BASE_64) {
-                            $imageData = base64_encode($image);
-                        }
-
-                        if ($imageData) {
-                            $this->picture = sprintf('data:%s;%s,%s', $mimeType, $encoderType, $imageData);
-                        }
-                    }
+                if ($encoderType === AppConstants::BASE_64) {
+                    $this->picture = $this->toBase64($picturePath);
                 } else {
                     $this->picture = sprintf('/user/picture/%s/%s%s.%s', $wrap, $cleanedUuid, $prefix, $format);
                 }
