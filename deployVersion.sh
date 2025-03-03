@@ -5,6 +5,7 @@ git fetch --all
 git fetch --tags
 
 git checkout ${1:-main} ## default $1=main
+git pull
 currentTag=$(git describe --tags --abbrev=0) ## get the most recent tag
 
 if test $1 != 'main'; then
