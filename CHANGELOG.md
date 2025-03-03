@@ -14,9 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
-
 ## Unreleased
-### fixed
+### Changed
+- Updated robots.txt rules
+
+## v1.2.1 2025-01-09
+### Changed
+- Updated label for status 'reviewed' has been updated to 'reviewed pending editorial decision'
+- Updated API Platform component and related project dependencies 
+
+## v1.2.0 2024-11-25
+### Fixed
  - In some situations (COI enabled), the API return does not contain any private data (/papers/11072 @jtcam)
  - truncated uid identifier in hydra metadata "@id": uid identifier is now serialized
 ### Changed

@@ -1,2 +1,5 @@
 User-agent: *
-Disallow: /
+Disallow: /api/me
+Disallow: /api/login
+Disallow: /api/token/refresh
+Disallow: /api/users/
