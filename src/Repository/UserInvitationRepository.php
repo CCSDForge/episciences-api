@@ -48,7 +48,6 @@ class UserInvitationRepository extends ServiceEntityRepository
         $qb->addOrderBy('i.id', 'DESC');
         $qb->addOrderBy('ua.itemid', 'DESC');
         $qb->addOrderBy('ua.uid', 'DESC');
-        $qb->groupBy('i.status');
         $qb->addGroupBy('ua.rvid');
         $qb->addGroupBy('ua.itemid');
         $qb->addGroupBy('ua.uid');
