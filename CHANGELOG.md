@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
+## Unreleased
+### Fixed
+- Wrong statistical indicator "Reviews received".
 ## v1.2.2 2025-03-18
 ### Changed
 - Updated robots.txt rules
