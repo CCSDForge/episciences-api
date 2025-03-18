@@ -14,9 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
-## Unreleased
+## v1.2.2 2025-03-18
 ### Changed
 - Updated robots.txt rules
+- Updated API Platform component and related project dependencies
+- Updated the API documentation code 
 
 ## v1.2.1 2025-01-09
 ### Changed
