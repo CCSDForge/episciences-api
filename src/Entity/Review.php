@@ -44,7 +44,8 @@ use App\OpenApi\OpenApiFactory;
             ),
 
             normalizationContext: [
-                'groups' => ['read:Boards']
+                'groups' => ['read:Boards'],
+                'serialize_null' => true
             ],
             read: false,
         ),
@@ -66,7 +67,8 @@ use App\OpenApi\OpenApiFactory;
             paginationClientEnabled: false,
             paginationClientItemsPerPage: false,
             normalizationContext: [
-                'groups' => ['read:Feed']
+                'groups' => ['read:Feed'],
+                'serialize_null' => true
             ],
             read: false,
 
@@ -89,7 +91,8 @@ use App\OpenApi\OpenApiFactory;
             ),
 
             normalizationContext: [
-                'groups' => ['read:Review']
+                'groups' => ['read:Review'],
+                'serialize_null' => true
             ],
 
         #security: "is_granted('ROLE_SECRETARY')",
@@ -104,8 +107,10 @@ use App\OpenApi\OpenApiFactory;
                 security: [['bearerAuth' => []],]
             ),
             normalizationContext: [
-                'groups' => ['read:Reviews']
+                'groups' => ['read:Reviews'],
+                'serialize_null' => true
             ],
+
 
         //security: "is_granted('ROLE_EPIADMIN')",
 
@@ -147,7 +152,8 @@ use App\OpenApi\OpenApiFactory;
             normalizationContext: [
                 'groups' => [
                     AppConstants::APP_CONST['normalizationContext']['groups']['review']['item']['read'][0]
-                ]
+                ],
+                'serialize_null' => true
 
             ],
             output: DashboardOutput::class,
@@ -191,7 +197,8 @@ use App\OpenApi\OpenApiFactory;
             normalizationContext: [
                 'groups' => [
                     AppConstants::APP_CONST['normalizationContext']['groups']['review']['item']['read'][0]
-                ]
+                ],
+                'serialize_null' => true
 
             ],
             output: SubmissionOutput::class,
@@ -235,7 +242,8 @@ use App\OpenApi\OpenApiFactory;
             normalizationContext: [
                 'groups' => [
                     AppConstants::APP_CONST['normalizationContext']['groups']['review']['item']['read'][0]
-                ]
+                ],
+                'serialize_null' => true
 
             ],
             output: SubmissionAcceptanceDelayOutput::class,
@@ -279,7 +287,8 @@ use App\OpenApi\OpenApiFactory;
             normalizationContext: [
                 'groups' => [
                     AppConstants::APP_CONST['normalizationContext']['groups']['review']['item']['read'][0]
-                ]
+                ],
+                'serialize_null' => true
 
             ],
             output: SubmissionPublicationDelayOutput::class,
@@ -310,7 +319,8 @@ use App\OpenApi\OpenApiFactory;
             normalizationContext: [
                 'groups' => [
                     AppConstants::APP_CONST['normalizationContext']['groups']['review']['item']['read'][0]
-                ]
+                ],
+                'serialize_null' => true
 
             ],
             output: UsersStatsOutput::class,
@@ -364,6 +374,10 @@ class Review
     #[Groups(['read:Reviews', 'read:Review'])]
     private string $name;
 
+    #[ORM\Column(name: 'SUBTITLE', type: 'string', length: 255, nullable: true)]
+    #[Groups(['read:Reviews', 'read:Review'])]
+    #[ApiProperty(readable: true, writable: true, description: 'Le sous-titre du journal')]
+    private ?string $subtitle = null;
 
     #[ORM\Column(name: 'STATUS', type: 'smallint', nullable: false, options: ['unsigned' => true])]
     #[Groups(['read:Reviews'])]
@@ -432,6 +446,17 @@ class Review
         return $this;
     }
 
+    public function getSubtitle(): string
+    {
+        return $this->subtitle ?? "";
+    }
+
+    public function setSubtitle(?string $subtitle): self
+    {
+        $this->subtitle = $subtitle;
+
+        return $this;
+    }
     public function getStatus(): ?int
     {
         return $this->status;
