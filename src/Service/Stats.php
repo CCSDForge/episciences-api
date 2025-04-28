@@ -153,6 +153,9 @@ class Stats
 
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
         $result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year);
+        if ($result === null) {
+            $result = [];
+        }
 
         if ($year && !$rvId) { // all platform by year
             $yearResult = $this->applyFilterBy($result, 'year', $year);
@@ -171,6 +174,7 @@ class Stats
 
         if (!$year && $rvId) {
             $rvIdResult = $this->applyFilterBy($result, 'rvid', $rvId);
+
             if (array_key_exists($rvId, $rvIdResult)) {
                 $statResource->setValue(['value' => $this->avg($rvIdResult[$rvId]), self::STATS_UNIT => $unit, self::STATS_METHOD => $method]);
             }
