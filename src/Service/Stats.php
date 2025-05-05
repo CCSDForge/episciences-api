@@ -173,6 +173,8 @@ class Stats
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
         //$result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year);
         $result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year) ?? [];
+        //logger
+        //$this->logger->debug('Raw result of delayBetweenSubmissionAndLatestStatus', ['result' => $result]);
 
 
         if ($year && !$rvId) { // all platform by year

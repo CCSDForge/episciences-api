@@ -65,6 +65,9 @@ class PaperLogRepository extends ServiceEntityRepository
             $this->logger->log(LogLevel::CRITICAL, $e->getMessage(), ['Exception' => $e]);
         }
 
+        //$this->logger->debug('Executed SQL query: ' . $this->query($unit, $latestStatus, $startDate, $year));
+        //$this->logger->debug('Result obtained:', ['result' => $result]);
+
         return $result;
 
     }
@@ -72,20 +75,37 @@ class PaperLogRepository extends ServiceEntityRepository
     private function query(string $unit = self::DEFAULT_UNIT, int $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED, string $startStatsDate = null, $year = null): string
     {
 
-
-        $sql = "SELECT year, RVID AS rvid, ROUND(AVG(delay), 0) AS delay FROM (SELECT YEAR(SUBMISSION_FROM_LOGS.DATE) AS year, SUBMISSION_FROM_LOGS.RVID, ABS(TIMESTAMPDIFF($unit, SUBMISSION_FROM_LOGS.DATE, JOINED_TABLE_ALIAS.DATE)) AS delay FROM (SELECT * FROM PAPER_LOG WHERE ACTION LIKE 'status' ";
+   //Construction de la requête SQL avec GROUP BY conforme à ONLY_FULL_GROUP_BY
+        $sql = "SELECT year, RVID AS rvid, ROUND(AVG(delay), 0) AS delay FROM (
+                 SELECT 
+                    YEAR(SUBMISSION_FROM_LOGS.DATE) AS year, 
+                 SUBMISSION_FROM_LOGS.RVID, 
+                 ABS(TIMESTAMPDIFF($unit, SUBMISSION_FROM_LOGS.DATE, JOINED_TABLE_ALIAS.DATE)) AS delay 
+                FROM (
+                     SELECT PAPERID, MIN(DATE) AS DATE, RVID  
+                    FROM PAPER_LOG 
+                    WHERE ACTION LIKE 'status' ";
 
         if ($startStatsDate) {
-            $sql .= "AND PAPER_LOG.DATE >= '$startStatsDate'";
+            $sql .= "AND DATE >= '$startStatsDate'";
         }
 
-        $sql .= "AND (DETAIL LIKE '{\"status\":" . Paper::STATUS_SUBMITTED . "}' OR DETAIL LIKE '{\"status\":\"" . Paper::STATUS_SUBMITTED . "\"}' ) GROUP BY PAPERID) AS SUBMISSION_FROM_LOGS INNER JOIN (SELECT * FROM PAPER_LOG WHERE ACTION LIKE 'status' ";
+        $sql .= "AND (DETAIL LIKE '{\"status\":" . Paper::STATUS_SUBMITTED . "}' OR DETAIL LIKE '{\"status\":\"" . Paper::STATUS_SUBMITTED . "\"}' ) 
+                GROUP BY PAPERID, RVID
+                ) AS SUBMISSION_FROM_LOGS 
+                INNER JOIN (
+                SELECT PAPERID, MAX(DATE) AS DATE
+                FROM PAPER_LOG 
+                WHERE ACTION LIKE 'status' ";
 
         if ($startStatsDate) {
-            $sql .= "AND PAPER_LOG.DATE >= '$startStatsDate'";
+            $sql .= "AND DATE >= '$startStatsDate'";
         }
 
-        $sql .= " AND (DETAIL LIKE '{\"status\":\"$latestStatus\"}' OR DETAIL LIKE '{\"status\":$latestStatus}') GROUP BY PAPERID ) AS JOINED_TABLE_ALIAS USING (PAPERID) GROUP BY PAPERID ) AS DELAY_SUBMISSION_LATEST_STATUS";
+        $sql .= " AND (DETAIL LIKE '{\"status\":\"$latestStatus\"}' OR DETAIL LIKE '{\"status\":$latestStatus}') 
+                  GROUP BY PAPERID 
+                  ) AS JOINED_TABLE_ALIAS USING (PAPERID) 
+                  ) AS DELAY_SUBMISSION_LATEST_STATUS";
 
         if ($year) {
             $sql .= " WHERE `year` = '$year'";
