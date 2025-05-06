@@ -61,11 +61,29 @@ class Stats
             ->getQuery()
             ->getSingleScalarResult();
 
+        $totalAccepted = $papersRepo
+            ->submissionsQuery([
+                'is' => array_merge($filters['is'], ['status' => Paper::STATUS_STRICTLY_ACCEPTED])
+            ])
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $totalRefused = $papersRepo
+            ->submissionsQuery([
+                'is' => array_merge($filters['is'], ['status' => Paper::STATUS_REFUSED])
+            ])
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $totalOtherStatus = max(0, $submissions->getValue() - $totalPublished - $totalAccepted - $totalRefused);
 
         // aggregate stats
         $values = [
             $submissions->getName() => $submissions->getValue(),
             'totalPublished' => $totalPublished,
+            'totalAccepted' => $totalAccepted,
+            'totalRefused' => $totalRefused,
+            'totalOtherStatus' => $totalOtherStatus,
             $submissionsDelay->getName() => $submissionsDelay->getValue(),
             $publicationsDelay->getName() => $publicationsDelay->getValue()
         ];
@@ -141,6 +159,7 @@ class Stats
             $startDate = $filters['is'][AppConstants::START_AFTER_DATE];
         }
 
+        $defaultValue = ['value' => null, self::STATS_UNIT => $unit, self::STATS_METHOD => $method];
         $statResource = $latestStatus === Paper::STATUS_PUBLISHED ? new SubmissionPublicationDelayOutput() : new SubmissionAcceptanceDelayOutput();
 
         $statResource->setDetails([]);
@@ -152,15 +171,22 @@ class Stats
         $statResource->setName($statResourceName);
 
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
-        $result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year);
+        //$result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year);
+        $result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year) ?? [];
+        //logger
+        //$this->logger->debug('Raw result of delayBetweenSubmissionAndLatestStatus', ['result' => $result]);
+
 
         if ($year && !$rvId) { // all platform by year
             $yearResult = $this->applyFilterBy($result, 'year', $year);
-            if (array_key_exists($year, $yearResult)) {
-                $statResource->setValue($this->avg($yearResult[$year]));
-            } else {
-                $statResource->setValue(null);
-            }
+            $avg = array_key_exists($year, $yearResult) ? $this->avg($yearResult[$year]) : null;
+
+                $statResource->setValue(
+                    $avg !== null
+                        ? ['value' => $avg, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]
+                        : $defaultValue
+                );
+
 
             if ($withDetails) {
                 $statResource->setDetails($result);
@@ -172,7 +198,12 @@ class Stats
         if (!$year && $rvId) {
             $rvIdResult = $this->applyFilterBy($result, 'rvid', $rvId);
             if (array_key_exists($rvId, $rvIdResult)) {
-                $statResource->setValue(['value' => $this->avg($rvIdResult[$rvId]), self::STATS_UNIT => $unit, self::STATS_METHOD => $method]);
+                $avg = $this->avg($rvIdResult[$rvId]);
+                $statResource->setValue(
+                    $avg !== null
+                        ? ['value' => $avg, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]
+                        : $defaultValue
+                    );
             }
 
             if ($withDetails) {
@@ -208,7 +239,12 @@ class Stats
         }
 
         // all platform stats (!year && !rvId)
-        $statResource->setValue($this->avg($result));
+        $avg = $this->avg($result);
+        $statResource->setValue(
+            $avg !== null
+                ? ['value' => $avg, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]
+                : $defaultValue
+        );
 
         if ($withDetails) {
             $statResource->setDetails($result);
@@ -545,9 +581,16 @@ class Stats
         if (empty($array)) {
             return null;
         }
+        $values = array_column($array, $key);
+        $validValues = array_filter($values, function($value) {
+            return is_numeric($value) && $value !== null;
+        });
+        if (empty($validValues)) {
+            return null;
+        }
 
-        $total = array_sum(array_column($array, $key));
-        $count = count($array);
+        $total = array_sum($validValues);
+        $count = count($validValues);
 
         return round($total / $count, 2);
     }
