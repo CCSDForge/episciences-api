@@ -30,6 +30,7 @@ class Stats
     public const STATS_UNIT = 'unit';
     public const STATS_METHOD = 'method';
     public const TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR = 'acceptedSubmittedSameYear';
+
     public const ACCEPTANCE_RATE = 'acceptanceRate'; // TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR / submissions by year
     public const MORE_DETAILS = 'moreDetailsFromModifDate';
     public const REF_YEAR = 2013; // statistics since this year
@@ -52,7 +53,6 @@ class Stats
         $submissions = $this->getSubmissionsStat($filters);
         $submissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters);
         $publicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED);
-
 
         $totalPublished = $papersRepo
             ->submissionsQuery([
@@ -483,45 +483,59 @@ class Stats
         $startAfterDate = $filters['is']['startAfterDate'] ?? null;
         $repositories = $papersRepository->getAvailableRepositories($filters);
 
+        //Retrieve the submission years range
         foreach ($papersRepository->getSubmissionYearRange($filters) as $year) { // pour le dashboard
             try {
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $papersRepository->
-                submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->
-                getQuery()->
-                getSingleScalarResult();
+                //Base query for submissions
+                $baseQuery = $papersRepository->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]]);
 
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['publications'] = $papersRepository->
-                submissionsQuery(
+                // Get the total number of submissions for the year
+                $submissions = $baseQuery->getQuery()->getSingleScalarResult();
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = is_numeric($submissions) ? $submissions : 0;
+
+                // Number of published submissions from the total submissions
+                $publishedFromSubmissions = (clone $baseQuery)
+                        ->andWhere('p.status = :statusPublished')
+                        ->setParameter('statusPublished', Paper::STATUS_PUBLISHED)
+                        ->getQuery()
+                        ->getSingleScalarResult();
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['publishedFromSubmissions']  = is_numeric($publishedFromSubmissions) ? $publishedFromSubmissions : 0;
+
+                // Number of submissions published within the year
+                $publishedInYear = $papersRepository->submissionsQuery(
                     [
                         'is' => [
                             'rvid' => $rvId,
                             'status' => Paper::STATUS_PUBLISHED,
-                            AppConstants::SUBMISSION_DATE => $year,
-                            AppConstants::START_AFTER_DATE
+                            'publicationDate' => $year
                         ]
                     ], false, 'publicationDate'
-                )->
-                getQuery()->getSingleScalarResult();
+                )->getQuery()->getSingleScalarResult();
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['publishedInYear'] = is_numeric($publishedInYear) ? $publishedInYear : 0;
 
+                // Total accepted papers submitted in the same year
                 $totalNumberOfPapersAcceptedSubmittedSameYear = $this->getTotalNumberOfPapersByStatus($rvId);
+                $acceptedThisYear = isset($totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year])
+                    ? $totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR]
+                    : 0;
 
-                $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] =
-                    isset($totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year]) ?
-                        $totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] :
-                        0;
+                $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] = $acceptedThisYear;
 
+                // Calculate acceptance rate
                 $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE] = $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] ?
                     round($details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] / $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] * 100, 2) : 0;
 
 
                 foreach ($repositories as $repoId) {
-                    $details['submissionsByRepo'][$year][$this->metadataSources->getLabel($repoId)]['submissions'] = $papersRepository->
+                    $repoQuery = $papersRepository->
                     submissionsQuery(
                         ['is' => ['rvid' => $rvId, AppConstants::SUBMISSION_DATE => $year, 'repoid' => $repoId, AppConstants::START_AFTER_DATE => $startAfterDate]
                         ])->getQuery()->getSingleScalarResult();
-                }
+                };
+                $submissionsByRepo = $repoQuery->getQuery()->getSingleScalarResult();
+                $details['submissionsByRepo'][$year][$this->metadataSources->getLabel($repoId)]['submissions'] = is_numeric($submissionsByRepo) ? $submissionsByRepo : 0;
             } catch (NoResultException|NonUniqueResultException $e) {
-                $this->logger->error($e->getMessage());
+                $this->logger->error("Error retrieving submission data for year $year, RV ID $rvId: " . $e->getMessage());
             }
         }
 
