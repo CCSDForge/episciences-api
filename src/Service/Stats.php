@@ -30,7 +30,6 @@ class Stats
     public const STATS_UNIT = 'unit';
     public const STATS_METHOD = 'method';
     public const TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR = 'acceptedSubmittedSameYear';
-
     public const ACCEPTANCE_RATE = 'acceptanceRate'; // TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR / submissions by year
     public const MORE_DETAILS = 'moreDetailsFromModifDate';
     public const REF_YEAR = 2013; // statistics since this year
@@ -61,12 +60,12 @@ class Stats
             ->getQuery()
             ->getSingleScalarResult();
 
-        $totalAccepted = $papersRepo
-            ->submissionsQuery([
-                'is' => array_merge($filters['is'], ['status' => Paper::STATUS_STRICTLY_ACCEPTED])
-            ])
-            ->getQuery()
-            ->getSingleScalarResult();
+        //$totalAccepted = $papersRepo
+            //->submissionsQuery([
+            //    'is' => array_merge($filters['is'], ['status' => Paper::STATUS_STRICTLY_ACCEPTED])
+            //])
+            //->getQuery()
+            //->getSingleScalarResult();
 
         $totalRefused = $papersRepo
             ->submissionsQuery([
@@ -75,15 +74,15 @@ class Stats
             ->getQuery()
             ->getSingleScalarResult();
 
-        $totalOtherStatus = max(0, $submissions->getValue() - $totalPublished - $totalAccepted - $totalRefused);
+        //$totalOtherStatus = max(0, $submissions->getValue() - $totalPublished - $totalAccepted - $totalRefused);
 
         // aggregate stats
         $values = [
             $submissions->getName() => $submissions->getValue(),
             'totalPublished' => $totalPublished,
-            'totalAccepted' => $totalAccepted,
+            //'totalAccepted' => $totalAccepted,
             'totalRefused' => $totalRefused,
-            'totalOtherStatus' => $totalOtherStatus,
+            //'totalOtherStatus' => $totalOtherStatus,
             $submissionsDelay->getName() => $submissionsDelay->getValue(),
             $publicationsDelay->getName() => $publicationsDelay->getValue()
         ];
@@ -525,17 +524,14 @@ class Stats
                 $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE] = $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] ?
                     round($details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] / $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] * 100, 2) : 0;
 
-
                 foreach ($repositories as $repoId) {
-                    $repoQuery = $papersRepository->
+                    $details['submissionsByRepo'][$year][$this->metadataSources->getLabel($repoId)]['submissions'] = $papersRepository->
                     submissionsQuery(
                         ['is' => ['rvid' => $rvId, AppConstants::SUBMISSION_DATE => $year, 'repoid' => $repoId, AppConstants::START_AFTER_DATE => $startAfterDate]
                         ])->getQuery()->getSingleScalarResult();
-                };
-                $submissionsByRepo = $repoQuery->getQuery()->getSingleScalarResult();
-                $details['submissionsByRepo'][$year][$this->metadataSources->getLabel($repoId)]['submissions'] = is_numeric($submissionsByRepo) ? $submissionsByRepo : 0;
+                }
             } catch (NoResultException|NonUniqueResultException $e) {
-                $this->logger->error("Error retrieving submission data for year $year, RV ID $rvId: " . $e->getMessage());
+                $this->logger->error($e->getMessage());
             }
         }
 
