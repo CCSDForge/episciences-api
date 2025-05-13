@@ -493,12 +493,12 @@ class Stats
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = is_numeric($submissions) ? $submissions : 0;
 
                 // Number of published submissions from the total submissions
-                $publishedFromSubmissions = (clone $baseQuery)
+                $publications = (clone $baseQuery)
                         ->andWhere('p.status = :statusPublished')
                         ->setParameter('statusPublished', Paper::STATUS_PUBLISHED)
                         ->getQuery()
                         ->getSingleScalarResult();
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['publishedFromSubmissions']  = is_numeric($publishedFromSubmissions) ? $publishedFromSubmissions : 0;
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['publications']  = is_numeric($publications) ? $publications : 0;
 
                 // Number of submissions published within the year
                 $publishedInYear = $papersRepository->submissionsQuery(
