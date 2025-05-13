@@ -60,13 +60,6 @@ class Stats
             ->getQuery()
             ->getSingleScalarResult();
 
-        //$totalAccepted = $papersRepo
-            //->submissionsQuery([
-            //    'is' => array_merge($filters['is'], ['status' => Paper::STATUS_STRICTLY_ACCEPTED])
-            //])
-            //->getQuery()
-            //->getSingleScalarResult();
-
         $totalRefused = $papersRepo
             ->submissionsQuery([
                 'is' => array_merge($filters['is'], ['status' => Paper::STATUS_REFUSED])
@@ -74,15 +67,11 @@ class Stats
             ->getQuery()
             ->getSingleScalarResult();
 
-        //$totalOtherStatus = max(0, $submissions->getValue() - $totalPublished - $totalAccepted - $totalRefused);
-
         // aggregate stats
         $values = [
             $submissions->getName() => $submissions->getValue(),
             'totalPublished' => $totalPublished,
-            //'totalAccepted' => $totalAccepted,
             'totalRefused' => $totalRefused,
-            //'totalOtherStatus' => $totalOtherStatus,
             $submissionsDelay->getName() => $submissionsDelay->getValue(),
             $publicationsDelay->getName() => $publicationsDelay->getValue()
         ];
@@ -172,9 +161,6 @@ class Stats
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
         //$result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year);
         $result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year) ?? [];
-        //logger
-        //$this->logger->debug('Raw result of delayBetweenSubmissionAndLatestStatus', ['result' => $result]);
-
 
         if ($year && !$rvId) { // all platform by year
             $yearResult = $this->applyFilterBy($result, 'year', $year);
