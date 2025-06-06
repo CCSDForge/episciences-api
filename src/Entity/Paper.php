@@ -22,6 +22,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Attribute\Context;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Attribute\SerializedName;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 
 
@@ -447,6 +448,12 @@ class Paper implements UserOwnedInterface
     )]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private Collection $conflicts;
+
+    #[ORM\OneToOne(targetEntity: VolumePaperPosition::class)]
+    #[ORM\JoinColumn(name: 'PAPERID', referencedColumnName: 'PAPERID')]
+    #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID')]
+    //#[Groups(self::PAPERS_GROUPS)]
+    private ?VolumePaperPosition $volumePaperPosition = null;
 
     public function __construct()
     {
@@ -967,4 +974,23 @@ class Paper implements UserOwnedInterface
         return $this;
     }
 
+    public function getVolumePaperPosition(): ?VolumePaperPosition
+    {
+        return $this->volumePaperPosition;
+    }
+
+    public function setVolumePaperPosition(?VolumePaperPosition $volumePaperPosition): self
+    {
+        $this->volumePaperPosition = $volumePaperPosition;
+        return $this;
+    }
+
+    /**
+     * Méthode pour exposer la position dans l'API
+     */
+    #[Groups(self::PAPERS_GROUPS)]
+    public function getPosition(): ?int
+    {
+        return $this->volumePaperPosition?->getPosition();
+    }
 }
