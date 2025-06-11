@@ -230,6 +230,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     private ?array $descriptions;
 
     #[ORM\OneToMany(mappedBy: 'volume', targetEntity: Paper::class)]
+    #[ORM\OrderBy(['volumePaperPosition.position' => 'ASC', 'paperid' => 'ASC'])]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
