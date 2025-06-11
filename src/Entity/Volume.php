@@ -365,9 +365,28 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     /**
      * @return Collection<int, Paper>
      */
-
     public function getPapers(): Collection
     {
+        // Récupérer les positions des papers pour ce volume
+        $positionMap = [];
+        global $kernel;
+        if ($kernel) {
+            $connection = $kernel->getContainer()->get('doctrine')->getConnection();
+            $sql = 'SELECT PAPERID, POSITION FROM VOLUME_PAPER_POSITION WHERE VID = :vid';
+            $stmt = $connection->prepare($sql);
+            $result = $stmt->executeQuery(['vid' => $this->getVid()])->fetchAllAssociative();
+            foreach ($result as $row) {
+                $positionMap[$row['PAPERID']] = (string)$row['POSITION'];
+            }
+        }
+
+        // Définir la position pour chaque Paper
+        foreach ($this->papers as $paper) {
+            if ($paper->getPaperid()) {
+                $paper->setVolumePosition($positionMap[$paper->getPaperid()] ?? '');
+            }
+        }
+
         return $this->papers;
     }
 

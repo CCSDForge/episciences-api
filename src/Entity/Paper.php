@@ -448,6 +448,24 @@ class Paper implements UserOwnedInterface
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private Collection $conflicts;
 
+    #[Groups(self::PAPERS_GROUPS)]
+    private ?string $volumePosition = '';
+
+    public function getVolumePosition(): string
+    {
+        if ($this->getVolume() === null) {
+            return '';
+        }
+        // La position sera définie par le Volume lors de la sérialisation
+        return $this->volumePosition ?? '';
+    }
+
+    public function setVolumePosition(?string $position): self
+    {
+        $this->volumePosition = $position;
+        return $this;
+    }
+
     public function __construct()
     {
         $this->when = new DateTime();
