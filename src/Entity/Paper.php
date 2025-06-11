@@ -449,20 +449,20 @@ class Paper implements UserOwnedInterface
     private Collection $conflicts;
 
     #[Groups(self::PAPERS_GROUPS)]
-    private ?string $volumePosition = '';
+    private ?string $paperPosition = '';
 
-    public function getVolumePosition(): string
+    public function getPaperPosition(): string
     {
         if ($this->getVolume() === null) {
             return '';
         }
         // La position sera définie par le Volume lors de la sérialisation
-        return $this->volumePosition ?? '';
+        return $this->paperPosition ?? '';
     }
 
-    public function setVolumePosition(?string $position): self
+    public function setPaperPosition(?string $position): self
     {
-        $this->volumePosition = $position;
+        $this->paperPosition = $position;
         return $this;
     }
 
