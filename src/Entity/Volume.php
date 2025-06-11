@@ -383,7 +383,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         // Définir la position pour chaque Paper
         foreach ($this->papers as $paper) {
             if ($paper->getPaperid()) {
-                $paper->setVolumePosition($positionMap[$paper->getPaperid()] ?? '');
+                $paper->setPaperPosition($positionMap[$paper->getPaperid()] ?? '');
             }
         }
 
