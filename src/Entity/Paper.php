@@ -283,6 +283,11 @@ class Paper implements UserOwnedInterface
     ];
 
 
+    public const VOLUME_CONTEXT_GROUPS = [
+        AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+        AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+    ];
+
     #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
@@ -451,7 +456,6 @@ class Paper implements UserOwnedInterface
     #[ORM\OneToOne(targetEntity: VolumePaperPosition::class)]
     #[ORM\JoinColumn(name: 'PAPERID', referencedColumnName: 'PAPERID')]
     #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID')]
-    //#[Groups(self::PAPERS_GROUPS)]
     private ?VolumePaperPosition $volumePaperPosition = null;
 
     public function __construct()
@@ -987,7 +991,7 @@ class Paper implements UserOwnedInterface
     /**
      * Méthode pour exposer la position dans l'API
      */
-    #[Groups(self::PAPERS_GROUPS)]
+    #[Groups(self::VOLUME_CONTEXT_GROUPS)]
     public function getPosition(): ?int
     {
         return $this->volumePaperPosition?->getPosition();
