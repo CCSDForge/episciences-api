@@ -977,23 +977,13 @@ class Paper implements UserOwnedInterface
         return $this;
     }
 
-    public function getVolumePaperPosition(): ?VolumePaperPosition
-    {
-        return $this->volumePaperPosition;
-    }
-
-    public function setVolumePaperPosition(?VolumePaperPosition $volumePaperPosition): self
-    {
-        $this->volumePaperPosition = $volumePaperPosition;
-        return $this;
-    }
-
-    /**
-     * Méthode pour exposer la position dans l'API
-     */
     #[Groups(self::VOLUME_CONTEXT_GROUPS)]
-    public function getPosition(): ?int
+    public function getPaperPosition(): ?int
     {
-        return $this->volumePaperPosition?->getPosition();
+        try {
+            return $this->volumePaperPosition?->getPosition();
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 }

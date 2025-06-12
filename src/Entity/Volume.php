@@ -240,6 +240,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     )]
     private Collection $papers;
 
+
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -361,14 +362,26 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         return $this;
     }
 
-
     /**
      * @return Collection<int, Paper>
      */
 
     public function getPapers(): Collection
     {
-        return $this->papers;
+        $papers = $this->papers->toArray();
+
+        usort($papers, function(Paper $a, Paper $b) {
+            $posA = $a->getPaperPosition() ?? PHP_INT_MAX;
+            $posB = $b->getPaperPosition() ?? PHP_INT_MAX;
+
+            if ($posA === $posB) {
+                return $a->getPaperid() <=> $b->getPaperid();
+            }
+
+            return $posA <=> $posB;
+        });
+
+        return new ArrayCollection($papers);
     }
 
     public function addPaper(Paper $paper): self
