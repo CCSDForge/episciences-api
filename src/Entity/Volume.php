@@ -362,10 +362,6 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         return $this;
     }
 
-    #[Groups([
-        AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
-        AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
-    ])]
     /**
      * @return Collection<int, Paper>
      */
