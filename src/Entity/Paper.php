@@ -453,7 +453,7 @@ class Paper implements UserOwnedInterface
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private Collection $conflicts;
 
-    #[ORM\OneToOne(targetEntity: VolumePaperPosition::class,fetch: "EAGER")]
+    #[ORM\OneToOne(targetEntity: VolumePaperPosition::class)]
     #[ORM\JoinColumn(name: 'PAPERID', referencedColumnName: 'PAPERID')]
     #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID')]
     private ?VolumePaperPosition $volumePaperPosition = null;
@@ -980,6 +980,10 @@ class Paper implements UserOwnedInterface
     #[Groups(self::VOLUME_CONTEXT_GROUPS)]
     public function getPaperPosition(): ?int
     {
-        return $this->volumePaperPosition?->getPosition();
+        try {
+            return $this->volumePaperPosition?->getPosition();
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 }
