@@ -119,7 +119,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
                 security: [['bearerAuth' => []],]
 
             ),
-            order: ['rvid' => AppConstants::ORDER_DESC, 'vid' => AppConstants::ORDER_DESC],
+            order: ['position' => AppConstants::ORDER_ASC, 'rvid' => AppConstants::ORDER_DESC, 'vid' => AppConstants::ORDER_DESC],
             normalizationContext: [
                 'groups' => [AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]],
             ],
@@ -196,6 +196,12 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     private ?array $vol_type = null;
 
     #[ORM\Column(name: 'POSITION', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
+        ]
+    )]
     private int $position;
 
 
