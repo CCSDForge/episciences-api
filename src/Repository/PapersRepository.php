@@ -185,7 +185,8 @@ class PapersRepository extends ServiceEntityRepository
                         if ($name === AppConstants::SUBMISSION_DATE) { // old stats by year @see PapersStatsProvider
                             $qb->andWhere('YEAR(' . self::PAPERS_ALIAS . '.' . $date . ') =:' . $name);
                         } else {
-                            $this->andOrExp($qb, sprintf('YEAR(%s.%s)', self::PAPERS_ALIAS, $date), $value);
+                            //Correction d'une erreur de type en forçant le cast de $value en tableau dans l'appel à andOrExp()
+                            $this->andOrExp($qb, sprintf('YEAR(%s.%s)', self::PAPERS_ALIAS, $date), (array) $value);
                         }
                     } else {
                         $qb->andWhere(self::PAPERS_ALIAS . '.' . $date . ' >=:' . $name);
