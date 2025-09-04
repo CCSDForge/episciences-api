@@ -53,28 +53,18 @@ jobs:
     - name: Create var directory
       run: mkdir -p var/cache var/log
       
-    - name: Backup composer.json
-      run: cp composer.json composer.json.backup
-      
-    - name: Remove problematic post-install scripts for CI
-      run: |
-        # Remove post-install-cmd and post-update-cmd to prevent cache:clear
-        sed -i '/"post-install-cmd":/,/],/d' composer.json
-        sed -i '/"post-update-cmd":/,/]/d' composer.json
-        # Clean up any trailing commas
-        sed -i 's/,\s*}/}/g' composer.json
-      
-    - name: Install PHP dependencies without problematic scripts
+    - name: Install PHP dependencies with environment override
       run: composer install --no-progress --prefer-dist --optimize-autoloader
-      
-    - name: Restore composer.json
-      run: mv composer.json.backup composer.json
-      
-    - name: Run essential setup for test environment
-      run: |
-        php bin/console cache:warmup --env=test
-        # Run requirements checker manually if needed
-        php vendor/symfony/requirements-checker/bin/requirements-checker
+      env:
+        APP_ENV: prod
+        SYMFONY_CACHE_DIR: ${{ github.workspace }}/var/cache
+        SYMFONY_LOG_DIR: ${{ github.workspace }}/var/log
+        
+    - name: Warm up cache for test environment
+      run: php bin/console cache:warmup --env=test
+      env:
+        SYMFONY_CACHE_DIR: ${{ github.workspace }}/var/cache
+        SYMFONY_LOG_DIR: ${{ github.workspace }}/var/log
       
     - name: Wait for MySQL
       run: |
