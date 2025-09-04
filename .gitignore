@@ -18,6 +18,11 @@ symfony.lock
 ###> symfony/phpunit-bridge ###
 .phpunit.result.cache
 /phpunit.xml
+# PHPUnit downloaded binaries and generated files
+phpunit-*
+phpunit
+phpunit.xsd
+.phpunit-*.md5
 ###< symfony/phpunit-bridge ###
 
 ###> symfony/webpack-encore-bundle ###
