@@ -50,8 +50,13 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-php${{ matrix.php-version }}-composer-
           
+    - name: Create cache directories with proper permissions
+      run: |
+        sudo mkdir -p /var/cache/dev /var/cache/test /var/log
+        sudo chmod 777 /var/cache/dev /var/cache/test /var/log
+        
     - name: Install PHP dependencies
-      run: composer install --no-progress --prefer-dist --optimize-autoloader --no-scripts
+      run: composer install --no-progress --prefer-dist --optimize-autoloader
       
     - name: Wait for MySQL
       run: |
