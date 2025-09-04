@@ -7,7 +7,7 @@
 /var/
 /vendor/
 ###< symfony/framework-bundle ###
-bin
+/bin/phpunit
 .idea
 composer.phar
 symfony.lock
