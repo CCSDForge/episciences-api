@@ -53,10 +53,11 @@ jobs:
     - name: Create var directory
       run: mkdir -p var/cache var/log
       
-    - name: Install PHP dependencies  
-      run: composer install --no-progress --prefer-dist --optimize-autoloader
-      env:
-        APP_ENV: test
+    - name: Install PHP dependencies (skip auto-scripts)
+      run: composer install --no-progress --prefer-dist --optimize-autoloader --no-scripts
+      
+    - name: Warm up cache for test environment
+      run: php bin/console cache:warmup --env=test
       
     - name: Wait for MySQL
       run: |
