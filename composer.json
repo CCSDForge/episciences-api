@@ -83,6 +83,10 @@
             "assets:install %PUBLIC_DIR%": "symfony-cmd",
             "requirements-checker": "script"
         },
+        "auto-scripts-ci": {
+            "assets:install %PUBLIC_DIR%": "symfony-cmd",
+            "requirements-checker": "script"
+        },
         "post-install-cmd": [
             "@auto-scripts"
         ],

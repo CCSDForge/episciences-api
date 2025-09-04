@@ -51,7 +51,7 @@ jobs:
           ${{ runner.os }}-php${{ matrix.php-version }}-composer-
           
     - name: Install PHP dependencies
-      run: composer install --no-progress --prefer-dist --optimize-autoloader
+      run: composer install --no-progress --prefer-dist --optimize-autoloader --no-scripts
       
     - name: Wait for MySQL
       run: |
