@@ -53,11 +53,28 @@ jobs:
     - name: Create var directory
       run: mkdir -p var/cache var/log
       
-    - name: Install PHP dependencies (skip auto-scripts)
-      run: composer install --no-progress --prefer-dist --optimize-autoloader --no-scripts
+    - name: Backup composer.json
+      run: cp composer.json composer.json.backup
       
-    - name: Warm up cache for test environment
-      run: php bin/console cache:warmup --env=test
+    - name: Remove problematic post-install scripts for CI
+      run: |
+        # Remove post-install-cmd and post-update-cmd to prevent cache:clear
+        sed -i '/"post-install-cmd":/,/],/d' composer.json
+        sed -i '/"post-update-cmd":/,/]/d' composer.json
+        # Clean up any trailing commas
+        sed -i 's/,\s*}/}/g' composer.json
+      
+    - name: Install PHP dependencies without problematic scripts
+      run: composer install --no-progress --prefer-dist --optimize-autoloader
+      
+    - name: Restore composer.json
+      run: mv composer.json.backup composer.json
+      
+    - name: Run essential setup for test environment
+      run: |
+        php bin/console cache:warmup --env=test
+        # Run requirements checker manually if needed
+        php vendor/symfony/requirements-checker/bin/requirements-checker
       
     - name: Wait for MySQL
       run: |
