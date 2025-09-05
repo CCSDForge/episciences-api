@@ -23,7 +23,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/core@npm:^7.28.4":
+"@babel/core@npm:^7.24.9":
   version: 7.28.4
   resolution: "@babel/core@npm:7.28.4"
   dependencies:
@@ -1267,7 +1267,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@symfony/webpack-encore@npm:^4.7.0":
+"@symfony/webpack-encore@npm:^4.6.1":
   version: 4.7.0
   resolution: "@symfony/webpack-encore@npm:4.7.0"
   dependencies:
@@ -5591,9 +5591,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
-    "@babel/core": "npm:^7.28.4"
+    "@babel/core": "npm:^7.24.9"
     "@babel/preset-env": "npm:^7.24.8"
-    "@symfony/webpack-encore": "npm:^4.7.0"
+    "@symfony/webpack-encore": "npm:^4.6.1"
     core-js: "npm:^3.37.1"
     regenerator-runtime: "npm:^0.14.1"
     webpack: "npm:^5.93.0"

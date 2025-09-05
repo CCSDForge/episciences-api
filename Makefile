@@ -16,7 +16,7 @@ DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then ech
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage test-file validate clean docker-up docker-down docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer setup-help
+.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage test-file validate clean docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer setup-help deploy deploy-branch deploy-tag
 
 # Help target - displays all available commands
 help:
@@ -41,7 +41,9 @@ help:
 	@echo ""
 	@echo "$(BLUE)Docker Development Commands:$(NC)"
 	@echo "  $(BOLD)docker-up$(NC)         Start all containers (detached)"
+	@echo "  $(BOLD)docker-up-ci$(NC)      Start containers with CI database (standalone)"
 	@echo "  $(BOLD)docker-down$(NC)       Stop all containers"
+	@echo "  $(BOLD)docker-down-ci$(NC)    Stop CI containers with volumes cleanup"
 	@echo "  $(BOLD)docker-restart$(NC)    Restart all containers"
 	@echo "  $(BOLD)docker-logs$(NC)       Follow container logs"
 	@echo "  $(BOLD)docker-status$(NC)     Show container status"
@@ -56,6 +58,11 @@ help:
 	@echo "  $(BOLD)docker-install$(NC)    Install dependencies in container"
 	@echo "  $(BOLD)docker-install-ci$(NC) Install dependencies (CI optimized)"
 	@echo "  $(BOLD)docker-composer$(NC)   Run composer in container (usage: make docker-composer CMD='update')"
+	@echo ""
+	@echo "$(BLUE)Deployment Commands:$(NC)"
+	@echo "  $(BOLD)deploy$(NC)             Deploy main branch to production"
+	@echo "  $(BOLD)deploy-branch$(NC)      Deploy specific branch (usage: make deploy-branch BRANCH=develop)"
+	@echo "  $(BOLD)deploy-tag$(NC)         Deploy specific tag (usage: make deploy-tag TAG=v1.0.0)"
 	@echo ""
 	@echo "$(YELLOW)Prerequisites (Local Development):$(NC)"
 	@echo "  - PHP 8.2+ (php8.2 command)"
@@ -302,11 +309,36 @@ docker-up: ssl-certs
 	@echo ""
 	@echo "  Run '$(BOLD)make setup-help$(NC)' for detailed setup instructions."
 
+# Start containers with CI database (standalone)
+docker-up-ci: ssl-certs
+	@echo "$(BOLD)Starting Docker containers (CI mode with standalone database)...$(NC)"
+	@if [ -z "$(DOCKER_COMPOSE)" ]; then \
+		echo "$(RED)✗ Docker Compose not found$(NC)"; \
+		echo "  Install Docker Compose: https://docs.docker.com/compose/install/"; \
+		exit 1; \
+	fi
+	@if [ ! -f "docker-compose.yml" ] || [ ! -f "docker-compose.ci.yml" ]; then \
+		echo "$(RED)✗ docker-compose.yml or docker-compose.ci.yml not found$(NC)"; \
+		exit 1; \
+	fi
+	$(DOCKER_COMPOSE) -f docker-compose.yml -f docker-compose.ci.yml up -d
+	@echo "$(GREEN)✓ CI containers started with standalone database$(NC)"
+	@echo ""
+	@echo "$(BOLD)🌐 Application URLs:$(NC)"
+	@echo "  $(BLUE)HTTP:$(NC)  http://api-dev.episciences.org:8080"
+	@echo "  $(BLUE)HTTPS:$(NC) https://api-dev.episciences.org:8443"
+
 # Stop all containers
 docker-down:
 	@echo "$(BOLD)Stopping Docker containers...$(NC)"
 	$(DOCKER_COMPOSE) down
 	@echo "$(GREEN)✓ Containers stopped$(NC)"
+
+# Stop CI containers with volume cleanup
+docker-down-ci:
+	@echo "$(BOLD)Stopping Docker containers (CI mode)...$(NC)"
+	$(DOCKER_COMPOSE) -f docker-compose.yml -f docker-compose.ci.yml down -v
+	@echo "$(GREEN)✓ CI containers stopped and volumes cleaned$(NC)"
 
 # Restart all containers
 docker-restart:
@@ -464,3 +496,93 @@ setup-help:
 	@echo "   • $(BOLD)make docker-shell$(NC)    - Enter PHP container"
 	@echo ""
 	@echo "$(GREEN)✓ Happy coding! 🎉$(NC)"
+
+# Deployment Commands
+# ===================
+
+# Internal function to check for uncommitted changes and stash them
+define check-and-stash
+	@if ! git diff --quiet || ! git diff --cached --quiet; then \
+		echo "$(YELLOW)⚠️  WARNING: Uncommitted changes detected!$(NC)"; \
+		echo "$(YELLOW)   Stashing changes before deployment...$(NC)"; \
+		git stash push -u -m "Auto-stash before deployment on $$(date)"; \
+		echo "$(YELLOW)   Changes stashed. Use 'git stash pop' to restore them later.$(NC)"; \
+		echo ""; \
+	fi
+endef
+
+# Internal function for deployment logic
+define deploy-logic
+	@echo "$(BOLD)🚀 Deploying $(1)...$(NC)"
+	@echo ""
+	@# Check git repository
+	@if [ ! -d ".git" ]; then \
+		echo "$(RED)✗ Not a git repository$(NC)"; \
+		exit 1; \
+	fi
+	@# Check and stash uncommitted changes
+	$(call check-and-stash)
+	@# Fetch all updates
+	@echo "$(BLUE)Fetching latest changes...$(NC)"
+	@git fetch --all
+	@git fetch --tags
+	@# Checkout and pull
+	@echo "$(BLUE)Checking out $(1)...$(NC)"
+	@git checkout $(1)
+	@git pull
+	@# Get version info
+	@CURRENT_TAG=$$(git describe --tags --abbrev=0 2>/dev/null || echo "no-tag"); \
+	if [ "$(1)" != "main" ]; then \
+		CURRENT_TAG="$(1)"; \
+	fi; \
+	DEPLOY_DATE=$$(date "+%Y-%m-%d %X %z"); \
+	echo "$(BLUE)Creating version.php with $$CURRENT_TAG...$(NC)"; \
+	echo '<?php' > version.php; \
+	echo "\$$appVersion='$$CURRENT_TAG ($$DEPLOY_DATE)';" >> version.php
+	@# Install dependencies
+	@echo "$(BLUE)Installing production dependencies...$(NC)"
+	@if [ ! -f "composer.phar" ]; then \
+		echo "$(RED)✗ composer.phar not found$(NC)"; \
+		echo "  Download composer.phar first"; \
+		exit 1; \
+	fi
+	@php8.2 composer.phar install -o --no-dev --ignore-platform-reqs
+	@php8.2 composer.phar dump-env production
+	@# Build assets
+	@echo "$(BLUE)Building production assets...$(NC)"
+	@if command -v yarn >/dev/null 2>&1; then \
+		yarn; \
+		yarn encore production; \
+	else \
+		echo "$(YELLOW)⚠️  Yarn not found, skipping asset build$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(GREEN)✅ Deployment completed successfully!$(NC)"
+	@echo "$(BLUE)Deployed version:$(NC) $$(cat version.php | grep appVersion | sed "s/.*='\(.*\)';/\1/")"
+endef
+
+# Deploy main branch
+deploy:
+	$(call deploy-logic,main)
+
+# Deploy specific branch
+deploy-branch:
+	@if [ -z "$(BRANCH)" ]; then \
+		echo "$(RED)Usage: make deploy-branch BRANCH=branch-name$(NC)"; \
+		echo "Examples:"; \
+		echo "  make deploy-branch BRANCH=develop"; \
+		echo "  make deploy-branch BRANCH=feature/new-api"; \
+		exit 1; \
+	fi
+	$(call deploy-logic,$(BRANCH))
+
+# Deploy specific tag
+deploy-tag:
+	@if [ -z "$(TAG)" ]; then \
+		echo "$(RED)Usage: make deploy-tag TAG=tag-name$(NC)"; \
+		echo "Examples:"; \
+		echo "  make deploy-tag TAG=v1.0.0"; \
+		echo "  make deploy-tag TAG=v2.1.3"; \
+		exit 1; \
+	fi
+	$(call deploy-logic,$(TAG))
