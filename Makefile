@@ -367,30 +367,33 @@ docker-test-unit:
 
 # Install dependencies in container
 docker-install:
-	@echo "$(BOLD)Installing dependencies in Docker container...$(NC)"
-	@echo "$(BLUE)Configuring git safe directory...$(NC)"
-	$(DOCKER_COMPOSE) exec -u root php git config --global --add safe.directory /var/www/html
-	@echo "$(BLUE)Creating directories with proper permissions...$(NC)"
-	$(DOCKER_COMPOSE) exec -u root php mkdir -p var/cache var/log vendor
-	$(DOCKER_COMPOSE) exec -u root php chown -R www:www var/ vendor/
-	$(DOCKER_COMPOSE) exec -u root php chmod -R 775 var/ vendor/
-	@echo "$(BLUE)Installing composer dependencies...$(NC)"
-	$(DOCKER_COMPOSE) exec php composer install --no-progress --prefer-dist --optimize-autoloader
-	@echo "$(GREEN)✓ Dependencies installed in container$(NC)"
+	@echo "$(BOLD)Installing dependencies using Composer Docker image...$(NC)"
+	@echo "$(BLUE)Creating Symfony directories...$(NC)"
+	mkdir -p var/cache var/log
+	@echo "$(BLUE)Installing composer dependencies with proper user context...$(NC)"
+	docker run --rm \
+		-v $(PWD):/app \
+		-w /app \
+		-u $(shell id -u):$(shell id -g) \
+		composer:latest install --no-progress --prefer-dist --optimize-autoloader
+	@echo "$(BLUE)Configuring git safe directory in PHP container...$(NC)"
+	$(DOCKER_COMPOSE) exec -u root php git config --global --add safe.directory /var/www/html || true
+	@echo "$(GREEN)✓ Dependencies installed securely with proper permissions$(NC)"
 
 # Install dependencies optimized for CI
 docker-install-ci:
-	@echo "$(BOLD)Installing dependencies in Docker container (CI optimized)...$(NC)"
-	@echo "$(BLUE)Configuring git safe directory...$(NC)"
-	$(DOCKER_COMPOSE) exec -u root php git config --global --add safe.directory /var/www/html
-	@echo "$(BLUE)Setting up proper directory permissions...$(NC)"
-	$(DOCKER_COMPOSE) exec -u root php rm -rf vendor/
-	$(DOCKER_COMPOSE) exec -u root php mkdir -p var/cache var/log vendor
-	$(DOCKER_COMPOSE) exec -u root php chown -R www:www var/ vendor/
-	$(DOCKER_COMPOSE) exec -u root php chmod -R 775 var/ vendor/
-	@echo "$(BLUE)Installing composer dependencies (CI optimized)...$(NC)"
-	$(DOCKER_COMPOSE) exec php composer install --no-progress --prefer-dist --optimize-autoloader --classmap-authoritative
-	@echo "$(GREEN)✓ Dependencies installed in container (CI optimized)$(NC)"
+	@echo "$(BOLD)Installing dependencies using Composer Docker image (CI optimized)...$(NC)"
+	@echo "$(BLUE)Creating Symfony directories...$(NC)"
+	mkdir -p var/cache var/log
+	@echo "$(BLUE)Installing composer dependencies with proper user context...$(NC)"
+	docker run --rm \
+		-v $(PWD):/app \
+		-w /app \
+		-u $(shell id -u):$(shell id -g) \
+		composer:latest install --no-progress --prefer-dist --optimize-autoloader --classmap-authoritative
+	@echo "$(BLUE)Configuring git safe directory in PHP container...$(NC)"
+	$(DOCKER_COMPOSE) exec -u root php git config --global --add safe.directory /var/www/html || true
+	@echo "$(GREEN)✓ Dependencies installed securely with proper permissions$(NC)"
 
 # Run composer commands in container
 docker-composer:

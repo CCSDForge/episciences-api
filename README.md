@@ -34,7 +34,7 @@ curl -X 'POST' \
 
 #### Response type:
 
-{"token":"eyJ0eXAiOiJKV1….", refresh_token":"3ff818151dd…"}
+`{"token":"eyJ0eXAiOiJKV1….", refresh_token":"3ff818151dd…"}`
 
 The token expires after **one hour**.
 The refresh_token expires after **one month**.
