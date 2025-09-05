@@ -56,7 +56,7 @@ jobs:
           composer-
           
     - name: Start Docker environment
-      run: make docker-up
+      run: DOCKER_USER="$(id -u):$(id -g)" make docker-up
       
     - name: Create Symfony directories with proper permissions
       run: |
@@ -64,7 +64,7 @@ jobs:
         sudo chown -R 1001:1001 var/ || true
         
     - name: Install dependencies in container
-      run: APP_ENV=test make docker-install-ci
+      run: APP_ENV=test DOCKER_USER="$(id -u):$(id -g)" make docker-install-ci
       
     - name: Run tests with coverage
       run: make docker-test-coverage

@@ -368,10 +368,12 @@ docker-test-unit:
 # Install dependencies in container
 docker-install:
 	@echo "$(BOLD)Installing dependencies in Docker container...$(NC)"
-	@echo "$(BLUE)Creating Symfony directories with proper permissions...$(NC)"
-	$(DOCKER_COMPOSE) exec -u root php mkdir -p var/cache var/log
-	$(DOCKER_COMPOSE) exec -u root php chown -R www:www var/
-	$(DOCKER_COMPOSE) exec -u root php chmod -R 775 var/
+	@echo "$(BLUE)Configuring git safe directory...$(NC)"
+	$(DOCKER_COMPOSE) exec -u root php git config --global --add safe.directory /var/www/html
+	@echo "$(BLUE)Creating directories with proper permissions...$(NC)"
+	$(DOCKER_COMPOSE) exec -u root php mkdir -p var/cache var/log vendor
+	$(DOCKER_COMPOSE) exec -u root php chown -R www:www var/ vendor/
+	$(DOCKER_COMPOSE) exec -u root php chmod -R 775 var/ vendor/
 	@echo "$(BLUE)Installing composer dependencies...$(NC)"
 	$(DOCKER_COMPOSE) exec php composer install --no-progress --prefer-dist --optimize-autoloader
 	@echo "$(GREEN)✓ Dependencies installed in container$(NC)"
@@ -379,10 +381,12 @@ docker-install:
 # Install dependencies optimized for CI
 docker-install-ci:
 	@echo "$(BOLD)Installing dependencies in Docker container (CI optimized)...$(NC)"
-	@echo "$(BLUE)Creating Symfony directories with proper permissions...$(NC)"
-	$(DOCKER_COMPOSE) exec -u root php mkdir -p var/cache var/log
-	$(DOCKER_COMPOSE) exec -u root php chown -R www:www var/
-	$(DOCKER_COMPOSE) exec -u root php chmod -R 775 var/
+	@echo "$(BLUE)Configuring git safe directory...$(NC)"
+	$(DOCKER_COMPOSE) exec -u root php git config --global --add safe.directory /var/www/html
+	@echo "$(BLUE)Creating directories with proper permissions...$(NC)"
+	$(DOCKER_COMPOSE) exec -u root php mkdir -p var/cache var/log vendor
+	$(DOCKER_COMPOSE) exec -u root php chown -R www:www var/ vendor/
+	$(DOCKER_COMPOSE) exec -u root php chmod -R 775 var/ vendor/
 	@echo "$(BLUE)Installing composer dependencies (CI optimized)...$(NC)"
 	$(DOCKER_COMPOSE) exec php composer install --no-progress --prefer-dist --optimize-autoloader --classmap-authoritative
 	@echo "$(GREEN)✓ Dependencies installed in container (CI optimized)$(NC)"
