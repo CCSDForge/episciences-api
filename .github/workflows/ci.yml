@@ -1,0 +1,129 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+    branches: [ main, preprod, develop]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'docker/**'
+      - 'Makefile'
+      - '.github/workflows/ci.yml'
+  push:
+    branches: [ main, preprod, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'docker/**'
+      - 'Makefile'
+      - '.github/workflows/ci.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  php-tests:
+    name: PHP Tests (Docker)
+    runs-on: ubuntu-latest
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+          
+    - name: Cache Composer dependencies
+      uses: actions/cache@v4
+      with:
+        path: vendor
+        key: composer-${{ hashFiles('composer.lock') }}
+        restore-keys: |
+          composer-
+          
+    - name: Start Docker environment
+      run: DOCKER_USER="$(id -u):$(id -g)" make docker-up
+      
+    - name: Create Symfony directories with proper permissions
+      run: |
+        mkdir -p var/cache var/log
+        sudo chown -R 1001:1001 var/ || true
+        
+    - name: Install dependencies in container
+      run: APP_ENV=test DOCKER_USER="$(id -u):$(id -g)" make docker-install-ci
+      
+    - name: Run tests with coverage
+      run: make docker-test-coverage
+      
+    - name: Extract coverage report from container
+      run: |
+        docker cp episciences_php:/var/www/html/coverage.xml ./coverage-php.xml
+        
+    - name: Upload PHP coverage
+      uses: codecov/codecov-action@v5
+      with:
+        file: ./coverage-php.xml
+        flags: php
+        name: php-coverage
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        
+    - name: Stop Docker environment
+      if: always()
+      run: make docker-down
+
+
+  integration:
+    name: Integration Status
+    runs-on: ubuntu-latest
+    needs: [php-tests]
+    if: always()
+    
+    steps:
+    - name: Check test results
+      run: |
+        if [[ "${{ needs.php-tests.result }}" == "success" ]]; then
+          echo "✅ All Docker-based tests passed!"
+          exit 0
+        else
+          echo "❌ Docker-based tests failed:"
+          echo "  PHP tests: ${{ needs.php-tests.result }}"
+          exit 1
+        fi
+        
+    - name: Comment on PR
+      uses: actions/github-script@v7
+      if: github.event_name == 'pull_request'
+      with:
+        script: |
+          const phpResult = '${{ needs.php-tests.result }}';
+          
+          let message = '## Test Results (Docker-based CI)\n\n';
+          message += phpResult === 'success' ? '✅ PHP Tests (Docker): Passed\n' : '❌ PHP Tests (Docker): Failed\n';
+          
+          if (phpResult === 'success') {
+            message += '\n🎉 All Docker-based tests are passing! Ready to merge.';
+          } else {
+            message += '\n🔍 Please check the failed Docker-based tests before merging.';
+          }
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: message
+          });

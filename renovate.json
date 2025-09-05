@@ -1,6 +1,32 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    ":dependencyDashboard",
+    ":semanticPrefixFixDepsChoreOthers",
+    ":ignoreModulesAndTests",
+    "group:monorepos",
+    "group:recommended",
+    "replacements:all",
+    "workarounds:all"
+  ],
+  "baseBranches": ["preprod"],
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "matchBaseBranches": ["preprod"],
+      "labels": ["preprod-update"]
+    },
+    {
+      "matchManagers": ["composer"],
+      "matchDepTypes": ["require", "require-dev"],
+      "constraintsFiltering": "strict",
+      "ignoreUnstable": false,
+      "composerIgnorePlatformReqs": false,
+      "constraints": {
+        "php": "8.2"
+      }
+    }
   ]
 }
