@@ -1,0 +1,49 @@
+# Docker Compose override for CI environment
+# This file provides a standalone MySQL database for GitHub Actions
+# Local development continues to use the external database network
+
+services:
+  # Add standalone MySQL for CI environment
+  mysql:
+    image: mysql:8.0
+    container_name: episciences_mysql_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: episciences
+      MYSQL_USER: episciences
+      MYSQL_PASSWORD: episciences
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data_ci:/var/lib/mysql
+    networks:
+      - episciences-ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Override PHP service to use internal network and wait for MySQL
+  php:
+    environment:
+      - APP_ENV=${APP_ENV:-test}
+      - DATABASE_URL=mysql://episciences:episciences@mysql:3306/episciences
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - episciences-ci
+
+  # Override Apache service to use internal network
+  apache:
+    networks:
+      - episciences-ci
+
+# CI-specific network (internal)
+networks:
+  episciences-ci:
+    driver: bridge
+
+# CI-specific volumes
+volumes:
+  mysql_data_ci:
