@@ -7,13 +7,12 @@ services:
       - .:/var/www/html
       - ./docker/php-fpm/php.ini:/usr/local/etc/php/php.ini
     working_dir: /var/www/html
-    depends_on:
-      - mysql
+    depends_on: []
     environment:
       - APP_ENV=${APP_ENV:-dev}
-      - DATABASE_URL=mysql://root:root@mysql:3306/episciences
+      - DATABASE_URL=mysql://episciences:episciences@db-episciences:3306/episciences
     networks:
-      - episciences
+      - epi-network
 
   apache:
     build: ./docker/apache
@@ -29,28 +28,10 @@ services:
     depends_on:
       - php
     networks:
-      - episciences
+      - epi-network
 
-  mysql:
-    image: mysql:8.0
-    container_name: episciences_mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: episciences
-      MYSQL_USER: episciences
-      MYSQL_PASSWORD: episciences
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - episciences
-
-
-volumes:
-  mysql_data:
 
 networks:
-  episciences:
-    driver: bridge
+  epi-network:
+    external: true
+    name: episciences-gpl_epi-network

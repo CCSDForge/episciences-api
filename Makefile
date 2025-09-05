@@ -16,7 +16,7 @@ DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then ech
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage test-file validate clean docker-up docker-down docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer
+.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage test-file validate clean docker-up docker-down docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer setup-help
 
 # Help target - displays all available commands
 help:
@@ -47,6 +47,7 @@ help:
 	@echo "  $(BOLD)docker-status$(NC)     Show container status"
 	@echo "  $(BOLD)docker-shell$(NC)      Enter PHP container shell"
 	@echo "  $(BOLD)docker-mysql$(NC)      Enter MySQL container shell"
+	@echo "  $(BOLD)setup-help$(NC)        Show detailed setup instructions"
 	@echo ""
 	@echo "$(BLUE)Docker Testing Commands:$(NC)"
 	@echo "  $(BOLD)docker-test$(NC)       Run tests in PHP container"
@@ -65,6 +66,7 @@ help:
 	@echo "$(YELLOW)Prerequisites (Docker Development):$(NC)"
 	@echo "  - Docker and Docker Compose installed"
 	@echo "  - docker-compose.yml file configured"
+	@echo "  - /etc/hosts configured (see 'make setup-help')"
 	@echo ""
 	@echo "Run '$(BOLD)make check-prereqs$(NC)' to verify local setup or '$(BOLD)make docker-status$(NC)' to check Docker."
 
@@ -289,6 +291,16 @@ docker-up: ssl-certs
 	fi
 	$(DOCKER_COMPOSE) up -d
 	@echo "$(GREEN)✓ Containers started$(NC)"
+	@echo ""
+	@echo "$(BOLD)🌐 Application URLs:$(NC)"
+	@echo "  $(BLUE)HTTP:$(NC)  http://api-dev.episciences.org:8080"
+	@echo "  $(BLUE)HTTPS:$(NC) https://api-dev.episciences.org:8443"
+	@echo ""
+	@echo "$(YELLOW)⚠️  Setup Required:$(NC)"
+	@echo "  Add this line to your $(BOLD)/etc/hosts$(NC) file:"
+	@echo "  $(BOLD)127.0.0.1    api-dev.episciences.org$(NC)"
+	@echo ""
+	@echo "  Run '$(BOLD)make setup-help$(NC)' for detailed setup instructions."
 
 # Stop all containers
 docker-down:
@@ -301,6 +313,14 @@ docker-restart:
 	@echo "$(BOLD)Restarting Docker containers...$(NC)"
 	$(DOCKER_COMPOSE) restart
 	@echo "$(GREEN)✓ Containers restarted$(NC)"
+	@echo ""
+	@echo "$(BOLD)🌐 Application URLs:$(NC)"
+	@echo "  $(BLUE)HTTP:$(NC)  http://api-dev.episciences.org:8080"
+	@echo "  $(BLUE)HTTPS:$(NC) https://api-dev.episciences.org:8443"
+	@echo ""
+	@echo "$(YELLOW)⚠️  Setup Required:$(NC)"
+	@echo "  Add this line to your $(BOLD)/etc/hosts$(NC) file:"
+	@echo "  $(BOLD)127.0.0.1    api-dev.episciences.org$(NC)"
 
 # Show container logs
 docker-logs:
@@ -410,3 +430,37 @@ docker-composer:
 	@echo "$(BOLD)Running composer $(CMD) in Docker container...$(NC)"
 	$(DOCKER_COMPOSE) exec php composer $(CMD)
 	@echo "$(GREEN)✓ Composer command completed$(NC)"
+
+# Local Development Setup Help
+setup-help:
+	@echo "$(BOLD)🚀 Episciences API - Local Development Setup$(NC)"
+	@echo "=============================================="
+	@echo ""
+	@echo "$(BLUE)1. Configure /etc/hosts$(NC)"
+	@echo "   Add the following line to your $(BOLD)/etc/hosts$(NC) file:"
+	@echo ""
+	@echo "   $(BOLD)127.0.0.1    api-dev.episciences.org$(NC)"
+	@echo ""
+	@echo "   $(YELLOW)How to edit /etc/hosts:$(NC)"
+	@echo "   • $(BOLD)Linux/macOS:$(NC) sudo nano /etc/hosts"
+	@echo "   • $(BOLD)Windows:$(NC)     Run Notepad as Administrator and open C:\\Windows\\System32\\drivers\\etc\\hosts"
+	@echo ""
+	@echo "$(BLUE)2. Start the application$(NC)"
+	@echo "   Run: $(BOLD)make docker-up$(NC)"
+	@echo ""
+	@echo "$(BLUE)3. Access the application$(NC)"
+	@echo "   • $(BOLD)HTTP:$(NC)  http://api-dev.episciences.org:8080"
+	@echo "   • $(BOLD)HTTPS:$(NC) https://api-dev.episciences.org:8443 (uses self-signed certificate)"
+	@echo ""
+	@echo "$(YELLOW)📝 Notes:$(NC)"
+	@echo "   • The first HTTPS access will show a security warning (expected with self-signed certificates)"
+	@echo "   • Choose \"Advanced\" → \"Proceed to api-dev.episciences.org\" in your browser"
+	@echo "   • HTTP traffic is automatically redirected to HTTPS"
+	@echo ""
+	@echo "$(BLUE)4. Other useful commands$(NC)"
+	@echo "   • $(BOLD)make docker-restart$(NC)  - Restart containers"
+	@echo "   • $(BOLD)make docker-logs$(NC)     - View container logs"
+	@echo "   • $(BOLD)make docker-status$(NC)   - Check container status"
+	@echo "   • $(BOLD)make docker-shell$(NC)    - Enter PHP container"
+	@echo ""
+	@echo "$(GREEN)✓ Happy coding! 🎉$(NC)"
