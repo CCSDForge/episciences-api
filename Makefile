@@ -16,7 +16,7 @@ DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then ech
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage test-file validate clean docker-up docker-down docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-install docker-composer
+.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage test-file validate clean docker-up docker-down docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-composer
 
 # Help target - displays all available commands
 help:
@@ -50,6 +50,8 @@ help:
 	@echo ""
 	@echo "$(BLUE)Docker Testing Commands:$(NC)"
 	@echo "  $(BOLD)docker-test$(NC)       Run tests in PHP container"
+	@echo "  $(BOLD)docker-test-coverage$(NC) Run tests with coverage in PHP container"
+	@echo "  $(BOLD)docker-test-unit$(NC)  Run unit tests only in PHP container"
 	@echo "  $(BOLD)docker-install$(NC)    Install dependencies in container"
 	@echo "  $(BOLD)docker-composer$(NC)   Run composer in container (usage: make docker-composer CMD='update')"
 	@echo ""
@@ -349,6 +351,18 @@ docker-test:
 	@echo "$(BOLD)Running tests in Docker container...$(NC)"
 	$(DOCKER_COMPOSE) exec php vendor/bin/simple-phpunit
 	@echo "$(GREEN)✓ Docker tests completed$(NC)"
+
+# Run tests with coverage in PHP container
+docker-test-coverage:
+	@echo "$(BOLD)Running tests with coverage in Docker container...$(NC)"
+	$(DOCKER_COMPOSE) exec -e XDEBUG_MODE=coverage php vendor/bin/simple-phpunit --coverage-clover=coverage.xml
+	@echo "$(GREEN)✓ Docker tests with coverage completed$(NC)"
+
+# Run unit tests only in PHP container
+docker-test-unit:
+	@echo "$(BOLD)Running unit tests in Docker container...$(NC)"
+	$(DOCKER_COMPOSE) exec php vendor/bin/simple-phpunit tests/Unit/
+	@echo "$(GREEN)✓ Docker unit tests completed$(NC)"
 
 # Install dependencies in container
 docker-install:

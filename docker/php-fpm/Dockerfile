@@ -24,6 +24,10 @@ RUN docker-php-ext-install \
     zip \
     intl
 
+# Install and configure Xdebug for coverage (disabled by default for performance)
+RUN pecl install xdebug && docker-php-ext-enable xdebug
+RUN echo "xdebug.mode=off" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

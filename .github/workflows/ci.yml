@@ -13,88 +13,49 @@ permissions:
 
 jobs:
   php-tests:
-    name: PHP Tests
+    name: PHP Tests (Docker)
     runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        php-version: ['8.2', '8.3']
-    
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: test_episciences
-        ports:
-          - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
         
     steps:
     - name: Checkout code
       uses: actions/checkout@v5
       
-    - name: Setup PHP ${{ matrix.php-version }}
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: ${{ matrix.php-version }}
-        extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, dom, filter, gd, json, zip
-        coverage: xdebug
-        tools: composer:v2
-        
-    - name: Cache Composer dependencies
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Cache Docker layers
       uses: actions/cache@v4
       with:
-        path: vendor
-        key: ${{ runner.os }}-php${{ matrix.php-version }}-composer-${{ hashFiles('**/composer.lock') }}
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
         restore-keys: |
-          ${{ runner.os }}-php${{ matrix.php-version }}-composer-
+          ${{ runner.os }}-buildx-
           
-    - name: Create var directory
-      run: mkdir -p var/cache var/log
+    - name: Start Docker environment
+      run: make docker-up
       
-    - name: Install PHP dependencies with environment override
-      run: composer install --no-progress --prefer-dist --optimize-autoloader
-      env:
-        APP_ENV: prod
-        SYMFONY_CACHE_DIR: ${{ github.workspace }}/var/cache
-        SYMFONY_LOG_DIR: ${{ github.workspace }}/var/log
-        
-    - name: Warm up cache for test environment
-      run: php bin/console cache:warmup --env=test
-      env:
-        SYMFONY_CACHE_DIR: ${{ github.workspace }}/var/cache
-        SYMFONY_LOG_DIR: ${{ github.workspace }}/var/log
+    - name: Install dependencies in container
+      run: make docker-install
       
-    - name: Wait for MySQL
+    - name: Run tests with coverage
+      run: make docker-test-coverage
+      
+    - name: Extract coverage report from container
       run: |
-        while ! mysqladmin ping -h"127.0.0.1" -P3306 --silent; do
-          sleep 1
-        done
-        
-    - name: Setup test database
-      run: |
-        mysql -h 127.0.0.1 -P 3306 -u root -proot -e "CREATE DATABASE IF NOT EXISTS test_episciences;"
-        mysql -h 127.0.0.1 -P 3306 -u root -proot -e "CREATE DATABASE IF NOT EXISTS test_episciences_auth;"
-      
-    - name: Run PHP tests
-      run: vendor/bin/simple-phpunit --coverage-clover=coverage-php.xml
-      env:
-        DB_HOST: 127.0.0.1
-        DB_PORT: 3306
-        DB_USER: root
-        DB_PASSWORD: root
-        DB_NAME: test_episciences
+        docker cp episciences_php:/var/www/html/coverage.xml ./coverage-php.xml
         
     - name: Upload PHP coverage
       uses: codecov/codecov-action@v5
-      if: matrix.php-version == '8.2'
       with:
         file: ./coverage-php.xml
         flags: php
         name: php-coverage
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        
+    - name: Stop Docker environment
+      if: always()
+      run: make docker-down
 
 
   integration:
@@ -107,10 +68,10 @@ jobs:
     - name: Check test results
       run: |
         if [[ "${{ needs.php-tests.result }}" == "success" ]]; then
-          echo "✅ All tests passed!"
+          echo "✅ All Docker-based tests passed!"
           exit 0
         else
-          echo "❌ Tests failed:"
+          echo "❌ Docker-based tests failed:"
           echo "  PHP tests: ${{ needs.php-tests.result }}"
           exit 1
         fi
@@ -122,13 +83,13 @@ jobs:
         script: |
           const phpResult = '${{ needs.php-tests.result }}';
           
-          let message = '## Test Results\n\n';
-          message += phpResult === 'success' ? '✅ PHP Tests: Passed\n' : '❌ PHP Tests: Failed\n';
+          let message = '## Test Results (Docker-based CI)\n\n';
+          message += phpResult === 'success' ? '✅ PHP Tests (Docker): Passed\n' : '❌ PHP Tests (Docker): Failed\n';
           
           if (phpResult === 'success') {
-            message += '\n🎉 All tests are passing! Ready to merge.';
+            message += '\n🎉 All Docker-based tests are passing! Ready to merge.';
           } else {
-            message += '\n🔍 Please check the failed tests before merging.';
+            message += '\n🔍 Please check the failed Docker-based tests before merging.';
           }
           
           github.rest.issues.createComment({
