@@ -34,8 +34,13 @@ jobs:
     - name: Start Docker environment
       run: make docker-up
       
+    - name: Create Symfony directories with proper permissions
+      run: |
+        mkdir -p var/cache var/log
+        sudo chown -R 1001:1001 var/ || true
+        
     - name: Install dependencies in container
-      run: make docker-install
+      run: APP_ENV=test make docker-install
       
     - name: Run tests with coverage
       run: make docker-test-coverage

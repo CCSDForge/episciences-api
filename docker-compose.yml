@@ -9,7 +9,7 @@ services:
     depends_on:
       - mysql
     environment:
-      - APP_ENV=dev
+      - APP_ENV=${APP_ENV:-dev}
       - DATABASE_URL=mysql://root:root@mysql:3306/episciences
     networks:
       - episciences

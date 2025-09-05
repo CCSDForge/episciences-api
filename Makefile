@@ -367,6 +367,11 @@ docker-test-unit:
 # Install dependencies in container
 docker-install:
 	@echo "$(BOLD)Installing dependencies in Docker container...$(NC)"
+	@echo "$(BLUE)Creating Symfony directories with proper permissions...$(NC)"
+	$(DOCKER_COMPOSE) exec php mkdir -p var/cache var/log
+	$(DOCKER_COMPOSE) exec php chown -R www:www var/
+	$(DOCKER_COMPOSE) exec php chmod -R 775 var/
+	@echo "$(BLUE)Installing composer dependencies...$(NC)"
 	$(DOCKER_COMPOSE) exec php composer install --no-progress --prefer-dist --optimize-autoloader
 	@echo "$(GREEN)✓ Dependencies installed in container$(NC)"
 
