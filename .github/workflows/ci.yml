@@ -55,8 +55,8 @@ jobs:
         restore-keys: |
           composer-
           
-    - name: Start Docker environment
-      run: DOCKER_USER="$(id -u):$(id -g)" make docker-up
+    - name: Start Docker environment (CI mode)
+      run: DOCKER_USER="$(id -u):$(id -g)" docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
       
     - name: Create Symfony directories with proper permissions
       run: |
@@ -84,7 +84,7 @@ jobs:
         
     - name: Stop Docker environment
       if: always()
-      run: make docker-down
+      run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
 
 
   integration:
