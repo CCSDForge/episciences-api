@@ -18,5 +18,5 @@
         "watch": "encore dev --watch",
         "build": "encore production --progress"
     },
-    "packageManager": "yarn@4.3.1"
+    "packageManager": "yarn@4.9.4"
 }
