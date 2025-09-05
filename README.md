@@ -1,7 +1,15 @@
 # episciences-api
-## About REST Episciences API
+## About Episciences REST API
 
-The REST Episciences API can be used with **authentication and authorisation**.
+[![Continuous Integration](https://github.com/CCSDForge/episciences-api/actions/workflows/ci.yml/badge.svg)](https://github.com/CCSDForge/episciences-api/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/CCSDForge/episciences-api/branch/main/graph/badge.svg)](https://codecov.io/gh/CCSDForge/episciences-api)
+[![PHP Version](https://img.shields.io/badge/php-%5E8.2-blue)](https://www.php.net/)
+[![Symfony](https://img.shields.io/badge/Symfony-7.0-black)](https://symfony.com/)
+[![License](https://img.shields.io/github/license/CCSDForge/episciences-api)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?&logo=docker&logoColor=white)](https://www.docker.com/)
+[![API Platform](https://img.shields.io/badge/API%20Platform-3.2-blue)](https://api-platform.com/)
+
+The Episciences REST API can be used with **authentication and authorisation**.
 
 Authentication is reserved exclusively for users of one of the Episciences journals, so, it is vital to recover
 your **API password** - once you have logged on to the journal site - via **My space > Reset my API password**.
