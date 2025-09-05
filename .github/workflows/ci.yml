@@ -3,8 +3,24 @@ name: Continuous Integration
 on:
   pull_request:
     branches: [ main, preprod, develop]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'docker/**'
+      - 'Makefile'
+      - '.github/workflows/ci.yml'
   push:
     branches: [ main, preprod, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'docker/**'
+      - 'Makefile'
+      - '.github/workflows/ci.yml'
 
 permissions:
   contents: read
@@ -31,6 +47,14 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-buildx-
           
+    - name: Cache Composer dependencies
+      uses: actions/cache@v4
+      with:
+        path: vendor
+        key: composer-${{ hashFiles('composer.lock') }}
+        restore-keys: |
+          composer-
+          
     - name: Start Docker environment
       run: make docker-up
       
@@ -40,7 +64,7 @@ jobs:
         sudo chown -R 1001:1001 var/ || true
         
     - name: Install dependencies in container
-      run: APP_ENV=test make docker-install
+      run: APP_ENV=test make docker-install-ci
       
     - name: Run tests with coverage
       run: make docker-test-coverage

@@ -16,7 +16,7 @@ DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then ech
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage test-file validate clean docker-up docker-down docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-composer
+.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage test-file validate clean docker-up docker-down docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer
 
 # Help target - displays all available commands
 help:
@@ -53,6 +53,7 @@ help:
 	@echo "  $(BOLD)docker-test-coverage$(NC) Run tests with coverage in PHP container"
 	@echo "  $(BOLD)docker-test-unit$(NC)  Run unit tests only in PHP container"
 	@echo "  $(BOLD)docker-install$(NC)    Install dependencies in container"
+	@echo "  $(BOLD)docker-install-ci$(NC) Install dependencies (CI optimized)"
 	@echo "  $(BOLD)docker-composer$(NC)   Run composer in container (usage: make docker-composer CMD='update')"
 	@echo ""
 	@echo "$(YELLOW)Prerequisites (Local Development):$(NC)"
@@ -368,12 +369,23 @@ docker-test-unit:
 docker-install:
 	@echo "$(BOLD)Installing dependencies in Docker container...$(NC)"
 	@echo "$(BLUE)Creating Symfony directories with proper permissions...$(NC)"
-	$(DOCKER_COMPOSE) exec php mkdir -p var/cache var/log
-	$(DOCKER_COMPOSE) exec php chown -R www:www var/
-	$(DOCKER_COMPOSE) exec php chmod -R 775 var/
+	$(DOCKER_COMPOSE) exec -u root php mkdir -p var/cache var/log
+	$(DOCKER_COMPOSE) exec -u root php chown -R www:www var/
+	$(DOCKER_COMPOSE) exec -u root php chmod -R 775 var/
 	@echo "$(BLUE)Installing composer dependencies...$(NC)"
 	$(DOCKER_COMPOSE) exec php composer install --no-progress --prefer-dist --optimize-autoloader
 	@echo "$(GREEN)✓ Dependencies installed in container$(NC)"
+
+# Install dependencies optimized for CI
+docker-install-ci:
+	@echo "$(BOLD)Installing dependencies in Docker container (CI optimized)...$(NC)"
+	@echo "$(BLUE)Creating Symfony directories with proper permissions...$(NC)"
+	$(DOCKER_COMPOSE) exec -u root php mkdir -p var/cache var/log
+	$(DOCKER_COMPOSE) exec -u root php chown -R www:www var/
+	$(DOCKER_COMPOSE) exec -u root php chmod -R 775 var/
+	@echo "$(BLUE)Installing composer dependencies (CI optimized)...$(NC)"
+	$(DOCKER_COMPOSE) exec php composer install --no-progress --prefer-dist --optimize-autoloader --classmap-authoritative
+	@echo "$(GREEN)✓ Dependencies installed in container (CI optimized)$(NC)"
 
 # Run composer commands in container
 docker-composer:
