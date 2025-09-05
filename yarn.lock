@@ -1267,9 +1267,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@symfony/webpack-encore@npm:^4.6.1":
-  version: 4.6.1
-  resolution: "@symfony/webpack-encore@npm:4.6.1"
+"@symfony/webpack-encore@npm:^4.7.0":
+  version: 4.7.0
+  resolution: "@symfony/webpack-encore@npm:4.7.0"
   dependencies:
     "@nuxt/friendly-errors-webpack-plugin": "npm:^2.5.1"
     assets-webpack-plugin: "npm:7.0.*"
@@ -1278,9 +1278,8 @@ __metadata:
     clean-webpack-plugin: "npm:^4.0.0"
     css-loader: "npm:^6.7.0"
     css-minimizer-webpack-plugin: "npm:^5.0.0"
-    fast-levenshtein: "npm:^3.0.0"
+    fastest-levenshtein: "npm:^1.0.16"
     mini-css-extract-plugin: "npm:^2.6.0"
-    pkg-up: "npm:^3.1.0"
     pretty-error: "npm:^4.0.0"
     resolve-url-loader: "npm:^5.0.0"
     semver: "npm:^7.3.2"
@@ -1299,6 +1298,7 @@ __metadata:
     "@babel/preset-typescript": ^7.0.0
     "@symfony/stimulus-bridge": ^3.0.0
     "@vue/babel-helper-vue-jsx-merge-props": ^1.0.0
+    "@vue/babel-plugin-jsx": ^1.0.0
     "@vue/babel-preset-jsx": ^1.0.0
     "@vue/compiler-sfc": ^2.6 || ^3.0.2
     eslint: ^8.0.0
@@ -1308,13 +1308,13 @@ __metadata:
     handlebars: ^4.7.7
     handlebars-loader: ^1.7.0
     less: ^4.0.0
-    less-loader: ^11.0.0
+    less-loader: ^11.0.0 || ^12.2.0
     postcss: ^8.3.0
-    postcss-loader: ^7.0.0
+    postcss-loader: ^7.0.0 || ^8.1.0
     sass: ^1.17.0
     sass-loader: ^13.0.0 || ^14.0.0
     stylus: ^0.58.1
-    stylus-loader: ^7.0.0
+    stylus-loader: ^7.0.0 || ^8.1.0
     ts-loader: ^9.0.0
     typescript: ^4.2.2 || ^5.0.0
     vue: ^2.6 || ^3.2.14
@@ -1337,6 +1337,8 @@ __metadata:
     "@symfony/stimulus-bridge":
       optional: true
     "@vue/babel-helper-vue-jsx-merge-props":
+      optional: true
+    "@vue/babel-plugin-jsx":
       optional: true
     "@vue/babel-preset-jsx":
       optional: true
@@ -1388,7 +1390,7 @@ __metadata:
       optional: true
   bin:
     encore: bin/encore.js
-  checksum: 10c0/f8006c36205098f4ca29b04d127d447126d1b673ee8cb6279d0a9ce0b3c466a1eae0c2bddd9eda0441257e288417e67c5f55fa1226414b919c1a8782a712f290
+  checksum: 10c0/9cc7939075fe106a5b79720c52e641b9df7f3291e00169b2c91d0d52a7c3eefbc113ee85d67300eae33b059bf4a33ee1148cdc03252f58620dc75f7ea81f45bd
   languageName: node
   linkType: hard
 
@@ -3242,16 +3244,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-levenshtein@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "fast-levenshtein@npm:3.0.0"
-  dependencies:
-    fastest-levenshtein: "npm:^1.0.7"
-  checksum: 10c0/9e147c682bd0ca54474f1cbf906f6c45262fd2e7c051d2caf2cc92729dcf66949dc809f2392de6adbe1c8716fdf012f91ce38c9422aef63b5732fc688eee4046
-  languageName: node
-  linkType: hard
-
-"fastest-levenshtein@npm:^1.0.12, fastest-levenshtein@npm:^1.0.7":
+"fastest-levenshtein@npm:^1.0.12, fastest-levenshtein@npm:^1.0.16":
   version: 1.0.16
   resolution: "fastest-levenshtein@npm:1.0.16"
   checksum: 10c0/7e3d8ae812a7f4fdf8cad18e9cde436a39addf266a5986f653ea0d81e0de0900f50c0f27c6d5aff3f686bcb48acbd45be115ae2216f36a6a13a7dbbf5cad878b
@@ -3310,15 +3303,6 @@ __metadata:
     common-path-prefix: "npm:^3.0.0"
     pkg-dir: "npm:^7.0.0"
   checksum: 10c0/0faa7956974726c8769671de696d24c643ca1e5b8f7a2401283caa9e07a5da093293e0a0f4bd18c920ec981d2ef945c7f5b946cde268dfc9077d833ad0293cff
-  languageName: node
-  linkType: hard
-
-"find-up@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "find-up@npm:3.0.0"
-  dependencies:
-    locate-path: "npm:^3.0.0"
-  checksum: 10c0/2c2e7d0a26db858e2f624f39038c74739e38306dee42b45f404f770db357947be9d0d587f1cac72d20c114deb38aa57316e879eb0a78b17b46da7dab0a3bd6e3
   languageName: node
   linkType: hard
 
@@ -4151,16 +4135,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"locate-path@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "locate-path@npm:3.0.0"
-  dependencies:
-    p-locate: "npm:^3.0.0"
-    path-exists: "npm:^3.0.0"
-  checksum: 10c0/3db394b7829a7fe2f4fbdd25d3c4689b85f003c318c5da4052c7e56eed697da8f1bce5294f685c69ff76e32cba7a33629d94396976f6d05fb7f4c755c5e2ae8b
-  languageName: node
-  linkType: hard
-
 "locate-path@npm:^5.0.0":
   version: 5.0.0
   resolution: "locate-path@npm:5.0.0"
@@ -4695,7 +4669,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"p-limit@npm:^2.0.0, p-limit@npm:^2.2.0":
+"p-limit@npm:^2.2.0":
   version: 2.3.0
   resolution: "p-limit@npm:2.3.0"
   dependencies:
@@ -4710,15 +4684,6 @@ __metadata:
   dependencies:
     yocto-queue: "npm:^1.0.0"
   checksum: 10c0/a56af34a77f8df2ff61ddfb29431044557fcbcb7642d5a3233143ebba805fc7306ac1d448de724352861cb99de934bc9ab74f0d16fe6a5460bdbdf938de875ad
-  languageName: node
-  linkType: hard
-
-"p-locate@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "p-locate@npm:3.0.0"
-  dependencies:
-    p-limit: "npm:^2.0.0"
-  checksum: 10c0/7b7f06f718f19e989ce6280ed4396fb3c34dabdee0df948376483032f9d5ec22fdf7077ec942143a75827bb85b11da72016497fc10dac1106c837ed593969ee8
   languageName: node
   linkType: hard
 
@@ -4782,13 +4747,6 @@ __metadata:
   version: 1.3.3
   resolution: "parseurl@npm:1.3.3"
   checksum: 10c0/90dd4760d6f6174adb9f20cf0965ae12e23879b5f5464f38e92fce8073354341e4b3b76fa3d878351efe7d01e617121955284cfd002ab087fba1a0726ec0b4f5
-  languageName: node
-  linkType: hard
-
-"path-exists@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "path-exists@npm:3.0.0"
-  checksum: 10c0/17d6a5664bc0a11d48e2b2127d28a0e58822c6740bde30403f08013da599182289c56518bec89407e3f31d3c2b6b296a4220bc3f867f0911fee6952208b04167
   languageName: node
   linkType: hard
 
@@ -4927,15 +4885,6 @@ __metadata:
   dependencies:
     find-up: "npm:^6.3.0"
   checksum: 10c0/1afb23d2efb1ec9d8b2c4a0c37bf146822ad2774f074cb05b853be5dca1b40815c5960dd126df30ab8908349262a266f31b771e877235870a3b8fd313beebec5
-  languageName: node
-  linkType: hard
-
-"pkg-up@npm:^3.1.0":
-  version: 3.1.0
-  resolution: "pkg-up@npm:3.1.0"
-  dependencies:
-    find-up: "npm:^3.0.0"
-  checksum: 10c0/ecb60e1f8e1f611c0bdf1a0b6a474d6dfb51185567dc6f29cdef37c8d480ecba5362e006606bb290519bbb6f49526c403fabea93c3090c20368d98bb90c999ab
   languageName: node
   linkType: hard
 
@@ -5644,7 +5593,7 @@ __metadata:
   dependencies:
     "@babel/core": "npm:^7.28.4"
     "@babel/preset-env": "npm:^7.24.8"
-    "@symfony/webpack-encore": "npm:^4.6.1"
+    "@symfony/webpack-encore": "npm:^4.7.0"
     core-js: "npm:^3.37.1"
     regenerator-runtime: "npm:^0.14.1"
     webpack: "npm:^5.93.0"
