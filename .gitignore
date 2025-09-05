@@ -40,3 +40,6 @@ phpstan.neon
 /public/var/
 /.yarn/install-state.gz
 /var/log/
+
+# SSL certificates for development
+/docker/apache/ssl/

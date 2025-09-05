@@ -1,0 +1,55 @@
+services:
+  php:
+    build: ./docker/php-fpm
+    container_name: episciences_php
+    volumes:
+      - .:/var/www/html
+      - ./docker/php-fpm/php.ini:/usr/local/etc/php/php.ini
+    working_dir: /var/www/html
+    depends_on:
+      - mysql
+    environment:
+      - APP_ENV=dev
+      - DATABASE_URL=mysql://root:root@mysql:3306/episciences
+    networks:
+      - episciences
+
+  apache:
+    build: ./docker/apache
+    container_name: episciences_apache
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - .:/var/www/html
+      - ./docker/apache/vhost.conf:/usr/local/apache2/conf/vhost.conf
+      - ./docker/apache/vhost-ssl.conf:/usr/local/apache2/conf/vhost-ssl.conf
+      - ./docker/apache/ssl:/usr/local/apache2/conf/ssl
+    depends_on:
+      - php
+    networks:
+      - episciences
+
+  mysql:
+    image: mysql:8.0
+    container_name: episciences_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: episciences
+      MYSQL_USER: episciences
+      MYSQL_PASSWORD: episciences
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - episciences
+
+
+volumes:
+  mysql_data:
+
+networks:
+  episciences:
+    driver: bridge
