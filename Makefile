@@ -383,7 +383,8 @@ docker-install-ci:
 	@echo "$(BOLD)Installing dependencies in Docker container (CI optimized)...$(NC)"
 	@echo "$(BLUE)Configuring git safe directory...$(NC)"
 	$(DOCKER_COMPOSE) exec -u root php git config --global --add safe.directory /var/www/html
-	@echo "$(BLUE)Creating directories with proper permissions...$(NC)"
+	@echo "$(BLUE)Setting up proper directory permissions...$(NC)"
+	$(DOCKER_COMPOSE) exec -u root php rm -rf vendor/
 	$(DOCKER_COMPOSE) exec -u root php mkdir -p var/cache var/log vendor
 	$(DOCKER_COMPOSE) exec -u root php chown -R www:www var/ vendor/
 	$(DOCKER_COMPOSE) exec -u root php chmod -R 775 var/ vendor/
