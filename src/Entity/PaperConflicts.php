@@ -74,7 +74,7 @@ class PaperConflicts
     private $date = 'CURRENT_TIMESTAMP';
 
     #[ORM\ManyToOne( fetch: 'EAGER', inversedBy: 'conflicts')]
-    #[ORM\JoinColumn(name: 'paper_id', referencedColumnName: 'PAPERID', nullable: true)]
+    #[ORM\JoinColumn(name: 'paper_id', referencedColumnName: 'DOCID', nullable: true)]
     private ?Paper $papers = null;
 
     public function getCid(): ?int
