@@ -33,5 +33,5 @@ services:
 
 networks:
   epi-network:
-    external: true
+    #external: true
     name: episciences-gpl_epi-network
