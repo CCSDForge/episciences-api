@@ -292,4 +292,5 @@ class PaperLogRepository extends ServiceEntityRepository
 
         return $total;
     }
+
 }

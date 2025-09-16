@@ -254,7 +254,11 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             return null;
         }
 
-        $allAcceptedArticle = $this->entityManager->getRepository(PaperLog::class)->getNumberOfAcceptedArticlesQuery($rvId, $years, $startAfterDate);
+        // Use ALL STATUS_ACCEPTED statuses via PAPERS table
+        $allAcceptedArticle = (float)$this->entityManager->getRepository(Paper::class)
+            ->submissionsQuery(['is' => array_merge(['status' => Paper::STATUS_ACCEPTED], $params)])
+            ->getQuery()
+            ->getSingleScalarResult();
 
         return round(($allAcceptedArticle / $allSubmissions) * 100, AppConstants::DEFAULT_PRECISION);
 

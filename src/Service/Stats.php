@@ -524,29 +524,45 @@ class Stats
     }
 
 
-    public function getTotalNumberOfPapersByStatus($rvId = null, bool $isSubmittedSameYear = true, $as = self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): array
+    public function getTotalNumberOfPapersByStatus($rvId = null, bool $isSubmittedSameYear = true, $as = self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR): array
     {
 
         try {
-            $stmt = $this->entityManager->getRepository(PaperLog::class)->totalNumberOfPapersByStatus($isSubmittedSameYear, $as, $status);
+            // Use PAPERS approach with ALL STATUS_ACCEPTED for consistency
+            $papersRepository = $this->entityManager->getRepository(Paper::class);
 
-            if ($stmt) {
+            // Get all years for the review
+            $years = $papersRepository->getYearRange($rvId);
 
-                if ($rvId) {
+            // Build data in the format expected by the existing formatting logic
+            $rawData = [];
+            foreach ($years as $year) {
+                $acceptedCount = (int)$papersRepository->submissionsQuery([
+                    'is' => [
+                        'rvid' => $rvId,
+                        'status' => Paper::STATUS_ACCEPTED,
+                        'submissionDate' => $year
+                    ]
+                ])->getQuery()->getSingleScalarResult();
 
-                    //before reformat data : [ 8 => [0 => ["year" => 2023, PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [], ... ]
-                    return $this->reformatPaperLogData(
-                        $this->applyFilterBy($stmt->executeQuery()->fetchAllAssociative(), 'rvid', $rvId),
-                        null, $as, 'average'
-                    );
-
-                    //after: [8 => [ 2023 => [PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [2022 => ], .....
-
-
+                if ($acceptedCount > 0) {
+                    $rawData[] = [
+                        'rvid' => $rvId,
+                        'year' => $year,
+                        $as => $acceptedCount
+                    ];
                 }
-
-                return $stmt->executeQuery()->fetchAllAssociative();
             }
+
+            // Use the existing formatting logic
+            if ($rvId && !empty($rawData)) {
+                return $this->reformatPaperLogData(
+                    $this->applyFilterBy($rawData, 'rvid', $rvId),
+                    null, $as, 'average'
+                );
+            }
+
+            return $rawData;
 
         } catch (Exception $e) {
             $this->logger->critical($e->getMessage());
