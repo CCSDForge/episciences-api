@@ -9,6 +9,7 @@ use App\Entity\Paper;
 use App\Entity\Review;
 use App\Entity\User;
 use App\Repository\PaperLogRepository;
+use App\Repository\PapersRepository;
 use App\Resource\AbstractStatResource;
 use App\Resource\DashboardOutput;
 use App\Resource\SubmissionAcceptanceDelayOutput;
@@ -45,48 +46,52 @@ class Stats
     public function getDashboard($context, $filters): DashboardOutput
     {
 
+        $years = isset($filters['is']['submissionDate']) ? (array)$filters['is']['submissionDate'] : [];
+        $rvId = $filters['is']['rvid'] ?? null;
+        $startAfterDate = $filters['is']['startAfterDate'] ?? null;
+
         $result = new DashboardOutput();
 
-        $papersRepo = $this->entityManager->getRepository(Paper::class);
+        $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
 
         $submissions = $this->getSubmissionsStat($filters);
+
+        $imported = $this->entityManager->getRepository(Paper::class)->submissionsQuery($filters, false,'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'] )->getQuery()->getSingleScalarResult();
+
         $submissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters);
         $publicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED);
+        $totalPublished  = $paperLogRepo->getPublished($rvId, $years, $startAfterDate);
+        $totalAccepted = $paperLogRepo->getAccepted($rvId, $years, $startAfterDate); // Tous les articles, même ceux déjà publiés, sont pris en compte pour calculer le taux d'acceptation.
+        $totalRefused = $paperLogRepo->getRefused($rvId, $years, $startAfterDate);
+        $totalAcceptedNotYetPublished = $paperLogRepo->getAllAcceptedNotYetPublished($rvId, $years, $startAfterDate);
 
-
-        $totalPublished = $papersRepo
-            ->submissionsQuery([
-                'is' => array_merge($filters['is'], ['status' => Paper::STATUS_PUBLISHED])
-            ])
-            ->getQuery()
-            ->getSingleScalarResult();
-
-        $totalAccepted = $papersRepo
-            ->submissionsQuery([
-                'is' => array_merge($filters['is'], ['status' => Paper::STATUS_STRICTLY_ACCEPTED])
-            ])
-            ->getQuery()
-            ->getSingleScalarResult();
-
-        $totalRefused = $papersRepo
-            ->submissionsQuery([
-                'is' => array_merge($filters['is'], ['status' => Paper::STATUS_REFUSED])
-            ])
-            ->getQuery()
-            ->getSingleScalarResult();
-
-        $totalOtherStatus = max(0, $submissions->getValue() - $totalPublished - $totalAccepted - $totalRefused);
+        $totalOtherStatus = max(0, $submissions->getValue() - ($totalPublished  + $totalAcceptedNotYetPublished + $totalRefused));
 
         // aggregate stats
         $values = [
             $submissions->getName() => $submissions->getValue(),
+            'totalImported' => $imported,
             'totalPublished' => $totalPublished,
-            'totalAccepted' => $totalAccepted,
-            'totalRefused' => $totalRefused,
+            'totalAcceptedNotYetPublished' => $totalAcceptedNotYetPublished,
             'totalOtherStatus' => $totalOtherStatus,
+            'totalRefused' => $totalRefused,
+            'totalAccepted' => $totalAccepted, //  To calculate the acceptance rate by review
             $submissionsDelay->getName() => $submissionsDelay->getValue(),
             $publicationsDelay->getName() => $publicationsDelay->getValue()
-        ];
+
+            ];
+
+
+        if($years){
+            $totalAcceptedSubmittedSameYear = $this->getTotalNumberOfPapersByStatus($rvId)[$rvId];
+            $values['totalAcceptedSubmittedSameYear'] = 0;
+            foreach ($years as $year) {
+                if(isset($totalAcceptedSubmittedSameYear[$year])){
+                    $values['totalAcceptedSubmittedSameYear'] += $totalAcceptedSubmittedSameYear[$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR];
+                }
+            }
+        }
+
 
         if (!isset($filters['is']['submissionDate'])) { // Roles cannot be sorted by year of creation
             $users = $this->getUserStats($filters['is']);
