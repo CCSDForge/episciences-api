@@ -112,7 +112,7 @@ class PapersRepository extends ServiceEntityRepository
 
         $qb = $this
             ->createQueryBuilder(self::PAPERS_ALIAS)
-            ->select('p.rvid, YEAR(p.modificationDate) AS year, p.repoid, p.status, count(distinct(p.paperid)) AS nbSubmissions ');
+            ->select('p.rvid, YEAR(p.when) AS year, p.repoid, p.status, count(distinct(p.paperid)) AS nbSubmissions ');
 
         $qb = $this->addQueryFilters($qb, $filters);
 

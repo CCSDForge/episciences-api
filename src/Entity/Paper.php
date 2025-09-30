@@ -162,6 +162,8 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 #[ApiFilter(DateFilter::class, properties: ['publicationDate'])]
 class Paper implements UserOwnedInterface
 {
+    public const FLAG_SUBMITTED = 'submitted';
+    public const FLAG_IMPORTED = 'imported';
     public const COLLECTION_NAME = '_api_/papers/_get_collection';
     public const FILTERS = [
         'rvid' => AppConstants::FILTER_TYPE_EXACT,

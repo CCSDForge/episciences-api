@@ -75,71 +75,55 @@ class PaperLogRepository extends ServiceEntityRepository
     private function query(string $unit = self::DEFAULT_UNIT, int $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED, string $startStatsDate = null, $year = null): string
     {
 
-   //Construction de la requête SQL avec GROUP BY conforme à ONLY_FULL_GROUP_BY
-        $sql = "SELECT year, RVID AS rvid, ROUND(AVG(delay), 0) AS delay FROM (
-                 SELECT 
-                    YEAR(SUBMISSION_FROM_LOGS.DATE) AS year, 
-                 SUBMISSION_FROM_LOGS.RVID, 
-                 ABS(TIMESTAMPDIFF($unit, SUBMISSION_FROM_LOGS.DATE, JOINED_TABLE_ALIAS.DATE)) AS delay 
-                FROM (
-                     SELECT PAPERID, MIN(DATE) AS DATE, RVID  
-                    FROM PAPER_LOG 
-                    WHERE ACTION LIKE 'status' ";
+        $initialStatus = Paper::STATUS_SUBMITTED;
+        $sql = "SELECT YEAR(max_date) AS year, rvid, ROUND(AVG(delay_by_article), 0) AS delay FROM (";
+        $sql .= " SELECT t1.PAPERID, t1.min_date, t2.max_date, t1.RVID AS rvid,  TIMESTAMPDIFF($unit, min_date, max_date) AS delay_by_article FROM (";
+        $sql .= " SELECT PAPERID, MIN(DATE) AS min_date, RVID FROM PAPER_LOG WHERE `status` IS NOT NULL AND `status` = $initialStatus";
 
         if ($startStatsDate) {
-            $sql .= "AND DATE >= '$startStatsDate'";
+            $sql .= " AND DATE(DATE) > '$startStatsDate'";
         }
 
-        $sql .= "AND (DETAIL LIKE '{\"status\":" . Paper::STATUS_SUBMITTED . "}' OR DETAIL LIKE '{\"status\":\"" . Paper::STATUS_SUBMITTED . "\"}' ) 
-                GROUP BY PAPERID, RVID
-                ) AS SUBMISSION_FROM_LOGS 
-                INNER JOIN (
-                SELECT PAPERID, MAX(DATE) AS DATE
-                FROM PAPER_LOG 
-                WHERE ACTION LIKE 'status' ";
-
-        if ($startStatsDate) {
-            $sql .= "AND DATE >= '$startStatsDate'";
-        }
-
-        $sql .= " AND (DETAIL LIKE '{\"status\":\"$latestStatus\"}' OR DETAIL LIKE '{\"status\":$latestStatus}') 
-                  GROUP BY PAPERID 
-                  ) AS JOINED_TABLE_ALIAS USING (PAPERID) 
-                  ) AS DELAY_SUBMISSION_LATEST_STATUS";
+        $sql .= " GROUP BY PAPERID, RVID ) t1 INNER JOIN(";
+        $sql .= " SELECT PAPERID, MAX(DATE) AS max_date, RVID FROM PAPER_LOG WHERE `status`IS NOT NULL AND `status` = " . ($latestStatus === Paper::STATUS_STRICTLY_ACCEPTED ? Paper::STATUS_STRICTLY_ACCEPTED . " OR status = " . Paper::STATUS_TMP_VERSION_ACCEPTED : $latestStatus);
+        $sql .= " GROUP BY PAPERID, RVID ) t2 ON t1.PAPERID = t2.PAPERID AND t1.RVID = t2.RVID HAVING t1.PAPERID NOT IN(";
+        $sql .= " SELECT DISTINCT PAPERID FROM PAPERS WHERE FLAG = 'imported')) t3 GROUP BY rvid, year";
 
         if ($year) {
-            $sql .= " WHERE `year` = '$year'";
+            $sql .= " HAVING year = $year";
         }
 
-        $sql .= " GROUP BY rvid, year ORDER BY year ASC, rvid ASC  ";
 
         return $sql;
 
     }
 
-    public function getTotalNumberOfPapersByStatusSql(bool $isSubmittedSameYear = true, $as = 'totalNumberOfPapersAccepted', int $status = 4): string
+
+    public function getNbPapersByStatusSql(bool $isSubmittedSameYear = true, $as = 'totalNumberOfPapersAccepted', int $status = 4): string
     {
         $papers = 'PAPERS';
         $paperLog = 'PAPER_LOG';
 
-        $year = $isSubmittedSameYear ? "$papers.SUBMISSION_DATE" : "$paperLog.DATE";
+        $year = !$isSubmittedSameYear ? "$papers.SUBMISSION_DATE" : "pl.DATE";
 
 
-        return "SELECT $papers.RVID AS rvid, YEAR($year) AS `year`, COUNT(DISTINCT($papers.PAPERID)) AS $as FROM $paperLog JOIN $papers ON $papers.DOCID = $paperLog.DOCID
-                WHERE ACTION LIKE 'status' AND(DETAIL LIKE '{\"status\":$status}' OR DETAIL LIKE '{\"status\":\"$status\"}') AND FLAG = 'submitted'
+        $sql = "SELECT $papers.RVID AS rvid, YEAR($year) AS `year`, COUNT(DISTINCT($papers.PAPERID)) AS $as FROM $paperLog pl JOIN $papers ON $papers.PAPERID = pl.PAPERID AND YEAR($papers.SUBMISSION_DATE) = YEAR(pl.DATE)
+                WHERE pl.status IS NOT NULL AND pl.status = $status AND $papers.FLAG = 'submitted'
                 GROUP BY rvid, `year`
                 ORDER BY rvid, `year` DESC
                 ";
 
+        return $sql;
+
     }
 
-    public function totalNumberOfPapersByStatus(bool $isSubmittedSameYear = true, $as = Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): ?Statement
+    public function totalNbPapersByStatusStatement(bool $isSubmittedSameYear = true, $as = Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): ?Statement
     {
 
         $conn = $this->getEntityManager()->getConnection();
 
         try {
-            return $conn->prepare($this->getTotalNumberOfPapersByStatusSql($isSubmittedSameYear, $as, $status));
+            return $conn->prepare($this->getNbPapersByStatusSql($isSubmittedSameYear, $as, $status));
 
         } catch (Exception $e) {
             $this->logger->critical($e->getMessage());
@@ -161,12 +145,11 @@ class PaperLogRepository extends ServiceEntityRepository
 
         $delay = [];
         $status = $operationName !== 'median-submission-publication' ? Paper::STATUS_STRICTLY_ACCEPTED : Paper::STATUS_PUBLISHED;
-        $subDetails = [sprintf('{"status":"%s"}', Paper::STATUS_SUBMITTED), sprintf('{"status":%s}', Paper::STATUS_SUBMITTED)];
 
-        $betweenDetails = [sprintf('{"status":"%s"}', $status), sprintf('{"status":%s}', $status)];
+        $betweenDetails = [$status];
 
         if ($operationName === 'median-submission-acceptance') {
-            $betweenDetails[] = sprintf('{"status":%s}', Paper::STATUS_TMP_VERSION_ACCEPTED);
+            $betweenDetails[] = Paper::STATUS_TMP_VERSION_ACCEPTED;
         }
 
         $qb = $this->getEntityManager()->createQueryBuilder();
@@ -186,9 +169,8 @@ class PaperLogRepository extends ServiceEntityRepository
             $qb->andWhere('spl.date > :date')->setParameter('date', $startAfterDate);
         }
 
-        $qb->andWhere("spl.action LIKE :action");
-        $qb->setParameter('action', 'status');
-        $this->andOrExp($qb, 'spl.detail', $subDetails);
+        $qb->andWhere("spl.status IS NOT NULL");
+        $qb->andWhere('spl.status = :subStatus')->setParameter('subStatus', Paper::STATUS_SUBMITTED);
         $qb->groupBy('spl.paperid');
 
         $qb->innerJoin(PaperLog::class, 'bpl', Join::WITH, 'spl.paperid = bpl.paperid');
@@ -205,9 +187,8 @@ class PaperLogRepository extends ServiceEntityRepository
             $qb->andWhere('bpl.date > :date')->setParameter('date', $startAfterDate);
         }
 
-        $qb->andWhere("bpl.action LIKE :action");
-        $qb->setParameter('action', 'status');
-        $this->andOrExp($qb, 'bpl.detail', $betweenDetails);
+        $qb->andWhere("bpl.status IS NOT NULL");
+        $this->andOrExp($qb, 'bpl.status', $betweenDetails);
         $qb->groupBy('bpl.paperid');
 
         $qb->innerJoin(Paper::class, 'p', Join::WITH, 'spl.paperid = p.paperid AND p.flag =:flag')->setParameter('flag', 'submitted');
@@ -240,25 +221,34 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-
-    public function getNumberOfAcceptedArticlesQuery(int $rvId = null, array $years = [], string $startAfterDate = null): float
+    private  function commonQuery(int $rvId = null, array $years = [], string $startAfterDate = null, int|array $status = [Paper::STATUS_STRICTLY_ACCEPTED], bool $ignoreImportedArticles = false): \Doctrine\ORM\QueryBuilder
     {
-
-        $total = 0;
         $qb = $this->getEntityManager()->createQueryBuilder();
         $qb->addSelect("COUNT(DISTINCT(pl.paperid)) AS total");
 
         if (!empty($years)) {
-            $qb->addSelect("YEAR(p.submissionDate) As year");
+            $qb->addSelect("YEAR(pl.date) As year");
         }
 
         $qb->from(PaperLog::class, 'pl')
-            ->innerJoin(Paper::class, 'p', Join::WITH, 'pl.docid = p.docid')
-            ->andWhere("pl.action = :action")->setParameter('action', 'status');
+            ->innerJoin(Paper::class, 'p', Join::WITH, 'pl.paperid = p.paperid')
+            ->andWhere('p.status != :deleted')->setParameter('deleted', Paper::STATUS_DELETED)
+            ->andWhere('p.status != :removed')->setParameter('removed', Paper::STATUS_REMOVED)
+            ->andWhere("pl.status IS NOT NULL");
 
-        $this->andOrExp($qb, 'pl.detail', [sprintf('{"status":%s}', Paper::STATUS_STRICTLY_ACCEPTED), sprintf('{"status":"%s"}', Paper::STATUS_STRICTLY_ACCEPTED), sprintf('{"status":%s}', Paper::STATUS_TMP_VERSION_ACCEPTED)]);
-        $qb->andWhere("p.flag = :flag");
-        $qb->setParameter('flag', 'submitted');
+
+        if (is_array($status)) {
+            $this->andOrExp($qb, 'pl.status', $status);
+
+        } else {
+            $qb->andWhere('pl.status = :status')->setParameter('status', $status);
+        }
+
+
+        if ($ignoreImportedArticles){
+            $qb->andWhere("p.flag = :flag");
+            $qb->setParameter('flag', 'submitted');
+        }
 
         if (self::isValidDate($startAfterDate)) {
             $qb->andWhere('p.submissionDate > :date')->setParameter('date', $startAfterDate);
@@ -268,10 +258,29 @@ class PaperLogRepository extends ServiceEntityRepository
             $qb->andWhere('p.rvid = :rvid')->setParameter('rvid', $rvId);
         }
 
-        if (!empty($years)) {
-            $this->andOrExp($qb, 'YEAR(p.submissionDate)', $years);
-            $qb->addGroupBy('year');
-        }
+        return $qb;
+
+    }
+
+
+    public function getAccepted(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): float
+    {
+
+        $qb = $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
+        return $this->processResult($qb, $years);
+
+    }
+
+    public function getRefused(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = false): float
+    {
+
+        $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_REFUSED, $ignoreImportedArticles);
+        return $this->processResult($qb, $years);
+
+    }
+
+    private function processResult(\Doctrine\ORM\QueryBuilder $qb, array $years = []): float{
+        $total = 0;
 
         if (empty($years)) {
             try {
@@ -279,17 +288,52 @@ class PaperLogRepository extends ServiceEntityRepository
             } catch (NoResultException|NonUniqueResultException  $e) {
                 $this->logger->critical($e->getMessage());
             }
-        }
+        }  else {
 
-        $result = $qb->getQuery()->getResult();
 
-        if (!empty($years)) {
+                $this->andOrExp($qb, 'YEAR(pl.date)', $years);
+                $qb->addGroupBy('year');
+
+            $result = $qb->getQuery()->getResult();
 
             foreach ($result as $values) {
                 $total += $values['total'];
             }
+
         }
 
         return $total;
+
     }
+
+    public function getPublished(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = false) :float{
+        $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_PUBLISHED, $ignoreImportedArticles);
+        return $this->processResult($qb, $years);
+
+    }
+
+
+
+    public function getAllAcceptedNotYetPublished(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true) : float
+    {
+
+        $qb = $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
+
+        $subQb = $this->getEntityManager()->createQueryBuilder();
+
+
+        // accepted and published
+        $subQb->addSelect('1')
+            ->from(PaperLog::class, 'pl1')
+            ->andWhere('pl1.paperid = pl.paperid')
+            ->andWhere('pl1.status IS NOT NULL')
+            ->andWhere('pl1.status = :pStatus');
+
+
+        $qb->andWhere($qb->expr()->not($qb->expr()->exists( $subQb->getDQL())))->setParameter('pStatus', Paper::STATUS_PUBLISHED);;
+
+        return $this->processResult($qb, $years);
+
+    }
+
 }

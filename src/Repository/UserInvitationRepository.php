@@ -51,6 +51,8 @@ class UserInvitationRepository extends ServiceEntityRepository
         $qb->addGroupBy('ua.rvid');
         $qb->addGroupBy('ua.itemid');
         $qb->addGroupBy('ua.uid');
+        $qb->addGroupBy('i.status');
+        $qb->addGroupBy('i.id');
 
         if ($rvId) {
             $qb->andhaving('ua.rvid = :rvId')->setParameter('rvId', $rvId);

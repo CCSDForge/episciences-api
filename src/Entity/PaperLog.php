@@ -43,8 +43,12 @@ class PaperLog
     private $action;
 
 
-   #[ORM\Column(name: 'DETAIL', type: 'text', length: 65535, nullable: true)]
-    private $detail;
+   #[ORM\Column(name: 'DETAIL', type: 'json', nullable: true)]
+    private ?string $detail;
+
+    #[ORM\Column(name: 'status', type: 'integer',nullable: true, insertable: false, updatable: false, columnDefinition: "SMALLINT GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(DETAIL, '$.status'))) stored",
+        generated: 'ALWAYS',)]
+    private ?int $status;
 
 
     #[ORM\Column(name: 'FILE', type: 'string', length: 150, nullable: true)]
