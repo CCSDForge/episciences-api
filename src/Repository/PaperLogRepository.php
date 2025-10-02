@@ -99,7 +99,7 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
 
-    public function getNbPapersByStatusSql(bool $isSubmittedSameYear = true, $as = 'totalNumberOfPapersAccepted', int $status = 4): string
+    public function getNbPapersByStatusSql(bool $isSubmittedSameYear = true, $as = 'totalNumberOfPapersAccepted', int $status = 4, bool $withoutImported = true): string
     {
         $papers = 'PAPERS';
         $paperLog = 'PAPER_LOG';
@@ -107,11 +107,17 @@ class PaperLogRepository extends ServiceEntityRepository
         $year = !$isSubmittedSameYear ? "$papers.SUBMISSION_DATE" : "pl.DATE";
 
 
-        $sql = "SELECT $papers.RVID AS rvid, YEAR($year) AS `year`, COUNT(DISTINCT($papers.PAPERID)) AS $as FROM $paperLog pl JOIN $papers ON $papers.PAPERID = pl.PAPERID AND YEAR($papers.SUBMISSION_DATE) = YEAR(pl.DATE)
-                WHERE pl.status IS NOT NULL AND pl.status = $status AND $papers.FLAG = 'submitted'
-                GROUP BY rvid, `year`
-                ORDER BY rvid, `year` DESC
-                ";
+        $sql = "SELECT $papers.RVID AS rvid, YEAR($year) AS `year`, COUNT(DISTINCT($papers.PAPERID)) AS $as";
+        $sql .= " FROM $paperLog pl JOIN $papers ON $papers.PAPERID = pl.PAPERID AND YEAR($papers.SUBMISSION_DATE) = YEAR(pl.DATE)";
+        $sql .= " WHERE pl.status IS NOT NULL AND pl.status = $status";
+
+        if ($withoutImported) {
+            $sql .= " AND $papers.FLAG = 'submitted'";
+        }
+
+        $sql .= "GROUP BY rvid, `year`";
+        $sql .= "ORDER BY rvid, `year` DESC";
+
 
         return $sql;
 
@@ -271,7 +277,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    public function getRefused(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = false): float
+    public function getRefused(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): float
     {
 
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_REFUSED, $ignoreImportedArticles);
@@ -306,7 +312,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    public function getPublished(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = false) :float{
+    public function getPublished(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true) :float{
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_PUBLISHED, $ignoreImportedArticles);
         return $this->processResult($qb, $years);
 

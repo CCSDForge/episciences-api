@@ -31,6 +31,8 @@ class Stats
     public const STATS_UNIT = 'unit';
     public const STATS_METHOD = 'method';
     public const TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR = 'acceptedSubmittedSameYear';
+    public const TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR = 'publishedSubmittedSameYear';
+    public const TOTAL_REFUSED_SUBMITTED_SAME_YEAR = 'refusedSubmittedSameYear';
     public const ACCEPTANCE_RATE = 'acceptanceRate'; // TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR / submissions by year
     public const REF_YEAR = 2013; // statistics since this year
     public const AVAILABLE_PAPERS_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::PAPER_FLAG, AppConstants::PAPER_STATUS, AppConstants::PAPER_STATUS, AppConstants::YEAR_PARAM];
@@ -56,54 +58,82 @@ class Stats
         $submissions = $this->getSubmissionsStat($filters);
         $nbSubmissions = $submissions->getValue();
 
-        $imported = $this->entityManager->getRepository(Paper::class)->submissionsQuery($filters, false,'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'] )->getQuery()->getSingleScalarResult();
 
+        // aggregate stats
+
+        if ($startAfterDate && !$years) { // StartAfterDate Filter ignored: they provide an overview of the data, without taking this filter into account.
+            $values['totalWithoutStartAfterDate']['totalSubmissions'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId]])->getQuery()->getSingleScalarResult();
+            $values['totalWithoutStartAfterDate']['totalImported'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']]])->getQuery()->getSingleScalarResult();
+            $values['totalWithoutStartAfterDate']['totalPublished'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Paper::STATUS_PUBLISHED]])->getQuery()->getSingleScalarResult();
+            $values['totalWithoutStartAfterDate']['totalImportedPublished'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Paper::STATUS_PUBLISHED, 'flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported'] ]])->getQuery()->getSingleScalarResult();
+
+        } else {
+            $newFilters['is'] = array_merge($filters['is'], ['status' => Paper::STATUS_PUBLISHED]);
+            // Imported and published articles
+            $importedPublished = $this->entityManager->getRepository(Paper::class)->submissionsQuery($newFilters, false, 'publicationDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
+            $values ['nbImportedPublished'] = $importedPublished;
+        }
+
+        // Imported articles
+        $imported = $this->entityManager->getRepository(Paper::class)->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
+
+
+        // Only submitted : imported articles ignored
         $submissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters);
         $publicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED);
-        $totalPublished  = $paperLogRepo->getPublished($rvId, $years, $startAfterDate);
+        // Published without imported
+        $totalPublished = $paperLogRepo->getPublished($rvId, $years, $startAfterDate);
         $totalAccepted = $paperLogRepo->getAccepted($rvId, $years, $startAfterDate); // Tous les articles, même ceux déjà publiés, sont pris en compte pour calculer le taux d'acceptation.
         $totalRefused = $paperLogRepo->getRefused($rvId, $years, $startAfterDate);
         $totalAcceptedNotYetPublished = $paperLogRepo->getAllAcceptedNotYetPublished($rvId, $years, $startAfterDate);
 
-        $totalOtherStatus = max(0, $nbSubmissions - ($totalPublished  + $totalAcceptedNotYetPublished + $totalRefused));
-
-
-        // aggregate stats
-
-        if ($startAfterDate && !$years){ // StartAfterDate Filter ignored: they provide an overview of the data, without taking this filter into account.
-            $values['totalWithoutStartAfterDate']['totalSubmissions'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId]])->getQuery()->getSingleScalarResult();
-            $values['totalWithoutStartAfterDate']['totalImported'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']]])->getQuery()->getSingleScalarResult();
-            $values['totalWithoutStartAfterDate']['totalPublished'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Paper::STATUS_PUBLISHED]])->getQuery()->getSingleScalarResult();
-        }
+        $totalOther = max(0, $nbSubmissions - ($totalPublished + $totalAcceptedNotYetPublished + $totalRefused));
 
         $values [$submissions->getName()] = $nbSubmissions;
+
         $values ['nbImported'] = $imported;
         $values ['nbPublished'] = $totalPublished;
         $values ['nbAcceptedNotYetPublished'] = $totalAcceptedNotYetPublished;
-        $values['nbOtherStatus'] = $totalOtherStatus;
+        $values['nbOtherStatus'] = $totalOther;
         $values['nbRefused'] = $totalRefused;
         $values['nbAccepted'] = $totalAccepted; //  To calculate the acceptance rate by review
-        $values['acceptanceRate'] =  $nbSubmissions ? round(($totalAccepted / $nbSubmissions) * 100, 2, PHP_ROUND_HALF_UP) : 0;
         $values[$submissionsDelay->getName()] = $submissionsDelay->getValue();
         $values[$publicationsDelay->getName()] = $publicationsDelay->getValue();
 
-        if($years){
+        $submissionsWithoutImported = $nbSubmissions - $imported;
+
+
+        if ($years) {
+
+            $values = array_merge($values, ['totalAcceptedSubmittedSameYear' => 0, 'totalPublishedSubmittedSameYear' => 0, 'totalRefusedSubmittedSameYear' => 0]);
+
             $totalAcceptedSubmittedSameYear = $this->getNbPapersByStatus($rvId)[$rvId];
-            $values['totalAcceptedSubmittedSameYear'] = 0;
+            $nbPublishedSubmittedSameYear = $this->getNbPapersByStatus($rvId, true, self::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR, Paper::STATUS_PUBLISHED)[$rvId];
+            $nbRefusedSubmittedSameYear = $this->getNbPapersByStatus($rvId, true, self::TOTAL_REFUSED_SUBMITTED_SAME_YEAR, Paper::STATUS_REFUSED)[$rvId];
+
             foreach ($years as $year) {
-                if(isset($totalAcceptedSubmittedSameYear[$year])){
+
+                if (isset($totalAcceptedSubmittedSameYear[$year])) {
                     $values['totalAcceptedSubmittedSameYear'] += $totalAcceptedSubmittedSameYear[$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR];
                 }
+
+                if (isset($nbPublishedSubmittedSameYear[$year])) {
+                    $values['totalPublishedSubmittedSameYear'] += $nbPublishedSubmittedSameYear[$year][self::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR];
+                }
+
+                if (isset($nbRefusedSubmittedSameYear[$year])) {
+                    $values['totalRefusedSubmittedSameYear'] += $nbRefusedSubmittedSameYear[$year][self::TOTAL_REFUSED_SUBMITTED_SAME_YEAR];
+                }
             }
-        }
+
+            $values['totalOtherSubmittedSameYear'] = $submissionsWithoutImported - ($values['totalAcceptedSubmittedSameYear'] + $values['totalPublishedSubmittedSameYear'] + $values['totalRefusedSubmittedSameYear']);
 
 
-        if ($nbSubmissions){
-            $publishedPercentage = round($totalPublished / $nbSubmissions * 100, 2, PHP_ROUND_HALF_UP);
-            $acceptedPercentage = round($totalAccepted / $nbSubmissions * 100, 2, PHP_ROUND_HALF_UP);
-            $refusedPercentage = round($totalRefused / $nbSubmissions * 100, 2, PHP_ROUND_HALF_UP);
-            $otherPercentage = round($totalOtherStatus / $nbSubmissions* 100, 2, PHP_ROUND_HALF_UP);
-            $values ['percentage'] = ['published' => $publishedPercentage, 'accepted' => $acceptedPercentage, 'refused' => $refusedPercentage, 'other' => $otherPercentage];
+            $values ['rate'] = $this->getPercentages(['totalSubmissions' => $submissionsWithoutImported, 'totalAccepted' => $values['totalAcceptedSubmittedSameYear'], 'totalPublished' => $values['totalPublishedSubmittedSameYear'], 'totalRefused' => $totalRefused, 'totalOther' => $values['totalOtherSubmittedSameYear']]);
+
+
+        } else {
+            $values ['rate'] = $this->getPercentages(['totalSubmissions' => $submissionsWithoutImported, 'totalAccepted' => $totalAccepted, 'totalPublished' => $totalPublished, 'totalRefused' => $totalRefused, 'totalOther' => $totalOther]);
 
         }
 
@@ -201,11 +231,11 @@ class Stats
             $yearResult = $this->applyFilterBy($result, 'year', $year);
             $avg = array_key_exists($year, $yearResult) ? $this->avg($yearResult[$year]) : null;
 
-                $statResource->setValue(
-                    $avg !== null
-                        ? ['value' => $avg, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]
-                        : $defaultValue
-                );
+            $statResource->setValue(
+                $avg !== null
+                    ? ['value' => $avg, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]
+                    : $defaultValue
+            );
 
 
             if ($withDetails) {
@@ -223,7 +253,7 @@ class Stats
                     $avg !== null
                         ? ['value' => $avg, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]
                         : $defaultValue
-                    );
+                );
             }
 
             if ($withDetails) {
@@ -242,7 +272,7 @@ class Stats
         if ($year && $rvId) {
             $details = $this->applyFilterBy($result, 'rvid', $rvId);
 
-            $reformattedResult = $this->reformatPaperLogData($details, $unit,PaperLogRepository::DELAY, $method);
+            $reformattedResult = $this->reformatPaperLogData($details, $unit, PaperLogRepository::DELAY, $method);
 
             if (isset($reformattedResult[$rvId])) {
 
@@ -300,7 +330,7 @@ class Stats
 
         try {
             $nbUsers = (int)$userRepository->findByReviewQuery($rvId, false, $role, $uid, $registrationYear)->getQuery()->getSingleScalarResult();
-        } catch (NoResultException | NonUniqueResultException $e) {
+        } catch (NoResultException|NonUniqueResultException $e) {
             $nbUsers = null;
             $this->logger->error($e->getMessage());
         }
@@ -336,7 +366,7 @@ class Stats
 
             $details = array_key_exists($rvId, $this->reformatUsersData($userStats)) ?
                 $this->reformatUsersData($userStats)[$rvId] :
-                $this->reformatUsersData($userStats) ;
+                $this->reformatUsersData($userStats);
         }
 
         $statResource->setValue($nbUsers);
@@ -376,7 +406,7 @@ class Stats
 
             $navFiltersWithoutYear = $filters;
             unset($navFiltersWithoutYear['is']['submissionDate']);
-            $relevantYears= $papersRepository->getSubmissionYearRange($navFiltersWithoutYear);
+            $relevantYears = $papersRepository->getSubmissionYearRange($navFiltersWithoutYear);
 
             $details['years']['statSinceRef'] = self::REF_YEAR;
             $details['years']['relevantYears'] = $relevantYears;
@@ -413,21 +443,21 @@ class Stats
                 getQuery()->
                 getSingleScalarResult();
 
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]], false,'when', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'] )->getQuery()->getSingleScalarResult();
+               $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]], false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
 
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['published'] = $this->entityManager->getRepository(PaperLog::class)->getPublished($rvId, [$year], $startAfterDate);
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['acceptedNotYetPublished'] = $this->entityManager->getRepository(PaperLog::class)->getAllAcceptedNotYetPublished($rvId, [$year], $startAfterDate);
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['refused'] = $this->entityManager->getRepository(PaperLog::class)->getRefused($rvId, [$year], $startAfterDate);
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['accepted'] = $this->entityManager->getRepository(PaperLog::class)->getAccepted($rvId, [$year], $startAfterDate);
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['others'] = max(0,  $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] - ($details[self::SUBMISSIONS_BY_YEAR][$year]['published'] + $details[self::SUBMISSIONS_BY_YEAR][$year]['acceptedNotYetPublished'] + $details[self::SUBMISSIONS_BY_YEAR][$year]['refused']));
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['others'] = max(0, $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] - ($details[self::SUBMISSIONS_BY_YEAR][$year]['published'] + $details[self::SUBMISSIONS_BY_YEAR][$year]['acceptedNotYetPublished'] + $details[self::SUBMISSIONS_BY_YEAR][$year]['refused']));
 
 
+                $nbAcceptedSubmittedSameYear = $this->getNbPapersByStatus($rvId);
 
-                $totalNumberOfPapersAcceptedSubmittedSameYear = $this->getNbPapersByStatus($rvId);
 
                 $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] =
-                    isset($totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year]) ?
-                        $totalNumberOfPapersAcceptedSubmittedSameYear[$rvId][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] :
+                    isset($nbAcceptedSubmittedSameYear[$rvId][$year]) ?
+                        $nbAcceptedSubmittedSameYear[$rvId][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] :
                         0;
 
                 $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE] = $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] ?
@@ -446,9 +476,6 @@ class Stats
         }
 
     }
-
-
-
 
 
     public function getNbPapersByStatus($rvId = null, bool $isSubmittedSameYear = true, $as = self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): array
@@ -505,7 +532,7 @@ class Stats
             return null;
         }
         $values = array_column($array, $key);
-        $validValues = array_filter($values, function($value) {
+        $validValues = array_filter($values, function ($value) {
             return is_numeric($value) && $value !== null;
         });
         if (empty($validValues)) {
@@ -576,7 +603,7 @@ class Stats
                     }
 
                     if ($kv === $extractedField) {
-                        $result[$rvId][$year][$kv] = $extractedField === self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR ? (int)$vv : ['value' => (float)$vv, self::STATS_UNIT => $unit, self::STATS_METHOD => $method];
+                        $result[$rvId][$year][$kv] = in_array($extractedField, [ self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, self::TOTAL_REFUSED_SUBMITTED_SAME_YEAR, self::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR], true) ? (int)$vv : ['value' => (float)$vv, self::STATS_UNIT => $unit, self::STATS_METHOD => $method];
                     }
                 }
 
@@ -585,5 +612,20 @@ class Stats
 
 
         return $result;
+    }
+
+    private function getPercentages($data = ['totalSubmissions' => 0, 'totalAccepted' => 0, 'totalPublished' => 0, 'totalRefused' => 0, 'totalOther' => 0]): array
+    {
+
+        if (!isset($data['totalSubmissions']) || $data['totalSubmissions'] < 0) {
+            return ['published' => 0, 'accepted' => 0, 'refused' => 0, 'other' => 0];
+        }
+
+        $publishedPercentage = $data['totalPublished'] ? round($data['totalPublished'] / $data['totalSubmissions'] * 100, 2, PHP_ROUND_HALF_UP) : 0;
+        $acceptedPercentage = $data['totalAccepted'] ? round($data['totalAccepted'] / $data['totalSubmissions'] * 100, 2, PHP_ROUND_HALF_UP) : 0;
+        $refusedPercentage = $data['totalRefused'] ? round($data['totalRefused'] / $data['totalSubmissions'] * 100, 2, PHP_ROUND_HALF_UP) : 0;
+        $otherPercentage = $data['totalOther'] ? round($data['totalOther'] / $data['totalSubmissions'] * 100, 2, PHP_ROUND_HALF_UP) : 0;
+        return ['published' => $publishedPercentage, 'accepted' => $acceptedPercentage, 'refused' => $refusedPercentage, 'other' => $otherPercentage];
+
     }
 }
