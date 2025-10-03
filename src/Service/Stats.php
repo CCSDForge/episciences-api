@@ -76,6 +76,7 @@ class Stats
 
         // Imported articles
         $imported = $this->entityManager->getRepository(Paper::class)->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
+        $submissionsWithoutImported = $nbSubmissions - $imported;
 
 
         // Only submitted : imported articles ignored
@@ -87,7 +88,7 @@ class Stats
         $totalRefused = $paperLogRepo->getRefused($rvId, $years, $startAfterDate);
         $totalAcceptedNotYetPublished = $paperLogRepo->getAllAcceptedNotYetPublished($rvId, $years, $startAfterDate);
 
-        $totalOther = max(0, $nbSubmissions - ($totalPublished + $totalAcceptedNotYetPublished + $totalRefused));
+        $totalOther = max(0, $submissionsWithoutImported - ($totalPublished + $totalAcceptedNotYetPublished + $totalRefused));
 
         $values [$submissions->getName()] = $nbSubmissions;
 
@@ -99,8 +100,6 @@ class Stats
         $values['nbAccepted'] = $totalAccepted; //  To calculate the acceptance rate by review
         $values[$submissionsDelay->getName()] = $submissionsDelay->getValue();
         $values[$publicationsDelay->getName()] = $publicationsDelay->getValue();
-
-        $submissionsWithoutImported = $nbSubmissions - $imported;
 
 
         if ($years) {
