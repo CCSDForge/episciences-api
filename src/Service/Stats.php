@@ -82,8 +82,10 @@ class Stats
 
 
         // Only submitted : imported articles ignored
-        $submissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters);
-        $publicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED);
+        $avgSubmissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters);
+        $avgPublicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED);
+        $medianSubmissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, self::MEDIAN_METHOD);
+        $medianPublicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED, self::MEDIAN_METHOD);
         // Published without imported
         $totalPublished = $paperLogRepo->getPublished($rvId, $years, $startAfterDate);
         $totalAccepted = $paperLogRepo->getAccepted($rvId, $years, $startAfterDate); // Tous les articles, même ceux déjà publiés, sont pris en compte pour calculer le taux d'acceptation.
@@ -100,8 +102,10 @@ class Stats
         $values['nbOtherStatus'] = $totalOther;
         $values['nbRefused'] = $totalRefused;
         $values['nbAccepted'] = $totalAccepted; //  To calculate the acceptance rate by review
-        $values[$submissionsDelay->getName()] = $submissionsDelay->getValue();
-        $values[$publicationsDelay->getName()] = $publicationsDelay->getValue();
+        $values[$avgSubmissionsDelay->getName()] = $avgSubmissionsDelay->getValue();
+        $values[$avgPublicationsDelay->getName()] = $avgPublicationsDelay->getValue();
+        $values[$medianSubmissionsDelay->getName()] = $medianSubmissionsDelay->getValue();
+        $values[$medianPublicationsDelay->getName()] = $medianPublicationsDelay->getValue();
 
 
         if ($years) {
@@ -148,8 +152,8 @@ class Stats
 
             $details = [
                 $submissions->getName() => $submissions->getDetails(),
-                $submissionsDelay->getName() => $submissionsDelay->getDetails(),
-                $publicationsDelay->getName() => $publicationsDelay->getDetails()
+                $avgSubmissionsDelay->getName() => $avgSubmissionsDelay->getDetails(),
+                $avgPublicationsDelay->getName() => $avgPublicationsDelay->getDetails()
             ];
 
             if (isset($users)) {
@@ -222,16 +226,29 @@ class Stats
         $statResource->setDetails([]);
         $statResource->setAvailableFilters(ReviewStatsDataProvider::AVAILABLE_FILTERS);
         $statResource->setRequestedFilters($filters['is']);
+
         $statResourceName = 'submission';
         $statResourceName .= $latestStatus === Paper::STATUS_PUBLISHED ? 'Publication' : 'Acceptance';
         $statResourceName .= 'Time';
-        $statResource->setName($statResourceName);
+
 
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
 
-        $result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year,$method, $rvId) ?? [];
-        //logger
-        //$this->logger->debug('Raw result of delayBetweenSubmissionAndLatestStatus', ['result' => $result]);
+        $result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year, $method, $rvId) ?? [];
+
+        if ($method === self::MEDIAN_METHOD) {
+
+            $statResourceName .= ucfirst($method);
+
+            $median = $this->processDelay($result, $method);
+
+            $statResource->setValue(['value' => $median, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]);
+            $statResource->setName($statResourceName);
+
+            return $statResource;
+        }
+
+        $statResource->setName($statResourceName);
 
 
         if ($year && !$rvId) { // all platform by year
@@ -526,9 +543,9 @@ class Stats
      * @param array $array
      * @param string $method
      * @param string $key
-     * @return int|float
+     * @return int|float|null
      */
-    private function processDelay(array $array, string $method = self::DEFAULT_METHOD, string $key = PaperLogRepository::DELAY): int|float
+    private function processDelay(array $array, string $method = self::DEFAULT_METHOD, string $key = PaperLogRepository::DELAY): int|float|null
     {
 
         $values = array_column($array, $key);

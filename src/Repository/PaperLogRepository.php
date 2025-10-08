@@ -92,7 +92,7 @@ class PaperLogRepository extends ServiceEntityRepository
             return $this->timeDiffByArticleQuery($unit, $latestStatus, $startStatsDate, $rvId, $years);
         }
 
-        $sql = "SELECT YEAR(max_date) AS year, rvid, ROUND(AVG(t3.delay), 0) AS delay FROM (";
+        $sql = "SELECT year, rvid, ROUND(AVG(t3.delay), 0) AS delay FROM (";
 
         $sql .= $this->timeDiffByArticleQuery($unit, $latestStatus, $startStatsDate, $rvId, $years);
 
@@ -137,8 +137,8 @@ class PaperLogRepository extends ServiceEntityRepository
 
         $referenceStatus = Paper::STATUS_SUBMITTED;
 
-        $sql = " SELECT t1.PAPERID, t1.min_date, t2.max_date, t1.RVID AS rvid,  TIMESTAMPDIFF($unit, min_date, max_date) AS delay FROM (";
-        $sql .= " SELECT pl1.PAPERID, MIN(pl1.DATE) AS min_date, pl1.RVID FROM PAPER_LOG pl1 WHERE pl1.status IS NOT NULL AND pl1.status = $referenceStatus";
+        $sql = "SELECT YEAR(t2.max_date) AS year, t1.RVID AS rvid, TIMESTAMPDIFF($unit, min_date, max_date) AS delay, t1.PAPERID, t1.min_date, t2.max_date FROM (";
+        $sql .= "SELECT pl1.PAPERID, MIN(pl1.DATE) AS min_date, pl1.RVID FROM PAPER_LOG pl1 WHERE pl1.status IS NOT NULL AND pl1.status = $referenceStatus";
 
         if ($startStatsDate) {
             $sql .= " AND DATE(pl1.DATE) > '$startStatsDate'";

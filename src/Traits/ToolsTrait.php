@@ -118,7 +118,7 @@ trait ToolsTrait
         if (is_float($middleIndex)) {
             return $array[(int) $middleIndex];
         }
-        return round(($array[$middleIndex] + $array[$middleIndex - 1]) / 2, AppConstants::DEFAULT_PRECISION);
+        return round(($array[$middleIndex] + $array[$middleIndex - 1]) / 2, AppConstants::DEFAULT_PRECISION, PHP_ROUND_HALF_UP);
     }
 
 
@@ -130,7 +130,7 @@ trait ToolsTrait
             return 0;
         }
 
-        return round(array_sum($array) / $count, 2, PHP_ROUND_HALF_UP);
+        return round(array_sum($array) / $count, AppConstants::DEFAULT_PRECISION, PHP_ROUND_HALF_UP);
 
     }
 }
