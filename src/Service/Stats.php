@@ -38,6 +38,8 @@ class Stats
     public const AVAILABLE_PAPERS_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::PAPER_FLAG, AppConstants::PAPER_STATUS, AppConstants::PAPER_STATUS, AppConstants::YEAR_PARAM];
     public const AVAILABLE_USER_ROLES_FILTERS = ['rvid', 'uid', 'role'];
     public const AVAILABLE_USERS_FILTERS = [AppConstants::WITH_DETAILS];
+    public const DEFAULT_METHOD = 'average';
+    public const MEDIAN_METHOD = 'median';
 
     public function __construct(private readonly EntityManagerInterface $entityManager, private readonly MetadataSources $metadataSources, private readonly LoggerInterface $logger)
     {
@@ -65,7 +67,7 @@ class Stats
             $values['totalWithoutStartAfterDate']['totalSubmissions'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId]])->getQuery()->getSingleScalarResult();
             $values['totalWithoutStartAfterDate']['totalImported'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']]])->getQuery()->getSingleScalarResult();
             $values['totalWithoutStartAfterDate']['totalPublished'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Paper::STATUS_PUBLISHED]])->getQuery()->getSingleScalarResult();
-            $values['totalWithoutStartAfterDate']['totalImportedPublished'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Paper::STATUS_PUBLISHED, 'flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported'] ]])->getQuery()->getSingleScalarResult();
+            $values['totalWithoutStartAfterDate']['totalImportedPublished'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Paper::STATUS_PUBLISHED, 'flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']]])->getQuery()->getSingleScalarResult();
 
         } else {
             $newFilters['is'] = array_merge($filters['is'], ['status' => Paper::STATUS_PUBLISHED]);
@@ -170,19 +172,25 @@ class Stats
 
 
     /**
-     * Par annee, par revue, delai moyen, ou la valeur médiane en nombre de jours (ou mois) entre dépôt et acceptation
+     * Par annee, par revue, delai moyen, ou la valeur médiane en nombre d'$unité entre dépôt et acceptation|publication
      * @param array $filters
      * @param int $latestStatus
+     * @param string $method
+     * @param string $unit
      * @return AbstractStatResource
      */
 
-    public function getDelayBetweenSubmissionAndLatestStatus(array $filters = [], int $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED): AbstractStatResource
+    public function getDelayBetweenSubmissionAndLatestStatus(array $filters = [], int $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED, string $method = self::DEFAULT_METHOD, string $unit = 'day'): AbstractStatResource
     {
+
+        $unit = strtoupper($unit);
+
+        if (!in_array($unit, ['SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR'])) {
+            $unit = 'WEEK';
+        }
 
         $year = null;
         $rvId = null;
-        $method = 'average';
-        $unit = 'DAY';
         $startDate = null;
 
         $withDetails = array_key_exists(AppConstants::WITH_DETAILS, $filters['is']);
@@ -193,10 +201,10 @@ class Stats
         }
 
         if (array_key_exists('rvid', $filters['is']) && !empty($filters['is']['rvid'])) {
-            $rvId = $filters['is']['rvid'];
+            $rvId = (int)$filters['is']['rvid'];
         }
 
-        if (array_key_exists('method', $filters['is']) && in_array($filters['is']['method'], ['average', 'median'], true)) {
+        if (array_key_exists('method', $filters['is']) && in_array($filters['is']['method'], [self::DEFAULT_METHOD, 'median'], true)) {
             $method = $filters['is']['method'];
         }
 
@@ -220,15 +228,16 @@ class Stats
         $statResource->setName($statResourceName);
 
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
-        //$result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year);
-        $result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year) ?? [];
+
+        $result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year,$method, $rvId) ?? [];
         //logger
         //$this->logger->debug('Raw result of delayBetweenSubmissionAndLatestStatus', ['result' => $result]);
 
 
         if ($year && !$rvId) { // all platform by year
             $yearResult = $this->applyFilterBy($result, 'year', $year);
-            $avg = array_key_exists($year, $yearResult) ? $this->avg($yearResult[$year]) : null;
+
+            $avg = array_key_exists($year, $yearResult) ? $this->processDelay($yearResult[$year], $method) : null;
 
             $statResource->setValue(
                 $avg !== null
@@ -246,13 +255,10 @@ class Stats
 
         if (!$year && $rvId) {
             $rvIdResult = $this->applyFilterBy($result, 'rvid', $rvId);
+
             if (array_key_exists($rvId, $rvIdResult)) {
-                $avg = $this->avg($rvIdResult[$rvId]);
-                $statResource->setValue(
-                    $avg !== null
-                        ? ['value' => $avg, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]
-                        : $defaultValue
-                );
+                $avg = $this->processDelay($rvIdResult[$rvId], $method);
+                $statResource->setValue(['value' => $avg, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]);
             }
 
             if ($withDetails) {
@@ -288,12 +294,8 @@ class Stats
         }
 
         // all platform stats (!year && !rvId)
-        $avg = $this->avg($result);
-        $statResource->setValue(
-            $avg !== null
-                ? ['value' => $avg, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]
-                : $defaultValue
-        );
+        $avg = $this->processDelay($result, $method);
+        $statResource->setValue(['value' => $avg, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]);
 
         if ($withDetails) {
             $statResource->setDetails($result);
@@ -442,7 +444,7 @@ class Stats
                 getQuery()->
                 getSingleScalarResult();
 
-               $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]], false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]], false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
 
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['published'] = $this->entityManager->getRepository(PaperLog::class)->getPublished($rvId, [$year], $startAfterDate);
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['acceptedNotYetPublished'] = $this->entityManager->getRepository(PaperLog::class)->getAllAcceptedNotYetPublished($rvId, [$year], $startAfterDate);
@@ -490,7 +492,7 @@ class Stats
                     //before reformat data : [ 8 => [0 => ["year" => 2023, PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [], ... ]
                     return $this->reformatPaperLogData(
                         $this->applyFilterBy($stmt->executeQuery()->fetchAllAssociative(), 'rvid', $rvId),
-                        null, $as, 'average'
+                        null, $as
                     );
 
                     //after: [8 => [ 2023 => [PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [2022 => ], .....
@@ -522,26 +524,32 @@ class Stats
 
     /**
      * @param array $array
+     * @param string $method
      * @param string $key
-     * @return float | null
+     * @return int|float
      */
-    private function avg(array $array, string $key = PaperLogRepository::DELAY): ?float
+    private function processDelay(array $array, string $method = self::DEFAULT_METHOD, string $key = PaperLogRepository::DELAY): int|float
     {
-        if (empty($array)) {
-            return null;
-        }
+
         $values = array_column($array, $key);
-        $validValues = array_filter($values, function ($value) {
-            return is_numeric($value) && $value !== null;
+        $validValues = array_filter($values, static function ($value) {
+            return is_numeric($value);
         });
-        if (empty($validValues)) {
-            return null;
+
+        if ($method !== self::MEDIAN_METHOD) {
+            return $this->getAvg($validValues);
         }
 
-        $total = array_sum($validValues);
-        $count = count($validValues);
+        try {
+            $median = $this->getMedian($validValues);
 
-        return round($total / $count, 2, PHP_ROUND_HALF_UP);
+        } catch (\LengthException $e) {
+            $this->logger->critical($e->getMessage());
+            $median = null;
+        }
+
+        return $median;
+
     }
 
     private function reformatSubmissionsData(array $array): array
@@ -585,7 +593,7 @@ class Stats
     }
 
 
-    private function reformatPaperLogData(array $array, string $unit = null, string $extractedField = PaperLogRepository::DELAY, string $method = 'average'): array
+    private function reformatPaperLogData(array $array, string $unit = null, string $extractedField = PaperLogRepository::DELAY, string $method = self::DEFAULT_METHOD): array
     {
 
         $result = [];
@@ -602,7 +610,7 @@ class Stats
                     }
 
                     if ($kv === $extractedField) {
-                        $result[$rvId][$year][$kv] = in_array($extractedField, [ self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, self::TOTAL_REFUSED_SUBMITTED_SAME_YEAR, self::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR], true) ? (int)$vv : ['value' => (float)$vv, self::STATS_UNIT => $unit, self::STATS_METHOD => $method];
+                        $result[$rvId][$year][$kv] = in_array($extractedField, [self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, self::TOTAL_REFUSED_SUBMITTED_SAME_YEAR, self::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR], true) ? (int)$vv : ['value' => (float)$vv, self::STATS_UNIT => $unit, self::STATS_METHOD => $method];
                     }
                 }
 

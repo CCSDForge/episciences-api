@@ -120,4 +120,17 @@ trait ToolsTrait
         }
         return round(($array[$middleIndex] + $array[$middleIndex - 1]) / 2, AppConstants::DEFAULT_PRECISION);
     }
+
+
+    public function getAvg(array $array = []): int|float  {
+
+        $count = count($array);
+
+        if($count === 1) {
+            return 0;
+        }
+
+        return round(array_sum($array) / $count, 2, PHP_ROUND_HALF_UP);
+
+    }
 }
