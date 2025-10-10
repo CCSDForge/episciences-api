@@ -254,7 +254,7 @@ class PaperLogRepository extends ServiceEntityRepository
         }
 
         $qb->from(PaperLog::class, 'pl')
-            ->innerJoin(Paper::class, 'p', Join::WITH, 'pl.paperid = p.paperid')
+            ->innerJoin(Paper::class, 'p', Join::WITH, 'pl.docid = p.docid')
             ->andWhere('p.status != :deleted')->setParameter('deleted', Paper::STATUS_DELETED)
             ->andWhere('p.status != :removed')->setParameter('removed', Paper::STATUS_REMOVED)
             ->andWhere("pl.status IS NOT NULL");
@@ -280,6 +280,7 @@ class PaperLogRepository extends ServiceEntityRepository
         if ($rvId) {
             $qb->andWhere('p.rvid = :rvid')->setParameter('rvid', $rvId);
         }
+        $sql = $qb->getQuery()->getSQL();
 
         return $qb;
 
