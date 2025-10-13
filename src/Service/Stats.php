@@ -58,7 +58,7 @@ class Stats
         $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
 
         $submissions = $this->getSubmissionsStat($filters);
-        $nbSubmissions = $submissions->getValue();
+        $nbSubmissions = $submissions->getValue(); // imported submissions included
 
 
         // aggregate stats
@@ -71,6 +71,7 @@ class Stats
 
         } else {
             $newFilters['is'] = array_merge($filters['is'], ['status' => Paper::STATUS_PUBLISHED]);
+
             // Imported and published articles
             $importedPublished = $this->entityManager->getRepository(Paper::class)->submissionsQuery($newFilters, false, 'publicationDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
             $values ['nbImportedPublished'] = $importedPublished;
@@ -80,8 +81,7 @@ class Stats
         $imported = $this->entityManager->getRepository(Paper::class)->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
         $submissionsWithoutImported = $nbSubmissions - $imported;
 
-
-        // Only submitted : imported articles ignored
+        // Only submitted flag : imported articles ignored
         $avgSubmissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters);
         $avgPublicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED);
         $medianSubmissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, self::MEDIAN_METHOD);
@@ -91,17 +91,16 @@ class Stats
         $totalAccepted = $paperLogRepo->getAccepted($rvId, $years, $startAfterDate); // Tous les articles, même ceux déjà publiés, sont pris en compte pour calculer le taux d'acceptation.
         $totalRefused = $paperLogRepo->getRefused($rvId, $years, $startAfterDate);
         $totalAcceptedNotYetPublished = $paperLogRepo->getAllAcceptedNotYetPublished($rvId, $years, $startAfterDate);
-
-        $totalOther = max(0, $submissionsWithoutImported - ($totalPublished + $totalAcceptedNotYetPublished + $totalRefused));
+        $totalOther = max(0, $submissionsWithoutImported - ($totalAccepted + $totalRefused));
 
         $values [$submissions->getName()] = $nbSubmissions;
 
         $values ['nbImported'] = $imported;
         $values ['nbPublished'] = $totalPublished;
-        $values ['nbAcceptedNotYetPublished'] = $totalAcceptedNotYetPublished;
-        $values['nbOtherStatus'] = $totalOther;
         $values['nbRefused'] = $totalRefused;
         $values['nbAccepted'] = $totalAccepted; //  To calculate the acceptance rate by review
+        $values['nbOtherStatus'] = $totalOther;
+        $values ['nbAcceptedNotYetPublished'] = $totalAcceptedNotYetPublished;
         $values[$avgSubmissionsDelay->getName()] = $avgSubmissionsDelay->getValue();
         $values[$avgPublicationsDelay->getName()] = $avgPublicationsDelay->getValue();
         $values[$medianSubmissionsDelay->getName()] = $medianSubmissionsDelay->getValue();
@@ -131,14 +130,14 @@ class Stats
                 }
             }
 
-            $values['totalOtherSubmittedSameYear'] = $submissionsWithoutImported - ($values['totalAcceptedSubmittedSameYear'] + $values['totalPublishedSubmittedSameYear'] + $values['totalRefusedSubmittedSameYear']);
+            $values['totalOtherSubmittedSameYear'] = $submissionsWithoutImported - ($values['totalAcceptedSubmittedSameYear'] + $values['totalRefusedSubmittedSameYear']);
 
 
-            $values ['rate'] = $this->getPercentages(['totalSubmissions' => $submissionsWithoutImported, 'totalAccepted' => $values['totalAcceptedSubmittedSameYear'], 'totalPublished' => $values['totalPublishedSubmittedSameYear'], 'totalRefused' => $totalRefused, 'totalOther' => $values['totalOtherSubmittedSameYear']]);
+            $values ['rate'] = $this->getPercentages(['totalSubmissions' => $submissionsWithoutImported, 'totalAccepted' => $values['totalAcceptedSubmittedSameYear'], 'totalPublished' => $values['totalPublishedSubmittedSameYear'], 'totalRefused' => $totalRefused]);
 
 
         } else {
-            $values ['rate'] = $this->getPercentages(['totalSubmissions' => $submissionsWithoutImported, 'totalAccepted' => $totalAccepted, 'totalPublished' => $totalPublished, 'totalRefused' => $totalRefused, 'totalOther' => $totalOther]);
+            $values ['rate'] = $this->getPercentages(['totalSubmissions' => $submissionsWithoutImported, 'totalAccepted' => $totalAccepted, 'totalPublished' => $totalPublished, 'totalRefused' => $totalRefused]);
 
         }
 
@@ -638,7 +637,7 @@ class Stats
         return $result;
     }
 
-    private function getPercentages($data = ['totalSubmissions' => 0, 'totalAccepted' => 0, 'totalPublished' => 0, 'totalRefused' => 0, 'totalOther' => 0]): array
+    private function getPercentages($data = ['totalSubmissions' => 0, 'totalAccepted' => 0, 'totalPublished' => 0, 'totalRefused' => 0]): array
     {
 
         if (!isset($data['totalSubmissions']) || $data['totalSubmissions'] < 0) {
@@ -648,8 +647,8 @@ class Stats
         $publishedPercentage = $data['totalPublished'] ? round($data['totalPublished'] / $data['totalSubmissions'] * 100, 2, PHP_ROUND_HALF_UP) : 0;
         $acceptedPercentage = $data['totalAccepted'] ? round($data['totalAccepted'] / $data['totalSubmissions'] * 100, 2, PHP_ROUND_HALF_UP) : 0;
         $refusedPercentage = $data['totalRefused'] ? round($data['totalRefused'] / $data['totalSubmissions'] * 100, 2, PHP_ROUND_HALF_UP) : 0;
-        $otherPercentage = $data['totalOther'] ? round($data['totalOther'] / $data['totalSubmissions'] * 100, 2, PHP_ROUND_HALF_UP) : 0;
-        return ['published' => $publishedPercentage, 'accepted' => $acceptedPercentage, 'refused' => $refusedPercentage, 'other' => $otherPercentage];
+
+        return ['published' => $publishedPercentage, 'accepted' => $acceptedPercentage, 'refused' => $refusedPercentage, 'other' => round(100 - ($acceptedPercentage + $refusedPercentage), 2, PHP_ROUND_HALF_UP)];
 
     }
 }

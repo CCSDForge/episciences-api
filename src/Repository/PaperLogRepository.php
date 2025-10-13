@@ -181,7 +181,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
 
         $sql = "SELECT $papers.RVID AS rvid, YEAR($year) AS `year`, COUNT(DISTINCT($papers.PAPERID)) AS $as";
-        $sql .= " FROM $paperLog pl JOIN $papers ON $papers.PAPERID = pl.PAPERID AND YEAR($papers.SUBMISSION_DATE) = YEAR(pl.DATE)";
+        $sql .= " FROM $paperLog pl JOIN $papers ON $papers.DOCID = pl.DOCID AND YEAR($papers.SUBMISSION_DATE) = YEAR(pl.DATE)";
         $sql .= " WHERE pl.status IS NOT NULL AND pl.status = $status";
 
         if ($withoutImported) {
@@ -345,6 +345,7 @@ class PaperLogRepository extends ServiceEntityRepository
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
 
         $subQb = $this->getEntityManager()->createQueryBuilder();
+        $subQb1 = $this->getEntityManager()->createQueryBuilder();
 
 
         // accepted and published
@@ -354,8 +355,20 @@ class PaperLogRepository extends ServiceEntityRepository
             ->andWhere('pl1.status IS NOT NULL')
             ->andWhere('pl1.status = :pStatus');
 
+        // accepted and (refused or abandoned)
 
-        $qb->andWhere($qb->expr()->not($qb->expr()->exists($subQb->getDQL())))->setParameter('pStatus', Paper::STATUS_PUBLISHED);;
+        $subQb1->addSelect('1')
+            ->from(PaperLog::class, 'pl2')
+            ->andWhere('pl2.paperid = pl.paperid')
+            ->andWhere('pl2.status IS NOT NULL')
+            ->andWhere('pl2.status = :rStatus OR pl2.status = :aStatus');
+
+
+        $qb->andWhere($qb->expr()->not($qb->expr()->exists($subQb->getDQL())));
+        $qb->andWhere($qb->expr()->not($qb->expr()->exists($subQb1->getDQL())));
+            $qb->setParameter('pStatus', Paper::STATUS_PUBLISHED)
+                ->setParameter('rStatus', Paper::STATUS_REFUSED)
+                ->setParameter('aStatus', Paper::STATUS_ABANDONED);
 
         return $this->processResult($qb, $years);
 
