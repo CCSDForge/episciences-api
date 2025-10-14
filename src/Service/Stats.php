@@ -111,9 +111,9 @@ class Stats
 
             $values = array_merge($values, ['totalAcceptedSubmittedSameYear' => 0, 'totalPublishedSubmittedSameYear' => 0, 'totalRefusedSubmittedSameYear' => 0]);
 
-            $totalAcceptedSubmittedSameYear = $this->getNbPapersByStatus($rvId)[$rvId];
-            $nbPublishedSubmittedSameYear = $this->getNbPapersByStatus($rvId, true, self::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR, Paper::STATUS_PUBLISHED)[$rvId];
-            $nbRefusedSubmittedSameYear = $this->getNbPapersByStatus($rvId, true, self::TOTAL_REFUSED_SUBMITTED_SAME_YEAR, Paper::STATUS_REFUSED)[$rvId];
+            $totalAcceptedSubmittedSameYear = $this->getNbPapersByStatus($rvId)[$rvId] ?? [];
+            $nbPublishedSubmittedSameYear = $this->getNbPapersByStatus($rvId, true, self::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR, Paper::STATUS_PUBLISHED)[$rvId] ?? [];
+            $nbRefusedSubmittedSameYear = $this->getNbPapersByStatus($rvId, true, self::TOTAL_REFUSED_SUBMITTED_SAME_YEAR, Paper::STATUS_REFUSED)[$rvId] ?? [];
 
             foreach ($years as $year) {
 
@@ -503,16 +503,15 @@ class Stats
 
             if ($stmt) {
 
+                $result = $stmt->executeQuery()->fetchAllAssociative();
+
                 if ($rvId) {
 
                     //before reformat data : [ 8 => [0 => ["year" => 2023, PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [], ... ]
-                    return $this->reformatPaperLogData(
-                        $this->applyFilterBy($stmt->executeQuery()->fetchAllAssociative(), 'rvid', $rvId),
-                        null, $as
-                    );
+                    $filtered = $this->applyFilterBy($result, $rvId);
 
                     //after: [8 => [ 2023 => [PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [2022 => ], .....
-
+                    return $this->reformatPaperLogData($filtered, null, $as);
 
                 }
 
@@ -618,6 +617,10 @@ class Stats
             $year = null;
 
             foreach ($value as $v) {
+
+                if (!is_array($v)) {
+                    continue;
+                }
 
                 foreach ($v as $kv => $vv) {
 

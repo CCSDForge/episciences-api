@@ -16,7 +16,7 @@ trait ToolsTrait
      */
     final public function applyFilterBy(array $result, string $extractedKey = null, string $filter = null): array
     {
-        if (!$extractedKey || array_key_exists($extractedKey, $result) || !$filter) {
+        if (!$extractedKey || isset($result[$extractedKey]) || !$filter) {
             return $result;
         }
 
