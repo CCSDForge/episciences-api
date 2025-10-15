@@ -133,7 +133,7 @@ class Stats
             $values['totalOtherSubmittedSameYear'] = $submissionsWithoutImported - ($values['totalAcceptedSubmittedSameYear'] + $values['totalRefusedSubmittedSameYear']);
 
 
-            $values ['rate'] = $this->getPercentages(['totalSubmissions' => $submissionsWithoutImported, 'totalAccepted' => $values['totalAcceptedSubmittedSameYear'], 'totalPublished' => $values['totalPublishedSubmittedSameYear'], 'totalRefused' => $totalRefused]);
+            $values ['rate'] = $this->getPercentages(['totalSubmissions' => $submissionsWithoutImported, 'totalAccepted' => $values['totalAcceptedSubmittedSameYear'], 'totalPublished' => $values['totalPublishedSubmittedSameYear'], 'totalRefused' => $values['totalRefusedSubmittedSameYear']]);
 
 
         } else {
