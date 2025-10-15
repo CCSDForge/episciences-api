@@ -16,11 +16,19 @@ trait ToolsTrait
      */
     final public function applyFilterBy(array $result, string $extractedKey = null, string $filter = null): array
     {
-        if (!$extractedKey || isset($result[$extractedKey]) || !$filter) {
+        if (
+            empty($result) |
+            !$extractedKey ||
+            isset($result[$extractedKey])
+            || !$filter
+        ) {
             return $result;
         }
 
+
         $filteredResultBy = [];
+        $filteredResultBy[$filter] = [];
+
 
         foreach ($result as $value) {
             foreach ($value as $k => $v) {
@@ -122,12 +130,12 @@ trait ToolsTrait
     }
 
 
-    public function getAvg(array $array = []): int|float  {
+    public function getAvg(array $array = []): int|float|null  {
 
         $count = count($array);
 
-        if($count === 1) {
-            return 0;
+        if ($count === 0) {
+            return null;
         }
 
         return round(array_sum($array) / $count, AppConstants::DEFAULT_PRECISION, PHP_ROUND_HALF_UP);
