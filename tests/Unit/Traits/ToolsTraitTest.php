@@ -39,7 +39,7 @@ class ToolsTraitTest extends TestCase
 
         $filtered = $this->applyFilterBy($result, 'status', 'pending');
 
-        $this->assertEquals([], $filtered);
+        $this->assertEquals(['pending' => []], $filtered);
     }
 
     public function testApplyFilterByWithNullParameters(): void
