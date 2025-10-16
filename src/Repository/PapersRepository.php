@@ -95,7 +95,6 @@ class PapersRepository extends ServiceEntityRepository
                 ->setParameter('flag', $flag);
 
         }
-        $sql = $qb->getQuery()->getSQL();
 
         return $qb;
 
