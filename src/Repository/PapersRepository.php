@@ -58,20 +58,30 @@ class PapersRepository extends ServiceEntityRepository
      * @param string $fieldDateToBeUsed (default = submissionDate): l'année prise en compte est l'année de la première soumission
      * @param bool $excludeImportedPapers
      * @param string|null $flag
+     * @param bool $withoutObsolete
      * @return QueryBuilder
      */
-    public function submissionsQuery(array $filters = [], bool $excludeTmpVersions = false, string $fieldDateToBeUsed = 'submissionDate', bool $excludeImportedPapers = false, string $flag = null): QueryBuilder
+    public function submissionsQuery(array  $filters = [],
+                                     bool   $excludeTmpVersions = false,
+                                     string $fieldDateToBeUsed = 'submissionDate',
+                                     bool   $excludeImportedPapers = false,
+                                     string $flag = null,
+                                     bool   $withoutObsolete = false
+    ): QueryBuilder
     {
 
         $qb = $this
             ->createQueryBuilder(self::PAPERS_ALIAS)
-            ->select('count(p.docid)');
+            ->select('count(distinct p.paperid)');
 
         $qb = $this->addQueryFilters($qb, $filters, $fieldDateToBeUsed);
 
+        if ($withoutObsolete) {
 
-        $qb->andWhere('p.status != :obsolete');
-        $qb->setParameter('obsolete', Paper::STATUS_OBSOLETE);
+            $qb->andWhere('p.status != :obsolete');
+            $qb->setParameter('obsolete', Paper::STATUS_OBSOLETE);
+        }
+
 
         $qb->andWhere('p.status != :deleted');
         $qb->setParameter('deleted', Paper::STATUS_DELETED);
