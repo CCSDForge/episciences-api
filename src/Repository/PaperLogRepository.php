@@ -280,7 +280,7 @@ class PaperLogRepository extends ServiceEntityRepository
         if ($rvId) {
             $qb->andWhere('p.rvid = :rvid')->setParameter('rvid', $rvId);
         }
-        
+
         return $qb;
 
     }
