@@ -1,14 +1,6 @@
 monolog:
     channels:
         - deprecation # Deprecations are logged in the dedicated "deprecation" channel when it exists
-    handlers:
-        deprecation:
-            type: rotating_file
-            path: "%kernel.logs_dir%/%kernel.environment%.deprecations.log"
-            max_files: 5
-            level: info
-            date-format: 'Y-m-d'
-            channels: [deprecation]
 
 when@dev:
     monolog:
@@ -45,7 +37,7 @@ when@test:
                 path: "%kernel.logs_dir%/%kernel.environment%.log"
                 level: debug
 
-when@staging:
+when@preprod:
     monolog:
         handlers:
             main:
