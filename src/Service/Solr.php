@@ -303,7 +303,7 @@ class Solr
         $field = 'author_fullname_t';
         $journal = $this->getJournal();
         $solrQuery = sprintf('%s/select/?q=%s:', $this->parameters->get('app.solr.host'), $field);
-        $solrQuery .= sprintf('%s&q.op=OR&indent=false', urlencode($fullName));
+        $solrQuery .= sprintf('%s&q.op=AND&indent=false', urlencode($fullName));
 
         if ($journal) {
             $solrQuery .= '&fq=revue_id_i:' . $journal->getRvid();
