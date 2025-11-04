@@ -2,37 +2,36 @@
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
  * VolumePaper
- *
- * @ORM\Table(name="VOLUME_PAPER", uniqueConstraints={@ORM\UniqueConstraint(name="UNIQUE", columns={"VID", "DOCID"})})
- * @ORM\Entity
  */
+#[ORM\Table(name: 'VOLUME_PAPER')]
+#[ORM\UniqueConstraint(name: 'UNIQUE', columns: ['VID', 'DOCID'])]
+#[ORM\Entity]
 class VolumePaper
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="ID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
      */
+    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $id;
 
     /**
      * @var int
-     *
-     * @ORM\Column(name="VID", type="integer", nullable=false, options={"unsigned"=true})
      */
+    #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private $vid;
 
     /**
      * @var int
-     *
-     * @ORM\Column(name="DOCID", type="integer", nullable=false, options={"unsigned"=true})
      */
+    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private $docid;
 
     public function getId(): ?int
@@ -63,6 +62,5 @@ class VolumePaper
 
         return $this;
     }
-
 
 }
