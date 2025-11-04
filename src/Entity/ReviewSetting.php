@@ -7,7 +7,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Table(name: self::TABLE)]
 #[ORM\UniqueConstraint(name: 'RVID', columns: ['SETTING'])]
-#[ORM\Entity(repositoryClass: ReviewSetting::class)]
+#[ORM\Entity]
 
 
 class ReviewSetting
