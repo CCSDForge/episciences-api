@@ -330,6 +330,13 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
+    public function getSubmissions(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): float
+    {
+        $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_SUBMITTED, $ignoreImportedArticles);
+        return $this->processResult($qb, $years);
+
+    }
+
     public function getPublished(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): float
     {
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_PUBLISHED, $ignoreImportedArticles);

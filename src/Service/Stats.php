@@ -60,26 +60,33 @@ class Stats
         $submissions = $this->getSubmissionsStat($filters);
         $nbSubmissions = $submissions->getValue(); // imported submissions included
 
+        $paperRepo = $this->entityManager->getRepository(Paper::class);
+
 
         // aggregate stats
 
         if ($startAfterDate && !$years) { // StartAfterDate Filter ignored: they provide an overview of the data, without taking this filter into account.
-            $values['totalWithoutStartAfterDate']['totalSubmissions'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId]])->getQuery()->getSingleScalarResult();
-            $values['totalWithoutStartAfterDate']['totalImported'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']]])->getQuery()->getSingleScalarResult();
-            $values['totalWithoutStartAfterDate']['totalPublished'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Paper::STATUS_PUBLISHED]])->getQuery()->getSingleScalarResult();
-            $values['totalWithoutStartAfterDate']['totalImportedPublished'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Paper::STATUS_PUBLISHED, 'flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']]])->getQuery()->getSingleScalarResult();
+            $values['totalWithoutStartAfterDate']['totalSubmissions'] = $paperRepo->submissionsQuery(['is' => ['rvid' => $rvId]])->getQuery()->getSingleScalarResult();
+            $values['totalWithoutStartAfterDate']['totalImported'] = $paperRepo->submissionsQuery(['is' => ['rvid' => $rvId, 'flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']]])->getQuery()->getSingleScalarResult();
+            $values['totalWithoutStartAfterDate']['totalPublished'] = $paperRepo->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Paper::STATUS_PUBLISHED]])->getQuery()->getSingleScalarResult();
+            $values['totalWithoutStartAfterDate']['totalImportedPublished'] = $paperRepo->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Paper::STATUS_PUBLISHED, 'flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']]])->getQuery()->getSingleScalarResult();
 
         } else {
             $newFilters['is'] = array_merge($filters['is'], ['status' => Paper::STATUS_PUBLISHED]);
 
             // Imported and published articles
-            $importedPublished = $this->entityManager->getRepository(Paper::class)->submissionsQuery($newFilters, false, 'publicationDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
+            $importedPublished = $paperRepo->submissionsQuery($newFilters, false, 'publicationDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
             $values ['nbImportedPublished'] = $importedPublished;
         }
 
         // Imported articles
-        $imported = $this->entityManager->getRepository(Paper::class)->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
-        $submissionsWithoutImported = $nbSubmissions - $imported;
+
+        $imported = $paperRepo->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])
+            ->getQuery()->getSingleScalarResult();
+        //Il est possible que certaines versions soient importées tandis que d'autres ne le soient pas.
+        // D'où la nécessité d'une nouvelle requête plutôt que de faire la différence
+
+        $submissionsWithoutImported = $paperRepo->getSubmissionsWithoutImported($rvId, $startAfterDate, $years);
 
         // Only submitted flag : imported articles ignored
         $avgSubmissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters);
@@ -410,7 +417,7 @@ class Stats
         $papersRepository = $this->entityManager->getRepository(Paper::class);
 
         try {
-            $nbSubmissions = (int)$papersRepository->submissionsQuery($filters)->getQuery()->getSingleScalarResult();
+            $nbSubmissions = $papersRepository->submissionsQuery($filters)->getQuery()->getSingleScalarResult();
 
         } catch (NoResultException|NonUniqueResultException $e) {
             $nbSubmissions = null;
@@ -516,7 +523,7 @@ class Stats
                     if (!empty($filtered[$rvId])) {
                         return $this->reformatPaperLogData($filtered, null, $as);
                     }
-                        return $filtered;
+                    return $filtered;
 
                 }
 
@@ -652,11 +659,17 @@ class Stats
             return ['published' => 0, 'accepted' => 0, 'refused' => 0, 'other' => 0];
         }
 
-        $publishedPercentage = $data['totalPublished'] ? round($data['totalPublished'] / $data['totalSubmissions'] * 100, 2, PHP_ROUND_HALF_UP) : 0;
-        $acceptedPercentage = $data['totalAccepted'] ? round($data['totalAccepted'] / $data['totalSubmissions'] * 100, 2, PHP_ROUND_HALF_UP) : 0;
-        $refusedPercentage = $data['totalRefused'] ? round($data['totalRefused'] / $data['totalSubmissions'] * 100, 2, PHP_ROUND_HALF_UP) : 0;
+        $publishedPercentage = $data['totalPublished'] ? round($data['totalPublished'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP) : 0;
+        $acceptedPercentage = $data['totalAccepted'] ? round($data['totalAccepted'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP) : 0;
+        $refusedPercentage = $data['totalRefused'] ? round($data['totalRefused'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP) : 0;
+        $otherPercentage = round(100 - ($acceptedPercentage + $refusedPercentage), AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP);
 
-        return ['published' => $publishedPercentage, 'accepted' => $acceptedPercentage, 'refused' => $refusedPercentage, 'other' => round(100 - ($acceptedPercentage + $refusedPercentage), 2, PHP_ROUND_HALF_UP)];
+        return [
+            'published' => $publishedPercentage,
+            'accepted' => $acceptedPercentage,
+            'refused' => $refusedPercentage,
+            'other' => $otherPercentage
+        ];
 
     }
 }

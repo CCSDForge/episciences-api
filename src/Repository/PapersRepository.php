@@ -539,4 +539,17 @@ class PapersRepository extends ServiceEntityRepository
 
     }
 
+    public function getSubmissionsWithoutImported(int $rvId = null, string $startAfterDate = null, array|string $years = null): int
+    {
+
+        $withoutImportedFilters = ['rvid' => $rvId, 'startAfterDate' => $startAfterDate, 'flag' => self::AVAILABLE_FLAG_VALUES['submitted'], 'year' => $years];
+        try {
+            return (int)$this->submissionsQuery(['is' => $withoutImportedFilters])->getQuery()->getSingleScalarResult();
+        } catch (NoResultException|NonUniqueResultException $e) {
+            $this->logger->critical($e->getMessage());
+            return 0;
+        }
+
+    }
+
 }
