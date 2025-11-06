@@ -184,7 +184,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                         ->setName('nb-submissions-details')
                         ->setValue(
                             [
-                                'imported' => $imported,
+                                'nb-submitted-versions' => $nbSubmissionsWithoutImported,
+                                'nb-imported-versions' => $imported,
                                 Paper::STATUS_DICTIONARY[Paper::STATUS_PUBLISHED] => $nbPublished,
                                 Paper::STATUS_DICTIONARY[Paper::STATUS_REFUSED] => $nbRefused,
                                 'accepted' => $nbAccepted, // include published
