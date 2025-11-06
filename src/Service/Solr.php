@@ -260,8 +260,10 @@ class Solr
 
                 $entry->addCategory(['term' => $journal]);
 
-                foreach ($docEntry['keyword_t'] as $oneKeyword) {
-                    $entry->addCategory(['term' => $oneKeyword]);
+                if (!empty($docEntry['keyword_t']) && is_array($docEntry['keyword_t'])) {
+                    foreach ($docEntry['keyword_t'] as $oneKeyword) {
+                        $entry->addCategory(['term' => $oneKeyword]);
+                    }
                 }
 
                 $publicationDate = strtotime($docEntry['publication_date_tdate']);
