@@ -5,6 +5,7 @@ namespace App\Repository;
 
 use App\Entity\User;
 use App\Entity\UserRoles;
+use App\Traits\QueryTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
@@ -20,7 +21,19 @@ use Psr\Log\LoggerInterface;
  */
 class UserRolesRepository extends ServiceEntityRepository
 {
+    use QueryTrait;
     public const USER_ROLES_ALIAS = 'ur';
+
+    // rôles sans droits associés.
+    public const AVAILABLE_BOARD_TAGS = [
+        UserRoles::TECHNICAL_BOARD,
+        UserRoles::EDITORIAL_BOARD,
+        UserRoles::SCIENTIFIC_BOARD,
+        UserRoles::ROLE_ADVISORY_BOARD,
+        UserRoles::ROLE_MANAGING_EDITOR,
+        UserRoles::ROLE_HANDLING_EDITOR,
+        UserRoles::FORMER_MEMBER
+    ];
 
     private LoggerInterface $logger;
 
@@ -101,13 +114,7 @@ class UserRolesRepository extends ServiceEntityRepository
     {
 
         $qb = $this->communBoardsQuery($rvId);
-
-        $qb->andWhere("ur.roleid = :ebRoleId OR ur.roleid = :forRoleId OR ur.roleid = :sciRoleId OR ur.roleid = :tecRoleId")
-            ->setParameter('ebRoleId', UserRoles::EDITORIAL_BOARD)
-            ->setParameter('forRoleId', UserRoles::FORMER_MEMBER)
-            ->setParameter('sciRoleId', UserRoles::SCIENTIFIC_BOARD)
-            ->setParameter('tecRoleId', UserRoles::TECHNICAL_BOARD);
-
+        $this->andOrExp($qb, 'ur.roleid', self::AVAILABLE_BOARD_TAGS);
         $qb->select("ur.uid, ur.roleid");
 
         return $qb;

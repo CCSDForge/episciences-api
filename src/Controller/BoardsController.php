@@ -18,11 +18,9 @@ use Symfony\Component\HttpFoundation\Request;
 class BoardsController extends AbstractController
 {
 
+
+    // rôles avec droits associés.
     public const ROLES_TO_SHOWS = [
-        UserRoles::EDITORIAL_BOARD,
-        UserRoles::FORMER_MEMBER,
-        UserRoles::TECHNICAL_BOARD,
-        UserRoles::SCIENTIFIC_BOARD,
         UserRoles::ROLE_GUEST_EDITOR,
         User::ROLE_EDITOR,
         User::ROLE_EDITOR_IN_CHIEF,
@@ -82,8 +80,9 @@ class BoardsController extends AbstractController
 
                     }
 
+                    $mergedRolesAndTags = [...self::ROLES_TO_SHOWS, ...UserRolesRepository::AVAILABLE_BOARD_TAGS];
 
-                    if (in_array($current1['roleid'], self::ROLES_TO_SHOWS, true)) {
+                    if (in_array($current1['roleid'], $mergedRolesAndTags, true)) {
                         $rolesByUid[$current1['uid']]['roles'][] = $current1['roleid'];
                     }
 
