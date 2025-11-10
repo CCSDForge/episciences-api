@@ -78,6 +78,7 @@ class BoardsController extends AbstractController
                 }
 
                 $result1 = $userRolesRepo->joinUserRolesQuery($journal->getRvid())->getQuery()->getArrayResult();
+                $mergedRolesAndTags = [...self::ROLES_TO_SHOWS, ...UserRolesRepository::AVAILABLE_BOARD_TAGS];
 
                 foreach ($result1 as $current1) {
 
@@ -89,8 +90,6 @@ class BoardsController extends AbstractController
                         continue;
 
                     }
-
-                    $mergedRolesAndTags = [...self::ROLES_TO_SHOWS, ...UserRolesRepository::AVAILABLE_BOARD_TAGS];
 
                     if (in_array($current1['roleid'], $mergedRolesAndTags, true)) {
                         $rolesByUid[$current1['uid']]['roles'][] = $current1['roleid'];
@@ -114,12 +113,8 @@ class BoardsController extends AbstractController
 
                     $uid = $current['user']['uid'] ?? null;
 
-                    if (
-                        (isset($tags[UserRoles::EDITORIAL_BOARD]) && in_array($uid, $tags[UserRoles::EDITORIAL_BOARD], true)) ||
-                        (isset($tags[UserRoles::TECHNICAL_BOARD]) && in_array($uid, $tags[UserRoles::TECHNICAL_BOARD], true)) ||
-                        (isset($tags[UserRoles::SCIENTIFIC_BOARD]) && in_array($uid, $tags[UserRoles::SCIENTIFIC_BOARD], true)) ||
-                        (isset($tags[UserRoles::FORMER_MEMBER]) && in_array($uid, $tags[UserRoles::FORMER_MEMBER], true))
-                    ) {
+                    if ($this->hasBoardTags($tags, $uid)) {
+
                         $currentUser = $current['user'];
 
                         $options = [
@@ -151,5 +146,23 @@ class BoardsController extends AbstractController
         }
 
         return new ArrayPaginator($boards, $firstResult, $maxResults);
+    }
+
+
+    private function hasBoardTags(array $tagsByUid, int $uid): bool
+    {
+
+        $hasBoardTag = false;
+
+        foreach (UserRolesRepository::AVAILABLE_BOARD_TAGS as $tag) {
+
+            if (isset($tagsByUid[$tag]) && in_array($uid, $tagsByUid[$tag], true)) {
+                $hasBoardTag = true;
+                break;
+            }
+        }
+
+        return $hasBoardTag;
+
     }
 }
