@@ -8,6 +8,9 @@ use App\Entity\Section;
 use App\Entity\User;
 use App\Entity\UserRoles;
 use App\Exception\ResourceNotFoundException;
+use App\Repository\ReviewRepository;
+use App\Repository\SectionRepository;
+use App\Repository\UserRolesRepository;
 use App\Service\Solr;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,6 +32,9 @@ class BoardsController extends AbstractController
         User::ROLE_SECRETARY,
     ];
 
+    /**
+     * @throws ResourceNotFoundException
+     */
     public function __invoke(EntityManagerInterface $entityManager, LoggerInterface $logger, Request $request = null): ArrayPaginator
     {
         $boards = [];
@@ -47,11 +53,15 @@ class BoardsController extends AbstractController
             $code = $request->get('code');
 
             if ($code) {
-                $journal = $entityManager->getRepository(Review::class)->getJournalByIdentifier($code);
+
+                /** @var ReviewRepository $reviewRepo */
+                $reviewRepo = $entityManager->getRepository(Review::class);
+                $journal = $reviewRepo->getJournalByIdentifier($code);
 
                 if (!$journal) {
                     throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $code));
                 }
+                /** @var UserRolesRepository $userRolesRepo */
 
                 $userRolesRepo = $entityManager->getRepository(UserRoles::class);
                 $boardTags = $userRolesRepo->boardsUsersQuery($journal->getRvid())->getQuery()->getArrayResult();
@@ -92,7 +102,9 @@ class BoardsController extends AbstractController
 
 
                 try {
-                    $assignedSections = $entityManager->getRepository(Section::class)->getAssignedSection($journal->getRvid(), $boardIdentifies);
+                    /** @var SectionRepository $sectionRepo */
+                    $sectionRepo = $entityManager->getRepository(Section::class);
+                    $assignedSections = $sectionRepo->getAssignedSection($journal->getRvid(), $boardIdentifies);
                 } catch (Exception|\JsonException  $e) {
                     $assignedSections = [];
                     $logger->critical($e->getMessage());
