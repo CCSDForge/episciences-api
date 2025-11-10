@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 ## Unreleased
+### Added
+- [#94](https://github.com/CCSDForge/episciences-front/issues/94): New labels for boards
 ### Fixed
 - [#100](https://github.com/CCSDForge/episciences-api/issues/100)
 - The number of published articles returned by the collection of volumes included unpublished articles.

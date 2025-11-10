@@ -21,6 +21,9 @@ class UserRoles
     public const FORMER_MEMBER = 'former_member';
 
     public const ROLE_GUEST_EDITOR = 'guest_editor';
+    public const ROLE_ADVISORY_BOARD = 'advisory_board';
+    public const ROLE_MANAGING_EDITOR = 'managing_editor';
+    public const ROLE_HANDLING_EDITOR = 'handling_editor';
 
     #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
