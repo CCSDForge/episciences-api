@@ -417,6 +417,7 @@ class Paper implements UserOwnedInterface
     #[ORM\JoinColumn(name: 'SID', referencedColumnName: 'SID', nullable: true)]
     private ?Section $section = null;
 
+    /** Primary volume*/
     #[ORM\ManyToOne(targetEntity: Volume::class, inversedBy: 'papers')]
     #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID', nullable: true)]
     private ?Volume $volume = null;
@@ -478,6 +479,27 @@ class Paper implements UserOwnedInterface
     {
         return $this->paperid;
     }
+
+    /**
+     * @param VolumePaperPosition|null $volumePaperPosition
+     * @return Paper
+     */
+    public function setVolumePaperPosition(?VolumePaperPosition $volumePaperPosition): self
+    {
+        $this->volumePaperPosition = $volumePaperPosition;
+        return $this;
+    }
+
+    /**
+     * @param int $docid
+     * @return Paper
+     */
+    public function setDocid(int $docid): self
+    {
+        $this->docid = $docid;
+        return $this;
+    }
+
 
     public function setPaperid(?int $paperid): self
     {
@@ -987,5 +1009,9 @@ class Paper implements UserOwnedInterface
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    public function isPublished(): bool{
+        return $this->getStatus() === self::STATUS_PUBLISHED;
     }
 }

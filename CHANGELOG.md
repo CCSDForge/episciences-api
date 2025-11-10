@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -->
 ## Unreleased
 ### Fixed
+- [#100](https://github.com/CCSDForge/episciences-api/issues/100)
+- The number of published articles returned by the collection of volumes included unpublished articles.
 - The number of publications with one author is incorrect because the search is done by Surname or First name instead of First name and Surname.
 - Wrong statistical indicator "Reviews received".
 ## v1.2.2 2025-03-18

@@ -2,10 +2,11 @@
 
 namespace App\Entity;
 
+use App\Repository\VolumePaperPositionRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Table(name: "VOLUME_PAPER_POSITION")]
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: VolumePaperPositionRepository::class)]
 class VolumePaperPosition
 {
     #[ORM\Column(name: "VID", type: "integer", nullable: false, options: ["unsigned" => true])]
@@ -40,6 +41,24 @@ class VolumePaperPosition
     {
         $this->position = $position;
 
+        return $this;
+    }
+
+    /**
+     * @param mixed $vid
+     */
+    public function setVid($vid): self
+    {
+        $this->vid = $vid;
+        return $this;
+    }
+
+    /**
+     * @param mixed $paperid
+     */
+    public function setPaperid($paperid): self
+    {
+        $this->paperid = $paperid;
         return $this;
     }
 

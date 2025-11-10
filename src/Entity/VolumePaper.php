@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Repository\VolumePaperRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -11,7 +12,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Table(name: 'VOLUME_PAPER')]
 #[ORM\UniqueConstraint(name: 'UNIQUE', columns: ['VID', 'DOCID'])]
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: VolumePaperRepository::class)]
 class VolumePaper
 {
     /**

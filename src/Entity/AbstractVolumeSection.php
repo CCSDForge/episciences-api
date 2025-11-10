@@ -43,11 +43,18 @@ abstract class AbstractVolumeSection
     }
 
     /**
-     * @param int $totalPublishedArticles
      * @return AbstractVolumeSection
      */
-    public function setTotalPublishedArticles(int $totalPublishedArticles = 0): self
+    public function setTotalPublishedArticles(): self
     {
+        $totalPublishedArticles = 0;
+
+        foreach ($this->getPapers() as $paper) {
+            if($paper->isPublished()) {
+                ++$totalPublishedArticles;
+            }
+        }
+
         $this->totalPublishedArticles = $totalPublishedArticles;
         return $this;
     }

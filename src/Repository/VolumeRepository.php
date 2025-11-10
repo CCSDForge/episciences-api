@@ -2,12 +2,15 @@
 
 namespace App\Repository;
 
-use App\Entity\Section;
+use App\Entity\Paper;
 use App\Entity\Volume;
-use App\Traits\QueryTrait;
+use App\Entity\VolumePaperPosition;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\DBAL\Exception;
+use Doctrine\ORM\NativeQuery;
+use Doctrine\ORM\Query\ResultSetMapping;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -17,7 +20,7 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
 {
     use ToolsTrait;
 
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(ManagerRegistry $registry, private readonly PapersRepository $papersRepository)
     {
         parent::__construct($registry, Volume::class);
     }
@@ -70,20 +73,20 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
 
     public function getCommitteeQuery(int $rvId, int $vid): string
     {
-        $sql = "SELECT uuid, CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid` 
-                FROM ( SELECT UID, VID, `WHEN` 
-                       FROM ( SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua` 
-                           INNER JOIN( 
-                           SELECT `USER_ASSIGNMENT`.`ITEMID`, MAX(`WHEN`) AS `WHEN`, ITEMID as vid 
-                           FROM `USER_ASSIGNMENT` 
-                           WHERE (RVID = $rvId) AND (`USER_ASSIGNMENT`.`ITEMID` = $vid) AND(ITEM = 'volume') AND(ROLEID = 'editor') 
-                           GROUP BY `ITEMID`, UID 
-                           ) AS `r1` ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.`WHEN` 
+        $sql = "SELECT uuid, CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid`
+                FROM ( SELECT UID, VID, `WHEN`
+                       FROM ( SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua`
+                           INNER JOIN(
+                           SELECT `USER_ASSIGNMENT`.`ITEMID`, MAX(`WHEN`) AS `WHEN`, ITEMID as vid
+                           FROM `USER_ASSIGNMENT`
+                           WHERE (RVID = $rvId) AND (`USER_ASSIGNMENT`.`ITEMID` = $vid) AND(ITEM = 'volume') AND(ROLEID = 'editor')
+                           GROUP BY `ITEMID`, UID
+                           ) AS `r1` ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.`WHEN`
                                             WHERE (RVID = $rvId) AND (ua.ITEMID = $vid) AND (ITEM = 'volume') AND(ROLEID = 'editor') AND( STATUS = 'active' )
-                                            ) AS `r2` 
+                                            ) AS `r2`
                            INNER JOIN VOLUME AS v ON v.RVID = r2.RVID AND v.VID = r2.ITEMID
-                       ) AS `result` 
-                    INNER JOIN USER AS `u` ON result.UID = u.UID  
+                       ) AS `result`
+                    INNER JOIN USER AS `u` ON result.UID = u.UID
                 GROUP BY VID,uuid, CIV, SCREEN_NAME, ORCID, u.LASTNAME
                 ORDER BY u.LASTNAME ASC;";
         return $sql;
@@ -108,5 +111,85 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
 
     }
 
+    public function fetchSortedPapers(int $vid = null): array
+    {
+        $result = $this->fetchSortedPapersQuery($vid)->getResult();
 
+        $onlyPublishedCollection = new ArrayCollection();
+        $privatePapersCollection = new ArrayCollection();
+
+        $toBeProcessed = [];
+
+        foreach ($result as $values) {
+
+            if (!isset($toBeProcessed[$values['PAPERID']])) {
+
+                // To be checked : Inconsistency in the database: duplicate position
+                $toBeProcessed[$values['PAPERID']] = $values;
+
+                $paper = $this->papersRepository->findOneBy(['docid' => $values['DOCID']]);
+
+                if ($paper) {
+
+                    $volumePaperPosition = (new VolumePaperPosition())
+                        ->setVid($vid)
+                        ->setPaperid($paper?->getPaperid())
+                        ->setPosition($values['POSITION']);
+
+                    $paper->setVolumePaperPosition($volumePaperPosition);
+
+                    if ($paper->isPublished() && !$privatePapersCollection->contains($paper)) {
+                        $onlyPublishedCollection->add($paper);
+
+                    } elseif (!$privatePapersCollection->contains($paper)) {
+                        $privatePapersCollection->add($paper);
+                    }
+
+                    unset($volumePaperPosition);
+                }
+
+            }
+
+        }
+        return ['privateCollection' => $privatePapersCollection, 'publicCollection' => $onlyPublishedCollection];
+    }
+
+    public function fetchSortedPapersQuery(int $vid = null): NativeQuery
+    {
+        // Création du mapping des colonnes du résultat
+        $rsm = new ResultSetMapping();
+        $rsm->addScalarResult('DOCID', 'DOCID');
+        $rsm->addScalarResult('PAPERID', 'PAPERID');
+        $rsm->addScalarResult('pv', 'pv');
+        $rsm->addScalarResult('sv', 'sv');
+        $rsm->addScalarResult('POSITION', 'POSITION');
+
+        $sql =
+            "SELECT
+            t1.PAPERID,
+            DOCID,
+            pv,
+            sv,
+            vpp.POSITION
+            FROM(
+            SELECT
+            p.DOCID,
+            p.PAPERID,
+            p.VID AS pv,
+            vp.VID AS sv
+            FROM
+            PAPERS p
+            LEFT JOIN VOLUME_PAPER vp ON (p.DOCID = vp.DOCID)
+            ) t1
+            INNER JOIN VOLUME_PAPER_POSITION vpp
+            ON (((vpp.VID = t1.pv OR vpp.VID = t1.sv) AND vpp.PAPERID = t1.PAPERID))";
+
+        if ($vid !== null) {
+            $sql .= " HAVING t1.pv = $vid OR t1.sv = $vid";
+        }
+
+        $sql .= " ORDER BY POSITION ASC";
+
+        return $this->getEntityManager()->createNativeQuery($sql, $rsm);
+    }
 }

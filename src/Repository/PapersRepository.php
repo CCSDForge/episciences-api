@@ -14,6 +14,7 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\AbstractQuery;
 use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\NoResultException;
+use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
@@ -550,6 +551,41 @@ class PapersRepository extends ServiceEntityRepository
             return 0;
         }
 
+    }
+
+
+    public function partialQuery(array $cols = ['rvid','docid', 'paperid', 'vid', 'sid', 'status', 'version', 'flag'], string $alias = self::PAPERS_ALIAS) : QueryBuilder {
+
+       $partialStr = implode(',', $cols);
+
+        return
+            $this->createQueryBuilder($alias)
+                ->select(sprintf('partial %s.{%s}', $alias, $partialStr));
+    }
+
+    /**
+     * @param string $docId
+     * @return Paper|null
+     */
+
+
+    public function fetchPartialByDocId(string $docId): ?Paper
+    {
+
+        $partialQb = $this->partialQuery();
+        $alias = $partialQb->getRootAliases()[0];
+
+        try {
+            return
+                $partialQb
+                    ->andWhere("$alias.docid = :val")
+                    ->setParameter('val', $docId)
+                    ->getQuery()
+                    ->getOneOrNullResult();
+        } catch (NonUniqueResultException $e) {
+            $this->logger->critical($e->getMessage());
+            return null;
+        }
     }
 
 }

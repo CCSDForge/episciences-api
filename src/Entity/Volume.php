@@ -145,6 +145,16 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     )]
     private int $vid;
 
+    /**
+     * @param int $vid
+     * @return Volume
+     */
+    public function setVid(int $vid): self
+    {
+        $this->vid = $vid;
+        return $this;
+    }
+
 
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[Groups(
@@ -244,8 +254,8 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-    private Collection $papers;
 
+    private Collection $papers;
 
     #[Groups(
         [
@@ -289,6 +299,16 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         $this->settings = new ArrayCollection();
         $this->settings_proceeding = new ArrayCollection();
         $this->metadata = new ArrayCollection();
+    }
+
+    /**
+     * @param Collection $papers
+     * @return Volume
+     */
+    public function setPapers(Collection $papers): self
+    {
+        $this->papers = $papers;
+        return $this;
     }
 
     public function getVid(): ?int
@@ -369,14 +389,23 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     }
 
     /**
-     * @return Collection<int, Paper>
+     * @param bool $forceSort
+     * default false : to avoid sorting again each time the function.
+     * Can be invoked for the first time in "VolumeSubscriber::processVolumePapersCollection" function with the parameter set to true.
+     * Sorting is already performed by the query, so it is no longer necessary
+     * @return Collection
      */
 
-    public function getPapers(): Collection
+    public function getPapers(bool $forceSort = false): Collection
     {
+
+        if (!$forceSort) {
+            return $this->papers;
+        }
+
         $papers = $this->papers->toArray();
 
-        usort($papers, function(Paper $a, Paper $b) {
+        usort($papers, static function(Paper $a, Paper $b) {
             $posA = $a->getPaperPosition() ?? PHP_INT_MAX;
             $posB = $b->getPaperPosition() ?? PHP_INT_MAX;
 

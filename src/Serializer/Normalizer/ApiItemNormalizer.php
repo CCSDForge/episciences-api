@@ -4,26 +4,28 @@ namespace App\Serializer\Normalizer;
 
 use App\Entity\AbstractVolumeSection;
 use App\Entity\EntityIdentifierInterface;
-use App\Entity\User;
 use App\Repository\PapersRepository;
+use App\Repository\SectionRepository;
+use App\Repository\VolumeRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use ReflectionClass;
+use ReflectionException;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Component\Serializer\SerializerAwareInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 
-class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
+readonly class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
 {
 
-    public function __construct(private readonly NormalizerInterface $decorated, private readonly EntityManagerInterface $entityManager, private ParameterBagInterface $parameters)
+    public function __construct(private NormalizerInterface $decorated, private EntityManagerInterface $entityManager)
     {
 
     }
 
 
     /**
-     * @throws \ReflectionException
+     * @throws ReflectionException
      * @throws ExceptionInterface
      */
     public function normalize(mixed $object, ?string $format = null, array $context = []): array|string|int|float|bool|\ArrayObject|null
@@ -34,11 +36,13 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
         if (
             $object instanceof AbstractVolumeSection &&
             is_array($data) &&
-            (new \ReflectionClass($object::class))->implementsInterface(EntityIdentifierInterface::class)
+            (new ReflectionClass($object::class))->implementsInterface(EntityIdentifierInterface::class)
         ) {
-            $committee = $this->entityManager->getRepository($object::class)->getCommittee($object->getRvid(), $object->getIdentifier());
+            /** @var SectionRepository | VolumeRepository $currentRepo */
+            $currentRepo = $this->entityManager->getRepository($object::class);
+            $committee = $currentRepo->getCommittee($object->getRvid(), $object->getIdentifier());
             $object->setCommittee($committee);
-            $object->setTotalPublishedArticles(count($data['papers'] ?? []) ?? 0);
+            $object->setTotalPublishedArticles();
             $data['committee'] = $object->getCommittee();
             $data[PapersRepository::TOTAL_ARTICLE] = $object->getTotalPublishedArticles();
         }
@@ -62,5 +66,4 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
             $this->decorated->setSerializer($serializer);
         }
     }
-
 }
