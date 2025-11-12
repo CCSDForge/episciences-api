@@ -12,6 +12,7 @@ use Doctrine\DBAL\Exception;
 use Doctrine\ORM\NativeQuery;
 use Doctrine\ORM\Query\ResultSetMapping;
 use Doctrine\Persistence\ManagerRegistry;
+use Psr\Log\LoggerInterface;
 
 /**
  * @extends ServiceEntityRepository<Volume>
@@ -20,7 +21,7 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
 {
     use ToolsTrait;
 
-    public function __construct(ManagerRegistry $registry, private readonly PapersRepository $papersRepository)
+    public function __construct(ManagerRegistry $registry, private readonly PapersRepository $papersRepository, private readonly LoggerInterface $logger)
     {
         parent::__construct($registry, Volume::class);
     }
@@ -103,7 +104,7 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
                 ->executeQuery()
                 ->fetchAllAssociative();
         } catch (Exception $e) {
-            trigger_error($e->getMessage());
+            $this->logger->critical($e->getMessage());
             return [];
         }
 
@@ -119,7 +120,7 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
         $privatePapersCollection = new ArrayCollection();
 
         $toBeProcessed = [];
-
+ 
         foreach ($result as $values) {
 
             if (!isset($toBeProcessed[$values['PAPERID']])) {
@@ -127,26 +128,29 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
                 // To be checked : Inconsistency in the database: duplicate position
                 $toBeProcessed[$values['PAPERID']] = $values;
 
-                $paper = $this->papersRepository->findOneBy(['docid' => $values['DOCID']]);
+                $paper = (new Paper())
+                    ->setDocid($values['DOCID'])
+                    ->setPaperid($values['PAPERID'])
+                    ->setVid($vid)
+                    ->setStatus($values['STATUS']);
 
-                if ($paper) {
 
-                    $volumePaperPosition = (new VolumePaperPosition())
-                        ->setVid($vid)
-                        ->setPaperid($paper?->getPaperid())
-                        ->setPosition($values['POSITION']);
+                $volumePaperPosition = (new VolumePaperPosition())
+                    ->setVid($vid)
+                    ->setPaperid($paper?->getPaperid())
+                    ->setPosition($values['POSITION']);
 
-                    $paper->setVolumePaperPosition($volumePaperPosition);
+                $paper->setVolumePaperPosition($volumePaperPosition);
 
-                    if ($paper->isPublished() && !$privatePapersCollection->contains($paper)) {
-                        $onlyPublishedCollection->add($paper);
+                if ($paper->isPublished() && !$onlyPublishedCollection->contains($paper)) {
+                    $onlyPublishedCollection->add($paper);
 
-                    } elseif (!$privatePapersCollection->contains($paper)) {
-                        $privatePapersCollection->add($paper);
-                    }
-
-                    unset($volumePaperPosition);
+                } elseif (!$privatePapersCollection->contains($paper)) {
+                    $privatePapersCollection->add($paper);
                 }
+
+                unset($paper, $volumePaperPosition);
+
 
             }
 
@@ -159,6 +163,7 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
         // Création du mapping des colonnes du résultat
         $rsm = new ResultSetMapping();
         $rsm->addScalarResult('DOCID', 'DOCID');
+        $rsm->addScalarResult('STATUS', 'STATUS');
         $rsm->addScalarResult('PAPERID', 'PAPERID');
         $rsm->addScalarResult('pv', 'pv');
         $rsm->addScalarResult('sv', 'sv');
@@ -168,6 +173,7 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
             "SELECT
             t1.PAPERID,
             DOCID,
+            t1.STATUS,
             pv,
             sv,
             vpp.POSITION
@@ -175,6 +181,7 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
             SELECT
             p.DOCID,
             p.PAPERID,
+            p.STATUS,
             p.VID AS pv,
             vp.VID AS sv
             FROM
@@ -182,10 +189,12 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
             LEFT JOIN VOLUME_PAPER vp ON (p.DOCID = vp.DOCID)
             ) t1
             INNER JOIN VOLUME_PAPER_POSITION vpp
-            ON (((vpp.VID = t1.pv OR vpp.VID = t1.sv) AND vpp.PAPERID = t1.PAPERID))";
+            ON (((vpp.VID = t1.pv OR vpp.VID = t1.sv) AND vpp.PAPERID = t1.PAPERID)) ";
+        $sql .= "HAVING t1.STATUS != ";
+        $sql .= Paper::STATUS_OBSOLETE;
 
         if ($vid !== null) {
-            $sql .= " HAVING t1.pv = $vid OR t1.sv = $vid";
+            $sql .= " AND (t1.pv = $vid OR t1.sv = $vid)";
         }
 
         $sql .= " ORDER BY POSITION ASC";

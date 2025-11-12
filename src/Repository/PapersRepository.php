@@ -564,12 +564,12 @@ class PapersRepository extends ServiceEntityRepository
     }
 
     /**
-     * @param string $docId
+     * @param int $docId
      * @return Paper|null
      */
 
 
-    public function fetchPartialByDocId(string $docId): ?Paper
+    public function fetchPartialByDocId(int $docId): ?Paper
     {
 
         $partialQb = $this->partialQuery();
