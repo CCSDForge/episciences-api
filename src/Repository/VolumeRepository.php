@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\AppConstants;
 use App\Entity\Paper;
 use App\Entity\Volume;
 use App\Entity\VolumePaperPosition;
@@ -11,13 +12,15 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\NativeQuery;
 use Doctrine\ORM\Query\ResultSetMapping;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
+use Doctrine\ORM\Tools\Pagination\Paginator as DoctrinePaginator;
 
 /**
  * @extends ServiceEntityRepository<Volume>
  */
-class VolumeRepository extends ServiceEntityRepository implements RangeInterface
+class VolumeRepository extends AbstractRepository implements RangeInterface
 {
     use ToolsTrait;
 
@@ -120,7 +123,7 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
         $privatePapersCollection = new ArrayCollection();
 
         $toBeProcessed = [];
- 
+
         foreach ($result as $values) {
 
             if (!isset($toBeProcessed[$values['PAPERID']])) {
@@ -200,5 +203,24 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
         $sql .= " ORDER BY POSITION ASC";
 
         return $this->getEntityManager()->createNativeQuery($sql, $rsm);
+    }
+
+    public function listQuery(int $rvId = null, $isMaximumForced= true): QueryBuilder {
+
+        $qb = $this->createQueryBuilder('v');
+
+        if ($rvId) {
+            $qb->andWhere('v.rvid = :rvId');
+            $qb->setParameter('rvId', $rvId);
+        } elseif($isMaximumForced) {
+            $qb->setMaxResults(self::DEFAULT_MAX_RESULT);
+        }
+
+        return $qb;
+    }
+
+    public function listPaginator(int $page, int $itemPerPage, int $rvId = null): DoctrinePaginator
+    {
+        return $this->getPaginatedItems($this->listQuery($rvId), $page, $itemPerPage);
     }
 }

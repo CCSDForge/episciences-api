@@ -13,6 +13,7 @@ use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\OpenApi\OpenApiFactory;
 use App\Repository\VolumeRepository;
+use App\State\VolumeStateProvider;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -39,7 +40,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 
         ),
-    ]
+    ], provider: VolumeStateProvider::class
 )]
 #[ApiResource(
     operations: [
@@ -125,7 +126,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             ],
         ),
 
-    ]
+    ], provider: VolumeStateProvider::class
 )]
 #[ApiFilter(SearchFilter::class, properties: ['vid' => 'exact'])]
 class Volume extends AbstractVolumeSection implements EntityIdentifierInterface

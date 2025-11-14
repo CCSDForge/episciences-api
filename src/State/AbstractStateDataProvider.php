@@ -2,9 +2,11 @@
 
 namespace App\State;
 
+use ApiPlatform\State\Pagination\Pagination;
 use ApiPlatform\State\Pagination\PaginatorInterface;
 use App\Entity\Review;
 use App\Exception\ResourceNotFoundException;
+use App\Repository\ReviewRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -12,7 +14,7 @@ abstract class AbstractStateDataProvider
 {
     public const CONTEXT_JOURNAL_KEY = 'journal';
 
-    public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger)
+    public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger, protected readonly Pagination $pagination)
     {
 
     }
@@ -56,7 +58,9 @@ abstract class AbstractStateDataProvider
 
         if ($code) {
 
-            $journal = $this->entityManager->getRepository(Review::class)->getJournalByIdentifier($code);
+            /** @var ReviewRepository $reviewRepo */
+            $reviewRepo = $this->entityManager->getRepository(Review::class);
+            $journal = $reviewRepo->getJournalByIdentifier($code);
             $context[self::CONTEXT_JOURNAL_KEY] = $journal;
 
             if (!$journal) {
@@ -64,9 +68,5 @@ abstract class AbstractStateDataProvider
             }
 
         }
-
-
     }
-
-
 }
