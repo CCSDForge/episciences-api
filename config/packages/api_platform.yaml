@@ -1,6 +1,8 @@
 api_platform:
-    eager_loading:
-        fetch_partial: true
+    #eager_loading:
+        #(chargement partiel en Doctrine ORM) les objets récupérés ne sont pas entièrement initialisés.
+        #Autrement dit, seuls certains champs sélectionnés dans la requête sont chargés, les autres restent non initialisés (null ou non définis)
+        #fetch_partial: true
     #global configuration defaults applied to all resources and all operations (2.6 only)
     defaults:
         #By default, API Platform generates all URLs as absolute paths to the base URL.
