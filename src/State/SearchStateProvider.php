@@ -4,6 +4,7 @@ namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\ArrayPaginator;
+use ApiPlatform\State\Pagination\Pagination;
 use ApiPlatform\State\ProviderInterface;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\Search;
@@ -14,9 +15,9 @@ use Psr\Log\LoggerInterface;
 
 class SearchStateProvider extends AbstractStateDataProvider implements ProviderInterface
 {
-    public function __construct(private readonly Client $client, protected EntityManagerInterface $entityManager, protected LoggerInterface $logger)
+    public function __construct(private readonly Client $client, protected EntityManagerInterface $entityManager, protected LoggerInterface $logger, Pagination $pagination)
     {
-        parent::__construct($entityManager, $this->logger);
+        parent::__construct($entityManager, $logger, $pagination);
 
     }
 
