@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#94](https://github.com/CCSDForge/episciences-front/issues/94): New labels for boards
 ### Fixed
+- Secondary volumes are not included in the list of volumes unless they are declared as primary volumes.
 - [#100](https://github.com/CCSDForge/episciences-api/issues/100)
 - The number of published articles returned by the collection of volumes included unpublished articles.
 - The number of publications with one author is incorrect because the search is done by Surname or First name instead of First name and Surname.

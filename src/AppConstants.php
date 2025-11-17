@@ -6,6 +6,8 @@ use App\Entity\Review;
 
 final class AppConstants
 {
+    public const MAXIMUM_ITEMS_PER_PAGE = 1000;
+    public const DEFAULT_ITEM_PER_PAGE = 30;
     public const BASE_64 = 'base64';
     public const DEFAULT_PRECISION = 0;
     public const RATE_DEFAULT_PRECISION = 2;

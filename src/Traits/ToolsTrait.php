@@ -141,4 +141,17 @@ trait ToolsTrait
         return round(array_sum($array) / $count, AppConstants::DEFAULT_PRECISION, PHP_ROUND_HALF_UP);
 
     }
+
+    /**
+     * Supprime à la fois les valeurs nulles et les valeurs vides
+     * @param array $array
+     * @return array
+     */
+
+    public function arrayCleaner(array $array = []): array
+    {
+        return array_filter($array, static function($val) {
+            return !(empty($val));
+        });
+    }
 }

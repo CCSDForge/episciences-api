@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use ApiPlatform\Exception\RuntimeException;
+use App\AppConstants;
 use App\Entity\Review;
 use App\Resource\Rss;
 use App\Traits\ToolsTrait;
@@ -20,7 +21,7 @@ class Solr
 {
     use ToolsTrait;
 
-    public const SOLR_MAX_RETURNED_FACETS_RESULTS = 10000;
+    public const SOLR_MAX_RETURNED_FACETS_RESULTS = AppConstants::MAXIMUM_ITEMS_PER_PAGE;
     public const SOLR_FACET_SEPARATOR = '_FacetSep_';
     public const SOLR_OTHERS_FACET_SEPARATOR = 'Others_FacetSep_';
     public const SOLR_OTHERS_PREFIX = 'Others';

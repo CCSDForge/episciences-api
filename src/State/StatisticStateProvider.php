@@ -4,6 +4,7 @@ namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\ArrayPaginator;
+use ApiPlatform\State\Pagination\Pagination;
 use ApiPlatform\State\ProviderInterface;
 use App\AppConstants;
 use App\Entity\Paper;
@@ -15,18 +16,15 @@ use App\Exception\ResourceNotFoundException;
 use App\Repository\PapersRepository;
 use App\Resource\Statistic;
 use App\Service\Stats;
-use App\Traits\ToolsTrait;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
 class StatisticStateProvider extends AbstractStateDataProvider implements ProviderInterface
 {
-    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, protected Stats $statsService)
+    public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger, protected Pagination $pagination, protected Stats $statsService)
     {
-        parent::__construct($entityManager, $logger);
+        parent::__construct($entityManager, $logger, $pagination);
     }
-
-    use ToolsTrait;
 
     /**
      * @throws ResourceNotFoundException

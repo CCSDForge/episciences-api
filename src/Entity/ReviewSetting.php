@@ -15,6 +15,7 @@ class ReviewSetting
     public const TABLE = 'REVIEW_SETTING';
     // todo to be implemented: new setting "allowBrowseAcceptedDocuments"
     public const ALLOW_BROWSE_ACCEPTED_ARTICLE = 'allowBrowseAcceptedDocuments';
+    public const DISPLAY_EMPTY_VOLUMES = 'displayEmptyVolumes';
 
     #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]

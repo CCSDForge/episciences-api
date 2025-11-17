@@ -3,25 +3,34 @@
 namespace App\Repository;
 
 use App\Entity\Paper;
+use App\Entity\ReviewSetting;
+use App\Entity\User;
 use App\Entity\Volume;
+use App\Entity\VolumePaper;
 use App\Entity\VolumePaperPosition;
+use App\Traits\QueryTrait;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\NativeQuery;
+use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\Query\ResultSetMapping;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
+use Doctrine\ORM\Tools\Pagination\Paginator as DoctrinePaginator;
+use function Sodium\randombytes_random16;
 
 /**
  * @extends ServiceEntityRepository<Volume>
  */
-class VolumeRepository extends ServiceEntityRepository implements RangeInterface
+class VolumeRepository extends AbstractRepository implements RangeInterface
 {
     use ToolsTrait;
+    use QueryTrait;
 
-    public function __construct(ManagerRegistry $registry, private readonly PapersRepository $papersRepository, private readonly LoggerInterface $logger)
+    public function __construct(ManagerRegistry $registry, private readonly PapersRepository $papersRepository, private readonly VolumePaperRepository $volumePaperRepository,  private readonly LoggerInterface $logger)
     {
         parent::__construct($registry, Volume::class);
     }
@@ -120,7 +129,7 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
         $privatePapersCollection = new ArrayCollection();
 
         $toBeProcessed = [];
- 
+
         foreach ($result as $values) {
 
             if (!isset($toBeProcessed[$values['PAPERID']])) {
@@ -201,4 +210,87 @@ class VolumeRepository extends ServiceEntityRepository implements RangeInterface
 
         return $this->getEntityManager()->createNativeQuery($sql, $rsm);
     }
+
+    public function listQuery(array $filters = [], $isMaximumForced = false): QueryBuilder
+    {
+        $alias = 'v';
+
+        $rvId = $filters['rvid'] ?? null;
+        $types = $filters['type'] ?? null;
+        $years = $filters['year'] ?? null;
+        $vIds = $filters['vid'] ?? null;
+
+        $isDisplayEmptyVolume = $filters[ReviewSetting::DISPLAY_EMPTY_VOLUMES] ?? false;
+        $onlyPublished = !isset($context['filters']['isGranted']) || !$context['filters']['isGranted']; // FALSE IF GRANTED SECRETARY
+
+        $qb = $this->createQueryBuilder($alias);
+
+        if ($rvId) {
+            $qb->andWhere("$alias.rvid = :rvId");
+            $qb->setParameter('rvId', $rvId);
+        }
+
+        if (!$isDisplayEmptyVolume) {  //   all volumes with published papers
+            $this->andOrExp($qb, sprintf('%s.vid', $alias ), $this->getNoEmptyVolumesIdentifiers($rvId, $onlyPublished));
+        }
+
+        if ($types) {
+            $this->andOrExp($qb, sprintf('%s.vol_type', $alias), $types);
+        }
+
+        if ($years) {
+            $this->andOrExp($qb, sprintf('%s.vol_year)', $alias), $years);
+        }
+
+        if ($vIds) {
+            $this->andOrExp($qb, sprintf('%s.vid', $alias), $vIds);
+        }
+
+        if (
+            !$rvId &&
+            $isMaximumForced
+        ) {
+            $qb->setMaxResults(self::DEFAULT_MAX_RESULT); // To avoid possible OUT OF MEMORY errors
+        }
+
+        return $qb;
+
+    }
+
+    public function listPaginator(int $page, int $itemPerPage, array $filtersContext = []): DoctrinePaginator
+    {
+        return $this->getPaginatedItems($this->listQuery($filtersContext), $page, $itemPerPage);
+    }
+
+
+    public function getNoEmptyMasterVolumesQuery(int $rvId = null, bool $strictlyPublished = true): QueryBuilder {
+
+        $qb = $this->getEntityManager()->createQueryBuilder();
+        $qb->select('p.vid')->from(Paper::class, 'p')->distinct();
+
+        $qb->where('p.vid > 0');
+
+        if($rvId) {
+
+            $qb->andWhere("p.rvid = :rvId")
+                ->setParameter('rvId', $rvId);
+        }
+
+        if ($strictlyPublished) {
+            $qb->andWhere('p.status = :status')
+            ->setParameter('status', Paper::STATUS_PUBLISHED);
+        }
+
+        return $qb;
+
+    }
+
+    private function getNoEmptyVolumesIdentifiers(int $rvId = null, bool $onlyPublished = true): array
+    {
+        $noEmptyMasterIds = array_column(array_values($this->getNoEmptyMasterVolumesQuery($rvId, $onlyPublished)->getQuery()->getArrayResult()), 'vid');
+        $noEmptySecondaryVolumesIds = array_column(array_values($this->volumePaperRepository->getNoEmptySecondaryVolumes($rvId, $onlyPublished)->getQuery()->getResult()), 'vid');
+        return [...$noEmptyMasterIds, ...$noEmptySecondaryVolumesIds];
+
+    }
+
 }

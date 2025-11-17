@@ -1,14 +1,16 @@
 api_platform:
-    eager_loading:
-        fetch_partial: true
+    #eager_loading:
+        #(chargement partiel en Doctrine ORM) les objets récupérés ne sont pas entièrement initialisés.
+        #Autrement dit, seuls certains champs sélectionnés dans la requête sont chargés, les autres restent non initialisés (null ou non définis)
+        #fetch_partial: true
     #global configuration defaults applied to all resources and all operations (2.6 only)
     defaults:
         #By default, API Platform generates all URLs as absolute paths to the base URL.
         url_generation_strategy: !php/const ApiPlatform\Api\UrlGeneratorInterface::ABS_PATH
         pagination_client_enabled: true #Enabling Pagination Client-side Globally
         pagination_client_items_per_page: true
-        pagination_maximum_items_per_page: 1000
-        pagination_items_per_page: 30
+        pagination_maximum_items_per_page: !php/const App\AppConstants::MAXIMUM_ITEMS_PER_PAGE
+        pagination_items_per_page: !php/const App\AppConstants::DEFAULT_ITEM_PER_PAGE
         item_Operations: ~
         collection_Operations: ~
         normalization_context:

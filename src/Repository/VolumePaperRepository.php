@@ -68,4 +68,26 @@ class VolumePaperRepository extends ServiceEntityRepository
 
         return $collection;
     }
+
+    public function getNoEmptySecondaryVolumes(int $rvId = null, bool $strictlyPublished = true) : QueryBuilder {
+
+        $qb = $this->createQueryBuilder('sv');
+        $qb->select('sv.vid')
+            ->distinct()
+            ->innerJoin(Paper::class, 'p', Join::WITH, 'sv.docid = p.docid');
+
+        if($rvId) {
+            $qb
+                ->andWhere("p.rvid = :rvId")
+                ->setParameter('rvId', $rvId);
+        }
+
+        if ($strictlyPublished) {
+            $qb->andWhere('p.status = :status')
+                ->setParameter('status', Paper::STATUS_PUBLISHED);
+        }
+
+
+        return $qb;
+    }
 }
