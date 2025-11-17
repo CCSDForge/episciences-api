@@ -5,6 +5,7 @@ namespace App\Traits;
 use App\Entity\News;
 use App\Entity\Section;
 use App\Entity\Volume;
+use App\Repository\VolumeRepository;
 use Doctrine\ORM\QueryBuilder;
 
 trait QueryTrait
@@ -32,25 +33,42 @@ trait QueryTrait
 
     final public function processYears(string|array $yFilters = []): array
     {
-        $yFilters = (array)$yFilters;
-        return array_unique($yFilters);
+        $yFilters =  array_unique($yFilters);
+
+        return array_filter($yFilters, static function($val) { // Supprime à la fois les valeurs nulles et les valeurs vides
+            return !empty($val);
+        });
+
     }
 
+    /**
+     * Cleans and removes duplicates, and if valid filters are present, returns them.
+     * @param QueryBuilder $qb
+     * @param array $filters
+     * @return string
+     */
 
     final public function processTypes(QueryBuilder $qb, array $filters): string
     {
 
-        $currentTypes = [];
-        $availableTypes = $qb->getEntityManager()->getRepository(Volume::class)->getTypes();
+        $availableCurrentTypes = [];
+        $unavailableCurrentTypes = [];
+        /** @var VolumeRepository $volRepo */
+        $volRepo = $qb->getEntityManager()->getRepository(Volume::class);
+        $availableTypes = $volRepo->getTypes();
+        $arrayUnique = array_unique($filters);
 
-        foreach ($filters as $value) {
+        foreach ($arrayUnique as $value) {
             $value = trim($value);
-            if (in_array($value, $availableTypes, true) && !in_array($value, $currentTypes, true)) {
-                $currentTypes[] = $value;
+            if (in_array($value, $availableTypes, true) && !in_array($value, $availableCurrentTypes, true)) {
+                $availableCurrentTypes[] = $value;
+            } elseif(!in_array($value, $unavailableCurrentTypes, true)) {
+                $unavailableCurrentTypes[] = $value;
             }
         }
 
-        return !empty($currentTypes) ? implode(',', $currentTypes) : implode(',', $filters);
+        // Type SET en MySQL n’est pas nativement supporté par Doctrine ORM
+        return !empty($availableCurrentTypes) ? implode(',', $availableCurrentTypes) : implode(',', $unavailableCurrentTypes);
 
     }
 

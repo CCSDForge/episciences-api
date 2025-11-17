@@ -7,6 +7,7 @@ use App\AppConstants;
 use App\Entity\Paper;
 use App\Entity\Section;
 use App\Entity\Volume;
+use App\Entity\VolumePaper;
 use App\Service\Stats;
 use App\Traits\QueryTrait;
 use App\Traits\ToolsTrait;
@@ -14,7 +15,7 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\AbstractQuery;
 use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\NoResultException;
-use Doctrine\ORM\Query;
+use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
@@ -40,9 +41,6 @@ class PapersRepository extends ServiceEntityRepository
         'imported' => 'imported',
         'submitted' => 'submitted'
     ];
-
-
-    // la reprise de l'existant fausse les stats
 
     private LoggerInterface $logger;
 
@@ -197,7 +195,7 @@ class PapersRepository extends ServiceEntityRepository
                             $qb->andWhere('YEAR(' . self::PAPERS_ALIAS . '.' . $date . ') =:' . $name);
                         } else {
                             //Correction d'une erreur de type en forçant le cast de $value en tableau dans l'appel à andOrExp()
-                            $this->andOrExp($qb, sprintf('YEAR(%s.%s)', self::PAPERS_ALIAS, $date), (array) $value);
+                            $this->andOrExp($qb, sprintf('YEAR(%s.%s)', self::PAPERS_ALIAS, $date), (array)$value);
                         }
                     } else {
                         $qb->andWhere(self::PAPERS_ALIAS . '.' . $date . ' >=:' . $name);
@@ -284,12 +282,12 @@ class PapersRepository extends ServiceEntityRepository
      * @param string $resourceClass
      * @param int $status
      * @param int|array|null $identifiers
-     * @param array $filters
+     * @param int|null $rvId
      * @return QueryBuilder
      */
 
 
-    public function getTotalArticlesBySectionOrVolumeQuery(string $resourceClass = Section::class, int $status = Paper::STATUS_PUBLISHED, int|array $identifiers = null, array $filters = []): QueryBuilder
+    public function getTotalArticlesBySectionOrVolumeQuery(string $resourceClass = Section::class, int $status = Paper::STATUS_PUBLISHED, int|array $identifiers = null, int $rvId = null): QueryBuilder
     {
 
         $withoutIdentifier = empty($identifiers);
@@ -302,23 +300,26 @@ class PapersRepository extends ServiceEntityRepository
 
         $qb = $this->createQueryBuilder(self::PAPERS_ALIAS);
 
-        if (!$withoutIdentifier) {
-
-            if (is_int($identifiers)) {
-                $identifiers = (array)$identifiers;
-            }
-
+        if (!$withoutIdentifier || $rvId) { // Per VIDs  OR SIDs OR rvId
             $qb->select(sprintf('COUNT(DISTINCT(%s.paperid)) AS %s', self::PAPERS_ALIAS, self::TOTAL_ARTICLE));
         } else {
             $qb->select(sprintf('%s.rvid, %s.%s, COUNT(DISTINCT(%s.paperid)) AS %s', self::PAPERS_ALIAS, self::PAPERS_ALIAS, $tableId, self::PAPERS_ALIAS, self::TOTAL_ARTICLE));
         }
 
         $qb->andWhere(sprintf('%s.status =:status', self::PAPERS_ALIAS))
-            ->andWhere(sprintf('%s.%s != 0', self::PAPERS_ALIAS, $tableId))
             ->setParameter('status', $status);
+
+        if ($rvId) {
+            $qb->andWhere(sprintf('%s.rvid = :rvid', self::PAPERS_ALIAS))
+                ->setParameter('rvid', $rvId);
+        }
 
 
         if (!$withoutIdentifier) {
+
+            if (is_int($identifiers)) {
+                $identifiers = (array)$identifiers;
+            }
 
             $orExp = $qb->expr()->orX();
 
@@ -328,7 +329,13 @@ class PapersRepository extends ServiceEntityRepository
             }
 
             $qb->andWhere($orExp);
+        } elseif ($resourceClass === Volume::class) { // Include papers published in secondary volumes
+            $qb->innerJoin(VolumePaper::class, 'vp', Join::WITH, sprintf('%s.docid = vp.docid', self::PAPERS_ALIAS));
         } else {
+            $qb->andWhere(sprintf('%s.%s != 0', self::PAPERS_ALIAS, $tableId));
+        }
+
+        if (!$rvId) {
             $qb->addGroupBy(sprintf('%s.rvid', self::PAPERS_ALIAS));
             $qb->addGroupBy(sprintf('%s.%s', self::PAPERS_ALIAS, $tableId));
             $qb->addOrderBy(sprintf('%s.rvid', self::PAPERS_ALIAS), 'DESC');
@@ -339,12 +346,12 @@ class PapersRepository extends ServiceEntityRepository
     }
 
 
-    public function getTotalArticleBySectionOrVolume(string $resourceClass = Section::class, int $status = Paper::STATUS_PUBLISHED, int|array $identifiers = null, int $rvId = null, array $filters = []): array|float|bool|int|string|null
+    public function getTotalArticleBySectionOrVolume(string $resourceClass = Section::class, int $status = Paper::STATUS_PUBLISHED, int|array $identifiers = null, int $rvId = null): array|float|bool|int|string|null
     {
 
-        $resultQuery = $this->getTotalArticlesBySectionOrVolumeQuery($resourceClass, $status, $identifiers, $filters)->getQuery();
+        $resultQuery = $this->getTotalArticlesBySectionOrVolumeQuery($resourceClass, $status, $identifiers, $rvId)->getQuery();
 
-        if (!empty($identifiers)) {
+        if (!empty($identifiers || $rvId)) {
             try {
                 return [self::TOTAL_ARTICLE => $resultQuery->getSingleScalarResult()];
             } catch (NoResultException|NonUniqueResultException $e) {
@@ -355,26 +362,20 @@ class PapersRepository extends ServiceEntityRepository
 
         $result = $resultQuery->getArrayResult();
 
-        $assoc[self::TOTAL_ARTICLE] = 0;
+        $currentRvId = null;
+        $total = [];
+
 
         foreach ($result as $values) {
 
-            $key = $resourceClass === Section::class ? 'sid' : 'vid';
-
-            $currentRvId = $values['rvid'] ?? null;
-
-            if ($currentRvId) {
-                $assoc[$currentRvId][self::TOTAL_ARTICLE] = $assoc[$currentRvId][self::TOTAL_ARTICLE] ?? 0;
-                $assoc[self::TOTAL_ARTICLE] += $values[self::TOTAL_ARTICLE]; // all platform
-                $assoc[$currentRvId][self::TOTAL_ARTICLE] += $values[self::TOTAL_ARTICLE];
-                $assoc[$currentRvId][$values[$key]][self::TOTAL_ARTICLE] = $values[self::TOTAL_ARTICLE];
-            } else {
-                $assoc[$values[$key]] = $values[self::TOTAL_ARTICLE];
+            if ($values['rvid'] !== $currentRvId) {
+                $currentRvId = $values['rvid'];
             }
 
+            $total[$currentRvId][self::TOTAL_ARTICLE] = isset($total[$currentRvId][self::TOTAL_ARTICLE]) ? $total[$currentRvId][self::TOTAL_ARTICLE] + (int)$values[self::TOTAL_ARTICLE] : (int)$values[self::TOTAL_ARTICLE];
         }
 
-        return $rvId ? $assoc[$rvId] : $assoc;
+        return [self::TOTAL_ARTICLE => array_sum(array_column($total, self::TOTAL_ARTICLE))];
     }
 
     public function getTypes(array $filters = [], bool $strict = true): array
@@ -503,7 +504,7 @@ class PapersRepository extends ServiceEntityRepository
      * @param int $docId
      * @param int|null $rvId
      * @param string $path
-     * @param bool $strict: only published
+     * @param bool $strict : only published
      * @return string|null
      */
 
@@ -554,9 +555,10 @@ class PapersRepository extends ServiceEntityRepository
     }
 
 
-    public function partialQuery(array $cols = ['rvid','docid', 'paperid', 'vid', 'sid', 'status', 'version', 'flag'], string $alias = self::PAPERS_ALIAS) : QueryBuilder {
+    public function partialQuery(array $cols = ['rvid', 'docid', 'paperid', 'vid', 'sid', 'status', 'version', 'flag'], string $alias = self::PAPERS_ALIAS): QueryBuilder
+    {
 
-       $partialStr = implode(',', $cols);
+        $partialStr = implode(',', $cols);
 
         return
             $this->createQueryBuilder($alias)

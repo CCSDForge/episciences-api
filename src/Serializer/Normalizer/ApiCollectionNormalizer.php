@@ -10,6 +10,7 @@ use App\Entity\Section;
 use App\Entity\Volume;
 use App\Repository\PapersRepository;
 use App\Repository\RangeInterface;
+use App\Repository\ReviewRepository;
 use App\Resource\Browse;
 use App\Resource\Range;
 use App\Resource\RangeType;
@@ -55,7 +56,9 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         $isOnlyAccepted = isset($parsedUri['only_accepted']) && filter_var($parsedUri['only_accepted'], FILTER_VALIDATE_BOOLEAN);
 
         if ($rvCode) {
-            $journal = $this->entityManager->getRepository(Review::class)->getJournalByIdentifier($rvCode);
+            /** @var ReviewRepository $journalRepo */
+            $journalRepo = $this->entityManager->getRepository(Review::class);
+            $journal = $journalRepo->getJournalByIdentifier($rvCode);
         }
 
         $hydraMember = $data['hydra:member'] ?? [];
@@ -183,7 +186,9 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             }
 
             if (!empty($data['hydra:member'])) {
-                $allPublishedArticles = $this->entityManager->getRepository(Paper::class)->getTotalArticleBySectionOrVolume($operationClass, Paper::STATUS_PUBLISHED, $identifiers, $rvId, $filters);
+                /** @var PapersRepository $paperRepo */
+                $paperRepo = $this->entityManager->getRepository(Paper::class);
+                $allPublishedArticles = $paperRepo->getTotalArticleBySectionOrVolume($operationClass, Paper::STATUS_PUBLISHED, $identifiers, $rvId);
                 $data[sprintf('hydra:%s', PapersRepository::TOTAL_ARTICLE)] = $allPublishedArticles[PapersRepository::TOTAL_ARTICLE];
             }
 

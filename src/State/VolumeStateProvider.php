@@ -6,31 +6,31 @@ use ApiPlatform\Doctrine\Orm\Paginator;
 use ApiPlatform\Metadata\CollectionOperationInterface;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
-use App\AppConstants;
-use App\Entity\Review;
+use App\Entity\User;
 use App\Entity\Volume;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\VolumeRepository;
 
-final class VolumeStateProvider extends AbstractStateDataProvider implements ProviderInterface
+final class VolumeStateProvider extends AuthenticationStateProvider implements ProviderInterface
 {
+
+    /**
+     * @param Operation $operation
+     * @param array $uriVariables
+     * @param array $context
+     * @return object|array|object[]|null
+     * @throws ResourceNotFoundException
+     */
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
-
-
-        try {
-            $this->checkAndProcessFilters($context);
-        } catch (ResourceNotFoundException $e) {
-            $this->logger->critical($e->getMessage());
-        }
-
-        /** @var Review $currentJournal */
-        $currentJournal = $context[self::CONTEXT_JOURNAL_KEY] ?? null;
-
         if ($operation->getClass() !== Volume::class) {
             return null;
         }
+
+        $this->checkAndProcessFilters($context);
+
+        $context['filters']['isGranted'] = $this->security->isGranted('ROLE_SECRETARY');
 
         // Récupération des paramètres de pagination (page, limit)
         [$page, , $limit] = $this->pagination->getPagination($operation, $context);
@@ -41,14 +41,15 @@ final class VolumeStateProvider extends AbstractStateDataProvider implements Pro
         $volumeRepo = $this->entityManager->getRepository(Volume::class);
 
         if ($operation instanceof CollectionOperationInterface) {
-            $rvId = $currentJournal?->getRvid();
+
+            $filters = $context['filters'] ?? [];
 
             if ($iPaginationEnabled) {
-                $doctrinePaginator = $volumeRepo->listPaginator($page, $limit, $rvId);
+                $doctrinePaginator = $volumeRepo->listPaginator($page, $limit, $filters);
                 return new Paginator($doctrinePaginator);
             }
 
-            return $volumeRepo->listQuery($rvId)->getQuery()->getResult();
+            return $volumeRepo->listQuery($filters)->getQuery()->getResult();
         }
 
         // return a single volume
