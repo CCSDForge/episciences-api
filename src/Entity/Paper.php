@@ -120,7 +120,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                         allowEmptyValue: false,
                         schema: [
                             'type' => 'integer',
-                        ],explode: false,
+                        ], explode: false,
                         allowReserved: false
                     ),
                     new Parameter(
@@ -335,6 +335,18 @@ class Paper implements UserOwnedInterface
 
 
     #[ORM\Column(name: 'STATUS', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    /** /!\
+     * Le Chargement Partiel des Données : Lorsque `fetch_partial: true` est activé
+     * (généralement dans la configuration de l'eager loading d'API Platform, par exemple, en fonction des groupes de sérialisation),
+     * Doctrine génère une requête SQL qui sélectionne uniquement les champs qui seront effectivement sérialisés.
+     * Par exemple, le statut de l'article ne sera pas chargé via pour les collections ($section->getPapers() | $volume->getPapers())
+     * sauf dans où des groupes de sérialisation sont ajoutés :
+     * AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
+     * AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0],
+     * AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
+     * AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0]
+     **/
+
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
@@ -945,12 +957,12 @@ class Paper implements UserOwnedInterface
 
         foreach ($this->conflicts as $conflict) {
 
-            if($conflict instanceof PaperConflicts){
+            if ($conflict instanceof PaperConflicts) {
                 $conflicts[$conflict->getAnswer()][$conflict->getBy()] = $conflict;
             }
         }
 
-        if(!empty($conflicts)){
+        if (!empty($conflicts)) {
             $this->conflicts = new ArrayCollection($conflicts);
         }
 
@@ -1011,7 +1023,18 @@ class Paper implements UserOwnedInterface
         }
     }
 
-    public function isPublished(): bool{
+    public function isPublished(): bool
+    {
         return $this->getStatus() === self::STATUS_PUBLISHED;
+    }
+
+    public function isAccepted(): bool
+    {
+        return $this->getStatus() === self::STATUS_ACCEPTED;
+    }
+
+    public function isStrictlyAccepted(): bool
+    {
+        return $this->getStatus() === self::STATUS_STRICTLY_ACCEPTED;
     }
 }
