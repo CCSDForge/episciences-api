@@ -33,9 +33,13 @@ trait QueryTrait
 
     final public function processYears(string|array $yFilters = []): array
     {
-        $yFilters =  array_unique($yFilters);
+        if (is_string($yFilters)) {
+            $yFilters = (array($yFilters));
+        }
 
-        return array_filter($yFilters, static function($val) { // Supprime à la fois les valeurs nulles et les valeurs vides
+        $yFilters = array_unique($yFilters);
+
+        return array_filter($yFilters, static function ($val) { // Supprime à la fois les valeurs nulles et les valeurs vides
             return !empty($val);
         });
 
