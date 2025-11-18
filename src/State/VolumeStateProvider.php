@@ -6,7 +6,6 @@ use ApiPlatform\Doctrine\Orm\Paginator;
 use ApiPlatform\Metadata\CollectionOperationInterface;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
-use App\Entity\User;
 use App\Entity\Volume;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\VolumeRepository;

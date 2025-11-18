@@ -4,27 +4,20 @@ namespace App\Repository;
 
 use App\Entity\Paper;
 use App\Entity\ReviewSetting;
-use App\Entity\User;
 use App\Entity\Volume;
-use App\Entity\VolumePaper;
 use App\Entity\VolumePaperPosition;
 use App\Traits\QueryTrait;
 use App\Traits\ToolsTrait;
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\NativeQuery;
-use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\Query\ResultSetMapping;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 use Doctrine\ORM\Tools\Pagination\Paginator as DoctrinePaginator;
-use function Sodium\randombytes_random16;
 
-/**
- * @extends ServiceEntityRepository<Volume>
- */
+
 class VolumeRepository extends AbstractRepository implements RangeInterface
 {
     use ToolsTrait;
@@ -239,7 +232,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
         }
 
         if ($years) {
-            $this->andOrExp($qb, sprintf('%s.vol_year)', $alias), $years);
+            $this->andOrExp($qb, sprintf('%s.vol_year', $alias), $years);
         }
 
         if ($vIds) {
@@ -252,6 +245,8 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
         ) {
             $qb->setMaxResults(self::DEFAULT_MAX_RESULT); // To avoid possible OUT OF MEMORY errors
         }
+
+
 
         return $qb;
 
