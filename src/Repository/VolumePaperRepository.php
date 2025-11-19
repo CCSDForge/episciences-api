@@ -4,6 +4,8 @@ namespace App\Repository;
 
 use App\Entity\Paper;
 use App\Entity\VolumePaper;
+use App\Traits\QueryTrait;
+use App\Traits\VolumeTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Query\Expr\Join;
@@ -15,6 +17,7 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class VolumePaperRepository extends ServiceEntityRepository
 {
+    use VolumeTrait;
     public function __construct(ManagerRegistry $registry, private readonly PapersRepository $paperRepository)
     {
         parent::__construct($registry, VolumePaper::class);
@@ -69,25 +72,24 @@ class VolumePaperRepository extends ServiceEntityRepository
         return $collection;
     }
 
-    public function getNoEmptySecondaryVolumes(int $rvId = null, bool $strictlyPublished = true) : QueryBuilder {
+
+    /**
+     * @param int|null $rvId
+     * @param bool $strictlyPublished
+     * @param int|array|null $ids
+     * @return QueryBuilder
+     */
+
+    public function getNoEmptySecondaryVolumes(int $rvId = null, bool $strictlyPublished = true, int|array $ids = null) : QueryBuilder {
 
         $qb = $this->createQueryBuilder('sv');
         $qb->select('sv.vid')
             ->distinct()
             ->innerJoin(Paper::class, 'p', Join::WITH, 'sv.docid = p.docid');
 
-        if($rvId) {
-            $qb
-                ->andWhere("p.rvid = :rvId")
-                ->setParameter('rvId', $rvId);
-        }
-
-        if ($strictlyPublished) {
-            $qb->andWhere('p.status = :status')
-                ->setParameter('status', Paper::STATUS_PUBLISHED);
-        }
-
+        $this->addWhere($rvId, $qb, $strictlyPublished, $ids);
 
         return $qb;
     }
+
 }

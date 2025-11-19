@@ -6,6 +6,7 @@ use ApiPlatform\Doctrine\Orm\Paginator;
 use ApiPlatform\Metadata\CollectionOperationInterface;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
+use App\Entity\ReviewSetting;
 use App\Entity\Volume;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\VolumeRepository;
@@ -38,10 +39,9 @@ final class VolumeStateProvider extends AuthenticationStateProvider implements P
 
         /** @var VolumeRepository $volumeRepo */
         $volumeRepo = $this->entityManager->getRepository(Volume::class);
+        $filters = $context['filters'] ?? [];
 
         if ($operation instanceof CollectionOperationInterface) {
-
-            $filters = $context['filters'] ?? [];
 
             if ($iPaginationEnabled) {
                 $doctrinePaginator = $volumeRepo->listPaginator($page, $limit, $filters);
@@ -58,6 +58,6 @@ final class VolumeStateProvider extends AuthenticationStateProvider implements P
             return null;
         }
 
-        return $volumeRepo->findOneBy(['vid' => $vid]);
+        return $volumeRepo->findOneByWithContext(['vid' => $vid],null, $filters);
     }
 }

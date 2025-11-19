@@ -6,8 +6,8 @@ use App\Entity\Paper;
 use App\Entity\ReviewSetting;
 use App\Entity\Volume;
 use App\Entity\VolumePaperPosition;
-use App\Traits\QueryTrait;
 use App\Traits\ToolsTrait;
+use App\Traits\VolumeTrait;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\NativeQuery;
@@ -21,7 +21,7 @@ use Doctrine\ORM\Tools\Pagination\Paginator as DoctrinePaginator;
 class VolumeRepository extends AbstractRepository implements RangeInterface
 {
     use ToolsTrait;
-    use QueryTrait;
+    use VolumeTrait;
 
     public function __construct(ManagerRegistry $registry, private readonly PapersRepository $papersRepository, private readonly VolumePaperRepository $volumePaperRepository, private readonly LoggerInterface $logger)
     {
@@ -253,35 +253,59 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
     }
 
 
-    public function getNoEmptyMasterVolumesQuery(int $rvId = null, bool $strictlyPublished = true): QueryBuilder
+    /**
+     * @param int|null $rvId
+     * @param bool $strictlyPublished
+     * @param int|array|null $ids
+     * @return QueryBuilder
+     */
+    public function getNoEmptyMasterVolumesQuery(int $rvId = null, bool $strictlyPublished = true, int|array $ids = null): QueryBuilder
     {
-
         $qb = $this->getEntityManager()->createQueryBuilder();
         $qb->select('p.vid')->from(Paper::class, 'p')->distinct();
-
         $qb->where('p.vid > 0');
-
-        if ($rvId) {
-
-            $qb->andWhere("p.rvid = :rvId")
-                ->setParameter('rvId', $rvId);
-        }
-
-        if ($strictlyPublished) {
-            $qb->andWhere('p.status = :status')
-                ->setParameter('status', Paper::STATUS_PUBLISHED);
-        }
-
+        $this->addWhere($rvId, $qb, $strictlyPublished, $ids);
         return $qb;
+    }
+
+    /**
+     * @param int|null $rvId
+     * @param bool $onlyPublished
+     * @param int|array|null $ids // for a specific volume's ids
+     * @return array
+     */
+
+    private function getNoEmptyVolumesIdentifiers(int $rvId = null, bool $onlyPublished = true, int|array $ids = null): array
+    {
+        $noEmptyMasterIds = array_column(array_values($this->getNoEmptyMasterVolumesQuery($rvId, $onlyPublished, $ids)->getQuery()->getArrayResult()), 'vid');
+        $noEmptySecondaryVolumesIds = array_column(array_values($this->volumePaperRepository->getNoEmptySecondaryVolumes($rvId, $onlyPublished, $ids)->getQuery()->getResult()), 'vid');
+        return [...$noEmptyMasterIds, ...$noEmptySecondaryVolumesIds];
 
     }
 
-    private function getNoEmptyVolumesIdentifiers(int $rvId = null, bool $onlyPublished = true): array
+    public function findOneByWithContext(array $criteria, ?array $orderBy = null, array $context = []): ?object
     {
-        $noEmptyMasterIds = array_column(array_values($this->getNoEmptyMasterVolumesQuery($rvId, $onlyPublished)->getQuery()->getArrayResult()), 'vid');
-        $noEmptySecondaryVolumesIds = array_column(array_values($this->volumePaperRepository->getNoEmptySecondaryVolumes($rvId, $onlyPublished)->getQuery()->getResult()), 'vid');
-        return [...$noEmptyMasterIds, ...$noEmptySecondaryVolumesIds];
 
+        $vid = $criteria['vid'] ?? null;
+
+        if (!$vid) {
+            return null;
+        }
+
+        $isDisplayEmptyVolume = $filters[ReviewSetting::DISPLAY_EMPTY_VOLUMES] ?? false;
+
+        if ($isDisplayEmptyVolume) {
+            return $this->findOneBy($criteria, $orderBy);
+        }
+
+        $onlyPublished = !isset($context['filters']['isGranted']) || !$context['filters']['isGranted']; // FALSE IF GRANTED SECRETARY
+        $result = $this->getNoEmptyVolumesIdentifiers(null, $onlyPublished, $vid);
+
+        if (in_array($vid, $result, true)) {
+            return $this->findOneBy($criteria, $orderBy);
+        }
+
+        return null;
     }
 
 }
