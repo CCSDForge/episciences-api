@@ -132,7 +132,7 @@ trait QueryTrait
         $orExp = $qb->expr()->orX();
 
         foreach ($values as $val) {
-            $orExp->add($qb->expr()->eq($expression, is_string($val) ? "'$val'" : $val));
+            $orExp->add($qb->expr()->eq($expression, $qb->expr()->literal($val)));
         }
 
         return $qb->andWhere($orExp);
