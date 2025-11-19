@@ -6,6 +6,8 @@ use App\Entity\News;
 use App\Entity\Section;
 use App\Entity\Volume;
 use App\Repository\VolumeRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\ORM\Query\Parameter;
 use Doctrine\ORM\QueryBuilder;
 
 trait QueryTrait
@@ -150,8 +152,7 @@ trait QueryTrait
                 $val = strtolower($val);
             }
 
-            $orExp->add($qb->expr()->like($expression, ':val'));
-            $qb->setParameter('val', sprintf('%s%s%s', '%', $val, '%'));
+            $orExp->add($qb->expr()->like($expression, $qb->expr()->literal('%' . $val . '%')));
         }
 
         return $qb->andWhere($orExp);
