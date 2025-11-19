@@ -292,7 +292,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
             return null;
         }
 
-        $isDisplayEmptyVolume = $filters[ReviewSetting::DISPLAY_EMPTY_VOLUMES] ?? false;
+        $isDisplayEmptyVolume = $context[ReviewSetting::DISPLAY_EMPTY_VOLUMES] ?? false;
 
         if ($isDisplayEmptyVolume) {
             return $this->findOneBy($criteria, $orderBy);
