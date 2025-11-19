@@ -244,6 +244,8 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
             $qb->setMaxResults(self::DEFAULT_MAX_RESULT); // To avoid possible OUT OF MEMORY errors
         }
 
+        $qb->orderBy(sprintf('%s.position',$alias), 'ASC');
+
         return $qb;
     }
 
