@@ -27,7 +27,7 @@ trait QueryTrait
             return $qb;
         }
 
-        return $this->andOrExp($qb,sprintf("%s", $yearExp), $values );
+        return $this->andOrExp($qb, sprintf("%s", $yearExp), $values);
 
     }
 
@@ -48,12 +48,15 @@ trait QueryTrait
     /**
      * Cleans and removes duplicates, and if valid filters are present, returns them.
      * @param QueryBuilder $qb
-     * @param array $filters
-     * @return string
+     * @param array|string $filters
+     * @return array
      */
 
-    final public function processTypes(QueryBuilder $qb, array $filters): string
+    final public function processTypes(QueryBuilder $qb, array|string $filters): array
     {
+        if (is_string($filters)) {
+            $filters = (array)$filters;
+        }
 
         $availableCurrentTypes = [];
         $unavailableCurrentTypes = [];
@@ -66,23 +69,23 @@ trait QueryTrait
             $value = trim($value);
             if (in_array($value, $availableTypes, true) && !in_array($value, $availableCurrentTypes, true)) {
                 $availableCurrentTypes[] = $value;
-            } elseif(!in_array($value, $unavailableCurrentTypes, true)) {
+            } elseif (!in_array($value, $unavailableCurrentTypes, true)) {
                 $unavailableCurrentTypes[] = $value;
             }
         }
 
         // Type SET en MySQL n’est pas nativement supporté par Doctrine ORM
-        return !empty($availableCurrentTypes) ? implode(',', $availableCurrentTypes) : implode(',', $unavailableCurrentTypes);
+        return !empty($availableCurrentTypes) ? $availableCurrentTypes : $unavailableCurrentTypes;
 
     }
 
-    final public function getIdentifiers(QueryBuilder $qb,array $filters = []): array
+    final public function getIdentifiers(QueryBuilder $qb, array $filters = []): array
     {
         $resourceClass = $qb->getRootEntities()[0];
 
         $rIdentifier = null;
+
         $alias = $qb->getRootAliases()[0];
-        $identifiers = [];
 
         if ($resourceClass === Volume::class) {
             $rIdentifier = 'vid';
@@ -109,28 +112,18 @@ trait QueryTrait
         }
 
         if (isset($filters['type'])) {
-            $volType = $this->processTypes($qb, $filters['type']);
-
-            if ('' !== $volType) {
-                $qb->andWhere(sprintf('%s.vol_type like :volType', $alias));
-                $qb->setParameter('volType', '%' . $volType . '%');
-            }
+            $volTypes = $this->processTypes($qb, $filters['type']);
+            $this->andOrLikeExp($qb, sprintf('%s.vol_type', $alias), $volTypes);
         }
 
-        $result = $qb->getQuery()->getArrayResult();
-
-        foreach ($result as $value) {
-            $identifiers[] = $value[$rIdentifier];
-        }
-
-        return $identifiers;
+        return array_column(array_values($qb->getQuery()->getArrayResult()), $rIdentifier);
 
     }
 
     final public function andOrExp(QueryBuilder $qb, string $expression, array $values = []): QueryBuilder
     {
 
-        if(empty($values)){
+        if (empty($values)) {
             return $qb;
         }
 
@@ -138,6 +131,27 @@ trait QueryTrait
 
         foreach ($values as $val) {
             $orExp->add($qb->expr()->eq($expression, is_string($val) ? "'$val'" : $val));
+        }
+
+        return $qb->andWhere($orExp);
+    }
+
+    final public function andOrLikeExp(QueryBuilder $qb, string $expression, array $values = [], bool $isCaseInsensitive = true): QueryBuilder
+    {
+
+        if (empty($values)) {
+            return $qb;
+        }
+        $orExp = $qb->expr()->orX();
+
+        foreach ($values as $val) {
+
+            if ($isCaseInsensitive) {
+                $val = strtolower($val);
+            }
+
+            $orExp->add($qb->expr()->like($expression, ':val'));
+            $qb->setParameter('val', sprintf('%s%s%s', '%', $val, '%'));
         }
 
         return $qb->andWhere($orExp);

@@ -287,23 +287,35 @@ class PapersRepository extends ServiceEntityRepository
      */
 
 
-    public function getTotalArticlesBySectionOrVolumeQuery(string $resourceClass = Section::class, int $status = Paper::STATUS_PUBLISHED, int|array $identifiers = null, int $rvId = null): QueryBuilder
+    public function getTotalArticlesBySectionOrVolumeQuery(
+        string    $resourceClass = Section::class,
+        int       $status = Paper::STATUS_PUBLISHED,
+        int|array $identifiers = null,
+        int       $rvId = null
+    ): QueryBuilder
     {
 
         $withoutIdentifier = empty($identifiers);
 
-        $tableId = 'sid';
+        $tableId = 'sid'; // section id
 
         if ($resourceClass === Volume::class) {
-            $tableId = 'vid';
+            $tableId = 'vid'; // volume id
         }
 
         $qb = $this->createQueryBuilder(self::PAPERS_ALIAS);
 
-        if (!$withoutIdentifier || $rvId) { // Per VIDs  OR SIDs OR rvId
-            $qb->select(sprintf('COUNT(DISTINCT(%s.paperid)) AS %s', self::PAPERS_ALIAS, self::TOTAL_ARTICLE));
+        if (
+            !$withoutIdentifier ||
+            $rvId
+        ) {
+            $qb->select(
+                sprintf('COUNT(DISTINCT(%s.paperid)) AS %s', self::PAPERS_ALIAS, self::TOTAL_ARTICLE)
+            );
         } else {
-            $qb->select(sprintf('%s.rvid, %s.%s, COUNT(DISTINCT(%s.paperid)) AS %s', self::PAPERS_ALIAS, self::PAPERS_ALIAS, $tableId, self::PAPERS_ALIAS, self::TOTAL_ARTICLE));
+            $qb->select(
+                sprintf('%s.rvid, %s.%s, COUNT(DISTINCT(%s.paperid)) AS %s', self::PAPERS_ALIAS, self::PAPERS_ALIAS, $tableId, self::PAPERS_ALIAS, self::TOTAL_ARTICLE)
+            );
         }
 
         $qb->andWhere(sprintf('%s.status =:status', self::PAPERS_ALIAS))
@@ -315,24 +327,19 @@ class PapersRepository extends ServiceEntityRepository
         }
 
 
-        if (!$withoutIdentifier) {
+        if (!$withoutIdentifier) { // vId(s) or sId(s) en paramètres
 
             if (is_int($identifiers)) {
                 $identifiers = (array)$identifiers;
             }
 
-            $orExp = $qb->expr()->orX();
+            $this->andOrExp($qb, sprintf("%s.%s", self::PAPERS_ALIAS, $tableId), $identifiers);
 
-            foreach ($identifiers as $val) {
-                $val = (int)$val;
-                $orExp->add($qb->expr()->eq(sprintf("%s.%s", self::PAPERS_ALIAS, $tableId), $val));
-            }
-
-            $qb->andWhere($orExp);
         } elseif ($resourceClass === Volume::class) { // Include papers published in secondary volumes
-            $qb->innerJoin(VolumePaper::class, 'vp', Join::WITH, sprintf('%s.docid = vp.docid', self::PAPERS_ALIAS));
-        } else {
-            $qb->andWhere(sprintf('%s.%s != 0', self::PAPERS_ALIAS, $tableId));
+            $qb->leftJoin(VolumePaper::class, 'vp', Join::WITH, sprintf('%s.docid = vp.docid', self::PAPERS_ALIAS));
+            $qb->andWhere(sprintf('%s.%s > 0 OR vp.%s > 0 ', self::PAPERS_ALIAS, $tableId, $tableId));
+        } else { // section
+            $qb->andWhere(sprintf('%s.%s > 0', self::PAPERS_ALIAS, $tableId));
         }
 
         if (!$rvId) {
@@ -342,7 +349,6 @@ class PapersRepository extends ServiceEntityRepository
         }
 
         return $qb;
-
     }
 
 

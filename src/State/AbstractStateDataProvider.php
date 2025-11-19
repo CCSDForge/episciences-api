@@ -99,8 +99,7 @@ abstract class AbstractStateDataProvider
 
             ) {
                 $qb = $this->entityManager->createQueryBuilder();
-                $tFilters = (array)$context['filters']['type'];
-                $context['filters']['type'] = (array)$this->processTypes($qb, $tFilters);
+                $context['filters']['type'] = $this->processTypes($qb, $context['filters']['type']);
             }
 
             if (isset($context['filters']['vid'])) {

@@ -92,7 +92,11 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             $filters['isOnlyAccepted'] = true;
         }
 
-        if (!empty($filters) && ($operationClass === Volume::class || $operationClass === Section::class) && $operation->getMethod() === 'GET') {
+        if (
+            !empty($filters) &&
+            ($operationClass === Volume::class || $operationClass === Section::class) &&
+            $operation->getMethod() === 'GET'
+        ) {
 
             if ($rvId) {
                 $filters['rvid'] = $rvId;

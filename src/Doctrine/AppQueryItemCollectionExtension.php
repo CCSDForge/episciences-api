@@ -122,30 +122,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         }
 
 
-        if ($resourceClass === Volume::class | $resourceClass === Section::class) {
-
-
-            if ($resourceClass === Volume::class) {
-
-                if (isset($context['filters'][AppConstants::YEAR_PARAM])) {
-                    $volYear = $this->processYears($context['filters'][AppConstants::YEAR_PARAM]);
-                    $this->processOrExpression($queryBuilder, $alias, $volYear, $resourceClass);
-                }
-
-                if ((isset($context['filters']['type']) && $context['filters']['type'])) {
-                    $tFilters = (array)$context['filters']['type'];
-                    $volType = $this->processTypes($queryBuilder, $tFilters);
-
-                    $tFilters = array_merge($tFilters, [$volType]);
-
-                    if ('' !== $volType) {
-                        $this->andOrExp($queryBuilder, sprintf('%s.vol_type', $alias), $tFilters);
-                    }
-                }
-
-            }
-
-        } elseif ($resourceClass === Review::class) {
+        if ($resourceClass === Review::class) {
 
             $queryBuilder
                 ->andWhere("$alias.rvid!= :portal")
