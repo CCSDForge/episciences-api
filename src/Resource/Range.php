@@ -27,18 +27,7 @@ class Range
 
     public function setYears(array $result = []): self
     {
-        $years = [];
-
-        foreach ($result as $value) {
-            if (isset($value['year'])) {
-                if (empty($value)) {
-                    continue;
-                }
-                $years[] = $value['year'];
-            }
-        }
-        $this->years = $years;
-
+        $this->years = $result;
         return $this;
     }
 

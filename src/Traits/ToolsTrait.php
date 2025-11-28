@@ -7,6 +7,7 @@ use LengthException;
 
 trait ToolsTrait
 {
+    public const MIN_YEAR = 1970;
 
     /**
      * @param array $result
@@ -154,4 +155,21 @@ trait ToolsTrait
             return !(empty($val));
         });
     }
+
+    public function isValidYear( int|string|null $year = null) : bool
+    {
+        return preg_match('/^\d{4}$/', $year) === 1 && (int)$year >= self::MIN_YEAR;
+    }
+
+    /**
+     * valid if year = YYYY or  year = YYYY-YYYY
+     * @param int|string|null $year
+     * @return bool
+     */
+
+    public function isValideVolumeYear(int|string|null $year = null) : bool {
+        return preg_match('/^(\d{4}|\d{4}-\d{4})$/', $year) === 1;
+    }
+
+
 }

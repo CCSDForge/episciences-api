@@ -3,7 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\News;
-use App\Resource\Range;
+use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -12,6 +12,7 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class NewsRepository extends ServiceEntityRepository implements RangeInterface
 {
+    use ToolsTrait;
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, News::class);
@@ -32,7 +33,7 @@ class NewsRepository extends ServiceEntityRepository implements RangeInterface
 
         $qb->orderBy('year', 'DESC');
 
-        return $qb->getQuery()->getResult();
+        return $this->arrayCleaner(array_column(array_values($qb->getQuery()->getResult()), 'year'));
 
     }
 }

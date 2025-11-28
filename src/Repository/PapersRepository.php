@@ -418,7 +418,7 @@ class PapersRepository extends ServiceEntityRepository
 
         $qb->orderBy('year', 'DESC');
 
-        return $qb->getQuery()->getResult();
+        return $this->arrayCleaner(array_column(array_values($qb->getQuery()->getResult()), 'year'));
 
     }
 

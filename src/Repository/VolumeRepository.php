@@ -40,8 +40,9 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
         }
 
         $qb->orderBy('year', 'DESC');
-
-        return $qb->getQuery()->getResult();
+        $result = $this->arrayCleaner(array_column(array_values($qb->getQuery()->getResult()), 'year'));
+        $this->processYearRanges($result);
+        return $result;
 
     }
 
@@ -232,7 +233,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
         }
 
         if ($years) {
-            $this->andOrExp($qb, sprintf('%s.vol_year', $alias), $years);
+            $this->andOrLikeExp($qb, sprintf('%s.vol_year', $alias), $years);
         }
 
         if ($vIds) {
@@ -311,5 +312,55 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
         return null;
     }
+
+    /**
+     * Dans la BDD, le champ vol_year, précédemment saisi sous forme d'année,
+     * est désormais saisi sous forme de chaîne de caractères (AAAA | AAAA-AAAA)
+     * afin de permettre la saisie de l'année de début et de l'année de fin,
+     * Ce qui a conduit à ce traitement particulier pour maintenir le fonctionnement actuel du filtre "year".
+     * @param array $years
+     * @return void
+     */
+
+    private function processYearRanges(array &$years = []): void
+    {
+
+        if (empty($years)) {
+            return;
+        }
+
+        $tmpYears = [];
+
+        foreach ($years as $currentYear) {
+
+            if (!$this->isValideVolumeYear($currentYear)) {
+                continue;
+            }
+
+            $separator = '-';
+
+            if (str_contains($currentYear, $separator)) {
+
+                $parts = explode($separator, $currentYear);
+
+                $start = (int)$parts[0];
+                $end = isset($parts[1]) ? (int)$parts[1] : 0;
+
+                if ($end && $start > $end) {
+                    [$start, $end] = [$end, $start];
+                }
+
+                $tmpYears = array_unique([...$tmpYears, ...[$start, $end]]);
+
+            } else {
+                $tmpYears = array_unique([...$tmpYears, ...[(int)$currentYear]]);
+            }
+        }
+
+        rsort($tmpYears, SORT_NUMERIC);
+        $years = $tmpYears;
+
+    }
+
 
 }

@@ -189,8 +189,8 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-    #[ORM\Column(nullable: true)]
-    private ?int $vol_year = null;
+    #[ORM\Column(name: 'vol_year', type: 'string', length: 9, nullable: true)]
+    private ?string $vol_year = null;
 
     #[ORM\Column(name: 'vol_num', type:'string', length: 6, nullable: true)]
     #[Groups(
@@ -536,12 +536,12 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         return $this;
     }
 
-    public function getVolYear(): ?int
+    public function getVolYear(): ?string
     {
         return $this->vol_year;
     }
 
-    public function setVolYear(?int $vol_year): static
+    public function setVolYear(?string $vol_year): static
     {
         $this->vol_year = $vol_year;
 

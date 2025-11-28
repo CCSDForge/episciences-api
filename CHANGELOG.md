@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 ## Unreleased
+### Changed
+- Allow volume years to be a string
 ### Added
 - [#94](https://github.com/CCSDForge/episciences-front/issues/94): New labels for boards
 ### Fixed

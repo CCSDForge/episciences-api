@@ -6,8 +6,6 @@ use App\Entity\News;
 use App\Entity\Section;
 use App\Entity\Volume;
 use App\Repository\VolumeRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\ORM\Query\Parameter;
 use Doctrine\ORM\QueryBuilder;
 
 trait QueryTrait
