@@ -191,7 +191,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
             PAPERS p
             LEFT JOIN VOLUME_PAPER vp ON (p.DOCID = vp.DOCID)
             ) t1
-            INNER JOIN VOLUME_PAPER_POSITION vpp
+            LEFT JOIN VOLUME_PAPER_POSITION vpp
             ON (((vpp.VID = t1.pv OR vpp.VID = t1.sv) AND vpp.PAPERID = t1.PAPERID)) ";
         $sql .= "HAVING t1.STATUS != ";
         $sql .= Paper::STATUS_OBSOLETE;
@@ -200,7 +200,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
             $sql .= " AND (t1.pv = $vid OR t1.sv = $vid)";
         }
 
-        $sql .= " ORDER BY POSITION ASC";
+        $sql .= " ORDER BY COALESCE(vpp.POSITION, 999999) ASC, t1.PAPERID ASC";
 
         return $this->getEntityManager()->createNativeQuery($sql, $rsm);
     }
