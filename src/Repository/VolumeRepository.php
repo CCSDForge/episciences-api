@@ -137,13 +137,17 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
                     ->setVid($vid)
                     ->setStatus($values['STATUS']);
 
+                // Only create VolumePaperPosition if position is not NULL
+                if ($values['POSITION'] !== null) {
+                    $volumePaperPosition = (new VolumePaperPosition())
+                        ->setVid($vid)
+                        ->setPaperid($paper?->getPaperid())
+                        ->setPosition($values['POSITION']);
 
-                $volumePaperPosition = (new VolumePaperPosition())
-                    ->setVid($vid)
-                    ->setPaperid($paper?->getPaperid())
-                    ->setPosition($values['POSITION']);
-
-                $paper->setVolumePaperPosition($volumePaperPosition);
+                    $paper->setVolumePaperPosition($volumePaperPosition);
+                } else {
+                    $paper->setVolumePaperPosition(null);
+                }
 
                 if ($paper->isPublished() && !$onlyPublishedCollection->contains($paper)) {
                     $onlyPublishedCollection->add($paper);
