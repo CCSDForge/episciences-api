@@ -71,7 +71,7 @@ jobs:
       
     - name: Extract coverage report from container
       run: |
-        docker cp episciences_php:/var/www/html/coverage.xml ./coverage-php.xml
+        docker cp episciences-api_php:/var/www/html/coverage.xml ./coverage-php.xml
         
     - name: Upload PHP coverage
       uses: codecov/codecov-action@v5

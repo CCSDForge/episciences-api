@@ -6,7 +6,7 @@ services:
   # Add standalone MySQL for CI environment
   mysql:
     image: mysql:8.0
-    container_name: episciences_mysql_ci
+    container_name: episciences-api_mysql_ci
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: episciences
