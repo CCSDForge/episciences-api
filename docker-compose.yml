@@ -1,7 +1,7 @@
 services:
   php:
     build: ./docker/php-fpm
-    container_name: episciences_php
+    container_name: episciences-api_php
     user: "${DOCKER_USER:-www}"
     volumes:
       - .:/var/www/html
@@ -16,7 +16,7 @@ services:
 
   apache:
     build: ./docker/apache
-    container_name: episciences_apache
+    container_name: episciences-api_apache
     ports:
       - "8080:80"
       - "8443:443"
@@ -34,4 +34,4 @@ services:
 networks:
   epi-network:
     external: true
-    name: episciences-gpl_epi-network
+    name: episciences_epi-network

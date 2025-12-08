@@ -137,13 +137,17 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
                     ->setVid($vid)
                     ->setStatus($values['STATUS']);
 
+                // Only create VolumePaperPosition if position is not NULL
+                if ($values['POSITION'] !== null) {
+                    $volumePaperPosition = (new VolumePaperPosition())
+                        ->setVid($vid)
+                        ->setPaperid($paper?->getPaperid())
+                        ->setPosition($values['POSITION']);
 
-                $volumePaperPosition = (new VolumePaperPosition())
-                    ->setVid($vid)
-                    ->setPaperid($paper?->getPaperid())
-                    ->setPosition($values['POSITION']);
-
-                $paper->setVolumePaperPosition($volumePaperPosition);
+                    $paper->setVolumePaperPosition($volumePaperPosition);
+                } else {
+                    $paper->setVolumePaperPosition(null);
+                }
 
                 if ($paper->isPublished() && !$onlyPublishedCollection->contains($paper)) {
                     $onlyPublishedCollection->add($paper);
@@ -179,7 +183,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
             t1.STATUS,
             pv,
             sv,
-            vpp.POSITION
+            COALESCE(vpp1.POSITION, vpp2.POSITION) AS POSITION
             FROM(
             SELECT
             p.DOCID,
@@ -191,8 +195,8 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
             PAPERS p
             LEFT JOIN VOLUME_PAPER vp ON (p.DOCID = vp.DOCID)
             ) t1
-            INNER JOIN VOLUME_PAPER_POSITION vpp
-            ON (((vpp.VID = t1.pv OR vpp.VID = t1.sv) AND vpp.PAPERID = t1.PAPERID)) ";
+            LEFT JOIN VOLUME_PAPER_POSITION vpp1 ON (vpp1.VID = t1.pv AND vpp1.PAPERID = t1.PAPERID)
+            LEFT JOIN VOLUME_PAPER_POSITION vpp2 ON (vpp2.VID = t1.sv AND vpp2.PAPERID = t1.PAPERID) ";
         $sql .= "HAVING t1.STATUS != ";
         $sql .= Paper::STATUS_OBSOLETE;
 
@@ -200,7 +204,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
             $sql .= " AND (t1.pv = $vid OR t1.sv = $vid)";
         }
 
-        $sql .= " ORDER BY POSITION ASC";
+        $sql .= " ORDER BY COALESCE(vpp1.POSITION, vpp2.POSITION, 999999) ASC, t1.PAPERID ASC";
 
         return $this->getEntityManager()->createNativeQuery($sql, $rsm);
     }
