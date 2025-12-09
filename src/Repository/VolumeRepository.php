@@ -229,7 +229,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
         }
 
         if (!$isDisplayEmptyVolume) {  //   all volumes with published papers
-            $this->andOrExp($qb, sprintf('%s.vid', $alias ), $this->getNoEmptyVolumesIdentifiers($rvId, $onlyPublished));
+            $this->andOrExp($qb, sprintf('%s.vid', $alias ), $this->getNoEmptyVolumesIdentifiers($rvId, $onlyPublished), false);
         }
 
         if (!empty($types)){

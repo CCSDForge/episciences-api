@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#94](https://github.com/CCSDForge/episciences-front/issues/94): New labels for boards
 ### Fixed
+- RT#267717: Volumes without published articles that were displayed even with the “do not display empty volumes (without published articles)” option enabled
 - Secondary volumes are not included in the list of volumes unless they are declared as primary volumes.
 - [#100](https://github.com/CCSDForge/episciences-api/issues/100)
 - The number of published articles returned by the collection of volumes included unpublished articles.
