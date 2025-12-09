@@ -60,10 +60,11 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             /** @var ReviewRepository $journalRepo */
             $journalRepo = $this->entityManager->getRepository(Review::class);
             $journal = $journalRepo->getJournalByIdentifier($rvCode);
-        }
 
-        if ($operationClass === Volume::class){
-            $filters[ReviewSetting::DISPLAY_EMPTY_VOLUMES] = (bool)$journal->getSetting(ReviewSetting::DISPLAY_EMPTY_VOLUMES);
+            if ($operationClass === Volume::class){
+                $filters[ReviewSetting::DISPLAY_EMPTY_VOLUMES] = (bool)$journal->getSetting(ReviewSetting::DISPLAY_EMPTY_VOLUMES);
+            }
+
         }
 
         $hydraMember = $data['hydra:member'] ?? [];
