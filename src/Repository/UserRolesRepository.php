@@ -26,11 +26,11 @@ class UserRolesRepository extends ServiceEntityRepository
 
     // rôles sans droits associés.
     public const AVAILABLE_BOARD_TAGS = [
-        UserRoles::TECHNICAL_BOARD,
-        UserRoles::EDITORIAL_BOARD,
-        UserRoles::SCIENTIFIC_BOARD,
-        UserRoles::ROLE_ADVISORY_BOARD,
         UserRoles::ROLE_MANAGING_EDITOR,
+        UserRoles::EDITORIAL_BOARD,
+        UserRoles::TECHNICAL_BOARD,
+        UserRoles::ROLE_ADVISORY_BOARD,
+        UserRoles::SCIENTIFIC_BOARD,
         UserRoles::ROLE_HANDLING_EDITOR,
         UserRoles::FORMER_MEMBER
     ];
