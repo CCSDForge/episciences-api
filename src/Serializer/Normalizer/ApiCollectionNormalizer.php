@@ -6,6 +6,7 @@ use ApiPlatform\Metadata\HttpOperation;
 use App\Entity\News;
 use App\Entity\Paper;
 use App\Entity\Review;
+use App\Entity\ReviewSetting;
 use App\Entity\Section;
 use App\Entity\Volume;
 use App\Repository\PapersRepository;
@@ -61,7 +62,13 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             $journal = $journalRepo->getJournalByIdentifier($rvCode);
         }
 
+        if ($operationClass === Volume::class){
+            $filters[ReviewSetting::DISPLAY_EMPTY_VOLUMES] = (bool)$journal->getSetting(ReviewSetting::DISPLAY_EMPTY_VOLUMES);
+        }
+
         $hydraMember = $data['hydra:member'] ?? [];
+
+        $filters['isGranted'] = $this->security->isGranted('ROLE_SECRETARY');
 
         if ($operationClass === Search::class && $parsedUri[Search::TERMS_PARAM]) {
             $filters[Search::TERMS_PARAM] = $parsedUri[Search::TERMS_PARAM];
@@ -104,6 +111,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 
             $identifiers = $this->getIdentifiers($this->entityManager->getRepository($operationClass)->createQueryBuilder('alias'), $filters);
         }
+
 
         $this->addHydraContext($data, $operationClass, $journal, $identifiers, $filters);
         $data['hydra:member'] = $hydraMember;
@@ -181,9 +189,12 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 
             if ($operationClass === Volume::class) {
 
+                $isDisplayEmptyVolume = $filters[ReviewSetting::DISPLAY_EMPTY_VOLUMES] ?? false;
+                $onlyPublished = !isset($filters['isGranted']) || !$filters['isGranted']; // FALSE IF GRANTED SECRETARY
+
                 $rangeType = (new RangeType())
-                    ->setTypes($repo->getTypes($rvId))
-                    ->setYears($repo->getRange($rvId));
+                    ->setTypes($repo->getTypes($rvId, $isDisplayEmptyVolume, $onlyPublished))
+                    ->setYears($repo->getRange($rvId, $isDisplayEmptyVolume, $onlyPublished));
 
                 $data[sprintf('hydra:%s', RangeInterface::RANGE)] = ['year' => $rangeType->getYears(), 'types' => $rangeType->getTypes()];
 

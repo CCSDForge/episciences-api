@@ -28,7 +28,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
         parent::__construct($registry, Volume::class);
     }
 
-    public function getRange(int|string $journalIdentifier = null): array
+    public function getRange(int|string $journalIdentifier = null, bool $isEmptyVolumeDisplayed = false, bool $onlyPublished = true): array
     {
         $qb = $this->createQueryBuilder('v');
         $qb->distinct();
@@ -37,6 +37,11 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
         if ($journalIdentifier) {
             $qb->andWhere('v.rvid = :rvId');
             $qb->setParameter('rvId', $journalIdentifier);
+
+            if (!$isEmptyVolumeDisplayed) {
+                $this->andOrExp($qb, 'v.vid', $this->getNoEmptyVolumesIdentifiers($journalIdentifier, $onlyPublished), false);
+            }
+
         }
 
         $qb->orderBy('year', 'DESC');
@@ -47,7 +52,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
     }
 
 
-    public function getTypes(int|string $journalIdentifier = null): array
+    public function getTypes(int|string $journalIdentifier = null, bool $isEmptyVolumeDisplayed = false, bool $onlyPublished = true ): array
     {
         $distinctTypes = [];
         $qb = $this->createQueryBuilder('v');
@@ -58,7 +63,13 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
         if ($journalIdentifier) {
             $qb->andWhere('v.rvid = :rvId');
             $qb->setParameter('rvId', $journalIdentifier);
+
+            if (!$isEmptyVolumeDisplayed) {
+                $this->andOrExp($qb, 'v.vid', $this->getNoEmptyVolumesIdentifiers($journalIdentifier, $onlyPublished), false);
+            }
+
         }
+
         $set = $qb->getQuery()->getResult();
 
         foreach ($set as $type) {
