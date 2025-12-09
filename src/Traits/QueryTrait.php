@@ -120,11 +120,16 @@ trait QueryTrait
 
     }
 
-    final public function andOrExp(QueryBuilder $qb, string $expression, array $values = []): QueryBuilder
+    final public function andOrExp(QueryBuilder $qb, string $expression, array $values = [], $isAllowedToReceiveEmptyValues = true): QueryBuilder
     {
 
         if (empty($values)) {
-            return $qb;
+
+            if ($isAllowedToReceiveEmptyValues) {
+                return $qb;
+            }
+
+            return $qb->andWhere('1 = 0');
         }
 
         $orExp = $qb->expr()->orX();
@@ -136,12 +141,18 @@ trait QueryTrait
         return $qb->andWhere($orExp);
     }
 
-    final public function andOrLikeExp(QueryBuilder $qb, string $expression, array $values = [], bool $isCaseInsensitive = true): QueryBuilder
+    final public function andOrLikeExp(QueryBuilder $qb, string $expression, array $values = [], bool $isCaseInsensitive = true, bool $isAllowedToReceiveEmptyValues = true): QueryBuilder
     {
 
         if (empty($values)) {
-            return $qb;
+
+            if ($isAllowedToReceiveEmptyValues) {
+                return $qb;
+            }
+
+            return $qb->andWhere('1 = 0');
         }
+
         $orExp = $qb->expr()->orX();
 
         foreach ($values as $val) {
