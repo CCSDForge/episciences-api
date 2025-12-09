@@ -5,4 +5,3 @@ monolog:
             path: "%kernel.logs_dir%/%kernel.environment%.log"
             max_files: 5
             level: info
-            dateFormat: 'Y-m-d'

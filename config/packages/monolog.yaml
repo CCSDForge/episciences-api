@@ -45,7 +45,6 @@ when@preprod:
                 path: "%kernel.logs_dir%/%kernel.environment%.log"
                 max_files: 5
                 level: info
-                date-format: 'Y-m-d'
 
 when@prod:
     monolog:
@@ -62,7 +61,6 @@ when@prod:
                     path: "%kernel.logs_dir%/%kernel.environment%.log"
                     max_files: 10
                     level: error
-                    date_format: 'Y-m-d'
 #                swift:
 #                    type: swift_mailer
 #                    from_email: 'alert@project.net'

@@ -12,7 +12,6 @@ monolog:
                 path: "%kernel.logs_dir%/%kernel.environment%.log"
                 max_files: 10
                 level: error
-                date-format: 'Y-m-d'
 #            swift:
 #                type: swift_mailer
 #                from_email: 'alert@project.net'
