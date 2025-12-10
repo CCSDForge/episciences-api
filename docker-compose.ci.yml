@@ -41,6 +41,10 @@ services:
 
 # CI-specific network (internal)
 networks:
+  # Override external network to make it internal for CI
+  epi-network:
+    driver: bridge
+    external: false
   episciences-ci:
     driver: bridge
 
