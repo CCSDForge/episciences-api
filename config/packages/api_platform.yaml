@@ -1,4 +1,9 @@
 api_platform:
+    serializer:
+        # Cette dépréciation d'API Platform 3.3 annonce la suppression par défaut
+        # du préfixe hydra: dans les réponses JSON-LD en version 4.0.
+        # Pour conserver le comportement actuel sa valeur doit d'être explicitement à true
+        hydra_prefix: true
     #eager_loading:
         #(chargement partiel en Doctrine ORM) les objets récupérés ne sont pas entièrement initialisés.
         #Autrement dit, seuls certains champs sélectionnés dans la requête sont chargés, les autres restent non initialisés (null ou non définis)
