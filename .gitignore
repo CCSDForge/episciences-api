@@ -1,5 +1,5 @@
 ###> symfony/framework-bundle ###
-/.env.local
+/.env.local.machine
 /.env.local.php
 /.env.*.local
 /config/secrets/prod/prod.decrypt.private.php
@@ -44,3 +44,4 @@ phpstan.neon
 
 # SSL certificates for development
 /docker/apache/ssl/
+/docker-compose.override.yml
