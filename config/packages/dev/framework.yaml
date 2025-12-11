@@ -1,0 +1,4 @@
+# see https://symfony.com/doc/current/reference/configuration/framework.html
+framework:
+    profiler:
+        collect_serializer_data: true
