@@ -43,6 +43,7 @@ services:
 networks:
   # Override external network to make it internal for CI
   epi-network:
+    name: epi-network
     driver: bridge
     external: false
   episciences-ci:
