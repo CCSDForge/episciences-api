@@ -47,9 +47,8 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                 summary: 'The paper identified by docid or paperid',
                 security: [['bearerAuth' => []],]
             ),
-
             normalizationContext: [
-                'groups' => AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0]
+                'groups' => self::ITEM_NORMALIZATION_GROUPS,
             ],
             denormalizationContext: [
                 'groups' => ['write:Paper']
@@ -70,16 +69,15 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                         allowEmptyValue: false,
                         schema: [
                             'type' => 'string',
-                        ],
-                        explode: false,
+                        ]
                     ),
                     new Parameter(
                         name: 'only_accepted',
                         in: 'query',
-                        description: 'If this is true, only accepted documents will be returned.',
+                        description: 'If true, only accepted documents will be returned.',
                         required: false,
                         deprecated: false,
-                        allowEmptyValue: true,
+                        allowEmptyValue: false,
                         schema: [
                             'type' => 'boolean',
                         ]
@@ -87,46 +85,22 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                     new Parameter(
                         name: 'type',
                         in: 'query',
-                        description: 'Paper type',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ],
-                        explode: false
-                    ),
-                    new Parameter(
-                        name: 'type[]',
-                        in: 'query',
-                        description: 'Paper types',
+                        description: 'Paper type(s). Repeat parameter: ?type=a&type=b',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
                         schema: [
                             'type' => 'array',
                             'items' => [
-                                'type' => 'string'
-                            ]
+                                'type' => 'string',
+                            ],
                         ],
                         explode: true
                     ),
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of publication',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'integer',
-                        ], explode: false,
-                        allowReserved: false
-                    ),
-                    new Parameter(
-                        name: 'year[]',
-                        in: 'query',
-                        description: 'The Year of publication',
+                        description: 'Publication year(s). Repeat parameter: ?year=2023&year=2024',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -134,38 +108,36 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                             'type' => 'array',
                             'items' => [
                                 'type' => 'integer',
-                            ]
+                            ],
                         ],
                         explode: true,
-                        allowReserved: false,
-
+                        allowReserved: false
                     ),
-
                 ],
                 security: [['bearerAuth' => []],]
             ),
             normalizationContext: [
                 'groups' => ['read:Papers']
-            ],
-            denormalizationContext: [
-                'groups' => ['write:Papers']
             ]
         ),
-
-
     ],
     order: ['rvid' => 'DESC'],
-
 )]
-#[ApiFilter(SearchFilter::class, properties: self::FILTERS)]
-#[ApiFilter(DateFilter::class, properties: ['submissionDate'])]
-#[ApiFilter(DateFilter::class, properties: ['publicationDate'])]
+#[ApiFilter(SearchFilter::class, properties: self::SEARCH_FILTER_PROPERTIES)]
+#[ApiFilter(DateFilter::class, properties: self::DATE_FILTER_PROPERTIES)]
 class Paper implements UserOwnedInterface
 {
-    public const FLAG_SUBMITTED = 'submitted';
-    public const FLAG_IMPORTED = 'imported';
-    public const COLLECTION_NAME = '_api_/papers/_get_collection';
-    public const FILTERS = [
+    public const ITEM_NORMALIZATION_GROUPS = AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0];
+
+    /**
+     * SearchFilter (exact match) query parameters for Paper collection.
+     *
+     * Usage examples:
+     * - ?docid=123
+     * - ?doi=10.XXXX/abcd
+     * - ?status=16
+     */
+    public const SEARCH_FILTER_PROPERTIES = [
         'rvid' => AppConstants::FILTER_TYPE_EXACT,
         'doi' => AppConstants::FILTER_TYPE_EXACT,
         'paperid' => AppConstants::FILTER_TYPE_EXACT,
@@ -176,6 +148,19 @@ class Paper implements UserOwnedInterface
         'flag' => AppConstants::FILTER_TYPE_EXACT,
         'status' => AppConstants::FILTER_TYPE_EXACT,
     ];
+
+
+
+    /**
+     * DateFilter query parameters.
+     *
+     * ApiPlatform DateFilter uses "[before]" and "[after]" operators:
+     * - ?submissionDate[after]=2025-01-01
+     * - ?submissionDate[before]=2025-12-31
+     * - ?publicationDate[after]=2024-01-01
+     */
+    public const DATE_FILTER_PROPERTIES = ['submissionDate', 'publicationDate'];
+    public const COLLECTION_NAME = '_api_/papers/_get_collection';
 
     public const TABLE = 'PAPERS';
     public const URI_TEMPLATE = '/papers/';
