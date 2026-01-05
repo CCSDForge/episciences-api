@@ -8,7 +8,7 @@ git fetch --tags
 ## If no parameters are specified, the code is deployed from the main branch by default [$1=main].
 currentEnv=${1:-main}
 #########################################
-encoreEnv="production"
+encoreEnv="production" # also used with "composer.phar dump-env"
 composerInstallOptions="-o --no-dev --ignore-platform-reqs"
 currentTag=$(git describe --tags --abbrev=0) ## get the most recent tag
 
@@ -33,7 +33,7 @@ echo "\$appVersion='$currentTag ($deployDate)';" >>  'version.php';
 git checkout $currentEnv
 git pull
 
-$PHP_BIN composer.phar dump-env $currentEnv
+$PHP_BIN composer.phar dump-env $encoreEnv 
 $PHP_BIN composer.phar install $composerInstallOptions
 
 yarn ## Running yarn with no command will run yarn install
