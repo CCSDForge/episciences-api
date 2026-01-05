@@ -34,4 +34,4 @@ services:
 networks:
   epi-network:
     external: true
-    name: episciences_epi-network
+    name: epi-network
