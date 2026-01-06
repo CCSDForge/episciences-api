@@ -161,56 +161,43 @@ class PapersRepository extends ServiceEntityRepository
      * @param string $date
      * @return QueryBuilder
      */
-    private function addQueryFilters(QueryBuilder $qb, array $filters, string $date = 'modificationDate'): QueryBuilder
+    private function addQueryFilters(QueryBuilder $qb, array $filters, string $date = 'submissionDate'): QueryBuilder
     {
+        if (empty($filters['is'])) {
+            return $qb;
+        }
 
-        if (array_key_exists('is', $filters) && !empty($filters['is'])) {
+        $dateYearFilters = [AppConstants::SUBMISSION_DATE, AppConstants::YEAR_PARAM];
+        $dateAfterFilters = [AppConstants::START_AFTER_DATE];
 
-            foreach ($filters['is'] as $name => $value) {
+        foreach ($filters['is'] as $name => $value) {
+            if ($name === AppConstants::WITH_DETAILS) {
+                continue;
+            }
 
+            $isEmptyValue = $value === null || $value === '';
+            $isAllowedFilter = in_array($name, AppConstants::AVAILABLE_FILTERS, true);
 
-                if ($name === AppConstants::WITH_DETAILS) {
-                    continue;
+            if ($isEmptyValue || !$isAllowedFilter) {
+                continue;
+            }
+
+            if (in_array($name, $dateYearFilters, true)) {
+                if ($name === AppConstants::SUBMISSION_DATE) { // old stats by year @see PapersStatsProvider
+                    $qb->andWhere(sprintf('YEAR(%s.%s) =:%s', self::PAPERS_ALIAS, $date, $name));
+                } else { // YEAR_PARAM
+                    $this->andOrExp($qb, sprintf('YEAR(%s.%s)', self::PAPERS_ALIAS, $date), (array)$value);
                 }
+            } elseif (in_array($name, $dateAfterFilters, true)) {
+                $qb->andWhere(sprintf('%s.%s >=:%s', self::PAPERS_ALIAS, $date, $name));
+            } elseif (is_array($value)) {
+                $qb->andWhere(sprintf('%s.%s IN (:%s)', self::PAPERS_ALIAS, $name, $name));
+            } else {
+                $qb->andWhere(sprintf('%s.%s =:%s', self::PAPERS_ALIAS, $name, $name));
+            }
 
-                if (
-                    (null === $value || '' === $value) || // not use empty
-                    !in_array($name, AppConstants::AVAILABLE_FILTERS, true)
-                ) {
-                    continue;
-                }
-
-
-                if (
-                    $name === AppConstants::SUBMISSION_DATE ||
-                    $name === AppConstants::START_AFTER_DATE ||
-                    $name === AppConstants::YEAR_PARAM
-                ) {
-
-                    if (
-                        $name === AppConstants::SUBMISSION_DATE
-                        || $name === AppConstants::YEAR_PARAM // @see statisticStateProvider
-                    ) {
-                        if ($name === AppConstants::SUBMISSION_DATE) { // old stats by year @see PapersStatsProvider
-                            $qb->andWhere('YEAR(' . self::PAPERS_ALIAS . '.' . $date . ') =:' . $name);
-                        } else {
-                            //Correction d'une erreur de type en forçant le cast de $value en tableau dans l'appel à andOrExp()
-                            $this->andOrExp($qb, sprintf('YEAR(%s.%s)', self::PAPERS_ALIAS, $date), (array)$value);
-                        }
-                    } else {
-                        $qb->andWhere(self::PAPERS_ALIAS . '.' . $date . ' >=:' . $name);
-                    }
-
-                } elseif (is_array($value)) {
-                    $qb->andWhere(self::PAPERS_ALIAS . '.' . $name . ' IN (:' . $name . ')');
-                } else {
-                    $qb->andWhere(self::PAPERS_ALIAS . '.' . $name . ' =:' . $name);
-                }
-
-                if ($name !== AppConstants::YEAR_PARAM) {
-                    $qb->setParameter($name, $value);
-                }
-
+            if ($name !== AppConstants::YEAR_PARAM) {
+                $qb->setParameter($name, $value);
             }
         }
 
@@ -225,7 +212,7 @@ class PapersRepository extends ServiceEntityRepository
         $alias = self::PAPERS_ALIAS;
         $qb = $this->createQueryBuilder(self::PAPERS_ALIAS);
         $qb->select("YEAR($alias.submissionDate) as year");
-        $qb = $this->addQueryFilters($qb, $filters, 'submissionDate');
+        $qb = $this->addQueryFilters($qb, $filters);
 
         if ($flag && array_key_exists($flag, self::AVAILABLE_FLAG_VALUES)) {
 
@@ -261,7 +248,7 @@ class PapersRepository extends ServiceEntityRepository
         $qb = $this->createQueryBuilder(self::PAPERS_ALIAS);
         $qb->select("$alias.repoid");
 
-        $qb = $this->addQueryFilters($qb, $filters, 'submissionDate');
+        $qb = $this->addQueryFilters($qb, $filters);
 
 
         $qb->groupBy("$alias.repoid");
