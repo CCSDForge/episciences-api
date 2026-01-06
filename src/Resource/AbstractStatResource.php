@@ -84,7 +84,7 @@ abstract class AbstractStatResource
     }
 
     /**
-     * @return float|array|null
+     * @return int|float|array|null
      */
     public function getValue(): int|float|array|null
     {
@@ -92,7 +92,7 @@ abstract class AbstractStatResource
     }
 
     /**
-     * @param float|array|null $value
+     * @param int|float|array|null $value
      * @return $this
      */
     public function setValue(int|float|array|null $value): self
