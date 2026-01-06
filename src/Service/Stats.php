@@ -10,6 +10,8 @@ use App\Entity\Review;
 use App\Entity\User;
 use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
+use App\Repository\ReviewRepository;
+use App\Repository\UserRepository;
 use App\Resource\AbstractStatResource;
 use App\Resource\DashboardOutput;
 use App\Resource\SubmissionAcceptanceDelayOutput;
@@ -55,13 +57,18 @@ class Stats
 
         $result = new DashboardOutput();
 
+        /** @var PaperLogRepository $paperLogRepo */
         $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
+
+        /** @var PapersRepository $paperRepo */
+        $paperRepo = $this->entityManager->getRepository(Paper::class);
 
         $submissions = $this->getSubmissionsStat($filters);
         $nbSubmissions = $submissions->getValue(); // imported submissions included
 
-        $paperRepo = $this->entityManager->getRepository(Paper::class);
-
+        if(!$nbSubmissions) {
+            return $result;
+        }
 
         // aggregate stats
 
@@ -81,8 +88,13 @@ class Stats
 
         // Imported articles
 
-        $imported = $paperRepo->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])
-            ->getQuery()->getSingleScalarResult();
+        try {
+            $imported = $paperRepo->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])
+                ->getQuery()->getSingleScalarResult();
+        } catch (NoResultException | NonUniqueResultException $e) {
+            $imported = 0;
+            $this->logger->error($e->getMessage());
+        }
         //Il est possible que certaines versions soient importées tandis que d'autres ne le soient pas.
         // D'où la nécessité d'une nouvelle requête plutôt que de faire la différence
 
@@ -237,7 +249,7 @@ class Stats
         $statResourceName .= $latestStatus === Paper::STATUS_PUBLISHED ? 'Publication' : 'Acceptance';
         $statResourceName .= 'Time';
 
-
+        /** @var PaperLogRepository $paperLogRepository */
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
 
         $result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year, $method, $rvId) ?? [];
@@ -348,6 +360,7 @@ class Stats
         $statResource->setRequestedFilters($filters);
         $statResource->setName('nbUsers');
 
+        /** @var UserRepository $userRepository */
         $userRepository = $this->entityManager->getRepository(User::class);
 
         $userStats = $userRepository->findByReviewQuery($rvId, $withDetails, $role, $uid, $registrationYear)->getQuery()->getArrayResult();
@@ -414,6 +427,7 @@ class Stats
 
         $details = [];
 
+        /** @var PapersRepository $papersRepository */
         $papersRepository = $this->entityManager->getRepository(Paper::class);
 
         try {
@@ -456,28 +470,47 @@ class Stats
      */
     public function getSubmissionByYearStats(array $filters, mixed $rvId, array &$details = []): void
     {
+        /** @var PapersRepository $papersRepository */
         $papersRepository = $this->entityManager->getRepository(Paper::class);
+        /** @var PaperLogRepository $paperLogRepository */
+        $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
+
         $startAfterDate = $filters['is']['startAfterDate'] ?? null;
         $repositories = $papersRepository->getAvailableRepositories($filters);
 
         foreach ($papersRepository->getSubmissionYearRange($filters) as $year) { // pour le dashboard
+
             try {
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $papersRepository->
+
+                $submissions = $papersRepository->
                 submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->
                 getQuery()->
                 getSingleScalarResult();
 
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]], false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $submissions;
 
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['published'] = $this->entityManager->getRepository(PaperLog::class)->getPublished($rvId, [$year], $startAfterDate);
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['acceptedNotYetPublished'] = $this->entityManager->getRepository(PaperLog::class)->getAllAcceptedNotYetPublished($rvId, [$year], $startAfterDate);
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['refused'] = $this->entityManager->getRepository(PaperLog::class)->getRefused($rvId, [$year], $startAfterDate);
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['accepted'] = $this->entityManager->getRepository(PaperLog::class)->getAccepted($rvId, [$year], $startAfterDate);
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['others'] = max(0, $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] - ($details[self::SUBMISSIONS_BY_YEAR][$year]['published'] + $details[self::SUBMISSIONS_BY_YEAR][$year]['acceptedNotYetPublished'] + $details[self::SUBMISSIONS_BY_YEAR][$year]['refused']));
+                $imported = $papersRepository->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])
+                    ->getQuery()->getSingleScalarResult();
 
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $imported;
+
+                //Il est possible que certaines versions soient importées tandis que d'autres ne le soient pas.
+                // D'où la nécessité d'une nouvelle requête plutôt que de faire la différence
+
+                $submissionsWithoutImported = $papersRepository->getSubmissionsWithoutImported($rvId, $startAfterDate, $year);
+
+                $accepted = $paperLogRepository->getAccepted($rvId, [$year], $startAfterDate);
+                $refused = $paperLogRepository->getRefused($rvId, [$year], $startAfterDate);
+                $published = $paperLogRepository->getPublished($rvId, [$year], $startAfterDate);
+
+
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['published'] = $published;
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['acceptedNotYetPublished'] = $paperLogRepository->getAllAcceptedNotYetPublished($rvId, [$year], $startAfterDate);
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['refused'] = $refused;
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['accepted'] = $accepted;
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['others'] = max(0, $submissionsWithoutImported - ($accepted + $refused));
 
                 $nbAcceptedSubmittedSameYear = $this->getNbPapersByStatus($rvId);
-
 
                 $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] =
                     isset($nbAcceptedSubmittedSameYear[$rvId][$year]) ?
@@ -504,9 +537,11 @@ class Stats
 
     public function getNbPapersByStatus($rvId = null, bool $isSubmittedSameYear = true, $as = self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): array
     {
+        /** @var PaperLogRepository $paperLogRepository */
+        $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
 
         try {
-            $stmt = $this->entityManager->getRepository(PaperLog::class)->totalNbPapersByStatusStatement($isSubmittedSameYear, $as, $status);
+            $stmt = $paperLogRepository->totalNbPapersByStatusStatement($isSubmittedSameYear, $as, $status);
 
             if ($stmt) {
 
@@ -546,7 +581,9 @@ class Stats
      */
     public function getJournal(array $context): ?Review
     {
-        return $this->entityManager->getRepository(Review::class)->getJournalByIdentifier($context['code']);
+        /** @var ReviewRepository $journalRepository */
+        $journalRepository = $this->entityManager->getRepository(Review::class);
+        return $journalRepository->getJournalByIdentifier($context['code']);
     }
 
     /**
@@ -655,7 +692,7 @@ class Stats
     private function getPercentages($data = ['totalSubmissions' => 0, 'totalAccepted' => 0, 'totalPublished' => 0, 'totalRefused' => 0]): array
     {
 
-        if (!isset($data['totalSubmissions']) || $data['totalSubmissions'] < 0) {
+        if (!isset($data['totalSubmissions']) || $data['totalSubmissions'] < 1) {
             return ['published' => 0, 'accepted' => 0, 'refused' => 0, 'other' => 0];
         }
 
