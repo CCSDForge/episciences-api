@@ -42,6 +42,11 @@ class SectionRepository extends ServiceEntityRepository
             ->fetchAllAssociative();
 
         foreach ($result as $values) {
+
+            if (!isset($values['SID'])) {
+                continue;
+            }
+
             $section = new Section();
             $titles = $values['titles'] ? json_decode($values['titles'], true, 512, JSON_THROW_ON_ERROR) : null;
             $descriptions = $values['descriptions'] ? json_decode($values['descriptions'], true, 512, JSON_THROW_ON_ERROR) : null;
