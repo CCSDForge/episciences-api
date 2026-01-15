@@ -66,7 +66,7 @@ class Stats
         $submissions = $this->getSubmissionsStat($filters);
         $nbSubmissions = $submissions->getValue(); // imported submissions included
 
-        if(!$nbSubmissions) {
+        if (!$nbSubmissions) {
             return $result;
         }
 
@@ -91,7 +91,7 @@ class Stats
         try {
             $imported = $paperRepo->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])
                 ->getQuery()->getSingleScalarResult();
-        } catch (NoResultException | NonUniqueResultException $e) {
+        } catch (NoResultException|NonUniqueResultException $e) {
             $imported = 0;
             $this->logger->error($e->getMessage());
         }
@@ -125,7 +125,6 @@ class Stats
         $values[$medianSubmissionsDelay->getName()] = $medianSubmissionsDelay->getValue();
         $values[$medianPublicationsDelay->getName()] = $medianPublicationsDelay->getValue();
 
-
         if ($years) {
 
             $values = array_merge($values, ['totalAcceptedSubmittedSameYear' => 0, 'totalPublishedSubmittedSameYear' => 0, 'totalRefusedSubmittedSameYear' => 0]);
@@ -150,16 +149,19 @@ class Stats
             }
 
             $values['totalOtherSubmittedSameYear'] = $submissionsWithoutImported - ($values['totalAcceptedSubmittedSameYear'] + $values['totalRefusedSubmittedSameYear']);
-
-
-            $values ['rate'] = $this->getPercentages(['totalSubmissions' => $submissionsWithoutImported, 'totalAccepted' => $values['totalAcceptedSubmittedSameYear'], 'totalPublished' => $values['totalPublishedSubmittedSameYear'], 'totalRefused' => $values['totalRefusedSubmittedSameYear']]);
-
-
-        } else {
-            $values ['rate'] = $this->getPercentages(['totalSubmissions' => $submissionsWithoutImported, 'totalAccepted' => $totalAccepted, 'totalPublished' => $totalPublished, 'totalRefused' => $totalRefused]);
-
         }
 
+        $optionsToRates = [
+            'year' => $years,
+            'rvid' => $rvId,
+            'startAfterDate' => $startAfterDate
+        ];
+
+        $values['rates'] = [
+            'publication' => $paperLogRepo->getPublicationRate($optionsToRates),
+            'acceptance' => $paperLogRepo->getAcceptanceRate($optionsToRates),
+            'refusal' => $paperLogRepo->getRefusalRate($optionsToRates),
+        ];
 
         if (!isset($filters['is']['submissionDate'])) { // Roles cannot be sorted by year of creation
             $users = $this->getUserStats($filters['is']);
@@ -503,7 +505,6 @@ class Stats
                 $refused = $paperLogRepository->getRefused($rvId, [$year], $startAfterDate);
                 $published = $paperLogRepository->getPublished($rvId, [$year], $startAfterDate);
 
-
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['published'] = $published;
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['acceptedNotYetPublished'] = $paperLogRepository->getAllAcceptedNotYetPublished($rvId, [$year], $startAfterDate);
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['refused'] = $refused;
@@ -517,9 +518,14 @@ class Stats
                         $nbAcceptedSubmittedSameYear[$rvId][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] :
                         0;
 
-                $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE] = $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] ?
-                    round($details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] / $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] * 100, 2, PHP_ROUND_HALF_UP) : 0;
 
+                $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE] = $paperLogRepository->getAcceptanceRate([
+                    'rvid' => $rvId,
+                    'year' => [$year],
+                    'startAfterDate' => $startAfterDate,
+                    'acceptedTotal' => $accepted, // Pour éviter une autre requête
+                    'refusedTotal' => $refused    // idem
+                ]);
 
                 foreach ($repositories as $repoId) {
                     $details['submissionsByRepo'][$year][$this->metadataSources->getLabel($repoId)]['submissions'] = $papersRepository->
@@ -689,7 +695,13 @@ class Stats
         return $result;
     }
 
-    private function getPercentages($data = ['totalSubmissions' => 0, 'totalAccepted' => 0, 'totalPublished' => 0, 'totalRefused' => 0]): array
+    /**
+     * @param array $data
+     * @return array|int[]
+     * @deprecated use functions in PaperLogRepository
+     */
+
+    private function getPercentages(array $data = ['totalSubmissions' => 0, 'totalAccepted' => 0, 'totalPublished' => 0, 'totalRefused' => 0]): array
     {
 
         if (!isset($data['totalSubmissions']) || $data['totalSubmissions'] < 1) {
