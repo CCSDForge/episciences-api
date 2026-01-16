@@ -13,6 +13,7 @@ use App\Entity\Review;
 use App\Entity\ReviewerReport;
 use App\Entity\UserInvitation;
 use App\Exception\ResourceNotFoundException;
+use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
 use App\Resource\Statistic;
 use App\Service\Stats;
@@ -256,28 +257,12 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     }
 
 
-    private function getAcceptanceRate(array $options = []): float|null
+    public function getAcceptanceRate(array $options = []): float|null
     {
-        $years = $options['year'] ?? [];
-        $rvId = $options['rvid'] ?? null;
-        $flag = PapersRepository::AVAILABLE_FLAG_VALUES['submitted'];
-        $startAfterDate = $options['startAfterDate'] ?? null;
-        $params = ['rvid' => $rvId, 'startAfterDate' => $startAfterDate, 'flag' => $flag, 'year' => $years];
-        $paperRepo = $this->entityManager->getRepository(Paper::class);
-
-        $allSubmissionsWithoutImported = $paperRepo->submissionsQuery(['is' => $params])->getQuery()->getSingleScalarResult();
-
-        if (!$allSubmissionsWithoutImported) {
-            return null;
-        }
-
-
-        $allAcceptedArticle = $this->entityManager->getRepository(PaperLog::class)->getAccepted($rvId, $years, $startAfterDate);
-
-        return round(($allAcceptedArticle / $allSubmissionsWithoutImported) * 100, AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP);
-
+        /** @var PaperLogRepository $logRepository */
+        $logRepository = $this->entityManager->getRepository(PaperLog::class);
+        return $logRepository->getAcceptanceRate($options);
     }
-
 
     private function getEvaluationStats(array $options = [], string $indicator = null): null|float|array
     {

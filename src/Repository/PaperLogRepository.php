@@ -15,6 +15,7 @@ use Doctrine\DBAL\Statement;
 use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\NoResultException;
 use Doctrine\ORM\Query\Expr\Join;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
@@ -244,7 +245,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    private function commonQuery(int $rvId = null, array $years = [], string $startAfterDate = null, int|array $status = [Paper::STATUS_STRICTLY_ACCEPTED], bool $ignoreImportedArticles = false): \Doctrine\ORM\QueryBuilder
+    private function commonQuery(int $rvId = null, array $years = [], string $startAfterDate = null, int|array $status = [Paper::STATUS_STRICTLY_ACCEPTED], bool $ignoreImportedArticles = false): QueryBuilder
     {
         $qb = $this->getEntityManager()->createQueryBuilder();
         $qb->addSelect("COUNT(DISTINCT(pl.paperid)) AS total");
@@ -286,7 +287,7 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
 
-    public function getAccepted(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): float
+    public function getAccepted(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
     {
 
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
@@ -294,7 +295,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    public function getRefused(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): float
+    public function getRefused(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
     {
 
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_REFUSED, $ignoreImportedArticles);
@@ -302,7 +303,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    private function processResult(\Doctrine\ORM\QueryBuilder $qb, array $years = []): float
+    private function processResult(QueryBuilder $qb, array $years = []): int
     {
         $total = 0;
 
@@ -330,14 +331,14 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    public function getSubmissions(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): float
+    public function getSubmissions(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
     {
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_SUBMITTED, $ignoreImportedArticles);
         return $this->processResult($qb, $years);
 
     }
 
-    public function getPublished(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): float
+    public function getPublished(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
     {
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_PUBLISHED, $ignoreImportedArticles);
         return $this->processResult($qb, $years);
@@ -345,7 +346,7 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
 
-    public function getAllAcceptedNotYetPublished(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): float
+    public function getAllAcceptedNotYetPublished(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
     {
 
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
@@ -372,12 +373,59 @@ class PaperLogRepository extends ServiceEntityRepository
 
         $qb->andWhere($qb->expr()->not($qb->expr()->exists($subQb->getDQL())));
         $qb->andWhere($qb->expr()->not($qb->expr()->exists($subQb1->getDQL())));
-            $qb->setParameter('pStatus', Paper::STATUS_PUBLISHED)
-                ->setParameter('rStatus', Paper::STATUS_REFUSED)
-                ->setParameter('aStatus', Paper::STATUS_ABANDONED);
+        $qb->setParameter('pStatus', Paper::STATUS_PUBLISHED)
+            ->setParameter('rStatus', Paper::STATUS_REFUSED)
+            ->setParameter('aStatus', Paper::STATUS_ABANDONED);
 
         return $this->processResult($qb, $years);
 
     }
+
+
+    private function getRateByStatus(string $status = 'accepted', array $options = []): float|null
+    {
+        $years = $options['year'] ?? [];
+        $rvId = $options['rvid'] ? (int)$options['rvid'] : null;
+        $startAfterDate = $options['startAfterDate'] ?? null;
+
+        $acceptedTotal = $options['acceptedTotal'] ?? $this->getAccepted($rvId, $years, $startAfterDate);
+        $refusedTotal = $options['refusedTotal'] ?? $this->getRefused($rvId, $years, $startAfterDate);
+
+        $totalBase = $acceptedTotal + $refusedTotal; // Formule choisie lors de la réunion Epi. du 14/01/2026 (correspond à 100%)
+
+        if ($totalBase === 0) {
+            return null;
+        }
+
+        $current = match ($status) {
+            'accepted' => $acceptedTotal,
+            'refused' => $refusedTotal,
+            'published' => $this->getPublished($rvId, $years, $startAfterDate),
+            default => null,
+        };
+
+        if ($current === null) {
+            return null;
+        }
+
+        return round(($current / $totalBase) * 100, AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP);
+    }
+
+    public function getPublicationRate(array $options = []): float|null
+    {
+        return $this->getRateByStatus('published', $options);
+    }
+
+    public function getAcceptanceRate(array $options = []): float|null
+    {
+        return $this->getRateByStatus('accepted', $options);
+
+    }
+
+    public function getRefusalRate(array $options = []): float|null
+    {
+        return $this->getRateByStatus('refused', $options);
+    }
+
 
 }
