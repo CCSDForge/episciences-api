@@ -9,7 +9,7 @@ use Laminas\Feed\Writer\Feed as FeedWriter;
 
 class Rss
 {
-    private ?Review $review;
+    private ?Review $review = null;
     private string $feedType = 'rss';
 
 
