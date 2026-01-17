@@ -51,7 +51,7 @@ class Solr
         $journal = $this->getJournal();
 
         $solrQuery = $this->parameters->get('app.solr.host') . '/select/?';
-        $solrQuery .= 'indent=true&q=*:*&group=true&group.field=revue_title_s&group.limit=2&fl=paper_title_t,abstract_t,author_fullname_s,revue_code_t,publication_date_tdate,keyword_t,revue_title_s,doi_s,es_doc_url_s,paperid&sort=publication_date_tdate desc';
+        $solrQuery .= 'indent=true&q=*:*&group=true&group.field=revue_title_s&group.limit=30&fl=paper_title_t,abstract_t,author_fullname_s,revue_code_t,publication_date_tdate,keyword_t,revue_title_s,doi_s,es_doc_url_s,paperid&sort=publication_date_tdate desc';
 
         if ($journal) {
             $solrQuery .= '&fq=revue_id_i:' . $journal->getRvid();
