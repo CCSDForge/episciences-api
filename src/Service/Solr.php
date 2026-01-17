@@ -2,7 +2,7 @@
 
 namespace App\Service;
 
-use ApiPlatform\Exception\RuntimeException;
+use ApiPlatform\Metadata\Exception\RuntimeException;
 use App\AppConstants;
 use App\Entity\Review;
 use App\Resource\Rss;
