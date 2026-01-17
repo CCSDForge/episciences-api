@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#94](https://github.com/CCSDForge/episciences-front/issues/94): New labels for boards
 ### Fixed
+- RSS feed link generation using `Request::createFromGlobals()` to ensure correct scheme and host.
 - RT#267717: Volumes without published articles that were displayed even with
  the "do not display empty volumes (without published articles)" option enabled;
   the same applies to years and types
