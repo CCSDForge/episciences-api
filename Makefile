@@ -427,7 +427,7 @@ docker-install:
 		-v $(PWD):/app \
 		-w /app \
 		-u $(shell id -u):$(shell id -g) \
-		composer:2-php8.2 install --no-progress --prefer-dist --optimize-autoloader
+		composer:2 install --no-progress --prefer-dist --optimize-autoloader
 	@echo "$(BLUE)Configuring git safe directory in PHP container...$(NC)"
 	$(DOCKER_COMPOSE) exec -u root php git config --global --add safe.directory /var/www/html || true
 	@echo "$(GREEN)✓ Dependencies installed securely with proper permissions$(NC)"
@@ -442,7 +442,7 @@ docker-install-ci:
 		-v $(PWD):/app \
 		-w /app \
 		-u $(shell id -u):$(shell id -g) \
-		composer:2-php8.2 install --no-progress --prefer-dist --optimize-autoloader --classmap-authoritative --no-scripts
+		composer:2 install --no-progress --prefer-dist --optimize-autoloader --classmap-authoritative --no-scripts
 	@echo "$(BLUE)Setting proper permissions on cache and log directories...$(NC)"
 	chmod -R 775 var/cache var/log || true
 	@echo "$(BLUE)Configuring git safe directory in PHP container...$(NC)"
