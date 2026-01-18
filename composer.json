@@ -23,7 +23,7 @@
         "doctrine/orm": "^2.14",
         "gesdinet/jwt-refresh-token-bundle": "^1.1",
         "laminas/laminas-feed": "^2.26",
-        "lexik/jwt-authentication-bundle": "^2.17",
+        "lexik/jwt-authentication-bundle": "^3.1",
         "nelmio/cors-bundle": "^2.2",
         "nelmio/solarium-bundle": "^5.1",
         "phpdocumentor/reflection-docblock": "^5.3",
