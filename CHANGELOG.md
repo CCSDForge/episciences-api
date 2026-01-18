@@ -18,8 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Allow volume years to be a string
 - RSS 30 publications instead of 2
+- Statistics rate calculations: 100% now refers to the total of accepted and declined articles
 ### Added
 - [#94](https://github.com/CCSDForge/episciences-front/issues/94): New labels for boards
+- ATOM feed endpoint alongside RSS
 ### Fixed
 - RSS Incorrect Feed name
 - RSS feed link generation using `Request::createFromGlobals()` to ensure correct scheme and host.
@@ -31,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The number of published articles returned by the collection of volumes included unpublished articles.
 - The number of publications with one author is incorrect because the search is done by Surname or First name instead of First name and Surname.
 - Wrong statistical indicator "Reviews received".
+- Deprecation warnings for Symfony 7.3+, API Platform 3.3+, and related dependencies.
 ## v1.2.2 2025-03-18
 ### Changed
 - Updated robots.txt rules
