@@ -3,7 +3,7 @@
 namespace App\Serializer\Normalizer;
 
 use App\Service\Solarium\Client;
-use App\Service\Solr;
+use App\Service\Solr\SolrAuthorService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -16,7 +16,7 @@ class AbstractNormalizer
         #[Autowire(service: 'serializer.normalizer.object')]
         protected NormalizerInterface $decorated,
         protected EntityManagerInterface $entityManager,
-        protected Solr $solrService,
+        protected SolrAuthorService $authorService,
         protected Client $search,
         protected ?LoggerInterface $logger,
         protected  Security $security

@@ -4,7 +4,7 @@ namespace App\Service\Solarium;
 
 use App\Entity\Review;
 use App\Resource\Search;
-use App\Service\Solr;
+use App\Service\Solr\SolrConstants;
 use Psr\Log\LoggerInterface;
 use Solarium\Component\QueryInterface;
 use Solarium\Core\Query\AbstractQuery;
@@ -57,7 +57,7 @@ class Client extends \Solarium\Client
                 foreach ($facetValues as $label => $count) {
 
                     if ($hasSepInValue) {
-                        [$identifier, $prefixedLabel] = explode(Solr::SOLR_FACET_SEPARATOR, $label);
+                        [$identifier, $prefixedLabel] = explode(SolrConstants::SOLR_FACET_SEPARATOR, $label);
                         [$lang, $newLabel] = explode('_', $prefixedLabel);
 
                         $allFacetsArray[$facetName][$lang][$identifier][$newLabel] = $count;
@@ -139,7 +139,7 @@ class Client extends \Solarium\Client
     }
 
 
-    public function buildSearchQuery(string $q = Search::DEFAULT_TERMS, int $start = 0, $rows = Solr::SOLR_MAX_RETURNED_FACETS_RESULTS): self
+    public function buildSearchQuery(string $q = Search::DEFAULT_TERMS, int $start = 0, $rows = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS): self
     {
 
         $query = $this
@@ -304,7 +304,7 @@ class Client extends \Solarium\Client
                 ->setMincount($facet ['minCount']);
 
 
-            if ($facet['sort'] === Solr::SOLR_INDEX || $facet['sort'] === Solr::SOLR_FACET_COUNT) {
+            if ($facet['sort'] === SolrConstants::SOLR_INDEX || $facet['sort'] === SolrConstants::SOLR_FACET_COUNT) {
                 $current->setSort($facet['sort']);
             }
 

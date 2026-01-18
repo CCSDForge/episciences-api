@@ -151,7 +151,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         if ($operationClass === Browse::class) {
 
             if ($id === Browse::BROWSE_AUTHORS_COLLECTION_IDENTIFIER) {
-                $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $this->solrService->getCountArticlesByAuthorsFirstLetter();
+                $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $this->authorService->getCountArticlesByAuthorsFirstLetter();
             }
 
         } elseif ($operationClass === Statistic::class) {

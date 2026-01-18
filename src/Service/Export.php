@@ -3,12 +3,13 @@
 namespace App\Service;
 
 use ApiPlatform\Exception\RuntimeException;
+use App\Service\Solr\AbstractSolrService;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
-class Export extends Solr
+class Export extends AbstractSolrService
 {
     public const HEADERS_FORMATS = [
         self::CSL_FORMAT => 'application/json',
