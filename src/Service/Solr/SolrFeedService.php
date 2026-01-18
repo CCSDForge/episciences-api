@@ -3,17 +3,32 @@
 namespace App\Service\Solr;
 
 use ApiPlatform\Metadata\Exception\RuntimeException;
+use App\Entity\Review;
 use App\Resource\Rss;
 use JsonException;
 use Laminas\Feed\Writer\Entry;
 use Laminas\Feed\Writer\Feed;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class SolrFeedService extends AbstractSolrService
 {
+    public function __construct(
+        HttpClientInterface $client,
+        LoggerInterface $logger,
+        ParameterBagInterface $parameters,
+        private readonly ?RequestStack $requestStack = null,
+        ?Review $journal = null
+    ) {
+        parent::__construct($client, $logger, $parameters, $journal);
+    }
+
     private const FEED_FIELDS = 'paper_title_t,abstract_t,author_fullname_s,revue_code_t,publication_date_tdate,keyword_t,revue_title_s,doi_s,es_doc_url_s,paperid';
     private const DOI_URL_PREFIX = 'https://doi.org/';
 
@@ -37,7 +52,11 @@ class SolrFeedService extends AbstractSolrService
 
     public function processSolrFeed(array $responseArray): Feed
     {
-        $feed = (new Rss())->setReview($this->journal)->getFeed();
+        $baseUrl = $this->requestStack?->getCurrentRequest()?->getSchemeAndHttpHost();
+        $feed = (new Rss())
+            ->setReview($this->journal)
+            ->setBaseUrl($baseUrl)
+            ->getFeed();
         $groups = $responseArray['grouped']['revue_title_s']['groups'] ?? [];
 
         foreach ($groups as $group) {

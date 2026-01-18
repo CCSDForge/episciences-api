@@ -67,17 +67,13 @@ class SolrFacetServiceTest extends TestCase
         $facetData = [
             'facet_counts' => [
                 'facet_fields' => [
-                    'list' => [
-                        'A' => 10,
-                        'B' => 5,
-                        'C' => 3,
-                    ]
+                    'list' => ['A', 10, 'B', 5, 'C', 3]
                 ]
             ]
         ];
 
         $response = $this->createMock(ResponseInterface::class);
-        $response->method('getContent')->willReturn(serialize($facetData));
+        $response->method('getContent')->willReturn(json_encode($facetData));
 
         $this->httpClient
             ->expects($this->once())
@@ -105,15 +101,15 @@ class SolrFacetServiceTest extends TestCase
             'facet_counts' => [
                 'facet_fields' => [
                     'list' => [
-                        '123_FacetSep_Dupont, Jean' => 5,
-                        '456_FacetSep_Martin, Pierre' => 3,
+                        '123_FacetSep_Dupont, Jean', 5,
+                        '456_FacetSep_Martin, Pierre', 3,
                     ]
                 ]
             ]
         ];
 
         $response = $this->createMock(ResponseInterface::class);
-        $response->method('getContent')->willReturn(serialize($facetData));
+        $response->method('getContent')->willReturn(json_encode($facetData));
 
         $this->httpClient
             ->expects($this->once())
@@ -143,14 +139,14 @@ class SolrFacetServiceTest extends TestCase
             'facet_counts' => [
                 'facet_fields' => [
                     'list' => [
-                        'Others_FacetSep_123_FacetSep_Unknown Author' => 2,
+                        'Others_FacetSep_123_FacetSep_Unknown Author', 2,
                     ]
                 ]
             ]
         ];
 
         $response = $this->createMock(ResponseInterface::class);
-        $response->method('getContent')->willReturn(serialize($facetData));
+        $response->method('getContent')->willReturn(json_encode($facetData));
 
         $this->httpClient
             ->expects($this->once())
@@ -175,13 +171,13 @@ class SolrFacetServiceTest extends TestCase
         $facetData = [
             'facet_counts' => [
                 'facet_fields' => [
-                    'list' => ['A' => 5]
+                    'list' => ['A', 5]
                 ]
             ]
         ];
 
         $response = $this->createMock(ResponseInterface::class);
-        $response->method('getContent')->willReturn(serialize($facetData));
+        $response->method('getContent')->willReturn(json_encode($facetData));
 
         $this->httpClient
             ->expects($this->once())
@@ -199,13 +195,13 @@ class SolrFacetServiceTest extends TestCase
         $facetData = [
             'facet_counts' => [
                 'facet_fields' => [
-                    'list' => ['A' => 5]
+                    'list' => ['A', 5]
                 ]
             ]
         ];
 
         $response = $this->createMock(ResponseInterface::class);
-        $response->method('getContent')->willReturn(serialize($facetData));
+        $response->method('getContent')->willReturn(json_encode($facetData));
 
         $this->httpClient
             ->expects($this->once())
@@ -224,13 +220,13 @@ class SolrFacetServiceTest extends TestCase
         $facetData = [
             'facet_counts' => [
                 'facet_fields' => [
-                    'list' => ['Dupont' => 3]
+                    'list' => ['Dupont', 3]
                 ]
             ]
         ];
 
         $response = $this->createMock(ResponseInterface::class);
-        $response->method('getContent')->willReturn(serialize($facetData));
+        $response->method('getContent')->willReturn(json_encode($facetData));
 
         $this->httpClient
             ->expects($this->once())
@@ -249,13 +245,13 @@ class SolrFacetServiceTest extends TestCase
         $facetData = [
             'facet_counts' => [
                 'facet_fields' => [
-                    'list' => ['A' => 10, 'B' => 5]
+                    'list' => ['A', 10, 'B', 5]
                 ]
             ]
         ];
 
         $response = $this->createMock(ResponseInterface::class);
-        $response->method('getContent')->willReturn(serialize($facetData));
+        $response->method('getContent')->willReturn(json_encode($facetData));
 
         $this->httpClient
             ->expects($this->once())

@@ -54,7 +54,7 @@ class SolrAuthorService extends AbstractSolrService
     private function buildAuthorsByFullNameQuery(string $fullName): string
     {
         $params = [
-            'q' => 'author_fullname_t:' . urlencode($fullName),
+            'q' => 'author_fullname_t:' . $fullName,
             'q.op' => 'AND',
             'indent' => 'false',
         ];

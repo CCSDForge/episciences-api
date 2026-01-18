@@ -45,3 +45,4 @@ phpstan.neon
 # SSL certificates for development
 /docker/apache/ssl/
 /docker-compose.override.yml
+/config/reference.php

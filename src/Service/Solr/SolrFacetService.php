@@ -3,6 +3,7 @@
 namespace App\Service\Solr;
 
 use ApiPlatform\Metadata\Exception\RuntimeException;
+use JsonException;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
@@ -20,10 +21,10 @@ class SolrFacetService extends AbstractSolrService
 
         try {
             $response = $this->client->request('GET', $query);
-            $data = unserialize($response->getContent(), ['allowed_classes' => false]);
+            $data = json_decode($response->getContent(), true, 512, JSON_THROW_ON_ERROR);
 
-            return $this->parseFacetResults($data['facet_counts']['facet_fields']['list'] ?? []);
-        } catch (TransportExceptionInterface|ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface $e) {
+            return $this->parseFacetResults($this->transformFacetFieldsToAssoc($data['facet_counts']['facet_fields']['list'] ?? []));
+        } catch (JsonException|TransportExceptionInterface|ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface $e) {
             $this->logger->critical($e->getMessage());
             throw new RuntimeException('Oops! An error occurred');
         }
@@ -51,7 +52,7 @@ class SolrFacetService extends AbstractSolrService
         $queryParams = [
             'q' => '*:*',
             'rows' => 0,
-            'wt' => 'phps',
+            'wt' => 'json',
             'indent' => 'false',
             'facet' => 'true',
             'omitHeader' => 'true',
@@ -101,6 +102,17 @@ class SolrFacetService extends AbstractSolrService
         }
 
         return $letter;
+    }
+
+    private function transformFacetFieldsToAssoc(array $flatArray): array
+    {
+        $result = [];
+        for ($i = 0, $count = count($flatArray); $i < $count; $i += 2) {
+            if (isset($flatArray[$i + 1])) {
+                $result[$flatArray[$i]] = $flatArray[$i + 1];
+            }
+        }
+        return $result;
     }
 
     private function parseFacetResults(array $list): array
