@@ -24,6 +24,15 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
+        $request = $this->requestStack->getCurrentRequest();
+        if ($request) {
+            foreach (['code', 'letter', 'search', 'sort'] as $param) {
+                if (!isset($context['filters'][$param]) && $request->query->has($param)) {
+                    $context['filters'][$param] = $request->query->get($param);
+                }
+            }
+        }
+
         $this->checkAndProcessFilters($context);
         $journal = $context[self::CONTEXT_JOURNAL_KEY] ?? null;
 
