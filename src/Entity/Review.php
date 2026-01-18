@@ -77,8 +77,29 @@ use App\OpenApi\OpenApiFactory;
     formats: ['xml'],
     controller: FeedController::class
 
-)
-]
+)]
+#[ApiResource(
+    uriTemplate: '/feed/atom/{code}',
+    operations: [
+        new GetCollection(
+            openapi: new OpenApiOperation(
+                tags: ['Feed'],
+                summary: 'Feed ATOM',
+                description: 'Feed ATOM',
+            ),
+            paginationEnabled: false,
+            paginationClientEnabled: false,
+            paginationClientItemsPerPage: false,
+            normalizationContext: [
+                'groups' => ['read:Feed'],
+                'serialize_null' => true
+            ],
+            read: false,
+        ),
+    ],
+    formats: ['xml'],
+    controller: FeedController::class
+)]
 #[ApiResource(
     operations: [
         new Get(

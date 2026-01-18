@@ -68,9 +68,10 @@ class Rss
         return $this->feedType;
     }
 
-    public function setFeedType(string $feedType): void
+    public function setFeedType(string $feedType): self
     {
         $this->feedType = $feedType;
+        return $this;
     }
 
 }

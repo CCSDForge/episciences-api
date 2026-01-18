@@ -308,4 +308,66 @@ class SolrFeedServiceTest extends TestCase
 
         $this->assertSame($this->httpClient, $client);
     }
+
+    public function testProcessSolrFeedWithAtomFormat(): void
+    {
+        $responseToArray = [
+            "grouped" => [
+                "revue_title_s" => [
+                    "groups" => [
+                        [
+                            "groupValue" => "Journal Name",
+                            "doclist" => [
+                                "docs" => [
+                                    [
+                                        "doi_s" => "10.1234/5678",
+                                        "paper_title_t" => ["Paper Title"],
+                                        "abstract_t" => ["Abstract content"],
+                                        "author_fullname_s" => ["Author One"],
+                                        "publication_date_tdate" => "2023-01-01T00:00:00Z"
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $feed = $this->feedService->processSolrFeed($responseToArray, 'atom');
+
+        $this->assertCount(1, $feed);
+        $this->assertStringContainsString('/atom/', $feed->getFeedLinks()['atom']);
+    }
+
+    public function testProcessSolrFeedWithRssFormat(): void
+    {
+        $responseToArray = [
+            "grouped" => [
+                "revue_title_s" => [
+                    "groups" => [
+                        [
+                            "groupValue" => "Journal Name",
+                            "doclist" => [
+                                "docs" => [
+                                    [
+                                        "doi_s" => "10.1234/5678",
+                                        "paper_title_t" => ["Paper Title"],
+                                        "abstract_t" => ["Abstract content"],
+                                        "author_fullname_s" => ["Author One"],
+                                        "publication_date_tdate" => "2023-01-01T00:00:00Z"
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $feed = $this->feedService->processSolrFeed($responseToArray, 'rss');
+
+        $this->assertCount(1, $feed);
+        $this->assertStringContainsString('/rss/', $feed->getFeedLinks()['rss']);
+    }
 }

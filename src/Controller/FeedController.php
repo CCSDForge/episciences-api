@@ -19,19 +19,19 @@ class FeedController extends AbstractController
      */
     public function __invoke(Request $request, SolrFeedService $feedService, EntityManagerInterface $entityManager): Response
     {
+        $code = (string) $request->attributes->get('code');
 
-        $code = (string) $request->get('code');
+        $format = str_contains($request->getPathInfo(), '/atom/') ? 'atom' : 'rss';
 
         $journal = $entityManager->getRepository(Review::class)->getJournalByIdentifier($code);
 
         if (!$journal) {
-            throw new ResourceNotFoundException(sprintf('Oops! Feed cannot be generated: not found Journal %s', $code ));
+            throw new ResourceNotFoundException(sprintf('Oops! Feed cannot be generated: not found Journal %s', $code));
         }
 
-        $feed = $feedService->setJournal($journal)->getSolrFeedRss();
+        $feed = $feedService->setJournal($journal)->getSolrFeed($format);
 
-        return new Response($feed->export('rss'), Response::HTTP_OK, ['Content-Type' => 'text/xml']);
-
+        return new Response($feed->export($format), Response::HTTP_OK, ['Content-Type' => 'text/xml']);
     }
 
 }

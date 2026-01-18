@@ -32,7 +32,7 @@ class SolrFeedService extends AbstractSolrService
     private const FEED_FIELDS = 'paper_title_t,abstract_t,author_fullname_s,revue_code_t,publication_date_tdate,keyword_t,revue_title_s,doi_s,es_doc_url_s,paperid';
     private const DOI_URL_PREFIX = 'https://doi.org/';
 
-    public function getSolrFeedRss(): Feed
+    public function getSolrFeed(string $format = 'rss'): Feed
     {
         try {
             $response = $this->client->request('GET', $this->buildFeedRssQuery());
@@ -43,19 +43,20 @@ class SolrFeedService extends AbstractSolrService
                 JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE
             );
 
-            return $this->processSolrFeed($responseArray);
+            return $this->processSolrFeed($responseArray, $format);
         } catch (JsonException|TransportExceptionInterface|ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface $e) {
             $this->logger->critical($e->getMessage());
             throw new RuntimeException('Oops! Feed cannot be generated: An error occurred');
         }
     }
 
-    public function processSolrFeed(array $responseArray): Feed
+    public function processSolrFeed(array $responseArray, string $format = 'rss'): Feed
     {
         $baseUrl = $this->requestStack?->getCurrentRequest()?->getSchemeAndHttpHost();
         $feed = (new Rss())
             ->setReview($this->journal)
             ->setBaseUrl($baseUrl)
+            ->setFeedType($format)
             ->getFeed();
         $groups = $responseArray['grouped']['revue_title_s']['groups'] ?? [];
 
