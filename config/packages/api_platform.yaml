@@ -24,7 +24,7 @@ api_platform:
     # The title of the API.
     title: 'Episciences API'
     # The description of the API.
-    description: 'Search API'
+    description: 'Episciences overlay journals API'
     # The version of the API.
     version: "%git_application_version%"
 

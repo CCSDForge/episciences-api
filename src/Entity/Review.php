@@ -61,7 +61,7 @@ use App\OpenApi\OpenApiFactory;
             openapi: new OpenApiOperation(
                 tags: ['Feed'],
                 summary: 'Feed RSS',
-                description: 'Feed RSS',
+                description: 'An RSS Feed of the latest publications',
             ),
             paginationEnabled: false,
             paginationClientEnabled: false,
@@ -77,8 +77,29 @@ use App\OpenApi\OpenApiFactory;
     formats: ['xml'],
     controller: FeedController::class
 
-)
-]
+)]
+#[ApiResource(
+    uriTemplate: '/feed/atom/{code}',
+    operations: [
+        new GetCollection(
+            openapi: new OpenApiOperation(
+                tags: ['Feed'],
+                summary: 'Feed ATOM',
+                description: 'An ATOM Feed of the latest publications',
+            ),
+            paginationEnabled: false,
+            paginationClientEnabled: false,
+            paginationClientItemsPerPage: false,
+            normalizationContext: [
+                'groups' => ['read:Feed'],
+                'serialize_null' => true
+            ],
+            read: false,
+        ),
+    ],
+    formats: ['xml'],
+    controller: FeedController::class
+)]
 #[ApiResource(
     operations: [
         new Get(

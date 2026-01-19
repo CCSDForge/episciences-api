@@ -11,7 +11,7 @@ use App\Exception\ResourceNotFoundException;
 use App\Repository\ReviewRepository;
 use App\Repository\SectionRepository;
 use App\Repository\UserRolesRepository;
-use App\Service\Solr;
+use App\Service\Solr\SolrConstants;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -38,7 +38,7 @@ class BoardsController extends AbstractController
         $boards = [];
         $pagination = true;
         $page = 1;
-        $maxResults = Solr::SOLR_MAX_RETURNED_FACETS_RESULTS;
+        $maxResults = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
         $firstResult = 0;
 
         if ($request !== null) {

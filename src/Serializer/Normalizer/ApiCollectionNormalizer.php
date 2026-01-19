@@ -51,9 +51,10 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         $journal = null;
 
         $requestUri = $context['uri'] ?? '';
-        parse_str($requestUri, $parsedUri);
+        $queryPart = parse_url($requestUri, PHP_URL_QUERY);
+        parse_str($queryPart ?? $requestUri, $parsedUri);
 
-        $rvCode = $parsedUri['rvcode'] ?? null;
+        $rvCode = $parsedUri['rvcode'] ?? $parsedUri['code'] ?? null;
         $isOnlyAccepted = isset($parsedUri['only_accepted']) && filter_var($parsedUri['only_accepted'], FILTER_VALIDATE_BOOLEAN);
 
         if ($rvCode) {
@@ -151,7 +152,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         if ($operationClass === Browse::class) {
 
             if ($id === Browse::BROWSE_AUTHORS_COLLECTION_IDENTIFIER) {
-                $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $this->solrService->getCountArticlesByAuthorsFirstLetter();
+                $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $this->authorService->setJournal($journal)->getCountArticlesByAuthorsFirstLetter();
             }
 
         } elseif ($operationClass === Statistic::class) {

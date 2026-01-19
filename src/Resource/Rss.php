@@ -2,8 +2,6 @@
 
 namespace App\Resource;
 
-
-use Symfony\Component\HttpFoundation\Request;
 use App\Entity\Review;
 use Laminas\Feed\Writer\Feed as FeedWriter;
 
@@ -11,6 +9,7 @@ class Rss
 {
     private ?Review $review = null;
     private string $feedType = 'rss';
+    private ?string $baseUrl = null;
 
 
 
@@ -22,6 +21,12 @@ class Rss
     public function setReview(Review $review = null): self
     {
         $this->review = $review;
+        return $this;
+    }
+
+    public function setBaseUrl(?string $baseUrl): self
+    {
+        $this->baseUrl = $baseUrl;
         return $this;
     }
 
@@ -40,7 +45,8 @@ class Rss
 
         $applicationUrl = sprintf('https://%s.%s', $code, $domain);
         $journalLogo = sprintf('%s/logos/logo-%s-small.svg', $applicationUrl, $code);
-        $feedLink = sprintf('%s/api/feed/%s/%s', Request::createFromGlobals()->getSchemeAndHttpHost(), $this->getFeedType(), $code);
+        $baseUrl = $this->baseUrl ?? $applicationUrl;
+        $feedLink = sprintf('%s/api/feed/%s/%s', $baseUrl, $this->getFeedType(), $code);
 
         $feed = new FeedWriter();
 
@@ -62,9 +68,10 @@ class Rss
         return $this->feedType;
     }
 
-    public function setFeedType(string $feedType): void
+    public function setFeedType(string $feedType): self
     {
         $this->feedType = $feedType;
+        return $this;
     }
 
 }
