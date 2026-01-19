@@ -2,7 +2,7 @@
 
 namespace App\Service;
 
-use ApiPlatform\Exception\RuntimeException;
+use ApiPlatform\Metadata\Exception\RuntimeException;
 use App\AppConstants;
 use App\Entity\Review;
 use App\Resource\Rss;
@@ -51,7 +51,7 @@ class Solr
         $journal = $this->getJournal();
 
         $solrQuery = $this->parameters->get('app.solr.host') . '/select/?';
-        $solrQuery .= 'indent=true&q=*:*&group=true&group.field=revue_title_s&group.limit=2&fl=paper_title_t,abstract_t,author_fullname_s,revue_code_t,publication_date_tdate,keyword_t,revue_title_s,doi_s,es_doc_url_s,paperid&sort=publication_date_tdate desc';
+        $solrQuery .= 'indent=true&q=*:*&group=true&group.field=revue_title_s&group.limit=30&fl=paper_title_t,abstract_t,author_fullname_s,revue_code_t,publication_date_tdate,keyword_t,revue_title_s,doi_s,es_doc_url_s,paperid&sort=publication_date_tdate desc';
 
         if ($journal) {
             $solrQuery .= '&fq=revue_id_i:' . $journal->getRvid();
@@ -261,8 +261,11 @@ class Solr
 
                 $entry->addCategory(['term' => $journal]);
 
-                foreach ($docEntry['keyword_t'] as $oneKeyword) {
-                    $entry->addCategory(['term' => $oneKeyword]);
+
+                if (isset($docEntry['keyword_t'])) {
+                    foreach ($docEntry['keyword_t'] as $oneKeyword) {
+                        $entry->addCategory(['term' => $oneKeyword]);
+                    }
                 }
 
                 $publicationDate = strtotime($docEntry['publication_date_tdate']);
