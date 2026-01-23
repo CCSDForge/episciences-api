@@ -48,7 +48,7 @@ class BoardsController extends AbstractController
             $pagination = !$request->query->has('pagination') || $request->query->get('pagination');
 
             $rolesByUid = [];
-            $code = $request->get('code');
+            $code = $request->attributes->get('code');
 
             if ($code) {
 
