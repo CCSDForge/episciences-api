@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Allow volume years to be a string
 ### Added
+- related to [#106](https://github.com/CCSDForge/episciences-front/issues/106): "webmaster" and "copy editor" roles added to boards
 - [#94](https://github.com/CCSDForge/episciences-front/issues/94): New labels for boards
 ### Fixed
 - RT#267717: Volumes without published articles that were displayed even with

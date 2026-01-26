@@ -23,11 +23,14 @@ class BoardsController extends AbstractController
 
 
     // rôles avec droits associés.
+
     public const ROLES_TO_SHOWS = [
         UserRoles::ROLE_GUEST_EDITOR,
         User::ROLE_EDITOR,
         User::ROLE_EDITOR_IN_CHIEF,
         User::ROLE_SECRETARY,
+        USER::ROLE_COPY_EDITOR,
+        USER::ROLE_WEBMASTER
     ];
 
     /**
