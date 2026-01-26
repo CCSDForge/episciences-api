@@ -2,14 +2,14 @@
 
 namespace App\Resource;
 
-
 use App\Entity\Review;
 use Laminas\Feed\Writer\Feed as FeedWriter;
 
 class Rss
 {
-    private ?Review $review;
+    private ?Review $review = null;
     private string $feedType = 'rss';
+    private ?string $baseUrl = null;
 
 
 
@@ -24,6 +24,12 @@ class Rss
         return $this;
     }
 
+    public function setBaseUrl(?string $baseUrl): self
+    {
+        $this->baseUrl = $baseUrl;
+        return $this;
+    }
+
     public function getFeed(): FeedWriter
     {
         return $this->prepareFeedHead();
@@ -33,23 +39,27 @@ class Rss
     {
         $domain = 'episciences.org';
 
-        $code  = $this->getReview() ? $this->getReview()->getCode() : 'portal';
-        $applicationUrl = 'https://' . $code . '.' . $domain;
+        $review = $this->getReview();
+        $code = $review ? $review->getCode() : 'portal';
+        $journalName = $review ? $review->getName() : 'Episciences';
 
+        $applicationUrl = sprintf('https://%s.%s', $code, $domain);
+        $journalLogo = sprintf('%s/logos/logo-%s-small.svg', $applicationUrl, $code);
+        $baseUrl = $this->baseUrl ?? $applicationUrl;
+        $feedLink = sprintf('%s/api/feed/%s/%s', $baseUrl, $this->getFeedType(), $code);
 
         $feed = new FeedWriter();
-        $feedType = $this->getFeedType();
 
-        $feed->setTitle('episciences.org - Latest papers');
+        $feed->setTitle($journalName);
         $feed->setLink($applicationUrl);
-        $feed->setFeedLink($applicationUrl . '/feed/' . $feedType, $feedType);
-        $feed->setDescription('Latest papers');
-        $feed->setImage(['uri' => $applicationUrl . '/img/episciences_sign_50x50.png', 'title' => $domain, 'link' => $applicationUrl]);
-        $feed->setGenerator($domain);
+        $feed->setFeedLink($feedLink, $this->getFeedType());
+        $feed->setDescription($journalName . ': latest publications');
+        $feed->setImage(['uri' => $journalLogo, 'title' => $journalName, 'link' => $applicationUrl]);
+        $feed->setGenerator('Episciences');
 
-        $feed->addAuthor(['name' => $domain]);
+        $feed->addAuthor(['name' => $journalName]);
         $feed->setDateModified(time());
-        $feed->addHub('http://pubsubhubbub.appspot.com/');
+        $feed->addHub('https://pubsubhubbub.appspot.com/');
         return $feed;
     }
 
@@ -58,9 +68,10 @@ class Rss
         return $this->feedType;
     }
 
-    public function setFeedType(string $feedType): void
+    public function setFeedType(string $feedType): self
     {
         $this->feedType = $feedType;
+        return $this;
     }
 
 }

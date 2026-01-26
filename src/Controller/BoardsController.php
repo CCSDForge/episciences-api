@@ -11,7 +11,7 @@ use App\Exception\ResourceNotFoundException;
 use App\Repository\ReviewRepository;
 use App\Repository\SectionRepository;
 use App\Repository\UserRolesRepository;
-use App\Service\Solr;
+use App\Service\Solr\SolrConstants;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -23,11 +23,14 @@ class BoardsController extends AbstractController
 
 
     // rôles avec droits associés.
+
     public const ROLES_TO_SHOWS = [
         UserRoles::ROLE_GUEST_EDITOR,
         User::ROLE_EDITOR,
         User::ROLE_EDITOR_IN_CHIEF,
         User::ROLE_SECRETARY,
+        USER::ROLE_COPY_EDITOR,
+        USER::ROLE_WEBMASTER
     ];
 
     /**
@@ -38,7 +41,7 @@ class BoardsController extends AbstractController
         $boards = [];
         $pagination = true;
         $page = 1;
-        $maxResults = Solr::SOLR_MAX_RETURNED_FACETS_RESULTS;
+        $maxResults = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
         $firstResult = 0;
 
         if ($request !== null) {
@@ -48,7 +51,7 @@ class BoardsController extends AbstractController
             $pagination = !$request->query->has('pagination') || $request->query->get('pagination');
 
             $rolesByUid = [];
-            $code = $request->get('code');
+            $code = $request->attributes->get('code');
 
             if ($code) {
 

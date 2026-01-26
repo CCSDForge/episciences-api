@@ -144,11 +144,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public const ROLE_ADMINISTRATOR = 'administrator';
     public const ROLE_EDITOR_IN_CHIEF = 'chief_editor';
     public const ROLE_GUEST_EDITOR = 'guest_editor';
-    public const ROLE_COPY_EDITOR = 'copy_editor';
+    public const ROLE_COPY_EDITOR = 'copyeditor';
     public const ROLE_EDITOR = 'editor';
+    public const ROLE_WEB = 'editor';
     public const EPISCIENCES_UID = 666;
     public const USERS_REVIEW_ID_FILTER = 'userRoles.rvid';
     public const FILTERS = [self::USERS_REVIEW_ID_FILTER => 'exact'];
+    public const ROLE_WEBMASTER = 'webmaster';
 
     #[Groups(['read:Me',])]
     private ?int $currentJournalID = null;
