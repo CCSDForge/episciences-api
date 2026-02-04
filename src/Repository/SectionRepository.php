@@ -67,9 +67,24 @@ class SectionRepository extends ServiceEntityRepository
             $uid = (array)$uid;
         }
 
-        $target = implode(',', $uid);
-        return "SELECT * FROM (SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua` INNER JOIN(SELECT `USER_ASSIGNMENT`.`ITEMID`, MAX(`WHEN`) AS `WHEN` FROM `USER_ASSIGNMENT` WHERE (RVID = $rvId) AND (ITEM = 'section') AND (ROLEID = 'editor') AND (UID IN ($target)) GROUP BY `ITEMID`) AS `r1` ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.`WHEN` WHERE (RVID = $rvId) AND (ITEM = 'section') AND (ROLEID = 'editor') AND (STATUS = 'active') AND(UID IN ($target))) as r2 LEFT JOIN SECTION AS sc ON sc.RVID = r2.RVID AND sc.SID = r2.ITEMID;";
+        $implodedUids = implode(',', $uid);
 
+        return "
+        SELECT DISTINCT(ua.UID), ua.RVID, sc.SID,sc.titles, sc.descriptions, sc.POSITION
+        FROM USER_ASSIGNMENT AS ua
+        JOIN(
+        SELECT ITEMID, MAX(`WHEN`) AS max_when
+        FROM
+        USER_ASSIGNMENT
+        WHERE RVID = {$rvId} AND ITEM = 'section' AND ROLEID = 'editor' AND UID IN({$implodedUids})
+        GROUP BY ITEMID, UID) AS r1
+        ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.max_when
+        LEFT JOIN SECTION AS sc
+        ON
+        sc.RVID = ua.RVID AND sc.SID = ua.ITEMID
+        WHERE ua.RVID = {$rvId} AND ua.ITEM = 'section' AND ua.ROLEID = 'editor' AND ua.STATUS = 'active' AND ua.UID IN({$implodedUids})
+        ORDER BY `sc`.`SID` DESC;
+        ";
     }
 
 
