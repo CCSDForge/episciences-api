@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RSS 30 publications instead of 2
 - Statistics rate calculations: 100% now refers to the total of accepted and declined articles
 ### Added
+- [#869](https://github.com/CCSDForge/episciences/issues/869#issue-3839027009): on the Editorial Board page, the sections are only partially displayed
 - related to [#106](https://github.com/CCSDForge/episciences-front/issues/106): "webmaster" and "copy editor" roles added to boards
 - [#94](https://github.com/CCSDForge/episciences-front/issues/94): New labels for boards
 - ATOM feed endpoint alongside RSS
