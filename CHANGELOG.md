@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - related to [#106](https://github.com/CCSDForge/episciences-front/issues/106): "webmaster" and "copy editor" roles added to boards
 - [#94](https://github.com/CCSDForge/episciences-front/issues/94): New labels for boards
 ### Fixed
+- [#869](https://github.com/CCSDForge/episciences/issues/869#issue-3839027009): on the Editorial Board page, the sections are only partially displayed
 - RT#267717: Volumes without published articles that were displayed even with
  the "do not display empty volumes (without published articles)" option enabled;
   the same applies to years and types
