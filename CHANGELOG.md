@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
-## Unreleased
+## v1.2.4 2026-02-04
 ### Changed
 - Allow volume years to be a string
 ### Added
