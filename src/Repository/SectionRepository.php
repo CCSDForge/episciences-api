@@ -83,7 +83,7 @@ class SectionRepository extends ServiceEntityRepository
         ON
         sc.RVID = ua.RVID AND sc.SID = ua.ITEMID
         WHERE ua.RVID = {$rvId} AND ua.ITEM = 'section' AND ua.ROLEID = 'editor' AND ua.STATUS = 'active' AND ua.UID IN({$implodedUids})
-        ORDER BY `sc`.`SID` DESC;
+        ORDER BY sc.POSITION ASC;
         ";
     }
 
