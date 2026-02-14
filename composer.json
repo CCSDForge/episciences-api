@@ -21,7 +21,7 @@
         "doctrine/doctrine-bundle": "^2.8",
         "doctrine/doctrine-migrations-bundle": "^3.2",
         "doctrine/orm": "^2.14",
-        "gesdinet/jwt-refresh-token-bundle": "^1.1",
+        "gesdinet/jwt-refresh-token-bundle": "^2.0",
         "laminas/laminas-feed": "^2.26",
         "lexik/jwt-authentication-bundle": "^3.1",
         "nelmio/cors-bundle": "^2.2",
