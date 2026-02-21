@@ -104,7 +104,7 @@
         "rector/rector": "^1.0",
         "roave/security-advisories": "dev-latest",
         "symfony/maker-bundle": "^1.48",
-        "symfony/phpunit-bridge": "^7.0",
+        "symfony/phpunit-bridge": "^8.0",
         "symfony/stopwatch": "^7.0",
         "symfony/web-profiler-bundle": "^7.0"
     }
