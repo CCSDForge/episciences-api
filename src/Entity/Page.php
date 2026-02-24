@@ -12,6 +12,7 @@ use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\Repository\PageRepository;
+use DateTimeInterface;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -90,7 +91,7 @@ class Page
     private int $uid;
 
 
-    #[ORM\Column(name: 'page_code',length: 255, nullable: false)]
+    #[ORM\Column(name: 'page_code', length: 255, nullable: false)]
     #[groups(
         ['read:Page', 'read:Pages']
     )]
@@ -124,15 +125,15 @@ class Page
 
     #[ORM\Column(name: 'date_creation', type: Types::DATETIME_MUTABLE, nullable: true)]
     #[groups(
-        ['read:Page']
+        ['read:Page', 'read:Pages']
     )]
-    private ?\DateTimeInterface $date_creation = null;
+    private ?DateTimeInterface $date_creation = null;
 
     #[ORM\Column(name: 'date_updated', type: Types::DATETIME_MUTABLE, nullable: false)]
     #[groups(
-        ['read:Page']
+        ['read:Page', 'read:Pages']
     )]
-    private \DateTimeInterface $date_updated;
+    private DateTimeInterface $date_updated;
 
     public function getId(): int
     {
@@ -163,24 +164,24 @@ class Page
         return $this;
     }
 
-    public function getDateCreation(): ?\DateTimeInterface
+    public function getDateCreation(): ?DateTimeInterface
     {
         return $this->date_creation;
     }
 
-    public function setDateCreation(?\DateTimeInterface $date_creation): static
+    public function setDateCreation(?DateTimeInterface $date_creation): static
     {
         $this->date_creation = $date_creation;
 
         return $this;
     }
 
-    public function getDateUpdated(): ?\DateTimeInterface
+    public function getDateUpdated(): ?DateTimeInterface
     {
         return $this->date_updated;
     }
 
-    public function setDateUpdated(\DateTimeInterface $date_updated): static
+    public function setDateUpdated(DateTimeInterface $date_updated): static
     {
         $this->date_updated = $date_updated;
 
