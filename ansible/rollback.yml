@@ -1,0 +1,6 @@
+---
+- name: Rollback Episciences API
+  hosts: all
+  gather_facts: true
+  roles:
+    - role: ansistrano.rollback
