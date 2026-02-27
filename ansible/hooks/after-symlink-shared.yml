@@ -1,0 +1,44 @@
+---
+- name: Create version.php
+  shell: |
+    CURRENT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "no-tag")
+    DEPLOY_DATE=$(date "+%Y-%m-%d %X %z")
+    echo '<?php' > version.php
+    echo "\$appVersion='$CURRENT_TAG ($DEPLOY_DATE)';" >> version.php
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+    executable: /bin/bash
+
+- name: Install Composer dependencies
+  community.general.composer:
+    command: install
+    working_dir: "{{ ansistrano_release_path.stdout }}"
+    no_dev: yes
+    optimize_autoloader: yes
+    ignore_platform_reqs: yes
+
+- name: Dump environment variables
+  shell: "composer dump-env {{ symfony_env }}"
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+
+- name: Install Yarn dependencies
+  shell: "yarn install"
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+
+- name: Build assets
+  shell: "yarn build"
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+
+- name: Run database migrations
+  shell: "php {{ symfony_console_path }} doctrine:migrations:migrate --no-interaction"
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+  when: run_migrations | default(true)
+
+- name: Clear and warmup cache
+  shell: "php {{ symfony_console_path }} cache:clear --env={{ symfony_env }} --no-debug"
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"

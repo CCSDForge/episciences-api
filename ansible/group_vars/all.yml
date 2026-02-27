@@ -1,0 +1,19 @@
+---
+# Ansistrano configuration
+ansistrano_deploy_from: "{{ playbook_dir }}/.."
+ansistrano_deploy_to: "/var/www/episciences-api"
+ansistrano_keep_releases: 5
+ansistrano_git_repo: "git@github.com:CCSDForge/episciences-api.git"
+ansistrano_git_branch: "master"
+
+# Shared paths and files
+ansistrano_shared_paths:
+  - "var/log"
+  - "var/sessions"
+  - "public/uploads"
+ansistrano_shared_files:
+  - ".env.local"
+
+# Symfony specific
+symfony_console_path: "bin/console"
+symfony_env: "prod"
