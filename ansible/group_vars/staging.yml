@@ -1,5 +1,5 @@
 ---
 ansistrano_deploy_to: "/var/www/episciences-api-staging"
 ansistrano_git_branch: "preprod"
-symfony_env: "staging"
+symfony_env: "prod"
 run_migrations: true
