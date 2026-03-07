@@ -1,0 +1,5 @@
+---
+ansistrano_deploy_to: "/var/www/episciences-api"
+ansistrano_git_branch: "main"
+symfony_env: "prod"
+run_migrations: true
