@@ -125,16 +125,16 @@ class News
     )]
     private ?string $rvcode = null;
 
-    #[ORM\Column(name: 'uid', type: 'integer', nullable: false)]
+    #[ORM\Column(name: 'uid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false)]
     private ?int $uid = null;
 
-    #[ORM\Column(name: 'title', type: 'json', nullable: false, options: ['comment' => 'Page title'])]
+    #[ORM\Column(name: 'title', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false, options: ['comment' => 'Page title'])]
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
     private array $title = [];
 
-    #[ORM\Column(name: 'content', type: 'json', nullable: true)]
+    #[ORM\Column(name: 'content', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[groups(
         ['read:News', 'read:News:Collection']
     )]

@@ -22,12 +22,12 @@ class PaperConflicts
         'later' => 'later'
     ];
 
-    #[ORM\Column(name: 'cid', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'cid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private int $cid;
 
-    #[ORM\Column(name: 'paper_id', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'paper_id', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -36,7 +36,7 @@ class PaperConflicts
     )]
     private int $paperId;
 
-    #[ORM\Column(name: 'by', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'by', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -46,7 +46,7 @@ class PaperConflicts
     private int $by;
 
 
-    #[ORM\Column(name: 'answer', type: 'string', length: 0, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'answer', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, options: ['unsigned' => true])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -55,23 +55,28 @@ class PaperConflicts
     )]
     private string $answer;
 
-    #[ORM\Column(name: 'message', type: 'text', length: 65535, nullable: true)]
+    #[ORM\Column(name: 'message', type: \Doctrine\DBAL\Types\Types::TEXT, length: 65535, nullable: true)]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
         ]
     )]
-    private $message;
+    private ?string $message = null;
 
-    #[ORM\Column(name: 'date', type: 'datetime', nullable: false, options: ['default' => 'CURRENT_TIMESTAMP'])]
+    #[ORM\Column(name: 'date', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false, options: ['default' => 'CURRENT_TIMESTAMP'])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
         ]
     )]
-    private $date = 'CURRENT_TIMESTAMP';
+    private \DateTimeInterface $date;
+
+    public function __construct()
+    {
+        $this->date = new \DateTime();
+    }
 
     #[ORM\ManyToOne( fetch: 'EAGER', inversedBy: 'conflicts')]
     #[ORM\JoinColumn(name: 'paper_id', referencedColumnName: 'PAPERID', nullable: true)]

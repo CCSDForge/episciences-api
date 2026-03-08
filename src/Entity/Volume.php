@@ -148,7 +148,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     public const TABLE = 'VOLUME';
     public const DEFAULT_URI_TEMPLATE = '/volumes{._format}';
 
-    #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'VID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[Groups(
@@ -160,10 +160,6 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     )]
     private int $vid;
 
-    /**
-     * @param int $vid
-     * @return Volume
-     */
     public function setVid(int $vid): self
     {
         $this->vid = $vid;
@@ -171,7 +167,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     }
 
 
-    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -189,10 +185,10 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-    #[ORM\Column(name: 'vol_year', type: 'string', length: 9, nullable: true)]
+    #[ORM\Column(name: 'vol_year', type: \Doctrine\DBAL\Types\Types::STRING, length: 9, nullable: true)]
     private ?string $vol_year = null;
 
-    #[ORM\Column(name: 'vol_num', type:'string', length: 6, nullable: true)]
+    #[ORM\Column(name: 'vol_num', type:\Doctrine\DBAL\Types\Types::STRING, length: 6, nullable: true)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -200,7 +196,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-    private ?string $vol_num;
+    private ?string $vol_num = null;
 
     #[Groups(
         [
@@ -217,10 +213,10 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
             'example' => 'special_issue'
         ]
     )]
-    #[ORM\Column(type: 'simple_array', nullable: true)]
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::SIMPLE_ARRAY, nullable: true)]
     private ?array $vol_type = null;
 
-    #[ORM\Column(name: 'POSITION', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'POSITION', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -230,7 +226,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     private int $position;
 
 
-    #[ORM\Column(name: 'BIB_REFERENCE', type: 'string', length: 255, nullable: true, options: ['comment' => "Volume's bibliographical reference"])]
+    #[ORM\Column(name: 'BIB_REFERENCE', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: true, options: ['comment' => "Volume's bibliographical reference"])]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -241,7 +237,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     private string $bibReference;
 
 
-    #[ORM\Column(name: 'titles', type: 'json', nullable: true)]
+    #[ORM\Column(name: 'titles', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -249,8 +245,8 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-    private ?array $titles;
-    #[ORM\Column(name: 'descriptions', type: 'json', nullable: true)]
+    private ?array $titles = null;
+    #[ORM\Column(name: 'descriptions', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -258,7 +254,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-    private ?array $descriptions;
+    private ?array $descriptions = null;
 
     #[ORM\OneToMany(mappedBy: 'volume', targetEntity: Paper::class)]
     #[Groups(
@@ -316,10 +312,6 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         $this->metadata = new ArrayCollection();
     }
 
-    /**
-     * @param Collection $papers
-     * @return Volume
-     */
     public function setPapers(Collection $papers): self
     {
         $this->papers = $papers;
@@ -367,36 +359,22 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         return $this;
     }
 
-    /**
-     * @return array|null
-     */
     public function getDescriptions(): ?array
     {
         return $this->descriptions;
     }
 
-    /**
-     * @param array $descriptions
-     * @return Volume
-     */
     public function setDescriptions(array $descriptions): self
     {
         $this->descriptions = $descriptions;
         return $this;
     }
 
-    /**
-     * @return array|null
-     */
     public function getTitles(): ?array
     {
         return $this->titles ?? ['en' => 'volume_' . $this->getVid() . '_title'];
     }
 
-    /**
-     * @param array $titles
-     * @return Volume
-     */
     public function setTitles(array $titles): self
     {
         $this->titles = $titles;
@@ -408,9 +386,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
      * default false : to avoid sorting again each time the function.
      * Can be invoked for the first time in "VolumeSubscriber::processVolumePapersCollection" function with the parameter set to true.
      * Sorting is already performed by the query, so it is no longer necessary
-     * @return Collection
      */
-
     public function getPapers(bool $forceSort = false): Collection
     {
 
@@ -462,6 +438,9 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         return $this->settings;
     }
 
+    /**
+     * @return \Doctrine\Common\Collections\Collection<int, \App\Entity\VolumeProceeding>
+     */
     public function getSettingsProceeding(): Collection
     {
         return $this->settings_proceeding;

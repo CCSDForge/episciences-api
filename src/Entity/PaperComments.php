@@ -6,83 +6,49 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * PaperComments
- *
- * @ORM\Table(name="PAPER_COMMENTS", indexes={@ORM\Index(name="DOCID", columns={"DOCID"})})
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'PAPER_COMMENTS')]
+#[ORM\Index(columns: ['DOCID'], name: 'DOCID')]
 class PaperComments
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="PCID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
-    private $pcid;
+    #[ORM\Column(name: 'PCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
+    private int $pcid;
 
-    /**
-     * @var int|null
-     *
-     * @ORM\Column(name="PARENTID", type="integer", nullable=true, options={"unsigned"=true})
-     */
-    private $parentid;
+    #[ORM\Column(name: 'PARENTID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true, options: ['unsigned' => true])]
+    private ?int $parentid = null;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="TYPE", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $type;
+    #[ORM\Column(name: 'TYPE', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    private int $type;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="DOCID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $docid;
+    #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    private int $docid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="UID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $uid;
+    #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    private int $uid;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="MESSAGE", type="text", length=16777215, nullable=true)
-     */
-    private $message;
+    #[ORM\Column(name: 'MESSAGE', type: \Doctrine\DBAL\Types\Types::TEXT, length: 16777215, nullable: true)]
+    private ?string $message = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="FILE", type="string", length=200, nullable=true)
-     */
-    private $file;
+    #[ORM\Column(name: 'FILE', type: \Doctrine\DBAL\Types\Types::STRING, length: 200, nullable: true)]
+    private ?string $file = null;
 
     /**
      * @var \DateTime
-     *
-     * @ORM\Column(name="WHEN", type="datetime", nullable=false)
      */
-    private $when;
+    #[ORM\Column(name: 'WHEN', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
+    private \DateTimeInterface $when;
 
     /**
      * @var \DateTime|null
-     *
-     * @ORM\Column(name="DEADLINE", type="date", nullable=true)
      */
-    private $deadline;
+    #[ORM\Column(name: 'DEADLINE', type: \Doctrine\DBAL\Types\Types::DATE_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $deadline = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="OPTIONS", type="text", length=65535, nullable=true)
-     */
-    private $options;
+    #[ORM\Column(name: 'OPTIONS', type: \Doctrine\DBAL\Types\Types::TEXT, length: 65535, nullable: true)]
+    private ?string $options = null;
 
     public function getPcid(): ?int
     {

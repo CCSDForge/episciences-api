@@ -6,12 +6,11 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 class Boards
 {
-    #[Groups(['read:Boards'])]
-    private ?array $boards;
-
-    public function __construct(array $boards = null)
+    public function __construct(
+        #[Groups(['read:Boards'])]
+        private ?array $boards = null
+    )
     {
-        $this->boards= $boards;
     }
 
     public function getBoards(): ?array

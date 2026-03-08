@@ -6,76 +6,39 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * WebsiteNavigation
- *
- * @ORM\Table(name="WEBSITE_NAVIGATION")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'WEBSITE_NAVIGATION')]
 class WebsiteNavigation
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="NAVIGATIONID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
-    private $navigationid;
+    #[ORM\Column(name: 'NAVIGATIONID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
+    private int $navigationid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="SID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $sid;
+    #[ORM\Column(name: 'SID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    private int $sid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="PAGEID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $pageid;
+    #[ORM\Column(name: 'PAGEID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    private int $pageid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="TYPE_PAGE", type="string", length=255, nullable=false)
-     */
-    private $typePage;
+    #[ORM\Column(name: 'TYPE_PAGE', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
+    private string $typePage;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="CONTROLLER", type="string", length=255, nullable=false)
-     */
-    private $controller;
+    #[ORM\Column(name: 'CONTROLLER', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
+    private string $controller;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="ACTION", type="string", length=255, nullable=false)
-     */
-    private $action;
+    #[ORM\Column(name: 'ACTION', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
+    private string $action;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="LABEL", type="string", length=500, nullable=false)
-     */
-    private $label;
+    #[ORM\Column(name: 'LABEL', type: \Doctrine\DBAL\Types\Types::STRING, length: 500, nullable: false)]
+    private string $label;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="PARENT_PAGEID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $parentPageid;
+    #[ORM\Column(name: 'PARENT_PAGEID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    private int $parentPageid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="PARAMS", type="text", length=65535, nullable=false)
-     */
-    private $params;
+    #[ORM\Column(name: 'PARAMS', type: \Doctrine\DBAL\Types\Types::TEXT, length: 65535, nullable: false)]
+    private string $params;
 
     public function getNavigationid(): ?int
     {

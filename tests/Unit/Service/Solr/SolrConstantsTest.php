@@ -1,16 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Unit\Service\Solr;
 
 use App\AppConstants;
 use App\Service\Solr\SolrConstants;
 use PHPUnit\Framework\TestCase;
 
-class SolrConstantsTest extends TestCase
+final class SolrConstantsTest extends TestCase
 {
     public function testSolrMaxReturnedFacetsResultsMatchesAppConstants(): void
     {
-        $this->assertEquals(
+        $this->assertSame(
             AppConstants::MAXIMUM_ITEMS_PER_PAGE,
             SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS
         );
@@ -18,12 +20,12 @@ class SolrConstantsTest extends TestCase
 
     public function testSolrFacetSeparator(): void
     {
-        $this->assertEquals('_FacetSep_', SolrConstants::SOLR_FACET_SEPARATOR);
+        $this->assertSame('_FacetSep_', SolrConstants::SOLR_FACET_SEPARATOR);
     }
 
     public function testSolrOthersFacetSeparator(): void
     {
-        $this->assertEquals('Others_FacetSep_', SolrConstants::SOLR_OTHERS_FACET_SEPARATOR);
+        $this->assertSame('Others_FacetSep_', SolrConstants::SOLR_OTHERS_FACET_SEPARATOR);
         $this->assertStringContainsString(
             SolrConstants::SOLR_OTHERS_PREFIX,
             SolrConstants::SOLR_OTHERS_FACET_SEPARATOR
@@ -32,32 +34,32 @@ class SolrConstantsTest extends TestCase
 
     public function testSolrOthersPrefix(): void
     {
-        $this->assertEquals('Others', SolrConstants::SOLR_OTHERS_PREFIX);
+        $this->assertSame('Others', SolrConstants::SOLR_OTHERS_PREFIX);
     }
 
     public function testSolrAllPrefix(): void
     {
-        $this->assertEquals('All', SolrConstants::SOLR_ALL_PREFIX);
+        $this->assertSame('All', SolrConstants::SOLR_ALL_PREFIX);
     }
 
     public function testSolrIndex(): void
     {
-        $this->assertEquals('index', SolrConstants::SOLR_INDEX);
+        $this->assertSame('index', SolrConstants::SOLR_INDEX);
     }
 
     public function testSolrFacetCount(): void
     {
-        $this->assertEquals('count', SolrConstants::SOLR_FACET_COUNT);
+        $this->assertSame('count', SolrConstants::SOLR_FACET_COUNT);
     }
 
     public function testSolrFacetName(): void
     {
-        $this->assertEquals('name', SolrConstants::SOLR_FACET_NAME);
+        $this->assertSame('name', SolrConstants::SOLR_FACET_NAME);
     }
 
     public function testSolrLabel(): void
     {
-        $this->assertEquals('label', SolrConstants::SOLR_LABEL);
+        $this->assertSame('label', SolrConstants::SOLR_LABEL);
     }
 
     public function testAllConstantsAreDefined(): void

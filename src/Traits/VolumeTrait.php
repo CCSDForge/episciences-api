@@ -9,13 +9,6 @@ trait VolumeTrait
 {
     use QueryTrait;
 
-    /**
-     * @param int|null $rvId
-     * @param QueryBuilder $qb
-     * @param bool $strictlyPublished
-     * @param int|array|null $ids
-     * @return void
-     */
     final public function addWhere(?int $rvId, QueryBuilder $qb, bool $strictlyPublished, int|array|null $ids): void
     {
         if ($rvId) {

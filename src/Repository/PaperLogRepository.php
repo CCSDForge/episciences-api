@@ -26,6 +26,7 @@ use Psr\Log\LogLevel;
  * @method PaperLog[]    findAll()
  * @method PaperLog[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\PaperLog>
  */
 class PaperLogRepository extends ServiceEntityRepository
 {
@@ -37,25 +38,17 @@ class PaperLogRepository extends ServiceEntityRepository
 
     public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE];
 
-    private LoggerInterface $logger;
-
-    public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
+    public function __construct(ManagerRegistry $registry, private LoggerInterface $logger)
     {
         parent::__construct($registry, PaperLog::class);
-        $this->logger = $logger;
     }
 
     /**
      * Average number of days (or months) between submission and acceptance (or publication), by year and by journal
-     * @param string $unit
-     * @param int $latestStatus
      * @param string|null $startDate
      * @param string|int|array|null $years
-     * @param string $method
      * @param int|null $rvId
-     * @return array|null
      */
-
     public function delayBetweenSubmissionAndLatestStatus(string           $unit = self::DEFAULT_UNIT,
                                                           int              $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED,
                                                           string           $startDate = null,
@@ -110,13 +103,13 @@ class PaperLogRepository extends ServiceEntityRepository
 
             if ($years) {
 
-                $sql .= !$rvId . '' . ' AND';
+                $sql .= $rvId ? ' AND' : '';
 
                 if (is_array($years)) {
-                    $years = implode(',', $years);
-                    $sql .= " year IN ($years)";
+                    $years = array_map(intval(...), $years);
+                    $sql .= " year IN (" . implode(',', $years) . ")";
                 } else {
-                    $sql .= " year = $years";
+                    $sql .= " year = " . (int)$years;
                 }
 
             }
@@ -135,6 +128,21 @@ class PaperLogRepository extends ServiceEntityRepository
 
     ): string
     {
+        $allowedUnits = ['SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR'];
+        $unit = strtoupper($unit);
+        if (!in_array($unit, $allowedUnits, true)) {
+            $unit = self::DEFAULT_UNIT;
+        }
+
+        if ($startStatsDate && !self::isValidDate($startStatsDate)) {
+            $startStatsDate = null;
+        }
+
+        if (is_array($years)) {
+            $years = array_map(intval(...), $years);
+        } elseif ($years !== null) {
+            $years = (int)$years;
+        }
 
         $referenceStatus = Paper::STATUS_SUBMITTED;
 
@@ -175,10 +183,25 @@ class PaperLogRepository extends ServiceEntityRepository
 
     public function getNbPapersByStatusSql(bool $isSubmittedSameYear = true, $as = 'totalNumberOfPapersAccepted', int $status = 4, bool $withoutImported = true): string
     {
+        $allowedAliases = [
+            Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR,
+            Stats::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR,
+            Stats::TOTAL_REFUSED_SUBMITTED_SAME_YEAR,
+            'totalNumberOfPapersAccepted',
+        ];
+        // TODO: remplacer ce fallback silencieux par une \InvalidArgumentException.
+        // Si $as ne fait pas partie des alias autorisés, l'alias SQL devient 'total',
+        // ce qui casse silencieusement tous les appelants qui attendent leur alias d'origine
+        // (ex: Stats::getDashboard() accède aux clés par leur constante de Stats).
+        // À corriger une fois vérifié qu'aucun appelant externe ne passe un alias hors liste.
+        if (!in_array($as, $allowedAliases, true)) {
+            $as = 'total';
+        }
+
         $papers = 'PAPERS';
         $paperLog = 'PAPER_LOG';
 
-        $year = !$isSubmittedSameYear ? "$papers.SUBMISSION_DATE" : "pl.DATE";
+        $year = $isSubmittedSameYear ? "pl.DATE" : "$papers.SUBMISSION_DATE";
 
 
         $sql = "SELECT $papers.RVID AS rvid, YEAR($year) AS `year`, COUNT(DISTINCT($papers.PAPERID)) AS $as";
@@ -189,11 +212,10 @@ class PaperLogRepository extends ServiceEntityRepository
             $sql .= " AND $papers.FLAG = 'submitted'";
         }
 
-        $sql .= "GROUP BY rvid, `year`";
-        $sql .= "ORDER BY rvid, `year` DESC";
+        $sql .= " GROUP BY rvid, `year`";
 
 
-        return $sql;
+        return $sql . " ORDER BY rvid, `year` DESC";
 
     }
 
@@ -229,9 +251,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
         $delay = array_column($result, self::DELAY);
 
-        $validValues = array_filter($delay, static function ($value) {
-            return is_numeric($value);
-        });
+        $validValues = array_filter($delay, is_numeric(...));
 
         try {
             $median = $this->getMedian($validValues);
@@ -250,7 +270,7 @@ class PaperLogRepository extends ServiceEntityRepository
         $qb = $this->getEntityManager()->createQueryBuilder();
         $qb->addSelect("COUNT(DISTINCT(pl.paperid)) AS total");
 
-        if (!empty($years)) {
+        if ($years !== []) {
             $qb->addSelect("YEAR(pl.date) As year");
         }
 
@@ -307,7 +327,7 @@ class PaperLogRepository extends ServiceEntityRepository
     {
         $total = 0;
 
-        if (empty($years)) {
+        if ($years === []) {
             try {
                 return $qb->getQuery()->getSingleScalarResult();
             } catch (NoResultException|NonUniqueResultException  $e) {
@@ -385,7 +405,7 @@ class PaperLogRepository extends ServiceEntityRepository
     private function getRateByStatus(string $status = 'accepted', array $options = []): float|null
     {
         $years = $options['year'] ?? [];
-        $rvId = $options['rvid'] ? (int)$options['rvid'] : null;
+        $rvId = empty($options['rvid']) ? null : (int)$options['rvid'];
         $startAfterDate = $options['startAfterDate'] ?? null;
 
         $acceptedTotal = $options['acceptedTotal'] ?? $this->getAccepted($rvId, $years, $startAfterDate);

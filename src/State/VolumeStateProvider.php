@@ -15,13 +15,9 @@ final class VolumeStateProvider extends AuthenticationStateProvider implements P
 {
 
     /**
-     * @param Operation $operation
-     * @param array $uriVariables
-     * @param array $context
      * @return object|array|object[]|null
      * @throws ResourceNotFoundException
      */
-
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
         if ($operation->getClass() !== Volume::class) {

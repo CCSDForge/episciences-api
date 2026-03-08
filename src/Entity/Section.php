@@ -75,10 +75,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
 {
     public const TABLE = 'SECTION';
     public const DEFAULT_URI_TEMPLATE = '/sections{._format}';
-    /**
-     * @var int
-     */
-    #[ORM\Column(name: 'SID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'SID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[Groups(
@@ -91,10 +88,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
     )]
     private int $sid;
 
-    /**
-     * @var int
-     */
-    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
@@ -104,13 +98,10 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
     )]
     private int $rvid;
 
-    /**
-     * @var int
-     */
-    #[ORM\Column(name: 'POSITION', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'POSITION', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private int $position;
 
-    #[ORM\Column(name: 'titles', type: 'json', nullable: true)]
+    #[ORM\Column(name: 'titles', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
@@ -119,9 +110,9 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-    private ?array $titles;
+    private ?array $titles = null;
 
-    #[ORM\Column(name: 'descriptions', type: 'json', nullable: true)]
+    #[ORM\Column(name: 'descriptions', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
@@ -129,7 +120,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-    private ?array $descriptions;
+    private ?array $descriptions = null;
 
     #[ORM\OneToMany(mappedBy: 'section', targetEntity: Paper::class)]
     #[Groups(
@@ -228,13 +219,16 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         return $this;
     }
 
+    /**
+     * @return \Doctrine\Common\Collections\Collection<int, \App\Entity\Paper>
+     */
     public function getPapers(): Collection
     {
         return $this->papers;
     }
 
     /**
-     * @return Collection<int, VolumeSetting>
+     * @return \Doctrine\Common\Collections\Collection<int, \App\Entity\SectionSetting>
      */
     public function getSettings(): Collection
     {

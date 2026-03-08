@@ -15,17 +15,13 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
     public const AUTHOR_FULlNAME = 'author_fullname';
 
     /**
-     * @param Operation $operation
-     * @param array $uriVariables
-     * @param array $context
      * @return object|array|object[]|null
      * @throws ResourceNotFoundException
      */
-
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
         $request = $this->requestStack->getCurrentRequest();
-        if ($request) {
+        if ($request instanceof \Symfony\Component\HttpFoundation\Request) {
             foreach (['code', 'letter', 'search', 'sort'] as $param) {
                 if (!isset($context['filters'][$param]) && $request->query->has($param)) {
                     $context['filters'][$param] = $request->query->get($param);
@@ -45,7 +41,7 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
 
         if (isset($uriVariables[self::AUTHOR_FULlNAME])) { // "browse/authors-search" collection
 
-            $fullName = trim($uriVariables[self::AUTHOR_FULlNAME]);
+            $fullName = trim((string) $uriVariables[self::AUTHOR_FULlNAME]);
             $result = $this->authorService->setJournal($journal)->getSolrAuthorsByFullName($fullName);
             $docs = $result['response']['docs'] ?? [];
 

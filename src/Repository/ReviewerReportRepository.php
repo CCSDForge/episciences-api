@@ -11,6 +11,9 @@ use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
+/**
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\ReviewerReport>
+ */
 class ReviewerReportRepository extends ServiceEntityRepository
 {
     use QueryTrait;
@@ -64,8 +67,8 @@ class ReviewerReportRepository extends ServiceEntityRepository
         $qb->innerJoin(Paper::class, 'p', Join::WITH, 'p.docid = r.docid');
 
         $qb->orderBy('p.rvid', 'DESC');
-        $qb->orderBy('r.docid', 'DESC');
-        $qb->orderBy('r.uid', 'DESC');
+        $qb->addOrderBy('r.docid', 'DESC');
+        $qb->addOrderBy('r.uid', 'DESC');
 
         $qb->groupBy('p.rvid');
         $qb->addGroupBy('r.status');

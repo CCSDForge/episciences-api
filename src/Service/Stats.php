@@ -125,7 +125,7 @@ class Stats
         $values[$medianSubmissionsDelay->getName()] = $medianSubmissionsDelay->getValue();
         $values[$medianPublicationsDelay->getName()] = $medianPublicationsDelay->getValue();
 
-        if ($years) {
+        if ($years !== []) {
 
             $values = array_merge($values, ['totalAcceptedSubmittedSameYear' => 0, 'totalPublishedSubmittedSameYear' => 0, 'totalRefusedSubmittedSameYear' => 0]);
 
@@ -197,13 +197,7 @@ class Stats
 
     /**
      * Par annee, par revue, delai moyen, ou la valeur médiane en nombre d'$unité entre dépôt et acceptation|publication
-     * @param array $filters
-     * @param int $latestStatus
-     * @param string $method
-     * @param string $unit
-     * @return AbstractStatResource
      */
-
     public function getDelayBetweenSubmissionAndLatestStatus(array $filters = [], int $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED, string $method = self::DEFAULT_METHOD, string $unit = 'day'): AbstractStatResource
     {
 
@@ -377,35 +371,23 @@ class Stats
         $details = null;
 
         if ($withDetails) {
+            $reformattedUserStats = $this->reformatUsersData($userStats);
 
             if ($rvId && !$role) {
-
-                $rvIdResult = $this->applyFilterBy($userStats, 'rvid', (string)$rvId);
-
-                if (array_key_exists($rvId, $rvIdResult)) {
-                    $details = $this->reformatUsersData($rvIdResult[$rvId]);
-                    $statResource->setDetails($details);
-                }
-
+                $details = $reformattedUserStats[$rvId] ?? null;
             } elseif (!$rvId && $role) {
-                $roleResult = $this->applyFilterBy($userStats, 'role', $role);
-                $statResource->setDetails($roleResult);
+                $details = $this->applyFilterBy($userStats, 'role', $role);
             } elseif ($rvId && $role) {
-
-                $details = $this->applyFilterBy($userStats, 'rvid', (string)$rvId);
-
-                if (array_key_exists($rvId, $details)) {
-                    $details = $this->reformatUsersData($details[$rvId]);
-                }
-
-                $roleResult = array_key_exists($role, $details) ? $details[$role] : [];
-                $statResource->setDetails($roleResult);
-
+                $rvIdFiltered = $this->applyFilterBy($userStats, 'rvid', (string)$rvId);
+                // applyFilterBy removes the 'rvid' key from each item, so reformatUsersData
+                // produces [$role => ['nbUsers' => N]] indexed by role directly
+                $reformattedForRvId = empty($rvIdFiltered[$rvId])
+                    ? []
+                    : $this->reformatUsersData($rvIdFiltered[$rvId]);
+                $details = $reformattedForRvId[$role] ?? [];
+            } else {
+                $details = $reformattedUserStats;
             }
-
-            $details = array_key_exists($rvId, $this->reformatUsersData($userStats)) ?
-                $this->reformatUsersData($userStats)[$rvId] :
-                $this->reformatUsersData($userStats);
         }
 
         $statResource->setValue($nbUsers);
@@ -414,11 +396,6 @@ class Stats
         return $statResource;
     }
 
-    /**
-     * @param array $filters
-     * @param bool $excludeTmpVersions
-     * @return SubmissionOutput
-     */
     public function getSubmissionsStat(array $filters = [], bool $excludeTmpVersions = false): SubmissionOutput
     {
 
@@ -464,12 +441,6 @@ class Stats
     }
 
 
-    /**
-     * @param array $filters
-     * @param mixed $rvId
-     * @param array $details
-     * @return void
-     */
     public function getSubmissionByYearStats(array $filters, mixed $rvId, array &$details = []): void
     {
         /** @var PapersRepository $papersRepository */
@@ -491,7 +462,7 @@ class Stats
 
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $submissions;
 
-                $imported = $papersRepository->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])
+                $imported = $papersRepository->submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]], false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])
                     ->getQuery()->getSingleScalarResult();
 
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $imported;
@@ -568,7 +539,7 @@ class Stats
 
                 }
 
-                return $stmt->executeQuery()->fetchAllAssociative();
+                return $result;
             }
 
         } catch (Exception $e) {
@@ -583,7 +554,6 @@ class Stats
 
     /**
      * @param array $context //['code' => $rvCode]
-     * @return Review|null
      */
     public function getJournal(array $context): ?Review
     {
@@ -592,19 +562,11 @@ class Stats
         return $journalRepository->getJournalByIdentifier($context['code']);
     }
 
-    /**
-     * @param array $array
-     * @param string $method
-     * @param string $key
-     * @return int|float|null
-     */
     private function processDelay(array $array, string $method = self::DEFAULT_METHOD, string $key = PaperLogRepository::DELAY): int|float|null
     {
 
         $values = array_column($array, $key);
-        $validValues = array_filter($values, static function ($value) {
-            return is_numeric($value);
-        });
+        $validValues = array_filter($values, is_numeric(...));
 
         if ($method !== self::MEDIAN_METHOD) {
             return $this->getAvg($validValues);
@@ -620,27 +582,6 @@ class Stats
 
         return $median;
 
-    }
-
-    private function reformatSubmissionsData(array $array): array
-    {
-        $result = [];
-
-        foreach ($array as $value) {
-            $rvId = $value['rvid'] ?? null;
-            $year = $value['year'] ?? null;
-            $repoId = $value['repoid'] ?? null;
-            $status = $value['status'] ?? null;
-            $nbSubmissions = $value['nbSubmissions'] ?? 0;
-
-            if ($rvId === null) {
-                $result[$year][$this->metadataSources->getLabel($repoId)][Paper::STATUS_DICTIONARY[$status]]['nbSubmissions'] = $nbSubmissions;
-            } else {
-                $result[$rvId][$year][$this->metadataSources->getLabel($repoId)][Paper::STATUS_DICTIONARY[$status]]['nbSubmissions'] = $nbSubmissions;
-            }
-        }
-
-        return $result;
     }
 
     private function reformatUsersData(array $array): array
@@ -693,32 +634,5 @@ class Stats
 
 
         return $result;
-    }
-
-    /**
-     * @param array $data
-     * @return array|int[]
-     * @deprecated use functions in PaperLogRepository
-     */
-
-    private function getPercentages(array $data = ['totalSubmissions' => 0, 'totalAccepted' => 0, 'totalPublished' => 0, 'totalRefused' => 0]): array
-    {
-
-        if (!isset($data['totalSubmissions']) || $data['totalSubmissions'] < 1) {
-            return ['published' => 0, 'accepted' => 0, 'refused' => 0, 'other' => 0];
-        }
-
-        $publishedPercentage = $data['totalPublished'] ? round($data['totalPublished'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP) : 0;
-        $acceptedPercentage = $data['totalAccepted'] ? round($data['totalAccepted'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP) : 0;
-        $refusedPercentage = $data['totalRefused'] ? round($data['totalRefused'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP) : 0;
-        $otherPercentage = round(100 - ($acceptedPercentage + $refusedPercentage), AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP);
-
-        return [
-            'published' => $publishedPercentage,
-            'accepted' => $acceptedPercentage,
-            'refused' => $refusedPercentage,
-            'other' => $otherPercentage
-        ];
-
     }
 }

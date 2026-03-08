@@ -167,6 +167,19 @@ make test-unit          # Unit tests only
 make test-coverage      # Tests with coverage report
 ```
 
+#### Static Analysis
+
+We use PHPStan for static analysis.
+
+```bash
+# Run PHPStan with default parameters (Level 1, Target src)
+make phpstan
+
+# Run PHPStan with custom level and target
+make phpstan LEVEL=5 TARGET=src/Controller
+```
+
+
 #### Database Access
 
 ```bash

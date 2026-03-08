@@ -6,97 +6,51 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * MailLog
- *
- * @ORM\Table(name="MAIL_LOG")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'MAIL_LOG')]
 class MailLog
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="ID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
-    private $id;
+    #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
+    private int $id;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $rvid;
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    private int $rvid;
 
-    /**
-     * @var int|null
-     *
-     * @ORM\Column(name="DOCID", type="integer", nullable=true, options={"unsigned"=true})
-     */
-    private $docid;
+    #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true, options: ['unsigned' => true])]
+    private ?int $docid = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="FROM", type="string", length=250, nullable=true)
-     */
-    private $from;
+    #[ORM\Column(name: 'FROM', type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: true)]
+    private ?string $from = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="REPLYTO", type="string", length=250, nullable=true)
-     */
-    private $replyto;
+    #[ORM\Column(name: 'REPLYTO', type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: true)]
+    private ?string $replyto = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="TO", type="text", length=16777215, nullable=false)
-     */
-    private $to;
+    #[ORM\Column(name: 'TO', type: \Doctrine\DBAL\Types\Types::TEXT, length: 16777215, nullable: false)]
+    private string $to;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="CC", type="text", length=65535, nullable=true)
-     */
-    private $cc;
+    #[ORM\Column(name: 'CC', type: \Doctrine\DBAL\Types\Types::TEXT, length: 65535, nullable: true)]
+    private ?string $cc = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="BCC", type="text", length=65535, nullable=true)
-     */
-    private $bcc;
+    #[ORM\Column(name: 'BCC', type: \Doctrine\DBAL\Types\Types::TEXT, length: 65535, nullable: true)]
+    private ?string $bcc = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="SUBJECT", type="string", length=250, nullable=true)
-     */
-    private $subject;
+    #[ORM\Column(name: 'SUBJECT', type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: true)]
+    private ?string $subject = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="CONTENT", type="text", length=16777215, nullable=true)
-     */
-    private $content;
+    #[ORM\Column(name: 'CONTENT', type: \Doctrine\DBAL\Types\Types::TEXT, length: 16777215, nullable: true)]
+    private ?string $content = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="FILES", type="text", length=16777215, nullable=true)
-     */
-    private $files;
+    #[ORM\Column(name: 'FILES', type: \Doctrine\DBAL\Types\Types::TEXT, length: 16777215, nullable: true)]
+    private ?string $files = null;
 
     /**
      * @var \DateTime
-     *
-     * @ORM\Column(name="WHEN", type="datetime", nullable=false)
      */
-    private $when;
+    #[ORM\Column(name: 'WHEN', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
+    private \DateTimeInterface $when;
 
     public function getId(): ?int
     {

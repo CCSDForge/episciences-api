@@ -16,7 +16,7 @@ DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then ech
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage test-file validate clean docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer setup-help deploy deploy-branch deploy-tag
+.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage test-file validate phpstan clean docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer setup-help deploy deploy-branch deploy-tag
 
 # Help target - displays all available commands
 help:
@@ -37,6 +37,7 @@ help:
 	@echo ""
 	@echo "$(BLUE)Utility Commands:$(NC)"
 	@echo "  $(BOLD)validate$(NC)          Check PHP syntax of test files"
+	@echo "  $(BOLD)phpstan$(NC)           Run PHPStan analysis (usage: make phpstan LEVEL=1 TARGET=src)"
 	@echo "  $(BOLD)clean$(NC)             Clean cache and temporary files"
 	@echo ""
 	@echo "$(BLUE)Docker Development Commands:$(NC)"
@@ -121,7 +122,7 @@ check-prereqs:
 		echo "$(GREEN)✓ Dependencies installed$(NC)"; \
 	fi
 	@# Check PHPUnit
-	@if [ ! -f "vendor/bin/simple-phpunit" ]; then \
+	@if [ ! -f "vendor/bin/phpunit" ]; then \
 		echo "$(YELLOW)⚠ PHPUnit not found$(NC)"; \
 		echo "  Install dependencies: $(BOLD)make install$(NC)"; \
 		echo ""; \
@@ -209,11 +210,7 @@ test: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running all PHPUnit tests...$(NC)"
-	@if [ ! -f "phpunit-9.5-0/phpunit" ]; then \
-		echo "$(YELLOW)PHPUnit not installed. Installing...$(NC)"; \
-		COMPOSER=$(PWD)/composer PATH=$(PWD):$(PATH) php8.2 vendor/bin/simple-phpunit --version >/dev/null 2>&1; \
-	fi
-	php8.2 phpunit-9.5-0/phpunit
+	vendor/bin/phpunit
 	@echo "$(GREEN)✓ Tests completed$(NC)"
 
 # Run only unit tests
@@ -223,11 +220,7 @@ test-unit: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running unit tests...$(NC)"
-	@if [ ! -f "phpunit-9.5-0/phpunit" ]; then \
-		echo "$(YELLOW)PHPUnit not installed. Installing...$(NC)"; \
-		COMPOSER=$(PWD)/composer PATH=$(PWD):$(PATH) php8.2 vendor/bin/simple-phpunit --version >/dev/null 2>&1; \
-	fi
-	php8.2 phpunit-9.5-0/phpunit tests/Unit/
+	vendor/bin/phpunit tests/Unit/
 	@echo "$(GREEN)✓ Unit tests completed$(NC)"
 
 # Run tests with coverage
@@ -237,11 +230,7 @@ test-coverage: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running tests with coverage...$(NC)"
-	@if [ ! -f "phpunit-9.5-0/phpunit" ]; then \
-		echo "$(YELLOW)PHPUnit not installed. Installing...$(NC)"; \
-		COMPOSER=$(PWD)/composer PATH=$(PWD):$(PATH) php8.2 vendor/bin/simple-phpunit --version >/dev/null 2>&1; \
-	fi
-	php8.2 phpunit-9.5-0/phpunit --coverage-text --coverage-html coverage/
+	vendor/bin/phpunit --coverage-text --coverage-html coverage/
 	@echo "$(GREEN)✓ Tests with coverage completed$(NC)"
 	@echo "Coverage report available at: $(BOLD)coverage/index.html$(NC)"
 
@@ -260,11 +249,7 @@ test-file: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running test file: $(FILE)$(NC)"
-	@if [ ! -f "phpunit-9.5-0/phpunit" ]; then \
-		echo "$(YELLOW)PHPUnit not installed. Installing...$(NC)"; \
-		COMPOSER=$(PWD)/composer PATH=$(PWD):$(PATH) php8.2 vendor/bin/simple-phpunit --version >/dev/null 2>&1; \
-	fi
-	php8.2 phpunit-9.5-0/phpunit $(FILE)
+	vendor/bin/phpunit $(FILE)
 	@echo "$(GREEN)✓ Test file completed$(NC)"
 
 # Validate PHP syntax of test files
@@ -272,6 +257,17 @@ validate:
 	@echo "$(BOLD)Validating PHP syntax of test files...$(NC)"
 	@find tests/ -name "*.php" -exec php8.2 -l {} \; | grep -v "No syntax errors detected" || true
 	@echo "$(GREEN)✓ PHP syntax validation completed$(NC)"
+
+# Run PHPStan
+LEVEL ?= 1
+TARGET ?= src
+phpstan: check-prereqs
+	@echo "$(BOLD)Running PHPStan (Level: $(LEVEL), Target: $(TARGET))...$(NC)"
+	@if [ ! -d "vendor" ]; then \
+		echo "$(RED)Dependencies not installed. Run: make install$(NC)"; \
+		exit 1; \
+	fi
+	php8.2 vendor/bin/phpstan analyse -l $(LEVEL) $(TARGET)
 
 # Clean cache and temporary files
 clean:
@@ -402,19 +398,19 @@ docker-mysql:
 # Run tests in PHP container
 docker-test:
 	@echo "$(BOLD)Running tests in Docker container...$(NC)"
-	$(DOCKER_COMPOSE) exec php vendor/bin/simple-phpunit
+	$(DOCKER_COMPOSE) exec php vendor/bin/phpunit
 	@echo "$(GREEN)✓ Docker tests completed$(NC)"
 
 # Run tests with coverage in PHP container
 docker-test-coverage:
 	@echo "$(BOLD)Running tests with coverage in Docker container...$(NC)"
-	$(DOCKER_COMPOSE) exec -e XDEBUG_MODE=coverage php vendor/bin/simple-phpunit --coverage-clover=coverage.xml
+	$(DOCKER_COMPOSE) exec -e XDEBUG_MODE=coverage php vendor/bin/phpunit --coverage-clover=coverage.xml
 	@echo "$(GREEN)✓ Docker tests with coverage completed$(NC)"
 
 # Run unit tests only in PHP container
 docker-test-unit:
 	@echo "$(BOLD)Running unit tests in Docker container...$(NC)"
-	$(DOCKER_COMPOSE) exec php vendor/bin/simple-phpunit tests/Unit/
+	$(DOCKER_COMPOSE) exec php vendor/bin/phpunit tests/Unit/
 	@echo "$(GREEN)✓ Docker unit tests completed$(NC)"
 
 # Install dependencies in container

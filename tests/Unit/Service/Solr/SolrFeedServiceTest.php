@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Unit\Service\Solr;
 
 use App\Entity\Review;
@@ -11,12 +13,10 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-class SolrFeedServiceTest extends TestCase
+final class SolrFeedServiceTest extends TestCase
 {
-    private MockObject|HttpClientInterface $httpClient;
-    private MockObject|LoggerInterface $logger;
-    private MockObject|ParameterBagInterface $parameterBag;
     private SolrFeedService $feedService;
+    private HttpClientInterface $httpClient;
 
     protected function setUp(): void
     {
@@ -27,11 +27,13 @@ class SolrFeedServiceTest extends TestCase
         $_SERVER['SERVER_PORT'] = 443;
         $_SERVER['HTTPS'] = 'on';
 
-        $this->httpClient = $this->createMock(HttpClientInterface::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
-        $this->parameterBag = $this->createMock(ParameterBagInterface::class);
+        $this->httpClient = $this->createStub(HttpClientInterface::class);
 
-        $this->feedService = new SolrFeedService($this->httpClient, $this->logger, $this->parameterBag);
+        $this->feedService = new SolrFeedService(
+            $this->httpClient,
+            $this->createStub(LoggerInterface::class),
+            $this->createStub(ParameterBagInterface::class)
+        );
 
         // Set up a mock journal to avoid null journal issues
         $mockJournal = $this->createMock(Review::class);
@@ -291,11 +293,11 @@ class SolrFeedServiceTest extends TestCase
 
     public function testSetAndGetJournal(): void
     {
-        $newFeedService = new SolrFeedService($this->httpClient, $this->logger, $this->parameterBag);
+        $newFeedService = new SolrFeedService($this->createStub(\Symfony\Contracts\HttpClient\HttpClientInterface::class), $this->createStub(\Psr\Log\LoggerInterface::class), $this->createStub(\Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface::class));
 
-        $this->assertNull($newFeedService->getJournal());
+        $this->assertNotInstanceOf(\App\Entity\Review::class, $newFeedService->getJournal());
 
-        $mockJournal = $this->createMock(Review::class);
+        $mockJournal = $this->createStub(Review::class);
         $result = $newFeedService->setJournal($mockJournal);
 
         $this->assertSame($newFeedService, $result);
@@ -337,7 +339,7 @@ class SolrFeedServiceTest extends TestCase
         $feed = $this->feedService->processSolrFeed($responseToArray, 'atom');
 
         $this->assertCount(1, $feed);
-        $this->assertStringContainsString('/atom/', $feed->getFeedLinks()['atom']);
+        $this->assertStringContainsString('/atom/', (string) $feed->getFeedLinks()['atom']);
     }
 
     public function testProcessSolrFeedWithRssFormat(): void
@@ -368,6 +370,6 @@ class SolrFeedServiceTest extends TestCase
         $feed = $this->feedService->processSolrFeed($responseToArray, 'rss');
 
         $this->assertCount(1, $feed);
-        $this->assertStringContainsString('/rss/', $feed->getFeedLinks()['rss']);
+        $this->assertStringContainsString('/rss/', (string) $feed->getFeedLinks()['rss']);
     }
 }

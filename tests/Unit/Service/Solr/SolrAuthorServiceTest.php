@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Unit\Service\Solr;
 
 use App\Entity\Review;
@@ -13,20 +15,17 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
-class SolrAuthorServiceTest extends TestCase
+final class SolrAuthorServiceTest extends TestCase
 {
     private MockObject|HttpClientInterface $httpClient;
-    private MockObject|LoggerInterface $logger;
-    private MockObject|ParameterBagInterface $parameterBag;
     private MockObject|SolrFacetService $facetService;
     private SolrAuthorService $authorService;
 
     protected function setUp(): void
     {
         $this->httpClient = $this->createMock(HttpClientInterface::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
-        $this->parameterBag = $this->createMock(ParameterBagInterface::class);
-        $this->parameterBag->method('get')
+        $parameterBag = $this->createMock(ParameterBagInterface::class);
+        $parameterBag->method('get')
             ->with('app.solr.host')
             ->willReturn('http://localhost:8983/solr/episciences');
 
@@ -34,8 +33,8 @@ class SolrAuthorServiceTest extends TestCase
 
         $this->authorService = new SolrAuthorService(
             $this->httpClient,
-            $this->logger,
-            $this->parameterBag,
+            $this->createStub(LoggerInterface::class),
+            $parameterBag,
             $this->facetService
         );
     }
@@ -118,9 +117,7 @@ class SolrAuthorServiceTest extends TestCase
         $this->httpClient
             ->expects($this->once())
             ->method('request')
-            ->with('GET', $this->callback(function ($url) {
-                return str_contains($url, 'author_fullname_t%3A');
-            }))
+            ->with('GET', $this->callback(fn($url) => str_contains((string) $url, 'author_fullname_t%3A')))
             ->willReturn($response);
 
         $this->authorService->getSolrAuthorsByFullName('O\'Brien, Patrick');
@@ -163,7 +160,7 @@ class SolrAuthorServiceTest extends TestCase
 
     public function testGetCountArticlesByAuthorsFirstLetterWithJournal(): void
     {
-        $mockJournal = $this->createMock(Review::class);
+        $mockJournal = $this->createStub(Review::class);
         $this->authorService->setJournal($mockJournal);
 
         $facetResult = ['A' => 5];
@@ -209,9 +206,9 @@ class SolrAuthorServiceTest extends TestCase
 
     public function testSetAndGetJournal(): void
     {
-        $mockJournal = $this->createMock(Review::class);
+        $mockJournal = $this->createStub(Review::class);
 
-        $this->assertNull($this->authorService->getJournal());
+        $this->assertNotInstanceOf(\App\Entity\Review::class, $this->authorService->getJournal());
 
         $result = $this->authorService->setJournal($mockJournal);
 

@@ -88,7 +88,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
     public function getCommitteeQuery(int $rvId, int $vid): string
     {
-        $sql = "SELECT uuid, CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid`
+        return "SELECT uuid, CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid`
                 FROM ( SELECT UID, VID, `WHEN`
                        FROM ( SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua`
                            INNER JOIN(
@@ -104,7 +104,6 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
                     INNER JOIN USER AS `u` ON result.UID = u.UID
                 GROUP BY VID,uuid, CIV, SCREEN_NAME, ORCID, u.LASTNAME
                 ORDER BY u.LASTNAME ASC;";
-        return $sql;
 
     }
 
@@ -230,7 +229,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
         $vIds = $filters['vid'] ?? null;
 
         $isDisplayEmptyVolume = $filters[ReviewSetting::DISPLAY_EMPTY_VOLUMES] ?? false;
-        $onlyPublished = !isset($context['filters']['isGranted']) || !$context['filters']['isGranted']; // FALSE IF GRANTED SECRETARY
+        $onlyPublished = !isset($filters['isGranted']) || !$filters['isGranted']; // FALSE IF GRANTED SECRETARY
 
         $qb = $this->createQueryBuilder($alias);
 
@@ -275,9 +274,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
     /**
      * @param int|null $rvId
-     * @param bool $strictlyPublished
      * @param int|array|null $ids
-     * @return QueryBuilder
      */
     public function getNoEmptyMasterVolumesQuery(int $rvId = null, bool $strictlyPublished = true, int|array $ids = null): QueryBuilder
     {
@@ -290,11 +287,8 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
     /**
      * @param int|null $rvId
-     * @param bool $onlyPublished
      * @param int|array|null $ids // for a specific volume's ids
-     * @return array
      */
-
     private function getNoEmptyVolumesIdentifiers(int $rvId = null, bool $onlyPublished = true, int|array $ids = null): array
     {
         $noEmptyMasterIds = array_column(array_values($this->getNoEmptyMasterVolumesQuery($rvId, $onlyPublished, $ids)->getQuery()->getArrayResult()), 'vid');
@@ -333,14 +327,11 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
      * est désormais saisi sous forme de chaîne de caractères (AAAA | AAAA-AAAA)
      * afin de permettre la saisie de l'année de début et de l'année de fin,
      * Ce qui a conduit à ce traitement particulier pour maintenir le fonctionnement actuel du filtre "year".
-     * @param array $years
-     * @return void
      */
-
     private function processYearRanges(array &$years = []): void
     {
 
-        if (empty($years)) {
+        if ($years === []) {
             return;
         }
 
@@ -354,9 +345,9 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
             $separator = '-';
 
-            if (str_contains($currentYear, $separator)) {
+            if (str_contains((string) $currentYear, $separator)) {
 
-                $parts = explode($separator, $currentYear);
+                $parts = explode($separator, (string) $currentYear);
 
                 $start = (int)$parts[0];
                 $end = isset($parts[1]) ? (int)$parts[1] : 0;

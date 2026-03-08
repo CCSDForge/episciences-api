@@ -6,38 +6,25 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * ReviewerAlias
- *
- * @ORM\Table(name="REVIEWER_ALIAS")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'REVIEWER_ALIAS')]
 class ReviewerAlias
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="UID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $uid;
+    #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    private int $uid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="DOCID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $docid;
+    #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    private int $docid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="ALIAS", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $alias;
+    #[ORM\Column(name: 'ALIAS', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    private int $alias;
 
     public function getUid(): ?int
     {

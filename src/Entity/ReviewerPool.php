@@ -6,38 +6,25 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * ReviewerPool
- *
- * @ORM\Table(name="REVIEWER_POOL")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'REVIEWER_POOL')]
 class ReviewerPool
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $rvid;
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    private int $rvid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="VID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $vid;
+    #[ORM\Column(name: 'VID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    private int $vid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="UID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $uid;
+    #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    private int $uid;
 
     public function getRvid(): ?int
     {

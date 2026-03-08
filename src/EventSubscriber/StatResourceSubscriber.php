@@ -25,7 +25,6 @@ final class StatResourceSubscriber implements EventSubscriberInterface
     }
 
     /**
-     * @param ViewEvent $event
      * @throws ResourceNotFoundException
      * @throws Exception
      */

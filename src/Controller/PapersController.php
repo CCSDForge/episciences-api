@@ -15,15 +15,13 @@ class PapersController
 {
 
     /**
-     * @param EntityManagerInterface $entityManager
      * @param Request|null $request
-     * @return bool
      * @throws MissingRequestParameterException
      */
     public function __invoke(EntityManagerInterface $entityManager, Request $request = null): bool
     {
 
-        if ($request !== null) {
+        if ($request instanceof \Symfony\Component\HttpFoundation\Request) {
 
             if (!$request->query->has('documentId')) {
                 throw (new MissingRequestParameterException())::new('documentId', 'Request query');
@@ -31,9 +29,9 @@ class PapersController
 
             $documentId = (int)$request->query->get('documentId');
 
-            $userId = (int)$request->get('uid');
+            $userId = (int)$request->attributes->get('uid');
 
-            if ($userId) {
+            if ($userId !== 0) {
                 $user = $entityManager->getRepository(User::class)->findOneBy(['uid' => $userId]);
                 /** @var Paper $currentPaper */
                 $currentPaper = $entityManager->getRepository(Paper::class)->findOneBy(['docid' => $documentId]);

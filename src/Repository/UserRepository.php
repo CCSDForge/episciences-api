@@ -17,6 +17,7 @@ use Doctrine\Persistence\ManagerRegistry;
  * @method User[]    findAll()
  * @method User[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\User>
  */
 class UserRepository extends ServiceEntityRepository
 {
@@ -34,11 +35,8 @@ class UserRepository extends ServiceEntityRepository
     /**
      * get users by review query
      * @param int|null $rvId
-     * @param bool $withDetails
      * @param string|null $role
-     * @param null $uid
      * @param int|null $registrationYear
-     * @return QueryBuilder
      */
     public function findByReviewQuery(int $rvId = null, bool $withDetails = false, string $role = null, $uid = null, int $registrationYear = null): QueryBuilder
     {
@@ -49,14 +47,11 @@ class UserRepository extends ServiceEntityRepository
      * TODO requête SQL ultra lente ?
      * nb users by reviewer
      * @param int|null $rvId
-     * @param null $uid
      * @param string|null $role
      * @param int|null $registrationYear
-     * @return QueryBuilder
      */
     public function countByReviewQuery(int $rvId = null, $uid = null, string $role = null, int $registrationYear = null): QueryBuilder
     {
-        $userAlias = self::USER_ALIAS;
         $userAlias1 = self::USER_ALIAS . 1;
         $userRolesAlias = UserRolesRepository::USER_ROLES_ALIAS;
 
@@ -67,7 +62,6 @@ class UserRepository extends ServiceEntityRepository
 
         $qb
             ->select("$userRolesAlias.rvid, YEAR($userAlias1.registrationDate) AS year, $userRolesAlias.roleid as role, count(DISTINCT ($userAlias1.uid) ) as nbUsers, $userAlias1.uid")
-            ->from(User::class, $userAlias)
             ->innerJoin(UserRoles::class, $userRolesAlias, Join::WITH, sprintf('%s.uid = %s.uid', $userAlias1, $userRolesAlias));
 
 

@@ -9,6 +9,9 @@ use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
+/**
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\UserAssignment>
+ */
 class UserAssignmentRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -31,7 +34,7 @@ class UserAssignmentRepository extends ServiceEntityRepository
 
         $qb->andWhere('ua.roleid =:roleId')->setParameter('roleId', UserAssignment::ROLE_REVIEWER);
         $qb->orderBy('ua.when', 'DESC');
-        $qb->addGroupBy('ua.status', 'ASC');
+        $qb->addGroupBy('ua.status');
         return $qb;
 
     }

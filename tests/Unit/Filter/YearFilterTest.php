@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Unit\Filter;
 
 use App\Filter\YearFilter;
@@ -11,20 +13,18 @@ use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use PHPUnit\Framework\TestCase;
 
-class YearFilterTest extends TestCase
+final class YearFilterTest extends TestCase
 {
     private YearFilter $filter;
     private ManagerRegistry $managerRegistry;
-    private EntityManagerInterface $entityManager;
 
     protected function setUp(): void
     {
         $this->managerRegistry = $this->createMock(ManagerRegistry::class);
-        $this->entityManager = $this->createMock(EntityManagerInterface::class);
         
         $this->managerRegistry
             ->method('getManagerForClass')
-            ->willReturn($this->entityManager);
+            ->willReturn($this->createStub(EntityManagerInterface::class));
 
         // Create the filter with properties configuration
         $properties = ['submissionDate' => null];
@@ -33,7 +33,7 @@ class YearFilterTest extends TestCase
 
     public function testGetDescriptionWithProperties(): void
     {
-        $resourceClass = 'App\Entity\Paper';
+        $resourceClass = \App\Entity\Paper::class;
         
         $description = $this->filter->getDescription($resourceClass);
 
@@ -61,7 +61,7 @@ class YearFilterTest extends TestCase
         ];
         
         $filter = new YearFilter($this->managerRegistry, null, $properties);
-        $description = $filter->getDescription('App\Entity\Paper');
+        $description = $filter->getDescription(\App\Entity\Paper::class);
 
         $this->assertCount(3, $description);
         $this->assertArrayHasKey('submissionDate', $description);
@@ -79,15 +79,15 @@ class YearFilterTest extends TestCase
     public function testGetDescriptionWithNoProperties(): void
     {
         $filter = new YearFilter($this->managerRegistry, null, []);
-        $description = $filter->getDescription('App\Entity\Paper');
+        $description = $filter->getDescription(\App\Entity\Paper::class);
 
         $this->assertEmpty($description);
     }
 
     public function testGetDescriptionWithNullProperties(): void
     {
-        $filter = new YearFilter($this->managerRegistry, null, null);
-        $description = $filter->getDescription('App\Entity\Paper');
+        $filter = new YearFilter($this->managerRegistry);
+        $description = $filter->getDescription(\App\Entity\Paper::class);
 
         $this->assertEmpty($description);
     }
@@ -121,7 +121,7 @@ class YearFilterTest extends TestCase
         $filter = new YearFilter($this->managerRegistry, null, $properties);
         $description = $filter->getDescription('App\Entity\Event');
 
-        foreach ($description as $property => $config) {
+        foreach ($description as $config) {
             $swagger = $config['swagger'];
             
             // All properties should have the same swagger description and type

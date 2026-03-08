@@ -48,20 +48,33 @@ class Kernel extends BaseKernel
 
     public function getCacheDir(): string
     {
-        return isset($_ENV['CACHE_PATH']) &&
-        is_string($_ENV['CACHE_PATH']) &&
-        $_ENV['CACHE_PATH'] !== '' ?
-            $_ENV['CACHE_PATH'] . $this->environment : parent::getCacheDir();
+        $cachePath = $_ENV['CACHE_PATH'] ?? null;
+        if (is_string($cachePath) && $cachePath !== '') {
+            // Chemins relatifs : préfixés par le dossier du projet (ex: "var/cache")
+            // Chemins absolus : utilisés tels quels (ex: "/data/cache")
+            if (!str_starts_with($cachePath, '/')) {
+                $cachePath = $this->getProjectDir() . DIRECTORY_SEPARATOR . $cachePath;
+            }
+
+            return rtrim($cachePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $this->environment;
+        }
+
+        return $this->getProjectDir() . DIRECTORY_SEPARATOR . 'var' . DIRECTORY_SEPARATOR . 'cache' . DIRECTORY_SEPARATOR . $this->environment;
     }
 
     public function getLogDir(): string
     {
+        $logPath = $_ENV['LOG_PATH'] ?? null;
+        if (is_string($logPath) && $logPath !== '') {
+            // Chemins relatifs : préfixés par le dossier du projet (ex: "var/log")
+            // Chemins absolus : utilisés tels quels (ex: "/data/log")
+            if (!str_starts_with($logPath, '/')) {
+                $logPath = $this->getProjectDir() . DIRECTORY_SEPARATOR . $logPath;
+            }
 
-        return isset($_ENV['LOG_PATH']) &&
-        is_string($_ENV['LOG_PATH']) &&
-        $_ENV['LOG_PATH'] !== '' ?
-            $_ENV['LOG_PATH'] : parent::getLogDir();
+            return rtrim($logPath, DIRECTORY_SEPARATOR);
+        }
 
-
+        return $this->getProjectDir() . DIRECTORY_SEPARATOR . 'var' . DIRECTORY_SEPARATOR . 'log';
     }
 }

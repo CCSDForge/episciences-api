@@ -7,7 +7,7 @@ use App\AppConstants;
 use JsonException;
 use Symfony\Component\Serializer\Attribute\Groups;
 
-abstract class AbstractStatResource
+abstract class AbstractStatResource implements \Stringable
 {
 
     public function __construct(
@@ -65,16 +65,12 @@ abstract class AbstractStatResource
         return $this;
     }
 
-    /**
-     * @return string
-     */
     public function getName(): string
     {
         return $this->name;
     }
 
     /**
-     * @param string $name
      * @return $this
      */
     public function setName(string $name): self
@@ -83,16 +79,12 @@ abstract class AbstractStatResource
         return $this;
     }
 
-    /**
-     * @return int|float|array|null
-     */
     public function getValue(): int|float|array|null
     {
         return $this->value;
     }
 
     /**
-     * @param int|float|array|null $value
      * @return $this
      */
     public function setValue(int|float|array|null $value): self
@@ -101,16 +93,12 @@ abstract class AbstractStatResource
         return $this;
     }
 
-    /**
-     * @return array|null
-     */
     public function getDetails(): ?array
     {
         return $this->details;
     }
 
     /**
-     * @param array|null $details
      * @return $this
      */
     public function setDetails(?array $details): self
@@ -120,7 +108,6 @@ abstract class AbstractStatResource
     }
 
     /**
-     * @return string
      * @throws JsonException
      */
     public function __toString(): string

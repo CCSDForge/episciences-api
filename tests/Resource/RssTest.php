@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Resource;
 
 use App\Entity\Review;
@@ -7,7 +9,7 @@ use App\Resource\Rss;
 use Laminas\Feed\Writer\Feed as FeedWriter;
 use PHPUnit\Framework\TestCase;
 
-class RssTest extends TestCase
+final class RssTest extends TestCase
 {
     public function testGetFeedDefaultPortal(): void
     {
@@ -60,7 +62,7 @@ class RssTest extends TestCase
         $rss = new Rss();
         $rss->setFeedType('atom');
 
-        $this->assertEquals('atom', $rss->getFeedType());
+        $this->assertSame('atom', $rss->getFeedType());
 
         $feed = $rss->getFeed();
 
@@ -78,7 +80,7 @@ class RssTest extends TestCase
         $rss = new Rss();
         $this->assertNull($rss->getReview());
 
-        $reviewMock = $this->createMock(Review::class);
+        $reviewMock = $this->createStub(Review::class);
         $rss->setReview($reviewMock);
 
         $this->assertSame($reviewMock, $rss->getReview());

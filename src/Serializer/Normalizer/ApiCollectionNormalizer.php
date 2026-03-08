@@ -34,7 +34,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         $this->decorated->setNormalizer($normalizer);
     }
 
-    public function normalize(mixed $object, ?string $format = null, array $context = []): array|string|int|float|bool|\ArrayObject|null
+    public function normalize(mixed $object, ?string $format = null, array $context = []): ?array
     {
 
         $data = $this->decorated->normalize($object, $format, $context);
@@ -62,7 +62,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             $journalRepo = $this->entityManager->getRepository(Review::class);
             $journal = $journalRepo->getJournalByIdentifier($rvCode);
 
-            if ($operationClass === Volume::class){
+            if ($operationClass === Volume::class && $journal !== null){
                 $filters[ReviewSetting::DISPLAY_EMPTY_VOLUMES] = (bool)$journal->getSetting(ReviewSetting::DISPLAY_EMPTY_VOLUMES);
             }
 
@@ -72,7 +72,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 
         $filters['isGranted'] = $this->security->isGranted('ROLE_SECRETARY');
 
-        if ($operationClass === Search::class && $parsedUri[Search::TERMS_PARAM]) {
+        if ($operationClass === Search::class && isset($parsedUri[Search::TERMS_PARAM]) && $parsedUri[Search::TERMS_PARAM]) {
             $filters[Search::TERMS_PARAM] = $parsedUri[Search::TERMS_PARAM];
         }
 
@@ -102,7 +102,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         }
 
         if (
-            !empty($filters) &&
+            $filters !== [] &&
             ($operationClass === Volume::class || $operationClass === Section::class) &&
             $operation->getMethod() === 'GET'
         ) {
@@ -145,7 +145,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 
         $id = $data['@id'] ?? null;
 
-        if ($operationClass === News::class || $operationClass === Volume::class | $operationClass === Paper::class) {
+        if ($operationClass === News::class || $operationClass === Volume::class || $operationClass === Paper::class) {
             $repo = $this->entityManager->getRepository($operationClass);
         }
 

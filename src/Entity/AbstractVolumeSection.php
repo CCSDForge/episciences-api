@@ -16,35 +16,22 @@ abstract class AbstractVolumeSection
         $this->setOptions($options);
     }
 
-    /**
-     * @return array
-     */
     public function getCommittee(): array
     {
         return $this->committee;
     }
 
-    /**
-     * @param array $committee
-     * @return AbstractVolumeSection
-     */
     public function setCommittee(array $committee): self
     {
         $this->committee = $committee;
         return $this;
     }
 
-    /**
-     * @return int
-     */
     public function getTotalPublishedArticles(): int
     {
         return $this->totalPublishedArticles;
     }
 
-    /**
-     * @return AbstractVolumeSection
-     */
     public function setTotalPublishedArticles(): self
     {
         $totalPublishedArticles = 0;

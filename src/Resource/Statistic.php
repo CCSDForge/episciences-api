@@ -516,9 +516,9 @@ class Statistic
     #[groups(['read:Statistic'])]
     private string $name;
     #[groups(['read:Statistic'])]
-    private array|float|null $value;
+    private array|float|null $value = null;
     #[groups(['read:Statistic'])]
-    private string|null $unit;
+    private string|null $unit = null;
 
     public function getName(): string
     {

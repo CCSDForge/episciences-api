@@ -48,25 +48,25 @@ class Export extends AbstractSolrService
     ];
 
 
-    public function exportToFormatQuery(int $docId, string $format = self::AVAILABLE_FORMATS[self::CSL_FORMAT]): string
+    public function exportToFormatQuery(int $docId, string $format = self::CSL_FORMAT): string
     {
 
         $journal = $this->getJournal();
 
         $solrQuery = sprintf('%s/select/?', $this->parameters->get('app.solr.host'));
 
-        if ($format) {
+        if ($format !== '' && $format !== '0') {
             $solrQuery .= sprintf('fl=%s%s', self::SOLR_CSL_PREFIX, $format);
         }
 
 
-        if ($journal) {
+        if ($journal instanceof \App\Entity\Review) {
             $solrQuery .= '&fq=revue_code_t:' . $journal->getCode();
         }
 
         $solrQuery .= '&indent=true&q.op=OR';
 
-        if ($docId) {
+        if ($docId !== 0) {
             $solrQuery .= sprintf('&q=docid:%s paperid:%s', $docId, $docId);
         }
 
@@ -75,7 +75,7 @@ class Export extends AbstractSolrService
     }
 
 
-    public function getSolrCSLByFormat(int $docId, string $format = self::AVAILABLE_FORMATS[self::CSL_FORMAT])
+    public function getSolrCSLByFormat(int $docId, string $format = self::CSL_FORMAT)
     {
         try {
             $response = $this->client->request(
@@ -88,7 +88,7 @@ class Export extends AbstractSolrService
 
         } catch (\JsonException|TransportExceptionInterface|ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface $e) {
             $this->logger->critical($e->getMessage());
-            throw new RuntimeException('Oops! Export cannot be generated: An error occurred');
+            throw new RuntimeException('Oops! Export cannot be generated: An error occurred', $e->getCode(), $e);
 
         }
 

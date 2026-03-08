@@ -33,7 +33,7 @@ class VolumePaperRepository extends ServiceEntityRepository
                 ->from(VolumePaper::class, 'vp')
                 ->innerJoin(Paper::class, 'p', Join::WITH, 'vp.docid = p.docid')
                 ->groupBy('vp.vid')
-                ->groupBy('vp.docid');
+                ->addGroupBy('vp.docid');
 
         if ($vid !== null) {
             $qb->andWhere('vp.vid = :vid')->setParameter('vid', $vid);
@@ -75,11 +75,8 @@ class VolumePaperRepository extends ServiceEntityRepository
 
     /**
      * @param int|null $rvId
-     * @param bool $strictlyPublished
      * @param int|array|null $ids
-     * @return QueryBuilder
      */
-
     public function getNoEmptySecondaryVolumes(int $rvId = null, bool $strictlyPublished = true, int|array $ids = null) : QueryBuilder {
 
         $qb = $this->createQueryBuilder('sv');

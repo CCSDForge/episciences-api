@@ -6,29 +6,20 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * PaperRatingGrid
- *
- * @ORM\Table(name="PAPER_RATING_GRID")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'PAPER_RATING_GRID')]
 class PaperRatingGrid
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="DOCID", type="integer", nullable=false)
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $docid;
+    #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    private int $docid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RGID", type="integer", nullable=false)
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $rgid;
+    #[ORM\Column(name: 'RGID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    private int $rgid;
 
     public function getDocid(): ?int
     {

@@ -28,24 +28,14 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 {
     use QueryTrait;
 
-    private Security $security;
-
-    public function __construct(Security $security)
+    public function __construct(private Security $security)
     {
-        $this->security = $security;
     }
 
     /**
-     * @param QueryBuilder $queryBuilder
-     * @param QueryNameGeneratorInterface $queryNameGenerator
-     * @param string $resourceClass
      * @param Operation|null $operation
-     * @param array $context
-     * @return void
      * @throws ResourceNotFoundException
      */
-
-
     public function applyToCollection(
         QueryBuilder                $queryBuilder,
         QueryNameGeneratorInterface $queryNameGenerator,
@@ -72,13 +62,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     }
 
     /**
-     * @param QueryBuilder $queryBuilder
-     * @param QueryNameGeneratorInterface $queryNameGenerator
-     * @param string $resourceClass
-     * @param array $identifiers
      * @param Operation|null $operation
-     * @param array $context
-     * @return void
      */
     public function applyToItem(
         QueryBuilder                $queryBuilder,
@@ -148,14 +132,6 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         }
     }
 
-    /**
-     * @param QueryBuilder $queryBuilder
-     * @param string $field
-     * @param string $resourceClass
-     * @param array $context
-     * @return QueryBuilder
-     */
-
     private function adnWherePublished(QueryBuilder $queryBuilder, string $field, string $resourceClass, array $context = []): QueryBuilder
     {
 
@@ -209,7 +185,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         $operation = $context['operation'] ?? null;
         $operationName = $operation?->getName();
 
-        if ($resourceClass === Paper::class || $resourceClass === Volume::class || $resourceClass === Section::class) {
+        if (in_array($resourceClass, [Paper::class, Volume::class, Section::class], true)) {
             if ($resourceClass === Paper::class) {
                 $allowBrowseAcceptedDocuments = isset($context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE]) && filter_var($context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE], FILTER_VALIDATE_BOOLEAN);
                 $isOnlyAccepted = isset($context['filters']['only_accepted']) && filter_var($context['filters']['only_accepted'], FILTER_VALIDATE_BOOLEAN);
@@ -311,8 +287,8 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 if (
                     $operation &&
                     (
-                        str_starts_with($operation->getUriTemplate(), Volume::DEFAULT_URI_TEMPLATE) ||
-                        str_starts_with($operation->getUriTemplate(), Section::DEFAULT_URI_TEMPLATE)
+                        str_starts_with((string) $operation->getUriTemplate(), Volume::DEFAULT_URI_TEMPLATE) ||
+                        str_starts_with((string) $operation->getUriTemplate(), Section::DEFAULT_URI_TEMPLATE)
                     )
                 ) {
 

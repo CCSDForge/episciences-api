@@ -46,7 +46,7 @@ class SolrFeedService extends AbstractSolrService
             return $this->processSolrFeed($responseArray, $format);
         } catch (JsonException|TransportExceptionInterface|ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface $e) {
             $this->logger->critical($e->getMessage());
-            throw new RuntimeException('Oops! Feed cannot be generated: An error occurred');
+            throw new RuntimeException('Oops! Feed cannot be generated: An error occurred', $e->getCode(), $e);
         }
     }
 

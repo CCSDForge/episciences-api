@@ -6,7 +6,7 @@ namespace App\DataProvider;
 
 
 use ApiPlatform\Metadata\Operation;
-Use ApiPlatform\State\ProviderInterface;
+use ApiPlatform\State\ProviderInterface;
 use App\AppConstants;
 use App\Entity\User;
 

@@ -14,6 +14,9 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 class FeedController extends AbstractController
 {
+    public function __construct()
+    {
+    }
     /**
      * @throws ResourceNotFoundException
      */

@@ -6,55 +6,38 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * News
- *
- * @ORM\Table(name="NEWS", indexes={@ORM\Index(name="RVID", columns={"RVID"})})
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'NEWS')]
+#[ORM\Index(columns: ['RVID'], name: 'RVID')]
 class LegacyNews
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="NEWSID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
-    private $newsid;
+    #[ORM\Column(name: 'NEWSID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
+    private int $newsid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $rvid;
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    private int $rvid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="UID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $uid;
+    #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    private int $uid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="LINK", type="string", length=2000, nullable=false)
-     */
-    private $link;
+    #[ORM\Column(name: 'LINK', type: \Doctrine\DBAL\Types\Types::STRING, length: 2000, nullable: false)]
+    private string $link;
 
-    /**
-     * @var bool
-     *
-     * @ORM\Column(name="ONLINE", type="boolean", nullable=false)
-     */
-    private $online;
+    #[ORM\Column(name: 'ONLINE', type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: false)]
+    private bool $online;
 
     /**
      * @var \DateTime
-     *
-     * @ORM\Column(name="DATE_POST", type="datetime", nullable=false, options={"default"="CURRENT_TIMESTAMP"})
      */
-    private $datePost = 'CURRENT_TIMESTAMP';
+    #[ORM\Column(name: 'DATE_POST', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
+    private \DateTimeInterface $datePost;
+    public function __construct()
+    {
+        $this->datePost = new \DateTime();
+    }
 
     public function getNewsid(): ?int
     {

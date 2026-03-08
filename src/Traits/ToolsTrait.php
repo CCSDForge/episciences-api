@@ -10,18 +10,16 @@ trait ToolsTrait
     public const MIN_YEAR = 1970;
 
     /**
-     * @param array $result
      * @param string|null $extractedKey
      * @param string|null $filter
-     * @return array
      */
     final public function applyFilterBy(array $result, string $extractedKey = null, string $filter = null): array
     {
         if (
-            empty($result) |
+            $result === [] ||
             !$extractedKey ||
-            isset($result[$extractedKey])
-            || !$filter
+            isset($result[$extractedKey]) ||
+            !$filter
         ) {
             return $result;
         }
@@ -49,9 +47,6 @@ trait ToolsTrait
 
     /**
      * Compare les deux tableaux + Calcule la différence entre eux
-     * @param array $tab1
-     * @param array $tab2
-     * @return array
      */
     final public function checkArrayEquality(array $tab1, array $tab2): array
     {
@@ -93,14 +88,12 @@ trait ToolsTrait
     }
     /**
      * @param $string
-     * @param string $separator
-     * @return bool
      */
     public static function isInUppercase($string, string $separator = '_'): bool
     {
 
         $latestSubString = '';
-        foreach (explode($separator, $string) as $str) {
+        foreach (explode($separator, (string) $string) as $str) {
 
             $latestSubString = $str;
 
@@ -117,7 +110,7 @@ trait ToolsTrait
     /** @throws LengthException */
     public function getMedian(array $array): int|float
     {
-        if (!$array) {
+        if ($array === []) {
             throw new LengthException('Cannot calculate median because Argument #1 ($array) is empty');
         }
 
@@ -145,30 +138,29 @@ trait ToolsTrait
 
     /**
      * Supprime à la fois les valeurs nulles et les valeurs vides
-     * @param array $array
-     * @return array
      */
-
     public function arrayCleaner(array $array = []): array
     {
-        return array_filter($array, static function($val) {
-            return !(empty($val));
-        });
+        return array_filter($array, static fn($val) => !(empty($val)));
     }
 
-    public function isValidYear( int|string|null $year = null) : bool
+    public function isValidYear(int|string|null $year = null): bool
     {
-        return preg_match('/^\d{4}$/', $year) === 1 && (int)$year >= self::MIN_YEAR;
+        if ($year === null) {
+            return false;
+        }
+        return preg_match('/^\d{4}$/', (string)$year) === 1 && (int)$year >= self::MIN_YEAR;
     }
 
     /**
      * valid if year = YYYY or  year = YYYY-YYYY
-     * @param int|string|null $year
-     * @return bool
      */
-
-    public function isValideVolumeYear(int|string|null $year = null) : bool {
-        return preg_match('/^(\d{4}|\d{4}-\d{4})$/', $year) === 1;
+    public function isValideVolumeYear(int|string|null $year = null): bool
+    {
+        if ($year === null) {
+            return false;
+        }
+        return preg_match('/^(\d{4}|\d{4}-\d{4})$/', (string)$year) === 1;
     }
 
 

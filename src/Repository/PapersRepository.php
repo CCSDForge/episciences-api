@@ -26,6 +26,7 @@ use Psr\Log\LoggerInterface;
  * @method Paper[]    findAll()
  * @method Paper[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\Paper>
  */
 class PapersRepository extends ServiceEntityRepository
 {
@@ -42,23 +43,15 @@ class PapersRepository extends ServiceEntityRepository
         'submitted' => 'submitted'
     ];
 
-    private LoggerInterface $logger;
-
-    public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
+    public function __construct(ManagerRegistry $registry, private LoggerInterface $logger)
     {
         parent::__construct($registry, Paper::class);
-        $this->logger = $logger;
     }
 
     /**
      * Submissions query
-     * @param array $filters
-     * @param bool $excludeTmpVersions
      * @param string $fieldDateToBeUsed (default = submissionDate): l'année prise en compte est l'année de la première soumission
-     * @param bool $excludeImportedPapers
      * @param string|null $flag
-     * @param bool $withoutObsolete
-     * @return QueryBuilder
      */
     public function submissionsQuery(array  $filters = [],
                                      bool   $excludeTmpVersions = false,
@@ -112,9 +105,6 @@ class PapersRepository extends ServiceEntityRepository
     /**
      * A previously submitted article that has been modified will be taken into account in the current submissions
      * @param array|null $filters
-     * @param bool $excludeTmpVersions
-     * @param bool $excludeImportedPapers
-     * @return QueryBuilder
      */
     public function flexibleSubmissionsQueryDetails(array $filters = null, bool $excludeTmpVersions = false, bool $excludeImportedPapers = false): QueryBuilder
     {
@@ -147,20 +137,13 @@ class PapersRepository extends ServiceEntityRepository
         $qb->addOrderBy('p.rvid', 'ASC');
         $qb->addOrderBy('p.status', 'DESC');
         $qb->groupBy('p.rvid');
-        $qb->groupBy('p.paperid');
-        $qb->groupBy('year');
+        $qb->addGroupBy('year');
         $qb->addGroupBy('p.repoid');
         $qb->addGroupBy('p.status');
 
         return $qb;
     }
 
-    /**
-     * @param QueryBuilder $qb
-     * @param array $filters
-     * @param string $date
-     * @return QueryBuilder
-     */
     private function addQueryFilters(QueryBuilder $qb, array $filters, string $date = 'submissionDate'): QueryBuilder
     {
         if (empty($filters['is'])) {
@@ -232,9 +215,7 @@ class PapersRepository extends ServiceEntityRepository
 
         }
 
-        return array_filter($years, static function ($value) {
-            return $value >= Stats::REF_YEAR;
-        });
+        return array_filter($years, static fn($value) => $value >= Stats::REF_YEAR);
 
 
     }
@@ -266,14 +247,9 @@ class PapersRepository extends ServiceEntityRepository
     }
 
     /**
-     * @param string $resourceClass
-     * @param int $status
      * @param int|array|null $identifiers
      * @param int|null $rvId
-     * @return QueryBuilder
      */
-
-
     public function getTotalArticlesBySectionOrVolumeQuery(
         string    $resourceClass = Section::class,
         int       $status = Paper::STATUS_PUBLISHED,
@@ -282,7 +258,7 @@ class PapersRepository extends ServiceEntityRepository
     ): QueryBuilder
     {
 
-        $withoutIdentifier = empty($identifiers);
+        $withoutIdentifier = in_array($identifiers, [0, [], null], true);
 
         $tableId = 'sid'; // section id
 
@@ -344,7 +320,7 @@ class PapersRepository extends ServiceEntityRepository
 
         $resultQuery = $this->getTotalArticlesBySectionOrVolumeQuery($resourceClass, $status, $identifiers, $rvId)->getQuery();
 
-        if (!empty($identifiers || $rvId)) {
+        if ($identifiers || $rvId) {
             try {
                 return [self::TOTAL_ARTICLE => $resultQuery->getSingleScalarResult()];
             } catch (NoResultException|NonUniqueResultException $e) {
@@ -383,7 +359,7 @@ class PapersRepository extends ServiceEntityRepository
         $result = array_values($qb->getQuery()->getArrayResult());
 
         foreach ($result as $type) {
-            $type = strtolower($type['type']);
+            $type = strtolower((string) $type['type']);
             if (!in_array($type, $types, true)) {
                 $types[] = $type;
             }
@@ -416,13 +392,13 @@ class PapersRepository extends ServiceEntityRepository
 
         foreach ($filters as $key => $value) {
 
-            if ($key !== 'rvid' && $key !== 'sid' && $key !== 'vid') {
+            if (!in_array($key, ['rvid', 'sid', 'vid'], true)) {
                 continue;
             }
 
             $value = (int)$value;
 
-            if ($value) {
+            if ($value !== 0) {
                 if ($key === 'rvid') {
                     $qb->andWhere('p.rvid = :rvId');
                     $qb->setParameter('rvId', $value);
@@ -458,10 +434,7 @@ class PapersRepository extends ServiceEntityRepository
     /**
      * Generates a range of years between the date of first submission and the date of last publication.
      * @param int|null $rvId
-     * @param string $flag
-     * @return array
      */
-
     public function getYearRange(int $rvId = null, string $flag = 'submitted'): array
     {
 
@@ -479,6 +452,10 @@ class PapersRepository extends ServiceEntityRepository
 
         $result = $qb->getQuery()->getResult();
 
+        if (empty($result) || $result[0]['minYear'] === null || $result[0]['maxYear'] === null) {
+            return [];
+        }
+
         foreach (range($result[0]['minYear'], $result[0]['maxYear']) as $value) {
 
             if ($value < Stats::REF_YEAR) {
@@ -494,13 +471,9 @@ class PapersRepository extends ServiceEntityRepository
     }
 
     /**
-     * @param int $docId
      * @param int|null $rvId
-     * @param string $path
      * @param bool $strict : only published
-     * @return string|null
      */
-
     public function paperToJson(int $docId, int $rvId = null, string $path = 'all', bool $strict = true): ?string
     {
         $toJson = null;
@@ -513,15 +486,22 @@ class PapersRepository extends ServiceEntityRepository
             $qb->select(sprintf("JSON_UNQUOTE(JSON_EXTRACT(p.document, '$.%s')) AS toJson", $path));
         }
 
-        $qb->andWhere('p.docid = :docId')->setParameter('docId', $docId);
+        if ($strict) {
+            $qb->andWhere(
+                $qb->expr()->orX(
+                    $qb->expr()->eq('p.docid', ':docId'),
+                    $qb->expr()->eq('p.paperid', ':docId')
+                )
+            )
+            ->andWhere('p.status = :status')
+            ->setParameter('docId', $docId)
+            ->setParameter('status', Paper::STATUS_PUBLISHED);
+        } else {
+            $qb->andWhere('p.docid = :docId')->setParameter('docId', $docId);
+        }
 
         if ($rvId) {
             $qb->andWhere('p.rvid = :rvId')->setParameter('rvId', $rvId);
-        }
-
-        if ($strict) {
-            $qb->orWhere('p.paperid = :paperId')->setParameter('paperId', $docId);
-            $qb->andWhere('p.status = :status')->setParameter('status', Paper::STATUS_PUBLISHED);
         }
 
         try {
@@ -557,12 +537,6 @@ class PapersRepository extends ServiceEntityRepository
             $this->createQueryBuilder($alias)
                 ->select(sprintf('partial %s.{%s}', $alias, $partialStr));
     }
-
-    /**
-     * @param int $docId
-     * @return Paper|null
-     */
-
 
     public function fetchPartialByDocId(int $docId): ?Paper
     {

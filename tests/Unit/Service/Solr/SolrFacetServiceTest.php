@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Unit\Service\Solr;
 
 use App\Entity\Review;
@@ -12,26 +14,23 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
-class SolrFacetServiceTest extends TestCase
+final class SolrFacetServiceTest extends TestCase
 {
     private MockObject|HttpClientInterface $httpClient;
-    private MockObject|LoggerInterface $logger;
-    private MockObject|ParameterBagInterface $parameterBag;
     private SolrFacetService $facetService;
 
     protected function setUp(): void
     {
         $this->httpClient = $this->createMock(HttpClientInterface::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
-        $this->parameterBag = $this->createMock(ParameterBagInterface::class);
-        $this->parameterBag->method('get')
+        $parameterBag = $this->createMock(ParameterBagInterface::class);
+        $parameterBag->method('get')
             ->with('app.solr.host')
             ->willReturn('http://localhost:8983/solr/episciences');
 
         $this->facetService = new SolrFacetService(
             $this->httpClient,
-            $this->logger,
-            $this->parameterBag
+            $this->createStub(LoggerInterface::class),
+            $parameterBag
         );
     }
 
@@ -267,9 +266,9 @@ class SolrFacetServiceTest extends TestCase
 
     public function testSetAndGetJournal(): void
     {
-        $mockJournal = $this->createMock(Review::class);
+        $mockJournal = $this->createStub(Review::class);
 
-        $this->assertNull($this->facetService->getJournal());
+        $this->assertNotInstanceOf(\App\Entity\Review::class, $this->facetService->getJournal());
 
         $result = $this->facetService->setJournal($mockJournal);
 

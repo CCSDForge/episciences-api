@@ -11,8 +11,8 @@ use Doctrine\Persistence\ManagerRegistry;
  * @method Review|null findOneBy(array $criteria, array $orderBy = null)
  * @method Review[]    findAll()
  * @method Review[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\Review>
  */
-
 class ReviewRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
@@ -24,7 +24,6 @@ class ReviewRepository extends ServiceEntityRepository
     /**
      * @param string|int|null $identifier
      * @param bool $strict [true: only enabled journals]
-     * @return Review|null
      */
     public function getJournalByIdentifier(string|int $identifier = null, bool $strict = true): ?Review
     {

@@ -1,14 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Unit\Service;
 
+use App\Entity\Review;
 use App\Service\Export;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-class ExportServiceTest extends TestCase
+final class ExportServiceTest extends TestCase
 {
     private Export $exportService;
     private ParameterBagInterface $parameterBag;
@@ -117,7 +120,7 @@ class ExportServiceTest extends TestCase
             'tei', 'dc', 'crossref', 'zbjats', 'doaj', 'bibtex', 'csl', 'openaire', 'json'
         ];
 
-        $this->assertEquals($expectedFormats, Export::AVAILABLE_FORMATS);
+        $this->assertSame(Export::AVAILABLE_FORMATS, $expectedFormats);
     }
 
     public function testHeadersFormatsConstant(): void
@@ -134,25 +137,25 @@ class ExportServiceTest extends TestCase
             'json' => 'application/json'
         ];
 
-        $this->assertEquals($expectedHeaders, Export::HEADERS_FORMATS);
+        $this->assertSame(Export::HEADERS_FORMATS, $expectedHeaders);
     }
 
     public function testSolrCslPrefix(): void
     {
-        $this->assertEquals('doc_', Export::SOLR_CSL_PREFIX);
+        $this->assertSame('doc_', Export::SOLR_CSL_PREFIX);
     }
 
     public function testFormatConstants(): void
     {
-        $this->assertEquals('tei', Export::TEI_FORMAT);
-        $this->assertEquals('dc', Export::DC_FORMAT);
-        $this->assertEquals('crossref', Export::CROSSREF_FORMAT);
-        $this->assertEquals('zbjats', Export::ZBJATS_FORMAT);
-        $this->assertEquals('doaj', Export::DOAJ_FORMAT);
-        $this->assertEquals('bibtex', Export::BIBTEX_FORMAT);
-        $this->assertEquals('csl', Export::CSL_FORMAT);
-        $this->assertEquals('openaire', Export::OPENAIRE_FORMAT);
-        $this->assertEquals('json', Export::JSON_FORMAT);
+        $this->assertSame('tei', Export::TEI_FORMAT);
+        $this->assertSame('dc', Export::DC_FORMAT);
+        $this->assertSame('crossref', Export::CROSSREF_FORMAT);
+        $this->assertSame('zbjats', Export::ZBJATS_FORMAT);
+        $this->assertSame('doaj', Export::DOAJ_FORMAT);
+        $this->assertSame('bibtex', Export::BIBTEX_FORMAT);
+        $this->assertSame('csl', Export::CSL_FORMAT);
+        $this->assertSame('openaire', Export::OPENAIRE_FORMAT);
+        $this->assertSame('json', Export::JSON_FORMAT);
     }
 
     public function testExportToFormatQueryUrlEncoding(): void
@@ -166,5 +169,38 @@ class ExportServiceTest extends TestCase
 
         // The URL should be properly constructed even with spaces in the host
         $this->assertStringContainsString('http://localhost:8983/solr/special core/select/?', $query);
+    }
+
+    // ── exportToFormatQuery with journal (fq=revue_code_t: branch) ────────────
+
+    public function testExportToFormatQueryAppendsFqWhenJournalIsSet(): void
+    {
+        $journal = $this->createStub(Review::class);
+        $journal->method('getCode')->willReturn('testcode');
+
+        $exportWithJournal = $this->getMockBuilder(Export::class)
+            ->setConstructorArgs([
+                $this->createStub(HttpClientInterface::class),
+                $this->createStub(LoggerInterface::class),
+                $this->parameterBag,
+            ])
+            ->onlyMethods(['getJournal'])
+            ->getMock();
+
+        $exportWithJournal->method('getJournal')->willReturn($journal);
+        $this->parameterBag->method('get')->willReturn('http://localhost:8983/solr/core');
+
+        $query = $exportWithJournal->exportToFormatQuery(42, Export::CSL_FORMAT);
+
+        $this->assertStringContainsString('fq=revue_code_t:testcode', $query);
+    }
+
+    public function testExportToFormatQueryDoesNotAppendFqWhenJournalIsNull(): void
+    {
+        $this->parameterBag->method('get')->willReturn('http://localhost:8983/solr/core');
+
+        $query = $this->exportService->exportToFormatQuery(42, Export::CSL_FORMAT);
+
+        $this->assertStringNotContainsString('fq=revue_code_t:', $query);
     }
 }

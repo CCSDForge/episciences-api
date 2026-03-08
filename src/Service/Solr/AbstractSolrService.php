@@ -44,7 +44,7 @@ abstract class AbstractSolrService
         $queryString = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 
         foreach ($filters as $filter) {
-            $queryString .= '&fq=' . urlencode($filter);
+            $queryString .= '&fq=' . urlencode((string) $filter);
         }
 
         return $baseUrl . '?' . $queryString;
@@ -52,7 +52,7 @@ abstract class AbstractSolrService
 
     protected function getJournalFilter(): array
     {
-        if ($this->journal === null) {
+        if (!$this->journal instanceof \App\Entity\Review) {
             return [];
         }
 

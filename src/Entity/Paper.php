@@ -275,7 +275,7 @@ class Paper implements UserOwnedInterface
         AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
     ];
 
-    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     //#[ApiProperty(security: "is_granted('papers_manage', object)")]
@@ -287,39 +287,39 @@ class Paper implements UserOwnedInterface
     private int $docid;
 
 
-    #[ORM\Column(name: 'PAPERID', type: 'integer', nullable: true, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'PAPERID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true, options: ['unsigned' => true])]
     #[groups(self::PAPERS_GROUPS)]
-    private ?int $paperid;
+    private ?int $paperid = null;
 
-    #[ORM\Column(name: 'TYPE', type: 'json', nullable: true)]
+    #[ORM\Column(name: 'TYPE', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     private array $type;
 
-    #[ORM\Column(name: 'DOI', type: 'string', length: 250, nullable: true)]
+    #[ORM\Column(name: 'DOI', type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: true)]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
-    private ?string $doi;
+    private ?string $doi = null;
 
 
-    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private int $rvid;
 
 
-    #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'VID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private int $vid = 0;
 
 
-    #[ORM\Column(name: 'SID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'SID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private int $sid = 0;
 
 
-    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private int $uid;
 
 
-    #[ORM\Column(name: 'STATUS', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'STATUS', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     /** /!\
      * Le Chargement Partiel des Données : Lorsque `fetch_partial: true` est activé
      * (généralement dans la configuration de l'eager loading d'API Platform, par exemple, en fonction des groupes de sérialisation),
@@ -340,21 +340,21 @@ class Paper implements UserOwnedInterface
     private int $status = 0;
 
 
-    #[ORM\Column(name: 'IDENTIFIER', type: 'string', length: 500, nullable: false)]
+    #[ORM\Column(name: 'IDENTIFIER', type: \Doctrine\DBAL\Types\Types::STRING, length: 500, nullable: false)]
     private string $identifier;
 
 
-    #[ORM\Column(name: 'VERSION', type: 'float', precision: 10, scale: 0, nullable: false, options: ['default' => 1])]
-    private $version = 1;
+    #[ORM\Column(name: 'VERSION', type: \Doctrine\DBAL\Types\Types::FLOAT, precision: 10, scale: 0, nullable: false, options: ['default' => 1])]
+    private float $version = 1;
 
 
-    #[ORM\Column(name: 'REPOID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'REPOID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private int $repoid;
 
 
-    #[ORM\Column(name: 'RECORD', type: 'text', length: 65535, nullable: false)]
+    #[ORM\Column(name: 'RECORD', type: \Doctrine\DBAL\Types\Types::TEXT, length: 65535, nullable: false)]
     private string $record;
-    #[ORM\Column(name: 'DOCUMENT', type: 'json', nullable: false)]
+    #[ORM\Column(name: 'DOCUMENT', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     //#[groups(self::PAPERS_GROUPS)]
 
     #[groups(
@@ -363,32 +363,32 @@ class Paper implements UserOwnedInterface
         ]
     )]
     private array $document;
-    #[ORM\Column(name: 'CONCEPT_IDENTIFIER', type: 'string', length: 500, nullable: true, options: ['comment' => 'This identifier represents all versions'])]
-    private ?string $conceptIdentifier;
+    #[ORM\Column(name: 'CONCEPT_IDENTIFIER', type: \Doctrine\DBAL\Types\Types::STRING, length: 500, nullable: true, options: ['comment' => 'This identifier represents all versions'])]
+    private ?string $conceptIdentifier = null;
 
-    #[ORM\Column(name: 'FLAG', type: 'string', length: 0, nullable: false, options: ['default' => 'submitted'])]
+    #[ORM\Column(name: 'FLAG', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false, options: ['default' => 'submitted'])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private string $flag = 'submitted';
 
 
-    #[ORM\Column(name: 'WHEN', type: 'datetime', nullable: false)]
+    #[ORM\Column(name: 'WHEN', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $when;
 
 
-    #[ORM\Column(name: 'SUBMISSION_DATE', type: 'datetime', nullable: false)]
+    #[ORM\Column(name: 'SUBMISSION_DATE', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTime $submissionDate;
 
 
-    #[ORM\Column(name: 'MODIFICATION_DATE', type: 'datetime', nullable: true)]
+    #[ORM\Column(name: 'MODIFICATION_DATE', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true)]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
-    private ?DateTime $modificationDate;
+    private ?DateTime $modificationDate = null;
 
 
-    #[ORM\Column(name: 'PUBLICATION_DATE', type: 'datetime', nullable: true)]
+    #[ORM\Column(name: 'PUBLICATION_DATE', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true)]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
-    private ?DateTime $publicationDate;
+    private ?DateTime $publicationDate = null;
 
 
     #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'papers')]
@@ -477,20 +477,12 @@ class Paper implements UserOwnedInterface
         return $this->paperid;
     }
 
-    /**
-     * @param VolumePaperPosition|null $volumePaperPosition
-     * @return Paper
-     */
     public function setVolumePaperPosition(?VolumePaperPosition $volumePaperPosition): self
     {
         $this->volumePaperPosition = $volumePaperPosition;
         return $this;
     }
 
-    /**
-     * @param int $docid
-     * @return Paper
-     */
     public function setDocid(int $docid): self
     {
         $this->docid = $docid;
@@ -710,18 +702,11 @@ class Paper implements UserOwnedInterface
         return $this;
     }
 
-    /**
-     * @return string
-     */
     public function getFlag(): string
     {
         return $this->flag;
     }
 
-    /**
-     * @param string $flag
-     * @return Paper
-     */
     public function setFlag(string $flag): Paper
     {
         $this->flag = $flag;
@@ -780,23 +765,16 @@ class Paper implements UserOwnedInterface
         return $this;
     }
 
-    /**
-     * @return array
-     */
     public function getEditors(): array
     {
 
-        if (empty($this->editors)) {
+        if ($this->editors === []) {
             $this->assignmentsProcess();
         }
 
         return $this->editors;
     }
 
-    /**
-     * @param array $editors
-     * @return Paper
-     */
     public function setEditors(array $editors): self
     {
 
@@ -804,22 +782,15 @@ class Paper implements UserOwnedInterface
         return $this;
     }
 
-    /**
-     * @return array
-     */
     public function getReviewers(): array
     {
-        if (empty($this->reviewers)) {
+        if ($this->reviewers === []) {
             $this->assignmentsProcess();
         }
 
         return $this->reviewers;
     }
 
-    /**
-     * @param array $reviewers
-     * @return Paper
-     */
     public function setReviewers(array $reviewers): self
     {
         $this->reviewers = $reviewers;
@@ -859,44 +830,30 @@ class Paper implements UserOwnedInterface
             ->setCoAuthors($coAuthors);
     }
 
-    /**
-     * @return array
-     */
     public function getCopyEditors(): array
     {
-        if (empty($this->copyEditors)) {
+        if ($this->copyEditors === []) {
             $this->assignmentsProcess();
         }
 
         return $this->copyEditors;
     }
 
-    /**
-     * @param array $copyEditors
-     * @return Paper
-     */
     public function setCopyEditors(array $copyEditors): self
     {
         $this->copyEditors = $copyEditors;
         return $this;
     }
 
-    /**
-     * @return array
-     */
     public function getCoAuthors(): array
     {
-        if (empty($this->coAuthors)) {
+        if ($this->coAuthors === []) {
             $this->assignmentsProcess();
         }
 
         return $this->coAuthors;
     }
 
-    /**
-     * @param array $coAuthors
-     * @return Paper
-     */
     public function setCoAuthors(array $coAuthors): self
     {
         $this->coAuthors = $coAuthors;
@@ -947,7 +904,7 @@ class Paper implements UserOwnedInterface
             }
         }
 
-        if (!empty($conflicts)) {
+        if ($conflicts !== []) {
             $this->conflicts = new ArrayCollection($conflicts);
         }
 
@@ -1003,7 +960,7 @@ class Paper implements UserOwnedInterface
     {
         try {
             return $this->volumePaperPosition?->getPosition();
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             return null;
         }
     }
@@ -1015,7 +972,7 @@ class Paper implements UserOwnedInterface
 
     public function isAccepted(): bool
     {
-        return $this->getStatus() === self::STATUS_ACCEPTED;
+        return in_array($this->getStatus(), self::STATUS_ACCEPTED, true);
     }
 
     public function isStrictlyAccepted(): bool

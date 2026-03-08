@@ -17,34 +17,34 @@ class UserInvitation
 {
     public const TABLE = 'USER_INVITATION';
 
-    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $id;
+    private int $id;
 
     #[ORM\Column(
-        name: 'AID', type: 'integer', nullable: false, options: ['unsigned' => true, 'comment' => 'Assignment ID']
+        name: 'AID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true, 'comment' => 'Assignment ID']
     )]
-    private $aid;
+    private int $aid;
 
-    #[ORM\Column(name: 'STATUS', type: 'string', length: 50, nullable: false, options: ['default' => 'pending'])]
-    private $status = 'pending';
-
-
-    #[ORM\Column(name: 'TOKEN', type: 'string', length: 40, nullable: true)]
-    private $token;
+    #[ORM\Column(name: 'STATUS', type: \Doctrine\DBAL\Types\Types::STRING, length: 50, nullable: false, options: ['default' => 'pending'])]
+    private string $status = 'pending';
 
 
-    #[ORM\Column(name: 'SENDER_UID', type: 'integer', nullable: true, options: ['unsigned' => true])]
-    private $senderUid;
+    #[ORM\Column(name: 'TOKEN', type: \Doctrine\DBAL\Types\Types::STRING, length: 40, nullable: true)]
+    private ?string $token = null;
 
 
-    #[ORM\Column(name: 'SENDING_DATE', type: 'datetime', nullable: false)]
-    private $sendingDate;
+    #[ORM\Column(name: 'SENDER_UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true, options: ['unsigned' => true])]
+    private ?int $senderUid = null;
 
 
-    #[ORM\Column(name: 'EXPIRATION_DATE', type: 'datetime', nullable: false)]
-    private $expirationDate;
+    #[ORM\Column(name: 'SENDING_DATE', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
+    private \DateTimeInterface $sendingDate;
+
+
+    #[ORM\Column(name: 'EXPIRATION_DATE', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
+    private \DateTimeInterface $expirationDate;
 
     public function getId(): ?int
     {

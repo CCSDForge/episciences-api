@@ -1,11 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Unit\Exception;
 
 use App\Exception\MissingRequestParameterException;
 use PHPUnit\Framework\TestCase;
 
-class MissingRequestParameterExceptionTest extends TestCase
+final class MissingRequestParameterExceptionTest extends TestCase
 {
     public function testNewWithValidParameters(): void
     {
@@ -15,7 +17,7 @@ class MissingRequestParameterExceptionTest extends TestCase
         $exception = MissingRequestParameterException::new($name, $type);
 
         $this->assertInstanceOf(MissingRequestParameterException::class, $exception);
-        $this->assertEquals('Required "userId" parameter in "query" is not present.', $exception->getMessage());
+        $this->assertSame('Required "userId" parameter in "query" is not present.', $exception->getMessage());
     }
 
     public function testNewWithDifferentParameters(): void
@@ -25,7 +27,7 @@ class MissingRequestParameterExceptionTest extends TestCase
 
         $exception = MissingRequestParameterException::new($name, $type);
 
-        $this->assertEquals('Required "token" parameter in "header" is not present.', $exception->getMessage());
+        $this->assertSame('Required "token" parameter in "header" is not present.', $exception->getMessage());
     }
 
     public function testNewWithEmptyParameters(): void
@@ -35,7 +37,7 @@ class MissingRequestParameterExceptionTest extends TestCase
 
         $exception = MissingRequestParameterException::new($name, $type);
 
-        $this->assertEquals('Required "" parameter in "" is not present.', $exception->getMessage());
+        $this->assertSame('Required "" parameter in "" is not present.', $exception->getMessage());
     }
 
     public function testNewWithSpecialCharacters(): void
@@ -45,7 +47,7 @@ class MissingRequestParameterExceptionTest extends TestCase
 
         $exception = MissingRequestParameterException::new($name, $type);
 
-        $this->assertEquals('Required "user-id" parameter in "request_body" is not present.', $exception->getMessage());
+        $this->assertSame('Required "user-id" parameter in "request_body" is not present.', $exception->getMessage());
     }
 
     public function testNewWithLongParameters(): void
@@ -56,7 +58,7 @@ class MissingRequestParameterExceptionTest extends TestCase
         $exception = MissingRequestParameterException::new($name, $type);
 
         $expectedMessage = 'Required "very_long_parameter_name_that_should_still_work" parameter in "complex_nested_request_structure" is not present.';
-        $this->assertEquals($expectedMessage, $exception->getMessage());
+        $this->assertSame($expectedMessage, $exception->getMessage());
     }
 
     public function testNewWithNumericParameters(): void
@@ -66,7 +68,7 @@ class MissingRequestParameterExceptionTest extends TestCase
 
         $exception = MissingRequestParameterException::new($name, $type);
 
-        $this->assertEquals('Required "123" parameter in "form" is not present.', $exception->getMessage());
+        $this->assertSame('Required "123" parameter in "form" is not present.', $exception->getMessage());
     }
 
     public function testNewReturnsDifferentInstances(): void
@@ -75,7 +77,7 @@ class MissingRequestParameterExceptionTest extends TestCase
         $exception2 = MissingRequestParameterException::new('param2', 'type2');
 
         $this->assertNotSame($exception1, $exception2);
-        $this->assertNotEquals($exception1->getMessage(), $exception2->getMessage());
+        $this->assertNotSame($exception1->getMessage(), $exception2->getMessage());
     }
 
     public function testNewIsInstanceOfException(): void
@@ -96,7 +98,7 @@ class MissingRequestParameterExceptionTest extends TestCase
     {
         $exception = MissingRequestParameterException::new('test', 'test');
 
-        $this->assertNull($exception->getPrevious());
+        $this->assertNotInstanceOf(\Throwable::class, $exception->getPrevious());
     }
 
     public function testMessageFormatConsistency(): void

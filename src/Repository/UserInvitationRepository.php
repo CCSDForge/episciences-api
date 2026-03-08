@@ -10,6 +10,9 @@ use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
+/**
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\UserInvitation>
+ */
 class UserInvitationRepository extends ServiceEntityRepository
 {
     use QueryTrait;
@@ -40,7 +43,6 @@ class UserInvitationRepository extends ServiceEntityRepository
         }
 
         $qb->from(UserInvitation::class, 'i');
-        $qb->innerJoin(UserInvitation::class, 'ii', Join::WITH, 'i.sendingDate = ii.sendingDate');
         $qb->innerJoin(UserAssignment::class, 'ua', Join::WITH, 'ua.invitationId = i.id');
         $qb->andWhere('ua.item =:item')->setParameter('item', UserAssignment::ITEM_PAPER);
         $qb->andWhere('ua.roleid =:role')->setParameter('role', UserAssignment::ROLE_REVIEWER);

@@ -32,22 +32,26 @@ class BoardsController extends AbstractController
         USER::ROLE_COPY_EDITOR,
         USER::ROLE_WEBMASTER
     ];
+    public function __construct(private readonly \Psr\Log\LoggerInterface $logger)
+    {
+    }
 
     /**
      * @throws ResourceNotFoundException
      */
-    public function __invoke(EntityManagerInterface $entityManager, LoggerInterface $logger, Request $request = null): ArrayPaginator
+    public function __invoke(EntityManagerInterface $entityManager, Request $request = null): ArrayPaginator
     {
         $boards = [];
         $pagination = true;
         $page = 1;
         $maxResults = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
         $firstResult = 0;
+        $itemsPerPage = 30;
 
-        if ($request !== null) {
+        if ($request instanceof \Symfony\Component\HttpFoundation\Request) {
             $tags = [];
-            $page = !$request->query->has('pagination') ? 1 : (int)$request->query->get('page');
-            $itemsPerPage = !$request->query->has('pagination') ? 30 : (int)$request->query->get('itemsPerPage');
+            $page = $request->query->getInt('page', 1);
+            $itemsPerPage = $request->query->getInt('itemsPerPage', 30);
             $pagination = !$request->query->has('pagination') || $request->query->get('pagination');
 
             $rolesByUid = [];
@@ -86,7 +90,7 @@ class BoardsController extends AbstractController
                 foreach ($result1 as $current1) {
 
                     if (!$current1['user']) {
-                        $logger->info(sprintf('empty user [UID = %s', $current1['uid']), [
+                        $this->logger->info(sprintf('empty user [UID = %s', $current1['uid']), [
                             'cause' => sprintf("L'identifiant a probablement été supprimé da la table %s, mais il est toujours présent dans la table %s", User::TABLE, UserRoles::TABLE),
                         ]);
 
@@ -108,7 +112,7 @@ class BoardsController extends AbstractController
                     $assignedSections = $sectionRepo->getAssignedSection($journal->getRvid(), $boardIdentifies);
                 } catch (Exception|\JsonException  $e) {
                     $assignedSections = [];
-                    $logger->critical($e->getMessage());
+                    $this->logger->critical($e->getMessage());
 
                 }
 

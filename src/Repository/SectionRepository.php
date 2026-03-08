@@ -25,9 +25,6 @@ class SectionRepository extends ServiceEntityRepository
 
 
     /**
-     * @param int $rvId
-     * @param int|array $uid
-     * @return array
      * @throws \Doctrine\DBAL\Exception
      * @throws \JsonException
      */
@@ -35,10 +32,15 @@ class SectionRepository extends ServiceEntityRepository
     {
         $sections = [];
 
+        if (!is_array($uid)) {
+            $uid = (array)$uid;
+        }
+
+        $params = array_merge([$rvId], $uid, [$rvId], $uid);
+
         $result = $this->getEntityManager()
             ->getConnection()
-            ->prepare($this->assignedSectionsQuery($rvId, $uid))
-            ->executeQuery()
+            ->executeQuery($this->assignedSectionsQuery($uid), $params)
             ->fetchAllAssociative();
 
         foreach ($result as $values) {
@@ -48,8 +50,8 @@ class SectionRepository extends ServiceEntityRepository
             }
 
             $section = new Section();
-            $titles = $values['titles'] ? json_decode($values['titles'], true, 512, JSON_THROW_ON_ERROR) : null;
-            $descriptions = $values['descriptions'] ? json_decode($values['descriptions'], true, 512, JSON_THROW_ON_ERROR) : null;
+            $titles = $values['titles'] ? json_decode((string) $values['titles'], true, 512, JSON_THROW_ON_ERROR) : null;
+            $descriptions = $values['descriptions'] ? json_decode((string) $values['descriptions'], true, 512, JSON_THROW_ON_ERROR) : null;
             $sections[$values['UID']][] = $section
                 ->setSid($values['SID'])
                 ->setRvid($values['RVID'])
@@ -60,14 +62,17 @@ class SectionRepository extends ServiceEntityRepository
         return $sections;
     }
 
-    public function assignedSectionsQuery(int $rvId, int|array $uid = null): string
+    /**
+     * Returns a parameterized SQL query for assigned sections.
+     * Callers must supply [$rvId, ...$uid, $rvId, ...$uid] as bound parameters.
+     */
+    public function assignedSectionsQuery(int|array $uid = []): string
     {
-
         if (!is_array($uid)) {
             $uid = (array)$uid;
         }
 
-        $implodedUids = implode(',', $uid);
+        $placeholders = implode(',', array_fill(0, count($uid), '?'));
 
         return "
         SELECT DISTINCT(ua.UID), ua.RVID, sc.SID,sc.titles, sc.descriptions, sc.POSITION
@@ -76,38 +81,36 @@ class SectionRepository extends ServiceEntityRepository
         SELECT ITEMID, MAX(`WHEN`) AS max_when
         FROM
         USER_ASSIGNMENT
-        WHERE RVID = {$rvId} AND ITEM = 'section' AND ROLEID = 'editor' AND UID IN({$implodedUids})
+        WHERE RVID = ? AND ITEM = 'section' AND ROLEID = 'editor' AND UID IN($placeholders)
         GROUP BY ITEMID, UID) AS r1
         ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.max_when
         LEFT JOIN SECTION AS sc
         ON
         sc.RVID = ua.RVID AND sc.SID = ua.ITEMID
-        WHERE ua.RVID = {$rvId} AND ua.ITEM = 'section' AND ua.ROLEID = 'editor' AND ua.STATUS = 'active' AND ua.UID IN({$implodedUids})
+        WHERE ua.RVID = ? AND ua.ITEM = 'section' AND ua.ROLEID = 'editor' AND ua.STATUS = 'active' AND ua.UID IN($placeholders)
         ORDER BY sc.POSITION ASC;
         ";
     }
 
 
-    public function getCommitteeQuery(int $rvId, int $sid): string
+    /**
+     * Returns a parameterized SQL query for section committee members.
+     * Callers must supply [$rvId, $sid, $rvId, $sid] as bound parameters.
+     */
+    public function getCommitteeQuery(): string
     {
-        return "SELECT uuid, CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid` FROM ( SELECT UID, SID, `WHEN` FROM ( SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua` INNER JOIN( SELECT `USER_ASSIGNMENT`.`ITEMID`, MAX(`WHEN`) AS `WHEN`, ITEMID as sid FROM `USER_ASSIGNMENT` WHERE (RVID = $rvId) AND (`USER_ASSIGNMENT`.`ITEMID` = $sid) AND(ITEM = 'section') AND(ROLEID = 'editor') GROUP BY `ITEMID`, UID ) AS `r1` ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.`WHEN` WHERE (RVID = $rvId) AND (ua.ITEMID = $sid) AND (ITEM = 'section') AND(ROLEID = 'editor') AND( STATUS = 'active' ) ) AS `r2` INNER JOIN SECTION AS s ON s.RVID = r2.RVID AND s.SID = r2.ITEMID) AS `result` INNER JOIN USER AS `u` ON result.UID = u.UID  GROUP BY SID, uuid, u.CIV, u.SCREEN_NAME, u.ORCID, u.LASTNAME ORDER BY u.LASTNAME ASC;";
+        return "SELECT uuid, CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid` FROM ( SELECT UID, SID, `WHEN` FROM ( SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua` INNER JOIN( SELECT `USER_ASSIGNMENT`.`ITEMID`, MAX(`WHEN`) AS `WHEN`, ITEMID as sid FROM `USER_ASSIGNMENT` WHERE (RVID = ?) AND (`USER_ASSIGNMENT`.`ITEMID` = ?) AND(ITEM = 'section') AND(ROLEID = 'editor') GROUP BY `ITEMID`, UID ) AS `r1` ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.`WHEN` WHERE (RVID = ?) AND (ua.ITEMID = ?) AND (ITEM = 'section') AND(ROLEID = 'editor') AND( STATUS = 'active' ) ) AS `r2` INNER JOIN SECTION AS s ON s.RVID = r2.RVID AND s.SID = r2.ITEMID) AS `result` INNER JOIN USER AS `u` ON result.UID = u.UID  GROUP BY SID, uuid, u.CIV, u.SCREEN_NAME, u.ORCID, u.LASTNAME ORDER BY u.LASTNAME ASC;";
     }
 
 
+    /**
+     * @throws Exception
+     */
     public function getCommittee(int $rvId, int $sid): array
     {
-        try {
-            $result = $this->getEntityManager()
-                ->getConnection()
-                ->prepare($this->getCommitteeQuery($rvId, $sid))
-                ->executeQuery()
-                ->fetchAllAssociative();
-        } catch (Exception $e) {
-            trigger_error($e->getMessage());
-            return [];
-        }
-
-        return $result;
-
+        return $this->getEntityManager()
+            ->getConnection()
+            ->executeQuery($this->getCommitteeQuery(), [$rvId, $sid, $rvId, $sid])
+            ->fetchAllAssociative();
     }
 }

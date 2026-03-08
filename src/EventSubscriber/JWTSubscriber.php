@@ -13,19 +13,11 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 class JWTSubscriber implements EventSubscriberInterface
 {
 
-    private RequestStack $requestStack;
-    private ManagerRegistry $doctrine;
-
-
-    public function __construct(RequestStack $requestStack, ManagerRegistry $doctrine)
+    public function __construct(private readonly RequestStack $requestStack, private readonly ManagerRegistry $doctrine)
     {
-        $this->requestStack = $requestStack;
-        $this->doctrine = $doctrine;
     }
 
     /**
-     * @param JWTCreatedEvent $event
-     * @return void
      * @throws \JsonException
      */
     public function onLexikJwtAuthenticationOnJwtCreated(JWTCreatedEvent $event): void
@@ -38,7 +30,7 @@ class JWTSubscriber implements EventSubscriberInterface
 
         $request = $this->requestStack->getCurrentRequest();
 
-        $postedContent = $request ? json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) : [];
+        $postedContent = $request instanceof \Symfony\Component\HttpFoundation\Request ? json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) : [];
 
         $rvCode = $postedContent['code'] ?? null;
 

@@ -25,8 +25,6 @@ readonly class VolumeSubscriber implements EventSubscriberInterface
     /**
      * La collection originale de papiers ne comprend que ceux du volume principal.
      * Cela permettra de résoudre le problème en retravaillant la collection avant la sérialisation
-     * @param ViewEvent $event
-     * @return void
      */
     public function processVolumePapersCollection(ViewEvent $event): void
     {

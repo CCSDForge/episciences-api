@@ -6,99 +6,50 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * WebsiteHeader
- *
- * @ORM\Table(name="WEBSITE_HEADER")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'WEBSITE_HEADER')]
 class WebsiteHeader
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="LOGOID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $logoid;
+    #[ORM\Column(name: 'LOGOID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    private int $logoid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $rvid;
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    private int $rvid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="TYPE", type="string", length=0, nullable=false)
-     */
-    private $type;
+    #[ORM\Column(name: 'TYPE', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false)]
+    private string $type;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="IMG", type="string", length=255, nullable=false)
-     */
-    private $img;
+    #[ORM\Column(name: 'IMG', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
+    private string $img;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="IMG_WIDTH", type="string", length=255, nullable=false)
-     */
-    private $imgWidth;
+    #[ORM\Column(name: 'IMG_WIDTH', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
+    private string $imgWidth;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="IMG_HEIGHT", type="string", length=255, nullable=false)
-     */
-    private $imgHeight;
+    #[ORM\Column(name: 'IMG_HEIGHT', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
+    private string $imgHeight;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="IMG_HREF", type="string", length=255, nullable=false)
-     */
-    private $imgHref;
+    #[ORM\Column(name: 'IMG_HREF', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
+    private string $imgHref;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="IMG_ALT", type="string", length=255, nullable=false)
-     */
-    private $imgAlt;
+    #[ORM\Column(name: 'IMG_ALT', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
+    private string $imgAlt;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="TEXT", type="string", length=1000, nullable=false)
-     */
-    private $text;
+    #[ORM\Column(name: 'TEXT', type: \Doctrine\DBAL\Types\Types::STRING, length: 1000, nullable: false)]
+    private string $text;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="TEXT_CLASS", type="string", length=255, nullable=false)
-     */
-    private $textClass;
+    #[ORM\Column(name: 'TEXT_CLASS', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
+    private string $textClass;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="TEXT_STYLE", type="string", length=255, nullable=false)
-     */
-    private $textStyle;
+    #[ORM\Column(name: 'TEXT_STYLE', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
+    private string $textStyle;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="ALIGN", type="string", length=10, nullable=false)
-     */
-    private $align;
+    #[ORM\Column(name: 'ALIGN', type: \Doctrine\DBAL\Types\Types::STRING, length: 10, nullable: false)]
+    private string $align;
 
     public function getLogoid(): ?int
     {

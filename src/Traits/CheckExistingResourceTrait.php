@@ -12,11 +12,6 @@ trait CheckExistingResourceTrait
     }
     use ToolsTrait;
 
-    /**
-     * @param array $available
-     * @param array $requested
-     * @return array
-     */
     final public function checkFilters(array $available, array $requested = []): array
     {
         return $this->checkArrayEquality($available, array_keys($requested));

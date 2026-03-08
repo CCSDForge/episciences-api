@@ -20,42 +20,30 @@ class ReviewerReport
     public const STATUS_WIP = 1;
     public const STATUS_COMPLETED = 2; // rating is completed
 
-    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private int $id;
 
-    /**
-     * @var int
-     */
-    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private int $uid;
 
-    /**
-     * @var int|null
-     */
-    #[ORM\Column(name: 'ONBEHALF_UID', type: 'integer', nullable: true, options: ['unsigned' => true, 'comment' => 'Mis à jour [!= de NULL] uniquement si l’évaluation est faite à la place de relecteur UID'])]
-    private ?int $onbehalfUid;
+    #[ORM\Column(name: 'ONBEHALF_UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true, options: ['unsigned' => true, 'comment' => 'Mis à jour [!= de NULL] uniquement si l’évaluation est faite à la place de relecteur UID'])]
+    private ?int $onbehalfUid = null;
 
-    /**
-     * @var int
-     */
-    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private int $docid;
 
-    /**
-     * @var int
-     */
-    #[ORM\Column(name: 'STATUS', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'STATUS', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private int $status;
 
 
-    #[ORM\Column(name: 'CREATION_DATE', type: 'datetime', nullable: false)]
+    #[ORM\Column(name: 'CREATION_DATE', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     private DateTimeInterface $creationDate;
 
 
-    #[ORM\Column(name: 'UPDATE_DATE', type: 'datetime', nullable: true)]
-    private ?DateTimeInterface $updateDate;
+    #[ORM\Column(name: 'UPDATE_DATE', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true)]
+    private ?DateTimeInterface $updateDate = null;
 
     public function getId(): ?int
     {

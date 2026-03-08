@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Unit\Resource;
 
 use App\Entity\Review;
 use App\Resource\Rss;
 use PHPUnit\Framework\TestCase;
 
-class RssTest extends TestCase
+final class RssTest extends TestCase
 {
     public function testSetFeedTypeReturnsSelf(): void
     {
@@ -21,7 +23,7 @@ class RssTest extends TestCase
     {
         $rss = new Rss();
 
-        $this->assertEquals('rss', $rss->getFeedType());
+        $this->assertSame('rss', $rss->getFeedType());
     }
 
     public function testSetFeedTypeChangesValue(): void
@@ -30,7 +32,7 @@ class RssTest extends TestCase
 
         $rss->setFeedType('atom');
 
-        $this->assertEquals('atom', $rss->getFeedType());
+        $this->assertSame('atom', $rss->getFeedType());
     }
 
     public function testGetFeedWithRssTypeContainsRssInFeedLink(): void
@@ -47,7 +49,7 @@ class RssTest extends TestCase
         $feedLinks = $feed->getFeedLinks();
 
         $this->assertArrayHasKey('rss', $feedLinks);
-        $this->assertStringContainsString('/rss/', $feedLinks['rss']);
+        $this->assertStringContainsString('/rss/', (string) $feedLinks['rss']);
     }
 
     public function testGetFeedWithAtomTypeContainsAtomInFeedLink(): void
@@ -64,7 +66,7 @@ class RssTest extends TestCase
         $feedLinks = $feed->getFeedLinks();
 
         $this->assertArrayHasKey('atom', $feedLinks);
-        $this->assertStringContainsString('/atom/', $feedLinks['atom']);
+        $this->assertStringContainsString('/atom/', (string) $feedLinks['atom']);
     }
 
     public function testFluentInterface(): void
@@ -81,8 +83,8 @@ class RssTest extends TestCase
             ->setFeedType('atom')
             ->getFeed();
 
-        $this->assertStringContainsString('/atom/', $feed->getFeedLinks()['atom']);
-        $this->assertStringContainsString('https://api.episciences.org', $feed->getFeedLinks()['atom']);
+        $this->assertStringContainsString('/atom/', (string) $feed->getFeedLinks()['atom']);
+        $this->assertStringContainsString('https://api.episciences.org', (string) $feed->getFeedLinks()['atom']);
     }
 
     public function testSetBaseUrlAffectsFeedLink(): void
@@ -99,6 +101,6 @@ class RssTest extends TestCase
         $feed = $rss->getFeed();
         $feedLinks = $feed->getFeedLinks();
 
-        $this->assertStringContainsString('https://custom.example.org', $feedLinks['rss']);
+        $this->assertStringContainsString('https://custom.example.org', (string) $feedLinks['rss']);
     }
 }

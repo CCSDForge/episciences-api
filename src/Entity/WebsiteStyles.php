@@ -6,36 +6,23 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * WebsiteStyles
- *
- * @ORM\Table(name="WEBSITE_STYLES")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'WEBSITE_STYLES')]
 class WebsiteStyles
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $rvid;
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    private int $rvid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="SETTING", type="string", length=50, nullable=false)
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $setting;
+    #[ORM\Column(name: 'SETTING', type: \Doctrine\DBAL\Types\Types::STRING, length: 50, nullable: false)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    private string $setting;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="VALUE", type="string", length=1000, nullable=false)
-     */
-    private $value;
+    #[ORM\Column(name: 'VALUE', type: \Doctrine\DBAL\Types\Types::STRING, length: 1000, nullable: false)]
+    private string $value;
 
     public function getRvid(): ?int
     {

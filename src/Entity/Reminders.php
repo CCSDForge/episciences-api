@@ -6,55 +6,30 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * Reminders
- *
- * @ORM\Table(name="REMINDERS")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'REMINDERS')]
 class Reminders
 {
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="ID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
-     */
-    private $id;
+    #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
+    private int $id;
 
-    /**
-     * @var int|null
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=true, options={"unsigned"=true})
-     */
-    private $rvid;
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true, options: ['unsigned' => true])]
+    private ?int $rvid = null;
 
-    /**
-     * @var bool|null
-     *
-     * @ORM\Column(name="TYPE", type="boolean", nullable=true)
-     */
-    private $type;
+    #[ORM\Column(name: 'TYPE', type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: true)]
+    private ?bool $type = null;
 
-    /**
-     * @var int|null
-     *
-     * @ORM\Column(name="DELAY", type="smallint", nullable=true, options={"unsigned"=true})
-     */
-    private $delay;
+    #[ORM\Column(name: 'DELAY', type: \Doctrine\DBAL\Types\Types::SMALLINT, nullable: true, options: ['unsigned' => true])]
+    private ?int $delay = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="RECIPIENT", type="string", length=25, nullable=false, options={"default"="reviewer"})
-     */
-    private $recipient = 'reviewer';
+    #[ORM\Column(name: 'RECIPIENT', type: \Doctrine\DBAL\Types\Types::STRING, length: 25, nullable: false, options: ['default' => 'reviewer'])]
+    private string $recipient = 'reviewer';
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="REPETITION", type="string", length=20, nullable=true)
-     */
-    private $repetition;
+    #[ORM\Column(name: 'REPETITION', type: \Doctrine\DBAL\Types\Types::STRING, length: 20, nullable: true)]
+    private ?string $repetition = null;
 
     public function getId(): ?int
     {

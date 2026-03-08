@@ -18,6 +18,7 @@ use Psr\Log\LoggerInterface;
  * @method UserRoles[]    findAll()
  * @method UserRoles[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\UserRoles>
  */
 class UserRolesRepository extends ServiceEntityRepository
 {
@@ -35,23 +36,16 @@ class UserRolesRepository extends ServiceEntityRepository
         UserRoles::FORMER_MEMBER
     ];
 
-    private LoggerInterface $logger;
-
-    public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
+    public function __construct(ManagerRegistry $registry, private LoggerInterface $logger)
     {
         parent::__construct($registry, UserRoles::class);
-        $this->logger = $logger;
     }
 
 
     /**
      * @param int|null $rvId
-     * @param null $uid
      * @param string|null $role
-     * @param bool $withDetails
-     * @return QueryBuilder
      */
-
     public function getUserRolesStatsQuery(int $rvId = null, $uid = null, string $role = null, bool $withDetails = false): QueryBuilder
     {
         $userRolesAlias = self::USER_ROLES_ALIAS;
@@ -77,7 +71,7 @@ class UserRolesRepository extends ServiceEntityRepository
             $orExp = $exp->orX();
 
             foreach ((array)$uid as $id) {
-                $orExp->add($exp->orX($exp->eq(sprintf('%s.uid', self::USER_ROLES_ALIAS), $id)));
+                $orExp->add($exp->eq(sprintf('%s.uid', self::USER_ROLES_ALIAS), $id));
             }
 
             $qb->andWhere($orExp);

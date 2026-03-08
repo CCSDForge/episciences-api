@@ -46,3 +46,11 @@ phpstan.neon
 /docker/apache/ssl/
 /docker-compose.override.yml
 /config/reference.php
+/.env.local
+/composer
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###
+/.yarn/
