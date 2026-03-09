@@ -58,3 +58,4 @@ phpstan.neon
 /coverage.xml
 /composer
 /coverage/
+/.yarn/
