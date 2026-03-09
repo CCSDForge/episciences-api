@@ -448,15 +448,11 @@ docker-install:
 
 # Install dependencies optimized for CI
 docker-install-ci:
-	@echo "$(BOLD)Installing dependencies using Composer Docker image (CI optimized)...$(NC)"
+	@echo "$(BOLD)Installing dependencies in PHP 8.2 container (CI optimized)...$(NC)"
 	@echo "$(BLUE)Creating Symfony directories...$(NC)"
 	mkdir -p var/cache var/log
-	@echo "$(BLUE)Installing composer dependencies with proper user context...$(NC)"
-	docker run --rm \
-		-v $(PWD):/app \
-		-w /app \
-		-u $(shell id -u):$(shell id -g) \
-		composer:2 install --no-progress --prefer-dist --optimize-autoloader --classmap-authoritative --no-scripts
+	@echo "$(BLUE)Installing composer dependencies inside the PHP 8.2 container...$(NC)"
+	$(DOCKER_COMPOSE) exec -T php composer install --no-progress --prefer-dist --optimize-autoloader --classmap-authoritative --no-scripts
 	@echo "$(BLUE)Setting proper permissions on cache and log directories...$(NC)"
 	chmod -R 775 var/cache var/log || true
 	@echo "$(BLUE)Configuring git safe directory in PHP container...$(NC)"
