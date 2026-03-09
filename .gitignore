@@ -50,3 +50,11 @@ phpstan.neon
 # Ansible
 /ansible/inventory/production
 /ansible/roles/
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###
+/coverage.xml
+/composer
+/coverage/
