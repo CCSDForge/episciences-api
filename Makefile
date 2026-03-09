@@ -16,7 +16,7 @@ DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then ech
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage cov test-file validate clean docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer setup-help deploy deploy-branch deploy-tag
+.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage cov test-file validate clean phpstan rector check docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer setup-help deploy deploy-branch deploy-tag
 
 # Help target - displays all available commands
 help:
@@ -34,6 +34,9 @@ help:
 	@echo "  $(BOLD)test-unit$(NC)         Run only unit tests"
 	@echo "  $(BOLD)test-coverage$(NC)     Run tests with coverage report"
 	@echo "  $(BOLD)test-file$(NC)         Run specific test file (usage: make test-file FILE=path/to/TestFile.php)"
+	@echo "  $(BOLD)phpstan$(NC)           Run PHPStan in container (usage: make phpstan LEVEL=1 TARGET=src DRY_RUN=1)"
+	@echo "  $(BOLD)rector$(NC)            Run Rector in container (usage: make rector TARGET=src DRY_RUN=1)"
+	@echo "  $(BOLD)check$(NC)             Run both PHPStan and Rector"
 	@echo ""
 	@echo "$(BLUE)Utility Commands:$(NC)"
 	@echo "  $(BOLD)validate$(NC)          Check PHP syntax of test files"
@@ -259,6 +262,30 @@ validate:
 	@echo "$(BOLD)Validating PHP syntax of test files...$(NC)"
 	@find tests/ -name "*.php" -exec php8.2 -l {} \; | grep -v "No syntax errors detected" || true
 	@echo "$(GREEN)✓ PHP syntax validation completed$(NC)"
+
+# Run PHPStan in container
+# Usage: make phpstan LEVEL=1 TARGET=src DRY_RUN=1
+phpstan:
+	@LEVEL=$${LEVEL:-1}; \
+	TARGET=$${TARGET:-src}; \
+	DRY_RUN_ARG=""; \
+	if [ "$${DRY_RUN}" = "1" ]; then DRY_RUN_ARG="--dry-run"; fi; \
+	echo "$(BOLD)Running PHPStan (Level $$LEVEL) on $$TARGET...$(NC)"; \
+	$(DOCKER_COMPOSE) exec php vendor/bin/phpstan analyze $$TARGET --level=$$LEVEL $$DRY_RUN_ARG
+	@echo "$(GREEN)✓ PHPStan completed$(NC)"
+
+# Run Rector in container
+# Usage: make rector TARGET=src DRY_RUN=1
+rector:
+	@TARGET=$${TARGET:-src}; \
+	DRY_RUN_ARG=""; \
+	if [ "$${DRY_RUN}" = "1" ]; then DRY_RUN_ARG="--dry-run"; fi; \
+	echo "$(BOLD)Running Rector on $$TARGET...$(NC)"; \
+	$(DOCKER_COMPOSE) exec php vendor/bin/rector process $$TARGET $$DRY_RUN_ARG
+	@echo "$(GREEN)✓ Rector completed$(NC)"
+
+# Run both PHPStan and Rector
+check: phpstan rector
 
 # Clean cache and temporary files
 clean:
