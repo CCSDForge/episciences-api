@@ -25,8 +25,13 @@ class MetadataSources
 
     public function getLabel(int $repoId): string
     {
-        return $this->getRepositories()[$repoId]->getName();
+        $repositories = $this->getRepositories();
 
+        if (!isset($repositories[$repoId])) {
+            throw new \InvalidArgumentException(sprintf('Repository with id "%d" not found.', $repoId));
+        }
+
+        return $repositories[$repoId]->getName();
     }
 
     public function getRepositories(): array
@@ -42,8 +47,14 @@ class MetadataSources
 
     public function repositoryToArray(int $repoId): array
     {
+        $repositories = $this->getRepositories();
+
+        if (!isset($repositories[$repoId])) {
+            throw new \InvalidArgumentException(sprintf('Repository with id "%d" not found.', $repoId));
+        }
+
         /** @var \App\Entity\MetadataSources $repo */
-        $repo = $this->getRepositories()[$repoId];
+        $repo = $repositories[$repoId];
         return $repo->toArray();
     }
 
