@@ -1,0 +1,2 @@
+[production]
+# your-server-ip-or-domain ansible_user=deploy-user
