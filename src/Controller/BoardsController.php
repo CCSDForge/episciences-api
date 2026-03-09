@@ -41,6 +41,7 @@ class BoardsController extends AbstractController
         $boards = [];
         $pagination = true;
         $page = 1;
+        $itemsPerPage = 30;
         $maxResults = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
         $firstResult = 0;
 
@@ -125,7 +126,7 @@ class BoardsController extends AbstractController
                             'uuid' => $currentUser['uuid'],
                             'langueid' => $currentUser['langueid'],
                             'screenName' => $currentUser['screenName'],
-                            'roles' => [$current['roles']],
+                            'roles' => $current['roles'] ?? [],
                             'email' => $currentUser['email'],
                             'civ' => ($currentUser['civ']),
                             'orcid' => $currentUser['orcid'],

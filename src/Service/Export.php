@@ -48,7 +48,7 @@ class Export extends AbstractSolrService
     ];
 
 
-    public function exportToFormatQuery(int $docId, string $format = self::AVAILABLE_FORMATS[self::CSL_FORMAT]): string
+    public function exportToFormatQuery(int $docId, string $format = self::CSL_FORMAT): string
     {
 
         $journal = $this->getJournal();
@@ -75,7 +75,7 @@ class Export extends AbstractSolrService
     }
 
 
-    public function getSolrCSLByFormat(int $docId, string $format = self::AVAILABLE_FORMATS[self::CSL_FORMAT])
+    public function getSolrCSLByFormat(int $docId, string $format = self::CSL_FORMAT)
     {
         try {
             $response = $this->client->request(
