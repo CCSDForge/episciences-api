@@ -121,12 +121,14 @@ class BoardsController extends AbstractController
 
                         $currentUser = $current['user'];
 
+                        // /!\
+                        // 'roles' => $current['roles'] ?? [] : This modification requires the response to be reprocessed on the front end
                         $options = [
                             'uid' => $uid,
                             'uuid' => $currentUser['uuid'],
                             'langueid' => $currentUser['langueid'],
                             'screenName' => $currentUser['screenName'],
-                            'roles' => $current['roles'] ?? [],
+                            'roles' => [$current['roles']],
                             'email' => $currentUser['email'],
                             'civ' => ($currentUser['civ']),
                             'orcid' => $currentUser['orcid'],
