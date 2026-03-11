@@ -51,8 +51,7 @@ phpstan.neon
 /ansible/inventory/production
 /ansible/roles/
 
-###> phpunit/phpunit ###
-/phpunit.xml
+###> phpunit/phpunit ###w
 /.phpunit.cache/
 ###< phpunit/phpunit ###
 /coverage.xml
