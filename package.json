@@ -5,7 +5,7 @@
         "@symfony/webpack-encore": "^5.2.0",
         "core-js": "^3.37.1",
         "regenerator-runtime": "^0.14.1",
-        "webpack": "^5.93.0",
+        "webpack": "^5.104.1",
         "webpack-cli": "^5.1.4",
         "webpack-notifier": "^1.15.0",
         "yarn-upgrade-all": "^0.7.2"
