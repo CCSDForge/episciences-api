@@ -384,28 +384,26 @@ class Stats
 
                 if (array_key_exists($rvId, $rvIdResult)) {
                     $details = $this->reformatUsersData($rvIdResult[$rvId]);
-                    $statResource->setDetails($details);
                 }
 
             } elseif (!$rvId && $role) {
-                $roleResult = $this->applyFilterBy($userStats, 'role', $role);
-                $statResource->setDetails($roleResult);
+                $details = $this->applyFilterBy($userStats, 'role', $role);
             } elseif ($rvId && $role) {
 
-                $details = $this->applyFilterBy($userStats, 'rvid', (string)$rvId);
+                $rvIdResult = $this->applyFilterBy($userStats, 'rvid', (string)$rvId);
+                $reformatted = array_key_exists($rvId, $rvIdResult)
+                    ? $this->reformatUsersData($rvIdResult[$rvId])
+                    : [];
 
-                if (array_key_exists($rvId, $details)) {
-                    $details = $this->reformatUsersData($details[$rvId]);
-                }
+                $details = array_key_exists($role, $reformatted) ? $reformatted[$role] : [];
 
-                $roleResult = array_key_exists($role, $details) ? $details[$role] : [];
-                $statResource->setDetails($roleResult);
-
+            } else {
+                // all platform: no rvid, no role
+                $reformatted = $this->reformatUsersData($userStats);
+                $details = $rvId !== null && array_key_exists($rvId, $reformatted)
+                    ? $reformatted[$rvId]
+                    : $reformatted;
             }
-
-            $details = array_key_exists($rvId, $this->reformatUsersData($userStats)) ?
-                $this->reformatUsersData($userStats)[$rvId] :
-                $this->reformatUsersData($userStats);
         }
 
         $statResource->setValue($nbUsers);
@@ -568,7 +566,7 @@ class Stats
 
                 }
 
-                return $stmt->executeQuery()->fetchAllAssociative();
+                return $result;
             }
 
         } catch (Exception $e) {
