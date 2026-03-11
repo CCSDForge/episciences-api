@@ -31,7 +31,7 @@ class PapersController
 
             $documentId = (int)$request->query->get('documentId');
 
-            $userId = (int)$request->get('uid');
+            $userId = (int)$request->attributes->get('uid');
 
             if ($userId) {
                 $user = $entityManager->getRepository(User::class)->findOneBy(['uid' => $userId]);
