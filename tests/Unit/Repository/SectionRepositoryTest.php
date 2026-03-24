@@ -28,7 +28,7 @@ class SectionRepositoryTest extends TestCase
         $this->assertIsString($result);
         $this->assertStringContainsString('RVID = 123', $result);
         $this->assertStringContainsString('UID IN (456)', $result);
-        $this->assertStringContainsString('SELECT * FROM', $result);
+        $this->assertStringContainsString('SELECT DISTINCT(ua.UID)', $result);
         $this->assertStringContainsString('USER_ASSIGNMENT', $result);
         $this->assertStringContainsString('section', $result);
         $this->assertStringContainsString('editor', $result);
@@ -45,7 +45,7 @@ class SectionRepositoryTest extends TestCase
         $this->assertIsString($result);
         $this->assertStringContainsString('RVID = 789', $result);
         $this->assertStringContainsString('UID IN (100,200,300)', $result);
-        $this->assertStringContainsString('SELECT * FROM', $result);
+        $this->assertStringContainsString('SELECT DISTINCT(ua.UID)', $result);
         $this->assertStringContainsString('USER_ASSIGNMENT', $result);
     }
 
@@ -82,7 +82,7 @@ class SectionRepositoryTest extends TestCase
 
         $this->assertIsString($result);
         $this->assertStringContainsString('RVID = 123', $result);
-        $this->assertStringContainsString('ITEMID` = 456', $result);
+        $this->assertStringContainsString('ua.ITEMID = 456', $result);
         $this->assertStringContainsString('SELECT uuid, CIV', $result);
         $this->assertStringContainsString('SCREEN_NAME', $result);
         $this->assertStringContainsString('ORCID', $result);
@@ -102,7 +102,7 @@ class SectionRepositoryTest extends TestCase
 
         $this->assertIsString($result);
         $this->assertStringContainsString('RVID = 999', $result);
-        $this->assertStringContainsString('ITEMID` = 777', $result);
+        $this->assertStringContainsString('ua.ITEMID = 777', $result);
         $this->assertStringContainsString('SELECT uuid, CIV', $result);
     }
 }

@@ -1,35 +1,36 @@
 <?php
-use Rector\Symfony\Set\SymfonySetList;
+
+declare(strict_types=1);
+
 use Rector\Config\RectorConfig;
 use Rector\Doctrine\Set\DoctrineSetList;
+use Rector\Symfony\Set\SymfonySetList;
 
-//vendor/bin/rector process src --dry-run:
-
-// vendor/bin/rector process src --dry-run
-
-return static function (RectorConfig $rectorConfig): void {
-    $rectorConfig->paths([
-        __DIR__ . '/src'
-    ]);
-    //$rectorConfig->symfonyContainerXml(__DIR__ . '/var/cache/dev/App_KernelDevDebugContainer.xml');
-    $rectorConfig->sets([
-        //SymfonySetList::SYMFONY_64,
-        //SymfonySetList::SYMFONY_CODE_QUALITY,
-        //SymfonySetList::SYMFONY_CONSTRUCTOR_INJECTION
-    ]);
-
-    $rectorConfig->sets([
+return RectorConfig::configure()
+    ->withPaths([
+        __DIR__ . '/bin',
+        __DIR__ . '/config',
+        __DIR__ . '/public',
+        __DIR__ . '/src',
+        __DIR__ . '/tests',
+    ])
+    // Target PHP 8.2
+    ->withPhpSets(php82: true)
+    // Register Symfony container for advanced rules (uncomment if var/cache/dev exists)
+    // ->withSymfonyContainerXml(__DIR__ . '/var/cache/dev/App_KernelDevDebugContainer.xml')
+    ->withSets([
         DoctrineSetList::ANNOTATIONS_TO_ATTRIBUTES,
         SymfonySetList::ANNOTATIONS_TO_ATTRIBUTES,
-
-    ]);
-
-
-};
-
-################ RUN
-// vendor/bin/rector process src --dry-run
-// Rector will show you diff of files that it would change. To make the changes, drop --dry-run:
-// vendor/bin/rector process src
-// e.g. vendor/bin/rector process src/Entity/Section.php src/Entity/SectionSetting.php
-
+        SymfonySetList::SYMFONY_70,
+        SymfonySetList::SYMFONY_CODE_QUALITY,
+        SymfonySetList::SYMFONY_CONSTRUCTOR_INJECTION,
+    ])
+    ->withPreparedSets(
+        deadCode: true,
+        codeQuality: true,
+        typeDeclarations: true,
+        privatization: true,
+        instanceof: true,
+        earlyReturn: true,
+        strictBooleans: true
+    );

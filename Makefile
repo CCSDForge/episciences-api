@@ -16,7 +16,7 @@ DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then ech
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage test-file validate clean docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer setup-help deploy deploy-branch deploy-tag
+.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage cov test-file validate clean phpstan rector check docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer setup-help deploy deploy-branch deploy-tag
 
 # Help target - displays all available commands
 help:
@@ -34,6 +34,9 @@ help:
 	@echo "  $(BOLD)test-unit$(NC)         Run only unit tests"
 	@echo "  $(BOLD)test-coverage$(NC)     Run tests with coverage report"
 	@echo "  $(BOLD)test-file$(NC)         Run specific test file (usage: make test-file FILE=path/to/TestFile.php)"
+	@echo "  $(BOLD)phpstan$(NC)           Run PHPStan in container (usage: make phpstan LEVEL=1 TARGET=src DRY_RUN=1)"
+	@echo "  $(BOLD)rector$(NC)            Run Rector in container (usage: make rector TARGET=src DRY_RUN=1)"
+	@echo "  $(BOLD)check$(NC)             Run both PHPStan and Rector"
 	@echo ""
 	@echo "$(BLUE)Utility Commands:$(NC)"
 	@echo "  $(BOLD)validate$(NC)          Check PHP syntax of test files"
@@ -121,7 +124,7 @@ check-prereqs:
 		echo "$(GREEN)✓ Dependencies installed$(NC)"; \
 	fi
 	@# Check PHPUnit
-	@if [ ! -f "vendor/bin/simple-phpunit" ]; then \
+	@if [ ! -f "vendor/bin/phpunit" ]; then \
 		echo "$(YELLOW)⚠ PHPUnit not found$(NC)"; \
 		echo "  Install dependencies: $(BOLD)make install$(NC)"; \
 		echo ""; \
@@ -209,11 +212,7 @@ test: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running all PHPUnit tests...$(NC)"
-	@if [ ! -f "phpunit-9.5-0/phpunit" ]; then \
-		echo "$(YELLOW)PHPUnit not installed. Installing...$(NC)"; \
-		COMPOSER=$(PWD)/composer PATH=$(PWD):$(PATH) php8.2 vendor/bin/simple-phpunit --version >/dev/null 2>&1; \
-	fi
-	php8.2 phpunit-9.5-0/phpunit
+	php8.2 vendor/bin/phpunit
 	@echo "$(GREEN)✓ Tests completed$(NC)"
 
 # Run only unit tests
@@ -223,11 +222,7 @@ test-unit: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running unit tests...$(NC)"
-	@if [ ! -f "phpunit-9.5-0/phpunit" ]; then \
-		echo "$(YELLOW)PHPUnit not installed. Installing...$(NC)"; \
-		COMPOSER=$(PWD)/composer PATH=$(PWD):$(PATH) php8.2 vendor/bin/simple-phpunit --version >/dev/null 2>&1; \
-	fi
-	php8.2 phpunit-9.5-0/phpunit tests/Unit/
+	php8.2 vendor/bin/phpunit tests/Unit/
 	@echo "$(GREEN)✓ Unit tests completed$(NC)"
 
 # Run tests with coverage
@@ -237,13 +232,12 @@ test-coverage: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running tests with coverage...$(NC)"
-	@if [ ! -f "phpunit-9.5-0/phpunit" ]; then \
-		echo "$(YELLOW)PHPUnit not installed. Installing...$(NC)"; \
-		COMPOSER=$(PWD)/composer PATH=$(PWD):$(PATH) php8.2 vendor/bin/simple-phpunit --version >/dev/null 2>&1; \
-	fi
-	php8.2 phpunit-9.5-0/phpunit --coverage-text --coverage-html coverage/
+	./bin/coverage.sh
 	@echo "$(GREEN)✓ Tests with coverage completed$(NC)"
 	@echo "Coverage report available at: $(BOLD)coverage/index.html$(NC)"
+
+# Shortcut for coverage
+cov: test-coverage
 
 # Run specific test file
 test-file: check-prereqs
@@ -260,11 +254,7 @@ test-file: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running test file: $(FILE)$(NC)"
-	@if [ ! -f "phpunit-9.5-0/phpunit" ]; then \
-		echo "$(YELLOW)PHPUnit not installed. Installing...$(NC)"; \
-		COMPOSER=$(PWD)/composer PATH=$(PWD):$(PATH) php8.2 vendor/bin/simple-phpunit --version >/dev/null 2>&1; \
-	fi
-	php8.2 phpunit-9.5-0/phpunit $(FILE)
+	php8.2 vendor/bin/phpunit $(FILE)
 	@echo "$(GREEN)✓ Test file completed$(NC)"
 
 # Validate PHP syntax of test files
@@ -272,6 +262,30 @@ validate:
 	@echo "$(BOLD)Validating PHP syntax of test files...$(NC)"
 	@find tests/ -name "*.php" -exec php8.2 -l {} \; | grep -v "No syntax errors detected" || true
 	@echo "$(GREEN)✓ PHP syntax validation completed$(NC)"
+
+# Run PHPStan in container
+# Usage: make phpstan LEVEL=1 TARGET=src DRY_RUN=1
+phpstan:
+	@LEVEL=$${LEVEL:-1}; \
+	TARGET=$${TARGET:-src}; \
+	DRY_RUN_ARG=""; \
+	if [ "$${DRY_RUN}" = "1" ]; then DRY_RUN_ARG="--dry-run"; fi; \
+	echo "$(BOLD)Running PHPStan (Level $$LEVEL) on $$TARGET...$(NC)"; \
+	$(DOCKER_COMPOSE) exec php vendor/bin/phpstan analyze $$TARGET --level=$$LEVEL $$DRY_RUN_ARG
+	@echo "$(GREEN)✓ PHPStan completed$(NC)"
+
+# Run Rector in container
+# Usage: make rector TARGET=src DRY_RUN=1
+rector:
+	@TARGET=$${TARGET:-src}; \
+	DRY_RUN_ARG=""; \
+	if [ "$${DRY_RUN}" = "1" ]; then DRY_RUN_ARG="--dry-run"; fi; \
+	echo "$(BOLD)Running Rector on $$TARGET...$(NC)"; \
+	$(DOCKER_COMPOSE) exec php vendor/bin/rector process $$TARGET $$DRY_RUN_ARG
+	@echo "$(GREEN)✓ Rector completed$(NC)"
+
+# Run both PHPStan and Rector
+check: phpstan rector
 
 # Clean cache and temporary files
 clean:
@@ -402,19 +416,19 @@ docker-mysql:
 # Run tests in PHP container
 docker-test:
 	@echo "$(BOLD)Running tests in Docker container...$(NC)"
-	$(DOCKER_COMPOSE) exec php vendor/bin/simple-phpunit
+	$(DOCKER_COMPOSE) exec php vendor/bin/phpunit
 	@echo "$(GREEN)✓ Docker tests completed$(NC)"
 
 # Run tests with coverage in PHP container
 docker-test-coverage:
 	@echo "$(BOLD)Running tests with coverage in Docker container...$(NC)"
-	$(DOCKER_COMPOSE) exec -e XDEBUG_MODE=coverage php vendor/bin/simple-phpunit --coverage-clover=coverage.xml
+	$(DOCKER_COMPOSE) exec -e XDEBUG_MODE=coverage php vendor/bin/phpunit --coverage-text --coverage-html coverage/
 	@echo "$(GREEN)✓ Docker tests with coverage completed$(NC)"
 
 # Run unit tests only in PHP container
 docker-test-unit:
 	@echo "$(BOLD)Running unit tests in Docker container...$(NC)"
-	$(DOCKER_COMPOSE) exec php vendor/bin/simple-phpunit tests/Unit/
+	$(DOCKER_COMPOSE) exec php vendor/bin/phpunit tests/Unit/
 	@echo "$(GREEN)✓ Docker unit tests completed$(NC)"
 
 # Install dependencies in container
@@ -434,15 +448,11 @@ docker-install:
 
 # Install dependencies optimized for CI
 docker-install-ci:
-	@echo "$(BOLD)Installing dependencies using Composer Docker image (CI optimized)...$(NC)"
+	@echo "$(BOLD)Installing dependencies in PHP 8.2 container (CI optimized)...$(NC)"
 	@echo "$(BLUE)Creating Symfony directories...$(NC)"
 	mkdir -p var/cache var/log
-	@echo "$(BLUE)Installing composer dependencies with proper user context...$(NC)"
-	docker run --rm \
-		-v $(PWD):/app \
-		-w /app \
-		-u $(shell id -u):$(shell id -g) \
-		composer:2 install --no-progress --prefer-dist --optimize-autoloader --classmap-authoritative --no-scripts
+	@echo "$(BLUE)Installing composer dependencies inside the PHP 8.2 container...$(NC)"
+	$(DOCKER_COMPOSE) exec -T php composer install --no-progress --prefer-dist --optimize-autoloader --classmap-authoritative --no-scripts
 	@echo "$(BLUE)Setting proper permissions on cache and log directories...$(NC)"
 	chmod -R 775 var/cache var/log || true
 	@echo "$(BLUE)Configuring git safe directory in PHP container...$(NC)"

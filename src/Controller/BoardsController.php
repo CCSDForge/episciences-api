@@ -41,6 +41,7 @@ class BoardsController extends AbstractController
         $boards = [];
         $pagination = true;
         $page = 1;
+        $itemsPerPage = 30;
         $maxResults = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
         $firstResult = 0;
 
@@ -120,6 +121,8 @@ class BoardsController extends AbstractController
 
                         $currentUser = $current['user'];
 
+                        // /!\
+                        // 'roles' => $current['roles'] ?? [] : This modification requires the response to be reprocessed on the front end
                         $options = [
                             'uid' => $uid,
                             'uuid' => $currentUser['uuid'],

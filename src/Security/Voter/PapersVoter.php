@@ -77,10 +77,10 @@ class PapersVoter extends Voter
     private function canView(User $authenticatedUser, Paper $paper): bool
     {
 
-        $isEditor = in_array($authenticatedUser->getUid(), $paper->getEditors(), true);
-        $isReviewer = in_array($authenticatedUser->getUid(), $paper->getReviewers(), true);
-        $isCopyEditor = in_array($authenticatedUser->getUid(), $paper->getCopyEditors(), true);
-        $isCoAuthor = in_array($authenticatedUser->getUid(), $paper->getCoAuthors(), true);
+        $isEditor = array_key_exists($authenticatedUser->getUid(), $paper->getEditors());
+        $isReviewer = array_key_exists($authenticatedUser->getUid(), $paper->getReviewers());
+        $isCopyEditor = array_key_exists($authenticatedUser->getUid(), $paper->getCopyEditors());
+        $isCoAuthor = array_key_exists($authenticatedUser->getUid(), $paper->getCoAuthors());
 
         return
             $authenticatedUser->hasRole(User::ROLE_SECRETARY, $paper->getRvid()) ||
@@ -99,8 +99,8 @@ class PapersVoter extends Voter
     private function canEdit(User $authenticatedUser, Paper $paper): bool
     {
         $isSecretary = $this->security->isGranted('ROLE_SECRETARY');//according to role hierarchy: not use $authenticatedUser->hasRole()
-        $isEditor = in_array($authenticatedUser->getUid(), $paper->getEditors(), true);
-        $isCopyEditor = in_array($authenticatedUser->getUid(), $paper->getCopyEditors(), true);
+        $isEditor = array_key_exists($authenticatedUser->getUid(), $paper->getEditors());
+        $isCopyEditor = array_key_exists($authenticatedUser->getUid(), $paper->getCopyEditors());
 
         return
 
@@ -119,8 +119,8 @@ class PapersVoter extends Voter
 
     private function canReview(User $authenticatedUser, Paper $paper): bool
     {
-        $isEditor = in_array($authenticatedUser->getUid(), $paper->getEditors(), true);
-        $isReviewer = in_array($authenticatedUser->getUid(), $paper->getReviewers(), true);
+        $isEditor = array_key_exists($authenticatedUser->getUid(), $paper->getEditors());
+        $isReviewer = array_key_exists($authenticatedUser->getUid(), $paper->getReviewers());
 
         return
 
@@ -155,7 +155,9 @@ class PapersVoter extends Voter
             return false;
         }
 
-        return !array_key_exists($authenticatedUser->getUid(), $currentPaper->getConflicts()->get(PaperConflicts::AVAILABLE_ANSWER['no']));
+        $noConflictGroup = $currentPaper->getConflicts()->get(PaperConflicts::AVAILABLE_ANSWER['no']);
+
+        return !is_array($noConflictGroup) || !array_key_exists($authenticatedUser->getUid(), $noConflictGroup);
 
     }
 

@@ -128,6 +128,10 @@ make docker-logs       # Follow container logs
 make docker-shell      # Enter PHP container for debugging
 make docker-mysql      # Access MySQL database
 make docker-test       # Run PHPUnit tests in container
+make docker-test-coverage # Run tests with HTML coverage in container
+make phpstan           # Run PHPStan static analysis (in container)
+make rector            # Run Rector refactoring tool (in container)
+make check             # Run both PHPStan and Rector
 
 # SSL Certificate Management
 make ssl-certs         # Generate SSL certificates manually
@@ -157,15 +161,46 @@ SSL certificates are automatically generated when you run `make docker-up`. Key 
 
 #### Running Tests
 
+The project uses **PHPUnit 11** for testing.
+
 ```bash
 # Run tests in Docker container (recommended)
 make docker-test
 
+# Run tests with HTML coverage (Docker)
+make docker-test-coverage # Report generated at coverage/index.html
+
 # Run tests locally (requires local PHP 8.2+ setup)
 make test
 make test-unit          # Unit tests only
-make test-coverage      # Tests with coverage report
+make cov                # Local tests with coverage (requires Xdebug or PCOV)
 ```
+
+#### Static Analysis
+
+We use **PHPStan V2** and **Rector V2** to ensure code quality and handle automated refactoring. These tools run inside the PHP container.
+
+```bash
+# Run PHPStan (default Level 1 on 'src')
+make phpstan 
+
+# Custom PHPStan run
+make phpstan LEVEL=6 TARGET=tests
+
+# Run Rector (applies changes)
+make rector
+
+# Dry run Rector (see diff only)
+make rector DRY_RUN=1
+
+# Run both tools
+make check
+```
+
+
+## Deployment
+
+Automated deployment is handled via Ansistrano. See the [Deployment Guide](docs/deployment.md) for setup and usage instructions.
 
 #### Database Access
 

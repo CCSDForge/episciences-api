@@ -12,7 +12,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpKernel\Event\ViewEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
-readonly class setUsersPictureSubscriber implements EventSubscriberInterface
+readonly class SetUsersPictureSubscriber implements EventSubscriberInterface
 {
 
     public function __construct(private LoggerInterface $logger, private ParameterBagInterface $parameters){}

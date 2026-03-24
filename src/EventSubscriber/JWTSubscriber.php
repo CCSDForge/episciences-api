@@ -38,7 +38,8 @@ class JWTSubscriber implements EventSubscriberInterface
 
         $request = $this->requestStack->getCurrentRequest();
 
-        $postedContent = $request ? json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR) : [];
+        $content = $request?->getContent();
+        $postedContent = !empty($content) ? json_decode($content, true, 512, JSON_THROW_ON_ERROR) : [];
 
         $rvCode = $postedContent['code'] ?? null;
 

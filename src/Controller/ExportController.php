@@ -19,7 +19,7 @@ class ExportController extends AppAbstractController
     public function __invoke(Request $request, Export $solrSrv, EntityManagerInterface $entityManager): Response
     {
         $journal = null;
-        $code = (string)$request->get('code');
+        $code = (string)$request->query->get('code', '');
 
         $docId = (int)$request->attributes->get('docid');
         $format = (string)$request->attributes->get('format');

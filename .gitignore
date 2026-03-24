@@ -46,3 +46,16 @@ phpstan.neon
 /docker/apache/ssl/
 /docker-compose.override.yml
 /config/reference.php
+
+# Ansible
+/ansible/inventory/production
+/ansible/roles/
+
+###> phpunit/phpunit ###w
+/.phpunit.cache/
+###< phpunit/phpunit ###
+/coverage.xml
+/composer
+/coverage/
+/.yarn/
+!.yarn/releases/

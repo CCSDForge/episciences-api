@@ -101,10 +101,11 @@
     },
     "require-dev": {
         "doctrine/doctrine-fixtures-bundle": "^3.4",
-        "rector/rector": "^1.0",
+        "phpstan/phpstan": "^2.0",
+        "phpunit/phpunit": "^11.0",
+        "rector/rector": "^2.0",
         "roave/security-advisories": "dev-latest",
         "symfony/maker-bundle": "^1.48",
-        "symfony/phpunit-bridge": "^7.0",
         "symfony/stopwatch": "^7.0",
         "symfony/web-profiler-bundle": "^7.0"
     }
