@@ -14,20 +14,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
+## Unreleased
+### Added
+- Docs: document testing and static analysis tools in README
+- Unit tests
+- ATOM feed endpoint alongside RSS
+- [#129](https://github.com/CCSDForge/episciences-api/issues/129): Add the creation date and last update to the pages
+### Changed
+- Consideration of the section order when generating the Boards
+- RSS 30 publications instead of 2
+- Statistics rate calculations: 100% now refers to the total of accepted and declined articles
+### Fixed
+- Run composer install inside PHP 8.2 container in CI
+- Detect Docker in coverage script for reliable report generation
+- Bugs found during test
+- Deprecation warnings for Symfony 7.3+, API Platform 3.3+, and related dependencies.
+- RSS Incorrect Feed name
+- RSS feed link generation using `Request::createFromGlobals()` to ensure correct scheme and host.
+
 ## v1.2.4 2026-02-04
 ### Changed
 - Allow volume years to be a string
-- RSS 30 publications instead of 2
-- Statistics rate calculations: 100% now refers to the total of accepted and declined articles
 ### Added
-- [#129](https://github.com/CCSDForge/episciences-api/issues/129): Add the creation date and last update to the pages
-- [#869](https://github.com/CCSDForge/episciences/issues/869#issue-3839027009): on the Editorial Board page, the sections are only partially displayed
 - related to [#106](https://github.com/CCSDForge/episciences-front/issues/106): "webmaster" and "copy editor" roles added to boards
 - [#94](https://github.com/CCSDForge/episciences-front/issues/94): New labels for boards
-- ATOM feed endpoint alongside RSS
 ### Fixed
-- RSS Incorrect Feed name
-- RSS feed link generation using `Request::createFromGlobals()` to ensure correct scheme and host.
+- [#869](https://github.com/CCSDForge/episciences/issues/869#issue-3839027009): on the Editorial Board page, the sections are only partially displayed
 - RT#267717: Volumes without published articles that were displayed even with
  the "do not display empty volumes (without published articles)" option enabled;
   the same applies to years and types
@@ -36,7 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The number of published articles returned by the collection of volumes included unpublished articles.
 - The number of publications with one author is incorrect because the search is done by Surname or First name instead of First name and Surname.
 - Wrong statistical indicator "Reviews received".
-- Deprecation warnings for Symfony 7.3+, API Platform 3.3+, and related dependencies.
 ## v1.2.2 2025-03-18
 ### Changed
 - Updated robots.txt rules
