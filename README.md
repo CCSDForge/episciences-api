@@ -202,6 +202,10 @@ make check
 
 Automated deployment is handled via Ansistrano. See the [Deployment Guide](docs/deployment.md) for setup and usage instructions.
 
+## Deployment
+
+Automated deployment is handled via Ansistrano. See the [Deployment Guide](docs/deployment.md) for setup and usage instructions.
+
 #### Database Access
 
 ```bash
