@@ -1,0 +1,2 @@
+[staging]
+# your-staging-server-ip ansible_user=deploy ansible_become=true
