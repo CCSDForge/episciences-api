@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
-## Unreleased
+## v1.2.5 2026-04-09
 ### Added
 - Docs: document testing and static analysis tools in README
 - Unit tests
