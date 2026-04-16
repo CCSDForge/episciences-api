@@ -23,7 +23,8 @@ class UserInvitationRepository extends ServiceEntityRepository
     {
 
         $rvId = $options['rvid'] ?? null;
-        $invitationStatus = $options['invitation-status'] ?? null;
+        $invitationStatus = $options['invitation-status'] ?? UserAssignment::STATUS_PENDING;
+
         $docId = $options['docId'] ?? null;
         $uid = $options['uid'] ?? null;
         $years = $options['year'] ?? null;
@@ -33,42 +34,40 @@ class UserInvitationRepository extends ServiceEntityRepository
         $qb->addSelect('ua.uid');
         $qb->addSelect('i.status');
         $qb->addSelect('i.id');
-        $qb->addSelect('MAX(i.sendingDate) as date');
+        $qb->addSelect('i.sendingDate as date');
+
+
+        $qb->from(UserAssignment::class, 'ua');
+        $qb->innerJoin(UserInvitation::class, 'i', Join::WITH, 'ua.invitationId = i.id');
+
+        $qb->andWhere('ua.item =:item')->setParameter('item', UserAssignment::ITEM_PAPER);
 
         if ($years) {
             $this->andOrExp($qb, 'YEAR(i.sendingDate)', $years);
         }
 
-        $qb->from(UserInvitation::class, 'i');
-        $qb->innerJoin(UserInvitation::class, 'ii', Join::WITH, 'i.sendingDate = ii.sendingDate');
-        $qb->innerJoin(UserAssignment::class, 'ua', Join::WITH, 'ua.invitationId = i.id');
-        $qb->andWhere('ua.item =:item')->setParameter('item', UserAssignment::ITEM_PAPER);
         $qb->andWhere('ua.roleid =:role')->setParameter('role', UserAssignment::ROLE_REVIEWER);
+
+        if ($rvId) {
+            $qb->andWhere('ua.rvid = :rvId')->setParameter('rvId', $rvId);
+        }
+
+        if ($invitationStatus) {
+            $qb->andWhere('i.status = :status')->setParameter('status', $invitationStatus);
+        }
+
+        if ($docId) {
+            $qb->andWhere('ua.itemid = :docId')->setParameter('docId', $docId);
+        }
+
+        if ($uid) {
+            $qb->andWhere('ua.uid = :uid')->setParameter('uid', $uid);
+        }
+
         $qb->orderBy('ua.rvid', 'DESC');
         $qb->addOrderBy('i.id', 'DESC');
         $qb->addOrderBy('ua.itemid', 'DESC');
         $qb->addOrderBy('ua.uid', 'DESC');
-        $qb->addGroupBy('ua.rvid');
-        $qb->addGroupBy('ua.itemid');
-        $qb->addGroupBy('ua.uid');
-        $qb->addGroupBy('i.status');
-        $qb->addGroupBy('i.id');
-
-        if ($rvId) {
-            $qb->andhaving('ua.rvid = :rvId')->setParameter('rvId', $rvId);
-        }
-
-        if ($invitationStatus) {
-            $qb->andHaving('i.status = :status')->setParameter('status', $invitationStatus);
-        }
-
-        if ($docId) {
-            $qb->andHaving('ua.itemid = :docId')->setParameter('docId', $docId);
-        }
-
-        if ($uid) {
-            $qb->andHaving('ua.uid = :uid')->setParameter('uid', $uid);
-        }
 
         return $qb;
 
