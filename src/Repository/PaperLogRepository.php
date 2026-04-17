@@ -385,7 +385,7 @@ class PaperLogRepository extends ServiceEntityRepository
     private function getRateByStatus(string $status = 'accepted', array $options = []): float|null
     {
         $years = $options['year'] ?? [];
-        $rvId = $options['rvid'] ? (int)$options['rvid'] : null;
+        $rvId = isset($options['rvid']) ? (int)$options['rvid'] : null;
         $startAfterDate = $options['startAfterDate'] ?? null;
 
         $acceptedTotal = $options['acceptedTotal'] ?? $this->getAccepted($rvId, $years, $startAfterDate);
