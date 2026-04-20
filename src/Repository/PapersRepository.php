@@ -456,7 +456,7 @@ class PapersRepository extends ServiceEntityRepository
     }
 
     /**
-     * Generates a range of years between the date of first submission and the date of last publication.
+     * Generates a range of years between the date of first submission and the date of last submission.
      * @param int|null $rvId
      * @param string $flag
      * @return array
@@ -469,7 +469,7 @@ class PapersRepository extends ServiceEntityRepository
         $qb = $this->getEntityManager()->createQueryBuilder();
         $qb->from(Paper::class, 'p');
         $qb->addSelect("YEAR(MIN(p.submissionDate)) as minYear ");
-        $qb->addSelect("YEAR(Max(p.publicationDate)) as maxYear");
+        $qb->addSelect("YEAR(MAX(p.submissionDate)) as maxYear");
 
         $qb->andWhere("p.flag = :flag")->setParameter('flag', self::AVAILABLE_FLAG_VALUES[$flag]);
 
