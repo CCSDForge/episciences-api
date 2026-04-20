@@ -39,6 +39,7 @@ doctrine:
                         MONTH: DoctrineExtensions\Query\Mysql\Month
                         YEAR: DoctrineExtensions\Query\Mysql\Year
                         TIMESTAMPDIFF: DoctrineExtensions\Query\Mysql\TimestampDiff
+                        GREATEST: DoctrineExtensions\Query\Mysql\Greatest
                         JSON_EXTRACT: Scienta\DoctrineJsonFunctions\Query\AST\Functions\Mysql\JsonExtract
                         JSON_UNQUOTE: Scienta\DoctrineJsonFunctions\Query\AST\Functions\Mysql\JsonUnquote
 

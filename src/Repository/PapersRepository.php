@@ -469,7 +469,7 @@ class PapersRepository extends ServiceEntityRepository
         $qb = $this->getEntityManager()->createQueryBuilder();
         $qb->from(Paper::class, 'p');
         $qb->addSelect("YEAR(MIN(p.submissionDate)) as minYear ");
-        $qb->addSelect("YEAR(MAX(p.submissionDate)) as maxYear");
+        $qb->addSelect("YEAR(MAX(GREATEST(p.submissionDate, p.publicationDate))) as maxYear");
 
         $qb->andWhere("p.flag = :flag")->setParameter('flag', self::AVAILABLE_FLAG_VALUES[$flag]);
 
