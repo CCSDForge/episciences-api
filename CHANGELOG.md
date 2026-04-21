@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
+## Unreleased
+### Fixed
+- [RT#282494]: the number of reviews requested is incorrect.
+- The range years for the evaluation statistics does include the period during witch no article was published.
+### Changed
+- SQl Query optimization
+
 ## v1.2.5 2026-04-09
 ### Added
 - Docs: document testing and static analysis tools in README
