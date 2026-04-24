@@ -51,6 +51,9 @@
         "symfony/yaml": "^7.0"
     },
     "config": {
+        "platform": {
+            "php": "8.3.30"
+        },
         "optimize-autoloader": true,
         "preferred-install": {
             "*": "dist"
