@@ -79,7 +79,7 @@ class Export extends AbstractBrowse
 
 
     private int $docId;
-    private ?string $format;
+    private ?string $format = null;
 
     public function getDocId(): int
     {

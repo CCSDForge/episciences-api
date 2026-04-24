@@ -11,15 +11,15 @@ class UserInvitationAnswer
 {
 
     #[ORM\Column(
-        name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => 'true', 'comment' => 'Invitation ID']
+        name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => 'true', 'comment' => 'Invitation ID']
     )]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $id;
+    private int $id;
     #[ORM\Colmun(name:'ANSWER', type: 'string', length: 10, nullable: false)]
-    private $answer;
-    #[ORM\Column(name: 'ANSWER_DATE', type: 'datetime', nullable: false)]
-    private $answerDate;
+    private ?string $answer = null;
+    #[ORM\Column(name: 'ANSWER_DATE', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
+    private \DateTimeInterface $answerDate;
 
     public function getId(): ?int
     {

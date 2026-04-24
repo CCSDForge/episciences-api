@@ -18,7 +18,7 @@ trait ToolsTrait
     final public function applyFilterBy(array $result, string $extractedKey = null, string $filter = null): array
     {
         if (
-            empty($result) |
+            $result === [] |
             !$extractedKey ||
             isset($result[$extractedKey])
             || !$filter
@@ -100,7 +100,7 @@ trait ToolsTrait
     {
 
         $latestSubString = '';
-        foreach (explode($separator, $string) as $str) {
+        foreach (explode($separator, (string) $string) as $str) {
 
             $latestSubString = $str;
 
@@ -117,7 +117,7 @@ trait ToolsTrait
     /** @throws LengthException */
     public function getMedian(array $array): int|float
     {
-        if (!$array) {
+        if ($array === []) {
             throw new LengthException('Cannot calculate median because Argument #1 ($array) is empty');
         }
 
@@ -151,14 +151,12 @@ trait ToolsTrait
 
     public function arrayCleaner(array $array = []): array
     {
-        return array_filter($array, static function($val) {
-            return !(empty($val));
-        });
+        return array_filter($array, static fn($val) => !(empty($val)));
     }
 
     public function isValidYear( int|string|null $year = null) : bool
     {
-        return preg_match('/^\d{4}$/', $year) === 1 && (int)$year >= self::MIN_YEAR;
+        return preg_match('/^\d{4}$/', (string) $year) === 1 && (int)$year >= self::MIN_YEAR;
     }
 
     /**
@@ -168,7 +166,7 @@ trait ToolsTrait
      */
 
     public function isValideVolumeYear(int|string|null $year = null) : bool {
-        return preg_match('/^(\d{4}|\d{4}-\d{4})$/', $year) === 1;
+        return preg_match('/^(\d{4}|\d{4}-\d{4})$/', (string) $year) === 1;
     }
 
 

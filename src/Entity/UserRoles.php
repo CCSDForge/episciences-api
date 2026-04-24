@@ -25,36 +25,6 @@ class UserRoles
     public const ROLE_MANAGING_EDITOR = 'managing_editor';
     public const ROLE_HANDLING_EDITOR = 'handling_editor';
 
-    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    #[ORM\Id]
-    #[ORM\GeneratedValue(strategy: 'NONE')]
-    private $uid;
-
-
-
-    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    #[ORM\Id]
-    #[ORM\GeneratedValue(strategy: 'NONE')]
-    #[Groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-            'read:Me',
-        ])]
-    private $rvid;
-
-
-    #[ORM\Column(name: 'ROLEID', type: 'string', length: 20, nullable: false)]
-    #[ORM\Id]
-    #[ORM\GeneratedValue(strategy: 'NONE')]
-    #[Groups(
-        [
-            AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-            'read:Me',
-        ])]
-    private $roleid;
-
 
    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'userRoles')]
    #[ORM\JoinColumn(name: 'UID', referencedColumnName: 'UID', nullable: true)]
@@ -64,12 +34,35 @@ class UserRoles
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
             'read:Me',
         ])]
-    private ?User $user;
+    private ?User $user = null;
 
-    public function __construct($uid, $rvid, $roleid){
-        $this->uid = $uid;
-        $this->rvid = $rvid;
-        $this->roleid = $roleid;
+    public function __construct(
+        #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+        #[ORM\Id]
+        #[ORM\GeneratedValue(strategy: 'NONE')]
+        private $uid,
+        #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+        #[ORM\Id]
+        #[ORM\GeneratedValue(strategy: 'NONE')]
+        #[Groups(
+            [
+                AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
+                AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+                'read:Me',
+            ])]
+        private $rvid,
+        #[ORM\Column(name: 'ROLEID', type: \Doctrine\DBAL\Types\Types::STRING, length: 20, nullable: false)]
+        #[ORM\Id]
+        #[ORM\GeneratedValue(strategy: 'NONE')]
+        #[Groups(
+            [
+                AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
+                AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
+                'read:Me',
+            ])]
+        private $roleid
+    )
+    {
     }
 
     public function getUid(): ?int

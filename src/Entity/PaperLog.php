@@ -17,46 +17,46 @@ class PaperLog
     public const TABLE = 'PAPER_LOG';
 
 
-    #[ORM\Column(name: 'LOGID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'LOGID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $logid;
+    private int $logid;
 
 
-    #[ORM\Column(name: 'PAPERID', type: 'integer', nullable: false, options: ['unsigned' => true] )]
-    private $paperid;
+    #[ORM\Column(name: 'PAPERID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true] )]
+    private int $paperid;
 
 
-    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    private $docid;
+    #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    private int $docid;
 
 
-   #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    private $uid;
+   #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    private int $uid;
 
 
-    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    private $rvid;
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    private int $rvid;
 
 
-    #[ORM\Column(name: 'ACTION', type: 'string', length: 50, nullable: false)]
-    private $action;
+    #[ORM\Column(name: 'ACTION', type: \Doctrine\DBAL\Types\Types::STRING, length: 50, nullable: false)]
+    private string $action;
 
 
-   #[ORM\Column(name: 'DETAIL', type: 'json', nullable: true)]
-    private ?string $detail;
+   #[ORM\Column(name: 'DETAIL', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
+    private ?string $detail = null;
 
-    #[ORM\Column(name: 'status', type: 'integer',nullable: true, insertable: false, updatable: false, columnDefinition: "SMALLINT GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(DETAIL, '$.status'))) stored",
+    #[ORM\Column(name: 'status', type: \Doctrine\DBAL\Types\Types::INTEGER,nullable: true, insertable: false, updatable: false, columnDefinition: "SMALLINT GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(DETAIL, '$.status'))) stored",
         generated: 'ALWAYS',)]
-    private ?int $status;
+    private ?int $status = null;
 
 
-    #[ORM\Column(name: 'FILE', type: 'string', length: 150, nullable: true)]
-    private $file;
+    #[ORM\Column(name: 'FILE', type: \Doctrine\DBAL\Types\Types::STRING, length: 150, nullable: true)]
+    private ?string $file = null;
 
 
-    #[ORM\Column(name: 'DATE', type: 'datetime', nullable: false)]
-    private $date;
+    #[ORM\Column(name: 'DATE', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
+    private \DateTimeInterface $date;
 
     public function getLogid(): ?int
     {

@@ -77,9 +77,7 @@ class JWTSubscriberTest extends TestCase
 
         $event->expects($this->once())
             ->method('setData')
-            ->with($this->callback(static function (array $d) {
-                return $d['uid'] === 42 && $d['rvId'] === 7 && isset($d['roles']);
-            }));
+            ->with($this->callback(static fn(array $d) => $d['uid'] === 42 && $d['rvId'] === 7 && isset($d['roles'])));
 
         $this->subscriber->onLexikJwtAuthenticationOnJwtCreated($event);
     }
@@ -88,7 +86,7 @@ class JWTSubscriberTest extends TestCase
 
     public function testEmptyRequestBodyDoesNotThrowJsonException(): void
     {
-        $request = Request::create('/api/login', 'POST', [], [], [], [], '');
+        $request = Request::create('/api/login', \Symfony\Component\HttpFoundation\Request::METHOD_POST, [], [], [], [], '');
         $this->requestStack->method('getCurrentRequest')->willReturn($request);
 
         $user  = $this->makeUser(1, null);
@@ -105,7 +103,7 @@ class JWTSubscriberTest extends TestCase
     public function testRequestWithoutCodeKeyUsesDefaultRvId(): void
     {
         $body    = json_encode(['username' => 'user@example.com', 'password' => 'secret'], JSON_THROW_ON_ERROR);
-        $request = Request::create('/api/login', 'POST', [], [], [], [], $body);
+        $request = Request::create('/api/login', \Symfony\Component\HttpFoundation\Request::METHOD_POST, [], [], [], [], $body);
         $this->requestStack->method('getCurrentRequest')->willReturn($request);
 
         $user  = $this->makeUser(5, 3);
@@ -113,7 +111,7 @@ class JWTSubscriberTest extends TestCase
 
         $event->expects($this->once())
             ->method('setData')
-            ->with($this->callback(static fn(array $d) => $d['rvId'] === 3 && $d['uid'] === 5));
+            ->with($this->callback(static fn(array $d): bool => $d['rvId'] === 3 && $d['uid'] === 5));
 
         $this->subscriber->onLexikJwtAuthenticationOnJwtCreated($event);
     }
@@ -123,7 +121,7 @@ class JWTSubscriberTest extends TestCase
     public function testValidJournalCodeSetsRvId(): void
     {
         $body    = json_encode(['code' => 'myjournal'], JSON_THROW_ON_ERROR);
-        $request = Request::create('/api/login', 'POST', [], [], [], [], $body);
+        $request = Request::create('/api/login', \Symfony\Component\HttpFoundation\Request::METHOD_POST, [], [], [], [], $body);
         $this->requestStack->method('getCurrentRequest')->willReturn($request);
 
         $review = $this->createMock(Review::class);
@@ -138,7 +136,7 @@ class JWTSubscriberTest extends TestCase
         $event = $this->makeEvent($user);
         $event->expects($this->once())
             ->method('setData')
-            ->with($this->callback(static fn(array $d) => $d['rvId'] === 99));
+            ->with($this->callback(static fn(array $d): bool => $d['rvId'] === 99));
 
         $this->subscriber->onLexikJwtAuthenticationOnJwtCreated($event);
     }
@@ -148,7 +146,7 @@ class JWTSubscriberTest extends TestCase
     public function testUnknownJournalCodeThrowsBadRequest(): void
     {
         $body    = json_encode(['code' => 'unknown'], JSON_THROW_ON_ERROR);
-        $request = Request::create('/api/login', 'POST', [], [], [], [], $body);
+        $request = Request::create('/api/login', \Symfony\Component\HttpFoundation\Request::METHOD_POST, [], [], [], [], $body);
         $this->requestStack->method('getCurrentRequest')->willReturn($request);
 
         $this->reviewRepo->method('getJournalByIdentifier')->with('unknown')->willReturn(null);
@@ -167,7 +165,7 @@ class JWTSubscriberTest extends TestCase
     public function testInactiveJournalThrowsBadRequest(): void
     {
         $body    = json_encode(['code' => 'inactive'], JSON_THROW_ON_ERROR);
-        $request = Request::create('/api/login', 'POST', [], [], [], [], $body);
+        $request = Request::create('/api/login', \Symfony\Component\HttpFoundation\Request::METHOD_POST, [], [], [], [], $body);
         $this->requestStack->method('getCurrentRequest')->willReturn($request);
 
         $review = $this->createMock(Review::class);

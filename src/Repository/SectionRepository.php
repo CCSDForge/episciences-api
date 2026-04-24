@@ -48,8 +48,8 @@ class SectionRepository extends ServiceEntityRepository
             }
 
             $section = new Section();
-            $titles = $values['titles'] ? json_decode($values['titles'], true, 512, JSON_THROW_ON_ERROR) : null;
-            $descriptions = $values['descriptions'] ? json_decode($values['descriptions'], true, 512, JSON_THROW_ON_ERROR) : null;
+            $titles = $values['titles'] ? json_decode((string) $values['titles'], true, 512, JSON_THROW_ON_ERROR) : null;
+            $descriptions = $values['descriptions'] ? json_decode((string) $values['descriptions'], true, 512, JSON_THROW_ON_ERROR) : null;
             $sections[$values['UID']][] = $section
                 ->setSid($values['SID'])
                 ->setRvid($values['RVID'])

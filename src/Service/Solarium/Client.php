@@ -16,8 +16,8 @@ use Solarium\QueryType\Select\Result\Result;
 
 class Client extends \Solarium\Client
 {
-    private ?Review $journal;
-    private ?LoggerInterface $logger;
+    private ?Review $journal = null;
+    private ?LoggerInterface $logger = null;
     private array $searchPrams = [];
     private QueryInterface|Query|AbstractQuery $query;
     private array $excludedFilterTags = [];
@@ -81,7 +81,7 @@ class Client extends \Solarium\Client
         $path = null;
 
         $isDefaultPath = false;
-        $defaultPath = sprintf('%s/../config/solr/%s/%s.%s', \dirname(__DIR__), 'default', $key, !$format ? 'json' : $format);
+        $defaultPath = sprintf('%s/../config/solr/%s/%s.%s', \dirname(__DIR__), 'default', $key, $format ?: 'json');
 
         if (is_file($defaultPath) && is_readable($defaultPath)) {
             $isDefaultPath = true;
@@ -89,7 +89,7 @@ class Client extends \Solarium\Client
         }
 
         if ($rvCode = $this->getJournal()?->getCode()) {
-            $path = sprintf('%s/../config/solr/%s/%s.%s', \dirname(__DIR__), $rvCode, $key, !$format ? 'json' : $format);
+            $path = sprintf('%s/../config/solr/%s/%s.%s', \dirname(__DIR__), $rvCode, $key, $format ?: 'json');
             if ($isDefaultPath && (!is_file($path) || !is_readable($path))) {
                 $path = $defaultPath;
             }
@@ -104,7 +104,7 @@ class Client extends \Solarium\Client
                     $toArray = json_decode($config, true, 512, JSON_THROW_ON_ERROR);
                 } catch (\JsonException $e) {
 
-                    if ($this->getLogger()) {
+                    if ($this->getLogger() instanceof \Psr\Log\LoggerInterface) {
                         $this->logger->critical($e->getMessage());
                     }
 
@@ -152,7 +152,7 @@ class Client extends \Solarium\Client
 
         $query->setRows($rows);
 
-        if ($this->journal) {
+        if ($this->journal instanceof \App\Entity\Review) {
             $query
                 ->createFilterQuery(sprintf('df%s', $this->journal->getRvid()))
                 ->setQuery(sprintf('revue_id_i:%s', $this->journal->getRvid()));
@@ -230,14 +230,12 @@ class Client extends \Solarium\Client
                     $param === Search::SEARCH_FILTERS_MAPPING[Search::DOC_TYPE_FILTER]
 
                 ) {
-                    $current = trim($current);
+                    $current = trim((string) $current);
                     $current = trim($current, '"');
                     $current = $helper->escapeTerm($current);
 
                 } elseif (
-                    $param === Search::SEARCH_FILTERS_MAPPING[Search::VOLUME_FILTER] ||
-                    $param === Search::SEARCH_FILTERS_MAPPING[Search::SECTION_FILTER] ||
-                    $param === Search::SEARCH_FILTERS_MAPPING[Search::PUBLICATION_DATE_YEAR_FILTER]
+                    in_array($param, [Search::SEARCH_FILTERS_MAPPING[Search::VOLUME_FILTER], Search::SEARCH_FILTERS_MAPPING[Search::SECTION_FILTER], Search::SEARCH_FILTERS_MAPPING[Search::PUBLICATION_DATE_YEAR_FILTER]], true)
                 ) {
                     $current = (int)$current;
                 }
@@ -253,7 +251,7 @@ class Client extends \Solarium\Client
 
             $compiledValues = trim($compiledValues);
 
-            if (empty($compiledValues)) {
+            if ($compiledValues === '' || $compiledValues === '0') {
                 continue;
             }
 
@@ -287,7 +285,7 @@ class Client extends \Solarium\Client
 
         $facets = $this->getSolrConfig('solr.es.facets');
 
-        if (empty($facets)) {
+        if ($facets === []) {
             return $this;
         }
 
@@ -309,7 +307,7 @@ class Client extends \Solarium\Client
             }
 
             foreach ($excludedTags as $tag) {
-                [$tag, $fieldName] = explode(self::TAG_SEPARATOR, $tag);
+                [$tag, $fieldName] = explode(self::TAG_SEPARATOR, (string) $tag);
 
                 if ($fieldName === $facet['fieldName']) {
                     $current->addExclude($tag);

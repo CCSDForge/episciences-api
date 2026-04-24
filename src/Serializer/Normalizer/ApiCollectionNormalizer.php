@@ -27,7 +27,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 {
     use QueryTrait;
 
-    public const FORMAT = 'jsonld';
+    public const string FORMAT = 'jsonld';
 
     public function setNormalizer(NormalizerInterface $normalizer): void
     {
@@ -102,7 +102,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         }
 
         if (
-            !empty($filters) &&
+            $filters !== [] &&
             ($operationClass === Volume::class || $operationClass === Section::class) &&
             $operation->getMethod() === 'GET'
         ) {

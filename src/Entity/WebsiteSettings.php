@@ -6,36 +6,29 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * WebsiteSettings
- *
- * @ORM\Table(name="WEBSITE_SETTINGS")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'WEBSITE_SETTINGS')]
 class WebsiteSettings
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="SID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
      */
+    #[ORM\Column(name: 'SID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     private $sid;
 
     /**
      * @var string
-     *
-     * @ORM\Column(name="SETTING", type="string", length=50, nullable=false)
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
      */
+    #[ORM\Column(name: 'SETTING', type: 'string', length: 50, nullable: false)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     private $setting;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="VALUE", type="string", length=1000, nullable=false)
-     */
-    private $value;
+    #[ORM\Column(name: 'VALUE', type: 'string', length: 1000, nullable: false)]
+    private ?string $value = null;
 
     public function getSid(): ?int
     {

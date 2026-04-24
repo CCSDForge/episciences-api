@@ -6,99 +6,56 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * WebsiteHeader
- *
- * @ORM\Table(name="WEBSITE_HEADER")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'WEBSITE_HEADER')]
 class WebsiteHeader
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="LOGOID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
      */
+    #[ORM\Column(name: 'LOGOID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     private $logoid;
 
     /**
      * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
      */
+    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     private $rvid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="TYPE", type="string", length=0, nullable=false)
-     */
-    private $type;
+    #[ORM\Column(name: 'TYPE', type: 'string', length: 0, nullable: false)]
+    private ?string $type = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="IMG", type="string", length=255, nullable=false)
-     */
-    private $img;
+    #[ORM\Column(name: 'IMG', type: 'string', length: 255, nullable: false)]
+    private ?string $img = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="IMG_WIDTH", type="string", length=255, nullable=false)
-     */
-    private $imgWidth;
+    #[ORM\Column(name: 'IMG_WIDTH', type: 'string', length: 255, nullable: false)]
+    private ?string $imgWidth = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="IMG_HEIGHT", type="string", length=255, nullable=false)
-     */
-    private $imgHeight;
+    #[ORM\Column(name: 'IMG_HEIGHT', type: 'string', length: 255, nullable: false)]
+    private ?string $imgHeight = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="IMG_HREF", type="string", length=255, nullable=false)
-     */
-    private $imgHref;
+    #[ORM\Column(name: 'IMG_HREF', type: 'string', length: 255, nullable: false)]
+    private ?string $imgHref = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="IMG_ALT", type="string", length=255, nullable=false)
-     */
-    private $imgAlt;
+    #[ORM\Column(name: 'IMG_ALT', type: 'string', length: 255, nullable: false)]
+    private ?string $imgAlt = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="TEXT", type="string", length=1000, nullable=false)
-     */
-    private $text;
+    #[ORM\Column(name: 'TEXT', type: 'string', length: 1000, nullable: false)]
+    private ?string $text = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="TEXT_CLASS", type="string", length=255, nullable=false)
-     */
-    private $textClass;
+    #[ORM\Column(name: 'TEXT_CLASS', type: 'string', length: 255, nullable: false)]
+    private ?string $textClass = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="TEXT_STYLE", type="string", length=255, nullable=false)
-     */
-    private $textStyle;
+    #[ORM\Column(name: 'TEXT_STYLE', type: 'string', length: 255, nullable: false)]
+    private ?string $textStyle = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="ALIGN", type="string", length=10, nullable=false)
-     */
-    private $align;
+    #[ORM\Column(name: 'ALIGN', type: 'string', length: 10, nullable: false)]
+    private ?string $align = null;
 
     public function getLogoid(): ?int
     {

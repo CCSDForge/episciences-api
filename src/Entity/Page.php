@@ -87,7 +87,7 @@ class Page
     private int $id;
 
 
-    #[ORM\Column(name: 'uid', type: 'integer', nullable: false)]
+    #[ORM\Column(name: 'uid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false)]
     private int $uid;
 
 
@@ -104,19 +104,19 @@ class Page
     )]
     private string $rvcode;
 
-    #[ORM\Column(name: 'title', type: 'json', nullable: false)]
+    #[ORM\Column(name: 'title', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     #[groups(
         ['read:Page', 'read:Pages']
     )]
     private array $title = [];
 
-    #[ORM\Column(name: 'content', type: 'json', nullable: false)]
+    #[ORM\Column(name: 'content', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     #[groups(
         ['read:Page', 'read:Pages']
     )]
     private array $content = [];
 
-    #[ORM\Column(name: 'visibility', type: 'json', nullable: false)]
+    #[ORM\Column(name: 'visibility', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     #[groups(
         ['read:Page']
     )]

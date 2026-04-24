@@ -13,14 +13,8 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 class JWTSubscriber implements EventSubscriberInterface
 {
 
-    private RequestStack $requestStack;
-    private ManagerRegistry $doctrine;
-
-
-    public function __construct(RequestStack $requestStack, ManagerRegistry $doctrine)
+    public function __construct(private readonly RequestStack $requestStack, private readonly ManagerRegistry $doctrine)
     {
-        $this->requestStack = $requestStack;
-        $this->doctrine = $doctrine;
     }
 
     /**
@@ -39,7 +33,7 @@ class JWTSubscriber implements EventSubscriberInterface
         $request = $this->requestStack->getCurrentRequest();
 
         $content = $request?->getContent();
-        $postedContent = !empty($content) ? json_decode($content, true, 512, JSON_THROW_ON_ERROR) : [];
+        $postedContent = empty($content) ? [] : json_decode($content, true, 512, JSON_THROW_ON_ERROR);
 
         $rvCode = $postedContent['code'] ?? null;
 

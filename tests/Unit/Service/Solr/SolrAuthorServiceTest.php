@@ -15,10 +15,10 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class SolrAuthorServiceTest extends TestCase
 {
-    private MockObject|HttpClientInterface $httpClient;
-    private MockObject|LoggerInterface $logger;
-    private MockObject|ParameterBagInterface $parameterBag;
-    private MockObject|SolrFacetService $facetService;
+    private \PHPUnit\Framework\MockObject\MockObject $httpClient;
+    private \PHPUnit\Framework\MockObject\MockObject $logger;
+    private \PHPUnit\Framework\MockObject\MockObject $parameterBag;
+    private \PHPUnit\Framework\MockObject\MockObject $facetService;
     private SolrAuthorService $authorService;
 
     protected function setUp(): void
@@ -118,9 +118,7 @@ class SolrAuthorServiceTest extends TestCase
         $this->httpClient
             ->expects($this->once())
             ->method('request')
-            ->with('GET', $this->callback(function ($url) {
-                return str_contains($url, 'author_fullname_t%3A');
-            }))
+            ->with('GET', $this->callback(fn($url) => str_contains((string) $url, 'author_fullname_t%3A')))
             ->willReturn($response);
 
         $this->authorService->getSolrAuthorsByFullName('O\'Brien, Patrick');

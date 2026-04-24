@@ -6,51 +6,35 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * PaperAuthors
- *
- * @ORM\Table(name="PAPER_AUTHORS", indexes={@ORM\Index(name="PAPER_AUTHOR", columns={"AUTHORID"})})
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'PAPER_AUTHORS')]
+#[ORM\Index(name: 'PAPER_AUTHOR', columns: ['AUTHORID'])]
 class PaperAuthors
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="ID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
      */
+    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $id;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="DOCID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $docid;
+    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    private ?int $docid = null;
 
     /**
      * @var int
-     *
-     * @ORM\Column(name="UID", type="integer", nullable=false, options={"unsigned"=true})
      */
+    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
     private $uid = '0';
 
-    /**
-     * @var int|null
-     *
-     * @ORM\Column(name="POSITION", type="integer", nullable=true, options={"unsigned"=true,"comment"="Classement des auteurs"})
-     */
-    private $position;
+    #[ORM\Column(name: 'POSITION', type: 'integer', nullable: true, options: ['unsigned' => true, 'comment' => 'Classement des auteurs'])]
+    private ?int $position = null;
 
-    /**
-     * @var \Authors
-     *
-     * @ORM\ManyToOne(targetEntity="Authors")
-     * @ORM\JoinColumns({
-     *   @ORM\JoinColumn(name="AUTHORID", referencedColumnName="ID")
-     * })
-     */
-    private $authorid;
+    #[ORM\ManyToOne(targetEntity: \Authors::class)]
+    #[ORM\JoinColumn(name: 'AUTHORID', referencedColumnName: 'ID')]
+    private ?\App\Entity\Authors $authorid = null;
 
     public function getId(): ?int
     {

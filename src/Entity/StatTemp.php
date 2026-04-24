@@ -6,55 +6,38 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * StatTemp
- *
- * @ORM\Table(name="STAT_TEMP", indexes={@ORM\Index(name="DOCID", columns={"DOCID"})})
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'STAT_TEMP')]
+#[ORM\Index(name: 'DOCID', columns: ['DOCID'])]
 class StatTemp
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="VISITID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
      */
+    #[ORM\Column(name: 'VISITID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $visitid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="DOCID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $docid;
+    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    private ?int $docid = null;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="IP", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $ip;
+    #[ORM\Column(name: 'IP', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    private ?int $ip = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="HTTP_USER_AGENT", type="string", length=2000, nullable=false)
-     */
-    private $httpUserAgent;
+    #[ORM\Column(name: 'HTTP_USER_AGENT', type: 'string', length: 2000, nullable: false)]
+    private ?string $httpUserAgent = null;
 
-    /**
-     * @var \DateTime
-     *
-     * @ORM\Column(name="DHIT", type="datetime", nullable=false, options={"default"="CURRENT_TIMESTAMP"})
-     */
-    private $dhit = 'CURRENT_TIMESTAMP';
+    #[ORM\Column(name: 'DHIT', type: 'datetime', nullable: false)]
+    private \DateTime|\DateTimeInterface $dhit;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="CONSULT", type="string", length=0, nullable=false, options={"default"="notice"})
-     */
-    private $consult = 'notice';
+    #[ORM\Column(name: 'CONSULT', type: 'string', length: 0, nullable: false, options: ['default' => 'notice'])]
+    private string $consult = 'notice';
+    public function __construct()
+    {
+        $this->dhit = new \DateTime('CURRENT_TIMESTAMP');
+    }
 
     public function getVisitid(): ?int
     {

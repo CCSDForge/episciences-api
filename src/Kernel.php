@@ -46,6 +46,7 @@ class Kernel extends BaseKernel
     }
 
 
+    #[\Override]
     public function getCacheDir(): string
     {
         return isset($_ENV['CACHE_PATH']) &&
@@ -54,6 +55,7 @@ class Kernel extends BaseKernel
             $_ENV['CACHE_PATH'] . $this->environment : parent::getCacheDir();
     }
 
+    #[\Override]
     public function getLogDir(): string
     {
 

@@ -10,19 +10,19 @@ class UserInvitationAnswerDetail
 {
 
     #[ORM\Column(
-        name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true, 'comment' => 'Invitation ID']
+        name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true, 'comment' => 'Invitation ID']
     )]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $id;
+    private int $id;
 
-    #[ORM\Column(name:'NAME', type: 'string', length: 30, nullable: false)]
+    #[ORM\Column(name:'NAME', type: \Doctrine\DBAL\Types\Types::STRING, length: 30, nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private $name;
+    private string $name;
 
-    #[ORM\Column(name: 'VALUE', type: 'string', length: 500, nullable: true)]
-    private $value;
+    #[ORM\Column(name: 'VALUE', type: \Doctrine\DBAL\Types\Types::STRING, length: 500, nullable: true)]
+    private ?string $value = null;
 
     public function getId(): ?int
     {

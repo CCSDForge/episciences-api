@@ -16,7 +16,7 @@ final class UsersStatsDataProvider extends AbstractDataProvider implements Provi
     public function supports(Operation $operation = null): bool
     {
         return (
-            $operation &&
+            $operation instanceof \ApiPlatform\Metadata\Operation &&
             (User::class === $operation->getClass()) &&
             in_array($operation->getName(), AppConstants::APP_CONST['custom_operations']['items']['review'], true)
         );

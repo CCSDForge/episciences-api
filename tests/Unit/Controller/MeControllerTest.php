@@ -13,9 +13,9 @@ use Symfony\Bundle\SecurityBundle\Security;
 class MeControllerTest extends TestCase
 {
     private MeController $controller;
-    private MockObject|Security $security;
-    private MockObject|ManagerRegistry $doctrine;
-    private MockObject|UserRepository $userRepository;
+    private \PHPUnit\Framework\MockObject\MockObject $security;
+    private \PHPUnit\Framework\MockObject\MockObject $doctrine;
+    private \PHPUnit\Framework\MockObject\MockObject $userRepository;
 
     protected function setUp(): void
     {

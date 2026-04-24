@@ -6,48 +6,36 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * DoiQueue
- *
- * @ORM\Table(name="doi_queue", uniqueConstraints={@ORM\UniqueConstraint(name="paperid", columns={"paperid"})}, indexes={@ORM\Index(name="doi_status", columns={"doi_status"})})
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'doi_queue')]
+#[ORM\Index(name: 'doi_status', columns: ['doi_status'])]
+#[ORM\UniqueConstraint(name: 'paperid', columns: ['paperid'])]
 class DoiQueue
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="id_doi_queue", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
      */
+    #[ORM\Column(name: 'id_doi_queue', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $idDoiQueue;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="paperid", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $paperid;
+    #[ORM\Column(name: 'paperid', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    private ?int $paperid = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="doi_status", type="string", length=0, nullable=false, options={"default"="assigned"})
-     */
-    private $doiStatus = 'assigned';
+    #[ORM\Column(name: 'doi_status', type: 'string', length: 0, nullable: false, options: ['default' => 'assigned'])]
+    private string $doiStatus = 'assigned';
 
-    /**
-     * @var \DateTime
-     *
-     * @ORM\Column(name="date_init", type="datetime", nullable=false)
-     */
-    private $dateInit;
+    #[ORM\Column(name: 'date_init', type: 'datetime', nullable: false)]
+    private ?\DateTimeInterface $dateInit = null;
 
-    /**
-     * @var \DateTime
-     *
-     * @ORM\Column(name="date_updated", type="datetime", nullable=false, options={"default"="CURRENT_TIMESTAMP"})
-     */
-    private $dateUpdated = 'CURRENT_TIMESTAMP';
+    #[ORM\Column(name: 'date_updated', type: 'datetime', nullable: false)]
+    private \DateTime|\DateTimeInterface $dateUpdated;
+    public function __construct()
+    {
+        $this->dateUpdated = new \DateTime('CURRENT_TIMESTAMP');
+    }
 
     public function getIdDoiQueue(): ?int
     {

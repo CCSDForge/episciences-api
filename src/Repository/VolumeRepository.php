@@ -340,7 +340,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
     private function processYearRanges(array &$years = []): void
     {
 
-        if (empty($years)) {
+        if ($years === []) {
             return;
         }
 
@@ -354,9 +354,9 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
             $separator = '-';
 
-            if (str_contains($currentYear, $separator)) {
+            if (str_contains((string) $currentYear, $separator)) {
 
-                $parts = explode($separator, $currentYear);
+                $parts = explode($separator, (string) $currentYear);
 
                 $start = (int)$parts[0];
                 $end = isset($parts[1]) ? (int)$parts[1] : 0;

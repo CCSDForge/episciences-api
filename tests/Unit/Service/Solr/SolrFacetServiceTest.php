@@ -14,9 +14,9 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class SolrFacetServiceTest extends TestCase
 {
-    private MockObject|HttpClientInterface $httpClient;
-    private MockObject|LoggerInterface $logger;
-    private MockObject|ParameterBagInterface $parameterBag;
+    private \PHPUnit\Framework\MockObject\MockObject $httpClient;
+    private \PHPUnit\Framework\MockObject\MockObject $logger;
+    private \PHPUnit\Framework\MockObject\MockObject $parameterBag;
     private SolrFacetService $facetService;
 
     protected function setUp(): void

@@ -11,8 +11,8 @@ use Doctrine\Persistence\ManagerRegistry;
  * @method Review|null findOneBy(array $criteria, array $orderBy = null)
  * @method Review[]    findAll()
  * @method Review[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\Review>
  */
-
 class ReviewRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
