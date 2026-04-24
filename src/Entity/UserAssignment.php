@@ -34,81 +34,78 @@ class UserAssignment
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_DECLINED = 'declined';
 
-    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $id;
-    #[ORM\Column(name: 'INVITATION_ID', type: 'integer', nullable:true, options: ['unsigned' => true])]
+    private int $id;
+    #[ORM\Column(name: 'INVITATION_ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable:true, options: ['unsigned' => true])]
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
 
-    private $invitationId;
+    private ?int $invitationId = null;
 
-    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
 
-    private $rvid;
+    private int $rvid;
 
-    #[ORM\Column(name: 'ITEMID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'ITEMID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
 
-    private $itemid;
+    private int $itemid;
 
-    #[ORM\Column(name: 'ITEM', type: 'string', length: 50, nullable: false)]
+    #[ORM\Column(name: 'ITEM', type: \Doctrine\DBAL\Types\Types::STRING, length: 50, nullable: false)]
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
 
-    private $item;
+    private string $item;
 
-    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
-    private $uid;
-    #[ORM\Column(name: 'TMP_USER', type: 'boolean', nullable: false)]
+    #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    private int $uid;
+    #[ORM\Column(name: 'TMP_USER', type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: false)]
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
 
-    private $tmpUser;
+    private bool $tmpUser;
 
-    #[ORM\Column(name: 'ROLEID', type: 'string', length: 50, nullable: false)]
-    private $roleid;
+    #[ORM\Column(name: 'ROLEID', type: \Doctrine\DBAL\Types\Types::STRING, length: 50, nullable: false)]
+    private string $roleid;
 
-    #[ORM\Column(name: 'STATUS', type: 'string', length: 20, nullable: false)]
+    #[ORM\Column(name: 'STATUS', type: \Doctrine\DBAL\Types\Types::STRING, length: 20, nullable: false)]
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
-    private $status;
+    private string $status;
 
-    #[ORM\Column(name: 'WHEN', type: 'datetime', nullable: false)]
+    #[ORM\Column(name: 'WHEN', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
-    private $when;
+    private \DateTimeInterface $when;
 
     /**
      * @var \DateTime|null
-     *
-     * @ORM\Column(name="DEADLINE", type="datetime", nullable=true)
      */
-    #[ORM\Column(name: 'DEADLINE', type: 'datetime', nullable: true)]
+    #[ORM\Column(name: 'DEADLINE', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true)]
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
-
-    private $deadline;
+    private ?\DateTimeInterface $deadline = null;
 
     #[ORM\ManyToOne(inversedBy: 'assignments')]
     #[ORM\JoinColumn(name: 'ITEMID', referencedColumnName: 'DOCID', nullable: false)]
