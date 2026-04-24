@@ -16,7 +16,7 @@ DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then ech
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage cov test-file validate clean phpstan rector check docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer setup-help deploy deploy-branch deploy-tag
+.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage cov test-file validate clean phpstan rector local-rector check docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer docker-composer-update setup-help deploy deploy-branch deploy-tag
 
 # Help target - displays all available commands
 help:
@@ -29,13 +29,14 @@ help:
 	@echo "  $(BOLD)ssl-certs$(NC)         Generate SSL certificates for HTTPS development"
 	@echo "  $(BOLD)ssl-clean$(NC)         Remove SSL certificates"
 	@echo ""
-	@echo "$(BLUE)Testing Commands:$(NC)"
+	@echo "$(BLUE)Testing & Analysis Commands:$(NC)"
 	@echo "  $(BOLD)test$(NC)              Run all PHPUnit tests"
 	@echo "  $(BOLD)test-unit$(NC)         Run only unit tests"
 	@echo "  $(BOLD)test-coverage$(NC)     Run tests with coverage report"
 	@echo "  $(BOLD)test-file$(NC)         Run specific test file (usage: make test-file FILE=path/to/TestFile.php)"
 	@echo "  $(BOLD)phpstan$(NC)           Run PHPStan in container (usage: make phpstan LEVEL=1 TARGET=src DRY_RUN=1)"
 	@echo "  $(BOLD)rector$(NC)            Run Rector in container (usage: make rector TARGET=src DRY_RUN=1)"
+	@echo "  $(BOLD)local-rector$(NC)      Run Rector on host (usage: make local-rector TARGET=src DRY_RUN=1)"
 	@echo "  $(BOLD)check$(NC)             Run both PHPStan and Rector"
 	@echo ""
 	@echo "$(BLUE)Utility Commands:$(NC)"
