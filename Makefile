@@ -446,6 +446,16 @@ docker-install:
 	$(DOCKER_COMPOSE) exec -u root php git config --global --add safe.directory /var/www/html || true
 	@echo "$(GREEN)✓ Dependencies installed securely with proper permissions$(NC)"
 
+# Update dependencies in container
+docker-composer-update:
+	@echo "$(BOLD)Updating dependencies inside a temporary Composer container...$(NC)"
+	docker run --rm \
+		-v $(PWD):/app \
+		-w /app \
+		-u $(shell id -u):$(shell id -g) \
+		composer:2 update --no-progress --prefer-dist --optimize-autoloader
+	@echo "$(GREEN)✓ Dependencies updated and composer.lock refreshed$(NC)"
+
 # Install dependencies optimized for CI
 docker-install-ci:
 	@echo "$(BOLD)Installing dependencies in PHP 8.3 container (CI optimized)...$(NC)"
