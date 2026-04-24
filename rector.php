@@ -29,7 +29,7 @@ return RectorConfig::configure()
         codeQuality: true,
         typeDeclarations: true,
         privatization: false,
-        instanceof: true,
+        instanceOf: true,
         earlyReturn: false,
         strictBooleans: true
     );
