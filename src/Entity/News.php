@@ -29,7 +29,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
             openapi: new OpenApiOperation(
                 summary: 'List of News',
-                description: 'Retrieving a list of News',
+                description: 'Retrieving a list of News sorted in descending order',
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
