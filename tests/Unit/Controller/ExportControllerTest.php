@@ -241,6 +241,7 @@ class ExportControllerTest extends TestCase
     /**
      * @dataProvider availableFormatsDataProvider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('availableFormatsDataProvider')]
     public function testAllAvailableFormatsAreAccepted(string $format): void
     {
         $request = $this->makeRequest(42, $format);
