@@ -30,6 +30,5 @@ return RectorConfig::configure()
         typeDeclarations: true,
         privatization: false,
         instanceOf: true,
-        earlyReturn: false,
-        strictBooleans: true
+        earlyReturn: false
     );
