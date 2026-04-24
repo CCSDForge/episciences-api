@@ -68,7 +68,7 @@ help:
 	@echo "  $(BOLD)deploy-tag$(NC)         Deploy specific tag (usage: make deploy-tag TAG=v1.0.0)"
 	@echo ""
 	@echo "$(YELLOW)Prerequisites (Local Development):$(NC)"
-	@echo "  - PHP 8.2+ (php8.2 command)"
+	@echo "  - PHP 8.3+ (php8.3 command)"
 	@echo "  - Local composer binary (./composer)"
 	@echo "  - OpenSSL (for SSL certificate generation)"
 	@echo "  - Installed dependencies (vendor/)"
@@ -84,22 +84,22 @@ help:
 check-prereqs:
 	@echo "$(BOLD)Checking Prerequisites...$(NC)"
 	@echo ""
-	@# Check PHP 8.2
-	@if ! command -v php8.2 >/dev/null 2>&1; then \
-		echo "$(RED)✗ PHP 8.2 not found$(NC)"; \
-		echo "  Install PHP 8.2:"; \
-		echo "    Ubuntu/Debian: $(BOLD)sudo apt install php8.2 php8.2-cli php8.2-mbstring php8.2-xml php8.2-mysql$(NC)"; \
+	@# Check PHP 8.3
+	@if ! command -v php8.3 >/dev/null 2>&1; then \
+		echo "$(RED)✗ PHP 8.3 not found$(NC)"; \
+		echo "  Install PHP 8.3:"; \
+		echo "    Ubuntu/Debian: $(BOLD)sudo apt install php8.3 php8.3-cli php8.3-mbstring php8.3-xml php8.3-mysql$(NC)"; \
 		echo "    CentOS/RHEL:   $(BOLD)sudo yum install php82 php82-cli php82-mbstring php82-xml php82-mysqlnd$(NC)"; \
 		echo ""; \
 		exit 1; \
 	else \
-		echo "$(GREEN)✓ PHP 8.2 found$(NC) ($$(php8.2 --version | head -n1))"; \
+		echo "$(GREEN)✓ PHP 8.3 found$(NC) ($$(php8.3 --version | head -n1))"; \
 	fi
 	@# Check local composer
 	@if [ ! -f "./composer" ]; then \
 		echo "$(RED)✗ Local composer not found$(NC)"; \
 		echo "  Download composer:"; \
-		echo "    $(BOLD)curl -sS https://getcomposer.org/installer | php8.2$(NC)"; \
+		echo "    $(BOLD)curl -sS https://getcomposer.org/installer | php8.3$(NC)"; \
 		echo "    $(BOLD)mv composer.phar composer$(NC)"; \
 		echo ""; \
 		exit 1; \
@@ -148,7 +148,7 @@ check-prereqs:
 # Install PHP dependencies
 install: check-prereqs
 	@echo "$(BOLD)Installing PHP dependencies...$(NC)"
-	php8.2 ./composer install --no-progress --prefer-dist --optimize-autoloader
+	php8.3 ./composer install --no-progress --prefer-dist --optimize-autoloader
 	@echo "$(GREEN)✓ Dependencies installed successfully$(NC)"
 
 # Generate SSL certificates for HTTPS development
@@ -212,7 +212,7 @@ test: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running all PHPUnit tests...$(NC)"
-	php8.2 vendor/bin/phpunit
+	php8.3 vendor/bin/phpunit
 	@echo "$(GREEN)✓ Tests completed$(NC)"
 
 # Run only unit tests
@@ -222,7 +222,7 @@ test-unit: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running unit tests...$(NC)"
-	php8.2 vendor/bin/phpunit tests/Unit/
+	php8.3 vendor/bin/phpunit tests/Unit/
 	@echo "$(GREEN)✓ Unit tests completed$(NC)"
 
 # Run tests with coverage
@@ -254,13 +254,13 @@ test-file: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running test file: $(FILE)$(NC)"
-	php8.2 vendor/bin/phpunit $(FILE)
+	php8.3 vendor/bin/phpunit $(FILE)
 	@echo "$(GREEN)✓ Test file completed$(NC)"
 
 # Validate PHP syntax of test files
 validate:
 	@echo "$(BOLD)Validating PHP syntax of test files...$(NC)"
-	@find tests/ -name "*.php" -exec php8.2 -l {} \; | grep -v "No syntax errors detected" || true
+	@find tests/ -name "*.php" -exec php8.3 -l {} \; | grep -v "No syntax errors detected" || true
 	@echo "$(GREEN)✓ PHP syntax validation completed$(NC)"
 
 # Run PHPStan in container
@@ -448,10 +448,10 @@ docker-install:
 
 # Install dependencies optimized for CI
 docker-install-ci:
-	@echo "$(BOLD)Installing dependencies in PHP 8.2 container (CI optimized)...$(NC)"
+	@echo "$(BOLD)Installing dependencies in PHP 8.3 container (CI optimized)...$(NC)"
 	@echo "$(BLUE)Creating Symfony directories...$(NC)"
 	mkdir -p var/cache var/log
-	@echo "$(BLUE)Installing composer dependencies inside the PHP 8.2 container...$(NC)"
+	@echo "$(BLUE)Installing composer dependencies inside the PHP 8.3 container...$(NC)"
 	$(DOCKER_COMPOSE) exec -T php composer install --no-progress --prefer-dist --optimize-autoloader --classmap-authoritative --no-scripts
 	@echo "$(BLUE)Setting proper permissions on cache and log directories...$(NC)"
 	chmod -R 775 var/cache var/log || true
@@ -556,8 +556,8 @@ define deploy-logic
 		echo "  Download composer.phar first"; \
 		exit 1; \
 	fi
-	@php8.2 composer.phar install -o --no-dev --ignore-platform-reqs
-	@php8.2 composer.phar dump-env production
+	@php8.3 composer.phar install -o --no-dev --ignore-platform-reqs
+	@php8.3 composer.phar dump-env production
 	@# Build assets
 	@echo "$(BLUE)Building production assets...$(NC)"
 	@if command -v yarn >/dev/null 2>&1; then \

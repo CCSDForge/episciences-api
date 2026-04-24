@@ -1,5 +1,5 @@
 #!/bin/bash
-PHP_BIN="/usr/bin/php8.2"
+PHP_BIN="/usr/bin/php8.3"
 deployDate=$(date "+%Y-%m-%d %X %z")
 git fetch --all
 git fetch --tags

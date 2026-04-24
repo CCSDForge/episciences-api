@@ -14,8 +14,8 @@ return RectorConfig::configure()
         __DIR__ . '/src',
         __DIR__ . '/tests',
     ])
-    // Target PHP 8.2
-    ->withPhpSets(php82: true)
+    // Target PHP 8.3
+    ->withPhpSets(php83: true)
     // Register Symfony container for advanced rules (uncomment if var/cache/dev exists)
     // ->withSymfonyContainerXml(__DIR__ . '/var/cache/dev/App_KernelDevDebugContainer.xml')
     ->withSets([
