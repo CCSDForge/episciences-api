@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 use Rector\Config\RectorConfig;
-use Rector\Doctrine\Set\DoctrineSetList;
-use Rector\Symfony\Set\SymfonySetList;
 
 return RectorConfig::configure()
     ->withPaths([
@@ -16,17 +14,18 @@ return RectorConfig::configure()
     ])
     // Target PHP 8.3
     ->withPhpSets(php83: true)
+    ->withSymfonySets(
+        symfony70: true,
+        annotationsToAttributes: true,
+        codeQuality: true,
+        constructorInjection: true,
+    )
+    ->withDoctrineSets(
+        orm214: true,
+        annotationsToAttributes: true,
+        codeQuality: true,
+    )
     // Register Symfony container for advanced rules (uncomment if var/cache/dev exists)
-    // ->withSymfonyContainerXml(__DIR__ . '/var/cache/dev/App_KernelDevDebugContainer.xml')
-    ->withSets([
-        DoctrineSetList::ANNOTATIONS_TO_ATTRIBUTES,
-        DoctrineSetList::DOCTRINE_CODE_QUALITY,
-        DoctrineSetList::DOCTRINE_ORM_214,
-        SymfonySetList::ANNOTATIONS_TO_ATTRIBUTES,
-        SymfonySetList::SYMFONY_70,
-        SymfonySetList::SYMFONY_CODE_QUALITY,
-        SymfonySetList::SYMFONY_CONSTRUCTOR_INJECTION,
-    ])
     ->withPreparedSets(
         deadCode: true,
         codeQuality: true,
