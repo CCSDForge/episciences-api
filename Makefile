@@ -279,10 +279,20 @@ phpstan:
 rector:
 	@TARGET=$${TARGET:-src}; \
 	DRY_RUN_ARG=""; \
-	if [ "$${DRY_RUN}" = "1" ]; then DRY_RUN_ARG="--dry-run"; fi; \
+	if [ "$$DRY_RUN" = "1" ]; then DRY_RUN_ARG="--dry-run"; fi; \
 	echo "$(BOLD)Running Rector on $$TARGET...$(NC)"; \
 	$(DOCKER_COMPOSE) exec php vendor/bin/rector process $$TARGET $$DRY_RUN_ARG
 	@echo "$(GREEN)✓ Rector completed$(NC)"
+
+# Run Rector locally using host PHP
+# Usage: make local-rector TARGET=src DRY_RUN=1
+local-rector:
+	@TARGET=$${TARGET:-src}; \
+	DRY_RUN_ARG=""; \
+	if [ "$$DRY_RUN" = "1" ]; then DRY_RUN_ARG="--dry-run"; fi; \
+	echo "$(BOLD)Running Rector locally on $$TARGET...$(NC)"; \
+	php8.3 vendor/bin/rector process $$TARGET $$DRY_RUN_ARG
+	@echo "$(GREEN)✓ Local Rector completed$(NC)"
 
 # Run both PHPStan and Rector
 check: phpstan rector
