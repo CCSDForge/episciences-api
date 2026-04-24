@@ -13,10 +13,13 @@ use Symfony\Component\HttpFoundation\Response;
 class ExportController extends AppAbstractController
 {
 
+    public function __construct(private readonly \App\Service\Export $solrSrv, private readonly \Doctrine\ORM\EntityManagerInterface $entityManager)
+    {
+    }
     /**
      * @throws ResourceNotFoundException
      */
-    public function __invoke(Request $request, Export $solrSrv, EntityManagerInterface $entityManager): Response
+    public function __invoke(Request $request): Response
     {
         $journal = null;
         $code = (string)$request->query->get('code', '');
@@ -24,11 +27,11 @@ class ExportController extends AppAbstractController
         $docId = (int)$request->attributes->get('docid');
         $format = (string)$request->attributes->get('format');
 
-        if (!$docId) {
+        if ($docId === 0) {
             throw new ResourceNotFoundException('Oops! Required field {docid} is not provided');
         }
 
-        if (empty($format)) {
+        if ($format === '' || $format === '0') {
             throw new ResourceNotFoundException('Oops! Required field {format} is not provided');
         }
 
@@ -37,27 +40,27 @@ class ExportController extends AppAbstractController
             throw new ResourceNotFoundException($message);
         }
 
-        if ($code) {
+        if ($code !== '' && $code !== '0') {
 
-            $journal = $entityManager->getRepository(Review::class)->getJournalByIdentifier($code);
+            $journal = $this->entityManager->getRepository(Review::class)->getJournalByIdentifier($code);
             if (!$journal) {
                 throw new ResourceNotFoundException(sprintf('Oops! CSL cannot be generated: not found Journal %s', $code));
             }
 
         }
 
-        $solrSrv->setJournal($journal);
+        $this->solrSrv->setJournal($journal);
 
         if ($format === Export::JSON_FORMAT) {
 
-            $export = $entityManager->getRepository(Paper::class)->paperToJson($docId, $journal?->getRvid());
+            $export = $this->entityManager->getRepository(Paper::class)->paperToJson($docId, $journal?->getRvid());
 
         } else {
-            $export = $solrSrv->getSolrCSLByFormat($docId, $format);
+            $export = $this->solrSrv->getSolrCSLByFormat($docId, $format);
         }
 
         if (!$export) {
-            $codeMessage = $code ? sprintf(' in selected Journal {%s}', $code) : '';
+            $codeMessage = $code !== '' && $code !== '0' ? sprintf(' in selected Journal {%s}', $code) : '';
             $specificToJsonMsg = $format === Export:: JSON_FORMAT ? "article's document field is not null" : "the export format has been indexed correctly";
             throw new ResourceNotFoundException(sprintf("Oops! %s cannot be generated (first see if %s): the document %s does not exist or has not yet been published%s", strtoupper($format), $specificToJsonMsg, $docId, $codeMessage));
         }

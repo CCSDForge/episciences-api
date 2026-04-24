@@ -18,17 +18,18 @@ use Symfony\Component\HttpFoundation\Response;
 class ExportControllerTest extends TestCase
 {
     private ExportController $controller;
-    private MockObject|Export $exportService;
-    private MockObject|EntityManagerInterface $entityManager;
-    private MockObject|ReviewRepository $reviewRepository;
-    private MockObject|PapersRepository $papersRepository;
-    private MockObject|Review $journal;
+    private \PHPUnit\Framework\MockObject\MockObject $exportService;
+    private \PHPUnit\Framework\MockObject\MockObject $entityManager;
+    private \PHPUnit\Framework\MockObject\MockObject $reviewRepository;
+    private \PHPUnit\Framework\MockObject\MockObject $papersRepository;
+    private \PHPUnit\Framework\MockObject\MockObject $journal;
 
     protected function setUp(): void
     {
-        $this->controller = new ExportController();
         $this->exportService = $this->createMock(Export::class);
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
+        $this->controller = new ExportController($this->exportService, $this->entityManager);
+        
         $this->reviewRepository = $this->createMock(ReviewRepository::class);
         $this->papersRepository = $this->createMock(PapersRepository::class);
         $this->journal = $this->createMock(Review::class);
@@ -36,8 +37,8 @@ class ExportControllerTest extends TestCase
 
     private function makeRequest(int $docId = 0, string $format = '', string $code = ''): Request
     {
-        $query = $code ? ['code' => $code] : [];
-        $request = Request::create('/api/export', 'GET', $query);
+        $query = $code !== '' && $code !== '0' ? ['code' => $code] : [];
+        $request = Request::create('/api/export', \Symfony\Component\HttpFoundation\Request::METHOD_GET, $query);
         $request->attributes->set('docid', $docId);
         $request->attributes->set('format', $format);
         return $request;
@@ -50,7 +51,7 @@ class ExportControllerTest extends TestCase
         $this->expectException(ResourceNotFoundException::class);
         $this->expectExceptionMessage('{docid}');
 
-        $this->controller->__invoke($request, $this->exportService, $this->entityManager);
+        $this->controller->__invoke($request);
     }
 
     public function testThrowsWhenFormatIsEmpty(): void
@@ -60,7 +61,7 @@ class ExportControllerTest extends TestCase
         $this->expectException(ResourceNotFoundException::class);
         $this->expectExceptionMessage('{format}');
 
-        $this->controller->__invoke($request, $this->exportService, $this->entityManager);
+        $this->controller->__invoke($request);
     }
 
     public function testThrowsWhenFormatIsInvalid(): void
@@ -70,7 +71,7 @@ class ExportControllerTest extends TestCase
         $this->expectException(ResourceNotFoundException::class);
         $this->expectExceptionMessage('invalid_format');
 
-        $this->controller->__invoke($request, $this->exportService, $this->entityManager);
+        $this->controller->__invoke($request);
     }
 
     public function testThrowsWhenCodeProvidedButJournalNotFound(): void
@@ -88,7 +89,7 @@ class ExportControllerTest extends TestCase
         $this->expectException(ResourceNotFoundException::class);
         $this->expectExceptionMessage('unknown-journal');
 
-        $this->controller->__invoke($request, $this->exportService, $this->entityManager);
+        $this->controller->__invoke($request);
     }
 
     public function testCallsSolrServiceForNonJsonFormat(): void
@@ -105,7 +106,7 @@ class ExportControllerTest extends TestCase
             ->with(42, Export::CSL_FORMAT)
             ->willReturn('{"title":"test"}');
 
-        $response = $this->controller->__invoke($request, $this->exportService, $this->entityManager);
+        $response = $this->controller->__invoke($request);
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
@@ -133,7 +134,7 @@ class ExportControllerTest extends TestCase
             ->with(42, null)
             ->willReturn('{"id":42}');
 
-        $response = $this->controller->__invoke($request, $this->exportService, $this->entityManager);
+        $response = $this->controller->__invoke($request);
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
@@ -163,7 +164,7 @@ class ExportControllerTest extends TestCase
             ->with(42, Export::CSL_FORMAT)
             ->willReturn('<csl>data</csl>');
 
-        $response = $this->controller->__invoke($request, $this->exportService, $this->entityManager);
+        $response = $this->controller->__invoke($request);
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
@@ -176,7 +177,7 @@ class ExportControllerTest extends TestCase
         $this->journal->method('getRvid')->willReturn(7);
 
         $this->entityManager->method('getRepository')->willReturnCallback(
-            fn($class) => match ($class) {
+            fn($class): \App\Repository\ReviewRepository|\PHPUnit\Framework\MockObject\MockObject|\App\Repository\PapersRepository|null => match ($class) {
                 Review::class => $this->reviewRepository,
                 Paper::class  => $this->papersRepository,
                 default       => null,
@@ -191,7 +192,7 @@ class ExportControllerTest extends TestCase
             ->with(42, 7)
             ->willReturn('{"id":42}');
 
-        $this->controller->__invoke($request, $this->exportService, $this->entityManager);
+        $this->controller->__invoke($request);
     }
 
     public function testThrowsWhenExportResultIsNull(): void
@@ -204,7 +205,7 @@ class ExportControllerTest extends TestCase
         $this->expectException(ResourceNotFoundException::class);
         $this->expectExceptionMessage('42');
 
-        $this->controller->__invoke($request, $this->exportService, $this->entityManager);
+        $this->controller->__invoke($request);
     }
 
     public function testThrowsWhenExportResultIsEmptyString(): void
@@ -216,7 +217,7 @@ class ExportControllerTest extends TestCase
 
         $this->expectException(ResourceNotFoundException::class);
 
-        $this->controller->__invoke($request, $this->exportService, $this->entityManager);
+        $this->controller->__invoke($request);
     }
 
     public function testErrorMessageIncludesJournalCodeWhenSet(): void
@@ -234,7 +235,7 @@ class ExportControllerTest extends TestCase
         $this->expectException(ResourceNotFoundException::class);
         $this->expectExceptionMessage('myjournal');
 
-        $this->controller->__invoke($request, $this->exportService, $this->entityManager);
+        $this->controller->__invoke($request);
     }
 
     /**
@@ -253,7 +254,7 @@ class ExportControllerTest extends TestCase
             $this->exportService->method('getSolrCSLByFormat')->willReturn('data');
         }
 
-        $response = $this->controller->__invoke($request, $this->exportService, $this->entityManager);
+        $response = $this->controller->__invoke($request);
 
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
     }
@@ -261,7 +262,7 @@ class ExportControllerTest extends TestCase
     public static function availableFormatsDataProvider(): array
     {
         return array_map(
-            static fn(string $fmt) => [$fmt],
+            static fn(string $fmt): array => [$fmt],
             Export::AVAILABLE_FORMATS
         );
     }
@@ -273,7 +274,7 @@ class ExportControllerTest extends TestCase
      */
     public function testCodeFromRouteAttributeIsNotUsedAsJournalFilter(): void
     {
-        $request = Request::create('/api/export', 'GET');
+        $request = Request::create('/api/export', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
         $request->attributes->set('docid', 42);
         $request->attributes->set('format', Export::CSL_FORMAT);
         $request->attributes->set('code', 'some-journal'); // only in attributes, not query
@@ -284,7 +285,7 @@ class ExportControllerTest extends TestCase
         $this->exportService->method('setJournal')->with(null)->willReturn($this->exportService);
         $this->exportService->method('getSolrCSLByFormat')->willReturn('data');
 
-        $response = $this->controller->__invoke($request, $this->exportService, $this->entityManager);
+        $response = $this->controller->__invoke($request);
 
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
     }

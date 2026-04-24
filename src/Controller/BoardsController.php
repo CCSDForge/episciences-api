@@ -32,11 +32,14 @@ class BoardsController extends AbstractController
         USER::ROLE_COPY_EDITOR,
         USER::ROLE_WEBMASTER
     ];
+    public function __construct(private readonly \Doctrine\ORM\EntityManagerInterface $entityManager, private readonly \Psr\Log\LoggerInterface $logger)
+    {
+    }
 
     /**
      * @throws ResourceNotFoundException
      */
-    public function __invoke(EntityManagerInterface $entityManager, LoggerInterface $logger, Request $request = null): ArrayPaginator
+    public function __invoke(Request $request = null): ArrayPaginator
     {
         $boards = [];
         $pagination = true;
@@ -45,10 +48,10 @@ class BoardsController extends AbstractController
         $maxResults = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
         $firstResult = 0;
 
-        if ($request !== null) {
+        if ($request instanceof \Symfony\Component\HttpFoundation\Request) {
             $tags = [];
-            $page = !$request->query->has('pagination') ? 1 : (int)$request->query->get('page');
-            $itemsPerPage = !$request->query->has('pagination') ? 30 : (int)$request->query->get('itemsPerPage');
+            $page = $request->query->has('pagination') ? (int)$request->query->get('page') : 1;
+            $itemsPerPage = $request->query->has('pagination') ? (int)$request->query->get('itemsPerPage') : 30;
             $pagination = !$request->query->has('pagination') || $request->query->get('pagination');
 
             $rolesByUid = [];
@@ -57,7 +60,7 @@ class BoardsController extends AbstractController
             if ($code) {
 
                 /** @var ReviewRepository $reviewRepo */
-                $reviewRepo = $entityManager->getRepository(Review::class);
+                $reviewRepo = $this->entityManager->getRepository(Review::class);
                 $journal = $reviewRepo->getJournalByIdentifier($code);
 
                 if (!$journal) {
@@ -65,7 +68,7 @@ class BoardsController extends AbstractController
                 }
                 /** @var UserRolesRepository $userRolesRepo */
 
-                $userRolesRepo = $entityManager->getRepository(UserRoles::class);
+                $userRolesRepo = $this->entityManager->getRepository(UserRoles::class);
                 $boardTags = $userRolesRepo->boardsUsersQuery($journal->getRvid())->getQuery()->getArrayResult();
 
                 if (empty($boardTags)) {
@@ -87,7 +90,7 @@ class BoardsController extends AbstractController
                 foreach ($result1 as $current1) {
 
                     if (!$current1['user']) {
-                        $logger->info(sprintf('empty user [UID = %s', $current1['uid']), [
+                        $this->logger->info(sprintf('empty user [UID = %s', $current1['uid']), [
                             'cause' => sprintf("L'identifiant a probablement été supprimé da la table %s, mais il est toujours présent dans la table %s", User::TABLE, UserRoles::TABLE),
                         ]);
 
@@ -105,11 +108,11 @@ class BoardsController extends AbstractController
 
                 try {
                     /** @var SectionRepository $sectionRepo */
-                    $sectionRepo = $entityManager->getRepository(Section::class);
+                    $sectionRepo = $this->entityManager->getRepository(Section::class);
                     $assignedSections = $sectionRepo->getAssignedSection($journal->getRvid(), $boardIdentifies);
                 } catch (Exception|\JsonException  $e) {
                     $assignedSections = [];
-                    $logger->critical($e->getMessage());
+                    $this->logger->critical($e->getMessage());
 
                 }
 
