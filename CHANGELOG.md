@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 -->
 ## Unreleased
+### Added
+- New endpoint "/api/journals/front/configuration?code=rvcode": To retrieve the public interface configuration for sites migrated to the new interfaces
 ### Fixed
 - [RT#282494]: the number of reviews requested is incorrect.
 - The range years for the evaluation statistics does include the period during witch no article was published.

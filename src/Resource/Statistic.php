@@ -8,7 +8,6 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
-use App\State\StatisticStateProcessor;
 use App\State\StatisticStateProvider;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -492,7 +491,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
     ],
     provider: StatisticStateProvider::class,
-    processor: StatisticStateProcessor::class
 
 )]
 class Statistic
