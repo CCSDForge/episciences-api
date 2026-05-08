@@ -1,35 +1,37 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App;
 
 use App\Entity\Review;
 
 final class AppConstants
 {
-    public const MAXIMUM_ITEMS_PER_PAGE = 1000;
-    public const DEFAULT_ITEM_PER_PAGE = 30;
-    public const BASE_64 = 'base64';
-    public const DEFAULT_PRECISION = 0;
-    public const RATE_DEFAULT_PRECISION = 2;
-    public const IS_APP_ITEM = 'isAppItem';
-    public const IS_APP_COLLECTION = 'isAppCollection';
+    public const int MAXIMUM_ITEMS_PER_PAGE = 1000;
+    public const int DEFAULT_ITEM_PER_PAGE = 30;
+    public const string BASE_64 = 'base64';
+    public const int DEFAULT_PRECISION = 0;
+    public const int RATE_DEFAULT_PRECISION = 2;
+    public const string IS_APP_ITEM = 'isAppItem';
+    public const string IS_APP_COLLECTION = 'isAppCollection';
 
-    public const ORDER_ASC = 'ASC';
-    public const ORDER_DESC = 'DESC';
-    public const AVAILABLE_FILTERS = ['rvid', 'repoid', 'status', 'submissionDate', 'withDetails', 'startAfterDate', 'flag', AppConstants::YEAR_PARAM];
-    public const WITH_DETAILS = 'withDetails';
-    public const PAPER_STATUS = 'status';
-    public const PAPER_FLAG = 'flag';
-    public const START_AFTER_DATE = 'startAfterDate';
-    public const SUBMISSION_DATE = 'submissionDate';
-    public const STATS_DASHBOARD_ITEM = 'get_stats_dashboard_item';
-    public const STATS_NB_SUBMISSIONS_ITEM = 'get_stats_nb_submissions_item';
-    public const STATS_DELAY_SUBMISSION_ACCEPTANCE = 'get_delay_between_submit_and_acceptance_item';
-    public const STATS_DELAY_SUBMISSION_PUBLICATION = 'get_delay_between_submit_and_publication_item';
-    public const STATS_NB_USERS = 'get_stats_nb_users_item';
-    public const YEAR_PARAM = 'year';
-    public const FILTER_TYPE_EXACT = 'exact';
-    public const APP_CONST = [
+    public const string ORDER_ASC = 'ASC';
+    public const string ORDER_DESC = 'DESC';
+    public const array AVAILABLE_FILTERS = ['rvid', 'repoid', 'status', 'submissionDate', 'withDetails', 'startAfterDate', 'flag', AppConstants::YEAR_PARAM];
+    public const string WITH_DETAILS = 'withDetails';
+    public const string PAPER_STATUS = 'status';
+    public const string PAPER_FLAG = 'flag';
+    public const string START_AFTER_DATE = 'startAfterDate';
+    public const string SUBMISSION_DATE = 'submissionDate';
+    public const string STATS_DASHBOARD_ITEM = 'get_stats_dashboard_item';
+    public const string STATS_NB_SUBMISSIONS_ITEM = 'get_stats_nb_submissions_item';
+    public const string STATS_DELAY_SUBMISSION_ACCEPTANCE = 'get_delay_between_submit_and_acceptance_item';
+    public const string STATS_DELAY_SUBMISSION_PUBLICATION = 'get_delay_between_submit_and_publication_item';
+    public const string STATS_NB_USERS = 'get_stats_nb_users_item';
+    public const string YEAR_PARAM = 'year';
+    public const string FILTER_TYPE_EXACT = 'exact';
+    public const array APP_CONST = [
         'custom_operations' => [
             'items' => [
                 'review' => [ // the order of the elements is important

@@ -9,6 +9,9 @@ use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
+/**
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\UserAssignment>
+ */
 class UserAssignmentRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)

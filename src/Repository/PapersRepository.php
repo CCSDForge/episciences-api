@@ -26,6 +26,7 @@ use Psr\Log\LoggerInterface;
  * @method Paper[]    findAll()
  * @method Paper[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\Paper>
  */
 class PapersRepository extends ServiceEntityRepository
 {
@@ -42,12 +43,9 @@ class PapersRepository extends ServiceEntityRepository
         'submitted' => 'submitted'
     ];
 
-    private LoggerInterface $logger;
-
-    public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
+    public function __construct(ManagerRegistry $registry, private LoggerInterface $logger)
     {
         parent::__construct($registry, Paper::class);
-        $this->logger = $logger;
     }
 
     /**
@@ -232,9 +230,7 @@ class PapersRepository extends ServiceEntityRepository
 
         }
 
-        return array_filter($years, static function ($value) {
-            return $value >= Stats::REF_YEAR;
-        });
+        return array_filter($years, static fn($value) => $value >= Stats::REF_YEAR);
 
 
     }
@@ -282,7 +278,7 @@ class PapersRepository extends ServiceEntityRepository
     ): QueryBuilder
     {
 
-        $withoutIdentifier = empty($identifiers);
+        $withoutIdentifier = in_array($identifiers, [0, [], null], true);
 
         $tableId = 'sid'; // section id
 
@@ -344,7 +340,7 @@ class PapersRepository extends ServiceEntityRepository
 
         $resultQuery = $this->getTotalArticlesBySectionOrVolumeQuery($resourceClass, $status, $identifiers, $rvId)->getQuery();
 
-        if (!empty($identifiers || $rvId)) {
+        if ($identifiers || $rvId) {
             try {
                 return [self::TOTAL_ARTICLE => $resultQuery->getSingleScalarResult()];
             } catch (NoResultException|NonUniqueResultException $e) {
@@ -383,7 +379,7 @@ class PapersRepository extends ServiceEntityRepository
         $result = array_values($qb->getQuery()->getArrayResult());
 
         foreach ($result as $type) {
-            $type = strtolower($type['type']);
+            $type = strtolower((string) $type['type']);
             if (!in_array($type, $types, true)) {
                 $types[] = $type;
             }
@@ -416,13 +412,13 @@ class PapersRepository extends ServiceEntityRepository
 
         foreach ($filters as $key => $value) {
 
-            if ($key !== 'rvid' && $key !== 'sid' && $key !== 'vid') {
+            if (!in_array($key, ['rvid', 'sid', 'vid'], true)) {
                 continue;
             }
 
             $value = (int)$value;
 
-            if ($value) {
+            if ($value !== 0) {
                 if ($key === 'rvid') {
                     $qb->andWhere('p.rvid = :rvId');
                     $qb->setParameter('rvId', $value);

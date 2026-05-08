@@ -18,6 +18,7 @@ use Psr\Log\LoggerInterface;
  * @method UserRoles[]    findAll()
  * @method UserRoles[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\UserRoles>
  */
 class UserRolesRepository extends ServiceEntityRepository
 {
@@ -35,12 +36,9 @@ class UserRolesRepository extends ServiceEntityRepository
         UserRoles::FORMER_MEMBER
     ];
 
-    private LoggerInterface $logger;
-
-    public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
+    public function __construct(ManagerRegistry $registry, private LoggerInterface $logger)
     {
         parent::__construct($registry, UserRoles::class);
-        $this->logger = $logger;
     }
 
 

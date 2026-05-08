@@ -7,7 +7,7 @@ use App\AppConstants;
 use JsonException;
 use Symfony\Component\Serializer\Attribute\Groups;
 
-abstract class AbstractStatResource
+abstract class AbstractStatResource implements \Stringable
 {
 
     public function __construct(

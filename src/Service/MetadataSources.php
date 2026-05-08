@@ -8,14 +8,11 @@ use App\Repository\MetadataSourcesRepository;
 class MetadataSources
 {
 
-    private MetadataSourcesRepository $metadataRepository;
     private array $repositories = [];
 
 
-    public function __construct(MetadataSourcesRepository $metadataRepository)
+    public function __construct(private readonly MetadataSourcesRepository $metadataRepository)
     {
-        $this->metadataRepository = $metadataRepository;
-
     }
 
     public function loadRepositories(): void

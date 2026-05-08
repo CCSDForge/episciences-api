@@ -27,21 +27,21 @@ trait QueryTrait
             return $qb;
         }
 
-        return $this->andOrExp($qb, sprintf("%s", $yearExp), $values);
+        return $this->andOrExp($qb, $yearExp, $values);
 
     }
 
     final public function processYears(string|array $yFilters = []): array
     {
         if (is_string($yFilters)) {
-            $yFilters = (array($yFilters));
+            $yFilters = ([$yFilters]);
         }
 
         $yFilters = array_unique($yFilters);
 
-        return array_filter($yFilters, static function ($val) { // Supprime à la fois les valeurs nulles et les valeurs vides
-            return !empty($val);
-        });
+        return array_filter($yFilters, 
+            // Supprime à la fois les valeurs nulles et les valeurs vides
+            static fn($val) => !empty($val));
 
     }
 
@@ -66,7 +66,7 @@ trait QueryTrait
         $arrayUnique = array_unique($filters);
 
         foreach ($arrayUnique as $value) {
-            $value = trim($value);
+            $value = trim((string) $value);
             if (in_array($value, $availableTypes, true) && !in_array($value, $availableCurrentTypes, true)) {
                 $availableCurrentTypes[] = $value;
             } elseif (!in_array($value, $unavailableCurrentTypes, true)) {
@@ -75,7 +75,7 @@ trait QueryTrait
         }
 
         // Type SET en MySQL n’est pas nativement supporté par Doctrine ORM
-        return !empty($availableCurrentTypes) ? $availableCurrentTypes : $unavailableCurrentTypes;
+        return $availableCurrentTypes === [] ? $unavailableCurrentTypes : $availableCurrentTypes;
 
     }
 
@@ -123,7 +123,7 @@ trait QueryTrait
     final public function andOrExp(QueryBuilder $qb, string $expression, array $values = [], $isAllowedToReceiveEmptyValues = true): QueryBuilder
     {
 
-        if (empty($values)) {
+        if ($values === []) {
 
             if ($isAllowedToReceiveEmptyValues) {
                 return $qb;
@@ -144,7 +144,7 @@ trait QueryTrait
     final public function andOrLikeExp(QueryBuilder $qb, string $expression, array $values = [], bool $isCaseInsensitive = true, bool $isAllowedToReceiveEmptyValues = true): QueryBuilder
     {
 
-        if (empty($values)) {
+        if ($values === []) {
 
             if ($isAllowedToReceiveEmptyValues) {
                 return $qb;
@@ -158,7 +158,7 @@ trait QueryTrait
         foreach ($values as $val) {
 
             if ($isCaseInsensitive) {
-                $val = strtolower($val);
+                $val = strtolower((string) $val);
             }
 
             $orExp->add($qb->expr()->like($expression, $qb->expr()->literal('%' . $val . '%')));

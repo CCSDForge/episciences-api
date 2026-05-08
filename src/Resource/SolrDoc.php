@@ -196,11 +196,7 @@ class SolrDoc
      */
     public function setLanguageS(string $language_s = self::DEFAULT_LANGUAGE): void
     {
-        if ($language_s !== 'false') {
-            $this->language_s = $language_s;
-        } else {
-            $this->language_s = self::DEFAULT_LANGUAGE;
-        }
+        $this->language_s = $language_s !== 'false' ? $language_s : self::DEFAULT_LANGUAGE;
     }
 
     /**

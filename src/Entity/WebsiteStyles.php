@@ -6,36 +6,29 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * WebsiteStyles
- *
- * @ORM\Table(name="WEBSITE_STYLES")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'WEBSITE_STYLES')]
 class WebsiteStyles
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
      */
+    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     private $rvid;
 
     /**
      * @var string
-     *
-     * @ORM\Column(name="SETTING", type="string", length=50, nullable=false)
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
      */
+    #[ORM\Column(name: 'SETTING', type: 'string', length: 50, nullable: false)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     private $setting;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="VALUE", type="string", length=1000, nullable=false)
-     */
-    private $value;
+    #[ORM\Column(name: 'VALUE', type: 'string', length: 1000, nullable: false)]
+    private ?string $value = null;
 
     public function getRvid(): ?int
     {

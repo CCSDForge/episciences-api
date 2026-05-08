@@ -6,55 +6,38 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * News
- *
- * @ORM\Table(name="NEWS", indexes={@ORM\Index(name="RVID", columns={"RVID"})})
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'NEWS')]
+#[ORM\Index(name: 'RVID', columns: ['RVID'])]
 class LegacyNews
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="NEWSID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
      */
+    #[ORM\Column(name: 'NEWSID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $newsid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $rvid;
+    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    private ?int $rvid = null;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="UID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $uid;
+    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    private ?int $uid = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="LINK", type="string", length=2000, nullable=false)
-     */
-    private $link;
+    #[ORM\Column(name: 'LINK', type: 'string', length: 2000, nullable: false)]
+    private ?string $link = null;
 
-    /**
-     * @var bool
-     *
-     * @ORM\Column(name="ONLINE", type="boolean", nullable=false)
-     */
-    private $online;
+    #[ORM\Column(name: 'ONLINE', type: 'boolean', nullable: false)]
+    private ?bool $online = null;
 
-    /**
-     * @var \DateTime
-     *
-     * @ORM\Column(name="DATE_POST", type="datetime", nullable=false, options={"default"="CURRENT_TIMESTAMP"})
-     */
-    private $datePost = 'CURRENT_TIMESTAMP';
+    #[ORM\Column(name: 'DATE_POST', type: 'datetime', nullable: false)]
+    private \DateTime|\DateTimeInterface $datePost;
+    public function __construct()
+    {
+        $this->datePost = new \DateTime('CURRENT_TIMESTAMP');
+    }
 
     public function getNewsid(): ?int
     {
