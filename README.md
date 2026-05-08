@@ -200,11 +200,8 @@ make check
 
 ## Deployment
 
-Automated deployment is handled via Ansistrano. See the [Deployment Guide](docs/deployment.md) for setup and usage instructions.
-
-## Deployment
-
-Automated deployment is handled via Ansistrano. See the [Deployment Guide](docs/deployment.md) for setup and usage instructions.
+Automated deployment is handled via Ansistrano (preprod → `preprod` branch, production → `main` branch).
+See the [Deployment Guide](docs/deployment.md) for full setup and usage instructions.
 
 #### Database Access
 

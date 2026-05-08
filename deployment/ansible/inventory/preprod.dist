@@ -1,0 +1,7 @@
+[preprod]
+api-preprod-01.example.org
+api-preprod-02.example.org
+
+[preprod:vars]
+ansible_user=example-user-deploy
+ansistrano_deploy_to=/var/www/application-path

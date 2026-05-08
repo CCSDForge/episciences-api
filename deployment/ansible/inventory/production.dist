@@ -1,0 +1,9 @@
+[production]
+api-01.example.org
+api-02.example.org
+api-03.example.org
+api-04.example.org
+
+[production:vars]
+ansible_user=example-user-deploy
+ansistrano_deploy_to=/var/www/application-path

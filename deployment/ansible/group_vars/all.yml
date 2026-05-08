@@ -1,0 +1,22 @@
+---
+# Ansistrano
+ansistrano_keep_releases: 3
+ansistrano_deploy_strategy: git
+ansistrano_git_repo: "https://github.com/CCSDForge/episciences-api.git"
+
+# Shared paths — var/log and var/sessions persist across releases.
+# config/jwt holds the JWT keypair (never committed to git).
+# Do NOT set LOG_PATH or CACHE_PATH in .env.local on servers:
+# Symfony will use var/log/ and var/cache/ by default, which Ansistrano handles correctly.
+ansistrano_shared_paths:
+  - "var/log"
+  - "var/sessions"
+  - "public/uploads"
+  - "config/jwt"
+ansistrano_shared_files:
+  - ".env.local"
+
+# Symfony
+symfony_console_path: "bin/console"
+symfony_env: "prod"
+

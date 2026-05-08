@@ -1,0 +1,34 @@
+---
+- name: Create version.php
+  shell: |
+    CURRENT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "no-tag")
+    DEPLOY_DATE=$(date "+%Y-%m-%d %X %z")
+    printf '<?php\n$appVersion="%s";\n' "$CURRENT_TAG ($DEPLOY_DATE)" > version.php
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+    executable: /bin/bash
+
+- name: Install Composer dependencies
+  shell: "composer install --no-dev --optimize-autoloader --no-interaction"
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+
+- name: Compile .env for production
+  shell: "composer dump-env {{ symfony_env }}"
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+
+- name: Install Yarn dependencies
+  shell: "yarn install --immutable"
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+
+- name: Build frontend assets
+  shell: "yarn build"
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+
+- name: Warmup Symfony cache
+  shell: "php {{ symfony_console_path }} cache:warmup --env={{ symfony_env }} --no-debug"
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
