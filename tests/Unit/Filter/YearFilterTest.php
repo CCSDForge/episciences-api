@@ -14,8 +14,8 @@ use PHPUnit\Framework\TestCase;
 class YearFilterTest extends TestCase
 {
     private YearFilter $filter;
-    private ManagerRegistry $managerRegistry;
-    private EntityManagerInterface $entityManager;
+    private \PHPUnit\Framework\MockObject\MockObject $managerRegistry;
+    private \PHPUnit\Framework\MockObject\MockObject $entityManager;
 
     protected function setUp(): void
     {
@@ -33,7 +33,7 @@ class YearFilterTest extends TestCase
 
     public function testGetDescriptionWithProperties(): void
     {
-        $resourceClass = 'App\Entity\Paper';
+        $resourceClass = \App\Entity\Paper::class;
         
         $description = $this->filter->getDescription($resourceClass);
 
@@ -61,7 +61,7 @@ class YearFilterTest extends TestCase
         ];
         
         $filter = new YearFilter($this->managerRegistry, null, $properties);
-        $description = $filter->getDescription('App\Entity\Paper');
+        $description = $filter->getDescription(\App\Entity\Paper::class);
 
         $this->assertCount(3, $description);
         $this->assertArrayHasKey('submissionDate', $description);
@@ -79,7 +79,7 @@ class YearFilterTest extends TestCase
     public function testGetDescriptionWithNoProperties(): void
     {
         $filter = new YearFilter($this->managerRegistry, null, []);
-        $description = $filter->getDescription('App\Entity\Paper');
+        $description = $filter->getDescription(\App\Entity\Paper::class);
 
         $this->assertEmpty($description);
     }
@@ -87,7 +87,7 @@ class YearFilterTest extends TestCase
     public function testGetDescriptionWithNullProperties(): void
     {
         $filter = new YearFilter($this->managerRegistry, null, null);
-        $description = $filter->getDescription('App\Entity\Paper');
+        $description = $filter->getDescription(\App\Entity\Paper::class);
 
         $this->assertEmpty($description);
     }
