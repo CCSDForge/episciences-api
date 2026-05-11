@@ -93,7 +93,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             $currentFilters['status'] = array_merge($currentFilters['status'] ?? [], (array)$dictionary[$currentStatus]);
         }
 
-        if ($years) {
+        if ($years !== []) {
             $currentFilters[AppConstants::YEAR_PARAM] = $years;
         }
 
@@ -227,7 +227,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             }
 
             $paginator = new ArrayPaginator($response, $firstResult, $maxResults);
-            $this->checkSeekPosition($paginator, $maxResults);
+            $this->checkSeekPosition($paginator);
             return $paginator;
 
         }
@@ -315,7 +315,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
         foreach ($result as $values) {
             $docId = $values['docid'];
-            $processed[$docId] = !isset($processed[$docId]) ? $values['count'] : ($processed[$docId] + $values['count']);
+            $processed[$docId] = isset($processed[$docId]) ? $processed[$docId] + $values['count'] : ($values['count']);
         }
 
         return array_values($processed);

@@ -35,7 +35,7 @@ final class YearFilter extends  AbstractFilter
         }
 
         $description = [];
-        foreach ($this->properties as $property => $strategy) {
+        foreach (array_keys($this->properties) as $property) {
             $description[$property] = [
                 'property' => $property,
                 'type' => 'int',

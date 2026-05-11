@@ -26,6 +26,7 @@ use Psr\Log\LogLevel;
  * @method PaperLog[]    findAll()
  * @method PaperLog[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\PaperLog>
  */
 class PaperLogRepository extends ServiceEntityRepository
 {
@@ -37,12 +38,9 @@ class PaperLogRepository extends ServiceEntityRepository
 
     public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE];
 
-    private LoggerInterface $logger;
-
-    public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
+    public function __construct(ManagerRegistry $registry, private LoggerInterface $logger)
     {
         parent::__construct($registry, PaperLog::class);
-        $this->logger = $logger;
     }
 
     /**
@@ -178,7 +176,7 @@ class PaperLogRepository extends ServiceEntityRepository
         $papers = 'PAPERS';
         $paperLog = 'PAPER_LOG';
 
-        $year = !$isSubmittedSameYear ? "$papers.SUBMISSION_DATE" : "pl.DATE";
+        $year = $isSubmittedSameYear ? "pl.DATE" : "$papers.SUBMISSION_DATE";
 
 
         $sql = "SELECT $papers.RVID AS rvid, YEAR($year) AS `year`, COUNT(DISTINCT($papers.PAPERID)) AS $as";
@@ -229,9 +227,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
         $delay = array_column($result, self::DELAY);
 
-        $validValues = array_filter($delay, static function ($value) {
-            return is_numeric($value);
-        });
+        $validValues = array_filter($delay, static fn($value) => is_numeric($value));
 
         try {
             $median = $this->getMedian($validValues);
@@ -250,7 +246,7 @@ class PaperLogRepository extends ServiceEntityRepository
         $qb = $this->getEntityManager()->createQueryBuilder();
         $qb->addSelect("COUNT(DISTINCT(pl.paperid)) AS total");
 
-        if (!empty($years)) {
+        if ($years !== []) {
             $qb->addSelect("YEAR(pl.date) As year");
         }
 
@@ -287,7 +283,7 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
 
-    public function getAccepted(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
+    public function getAccepted(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
 
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
@@ -295,7 +291,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    public function getRefused(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
+    public function getRefused(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
 
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_REFUSED, $ignoreImportedArticles);
@@ -307,7 +303,7 @@ class PaperLogRepository extends ServiceEntityRepository
     {
         $total = 0;
 
-        if (empty($years)) {
+        if ($years === []) {
             try {
                 return $qb->getQuery()->getSingleScalarResult();
             } catch (NoResultException|NonUniqueResultException  $e) {
@@ -331,14 +327,14 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    public function getSubmissions(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
+    public function getSubmissions(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_SUBMITTED, $ignoreImportedArticles);
         return $this->processResult($qb, $years);
 
     }
 
-    public function getPublished(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
+    public function getPublished(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_PUBLISHED, $ignoreImportedArticles);
         return $this->processResult($qb, $years);
@@ -346,7 +342,7 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
 
-    public function getAllAcceptedNotYetPublished(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
+    public function getAllAcceptedNotYetPublished(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
 
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);

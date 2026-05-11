@@ -39,9 +39,9 @@ class SearchStateProvider extends AbstractStateDataProvider implements ProviderI
 
         $filters = $context['filters'] ?? [];
 
-        $terms = !empty($filters[Search::TERMS_PARAM]) ? trim($filters[Search::TERMS_PARAM]) : null;
+        $terms = empty($filters[Search::TERMS_PARAM]) ? null : trim((string) $filters[Search::TERMS_PARAM]);
 
-        if (empty($terms)) {
+        if (in_array($terms, [null, '', '0'], true)) {
             throw new ResourceNotFoundException('Oops! the required field {terms} is empty or not filled in');
         }
 

@@ -48,7 +48,7 @@ class Stats
 
     }
 
-    public function getDashboard($context, $filters): DashboardOutput
+    public function getDashboard(array $context, array $filters): DashboardOutput
     {
 
         $years = isset($filters['is']['submissionDate']) ? (array)$filters['is']['submissionDate'] : [];
@@ -125,7 +125,7 @@ class Stats
         $values[$medianSubmissionsDelay->getName()] = $medianSubmissionsDelay->getValue();
         $values[$medianPublicationsDelay->getName()] = $medianPublicationsDelay->getValue();
 
-        if ($years) {
+        if ($years !== []) {
 
             $values = array_merge($values, ['totalAcceptedSubmittedSameYear' => 0, 'totalPublishedSubmittedSameYear' => 0, 'totalRefusedSubmittedSameYear' => 0]);
 
@@ -600,9 +600,7 @@ class Stats
     {
 
         $values = array_column($array, $key);
-        $validValues = array_filter($values, static function ($value) {
-            return is_numeric($value);
-        });
+        $validValues = array_filter($values, static fn($value) => is_numeric($value));
 
         if ($method !== self::MEDIAN_METHOD) {
             return $this->getAvg($validValues);

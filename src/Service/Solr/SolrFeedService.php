@@ -29,8 +29,8 @@ class SolrFeedService extends AbstractSolrService
         parent::__construct($client, $logger, $parameters, $journal);
     }
 
-    private const FEED_FIELDS = 'paper_title_t,abstract_t,author_fullname_s,revue_code_t,publication_date_tdate,keyword_t,revue_title_s,doi_s,es_doc_url_s,paperid';
-    private const DOI_URL_PREFIX = 'https://doi.org/';
+    private const string FEED_FIELDS = 'paper_title_t,abstract_t,author_fullname_s,revue_code_t,publication_date_tdate,keyword_t,revue_title_s,doi_s,es_doc_url_s,paperid';
+    private const string DOI_URL_PREFIX = 'https://doi.org/';
 
     public function getSolrFeed(string $format = 'rss'): Feed
     {
@@ -46,7 +46,7 @@ class SolrFeedService extends AbstractSolrService
             return $this->processSolrFeed($responseArray, $format);
         } catch (JsonException|TransportExceptionInterface|ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface $e) {
             $this->logger->critical($e->getMessage());
-            throw new RuntimeException('Oops! Feed cannot be generated: An error occurred');
+            throw new RuntimeException('Oops! Feed cannot be generated: An error occurred', $e->getCode(), $e);
         }
     }
 

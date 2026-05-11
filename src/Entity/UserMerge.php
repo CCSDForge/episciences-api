@@ -6,55 +6,37 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * UserMerge
- *
- * @ORM\Table(name="USER_MERGE")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'USER_MERGE')]
 class UserMerge
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="MID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
      */
+    #[ORM\Column(name: 'MID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $mid;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="TOKEN", type="string", length=40, nullable=true)
-     */
-    private $token;
+    #[ORM\Column(name: 'TOKEN', type: 'string', length: 40, nullable: true)]
+    private ?string $token = null;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="MERGER_UID", type="integer", nullable=false, options={"unsigned"=true,"comment"="CASID du compte à fusionner"})
-     */
-    private $mergerUid;
+    #[ORM\Column(name: 'MERGER_UID', type: 'integer', nullable: false, options: ['unsigned' => true, 'comment' => 'CASID du compte à fusionner'])]
+    private ?int $mergerUid = null;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="KEEPER_UID", type="integer", nullable=false, options={"unsigned"=true,"comment"="CASID du compte à conserver"})
-     */
-    private $keeperUid;
+    #[ORM\Column(name: 'KEEPER_UID', type: 'integer', nullable: false, options: ['unsigned' => true, 'comment' => 'CASID du compte à conserver'])]
+    private ?int $keeperUid = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="DETAIL", type="text", length=65535, nullable=true)
-     */
-    private $detail;
+    #[ORM\Column(name: 'DETAIL', type: 'text', length: 65535, nullable: true)]
+    private ?string $detail = null;
 
-    /**
-     * @var \DateTime
-     *
-     * @ORM\Column(name="DATE", type="datetime", nullable=false, options={"default"="CURRENT_TIMESTAMP"})
-     */
-    private $date = 'CURRENT_TIMESTAMP';
+    #[ORM\Column(name: 'DATE', type: 'datetime', nullable: false)]
+    private \DateTime|\DateTimeInterface $date;
+    public function __construct()
+    {
+        $this->date = new \DateTime('CURRENT_TIMESTAMP');
+    }
 
     public function getMid(): ?int
     {

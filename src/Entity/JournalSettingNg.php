@@ -183,22 +183,23 @@ class JournalSettingNg
 {
     public const TABLE = 'JOURNAL_SETTING';
 
-    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[ApiProperty(identifier: false)]
     private int $id;
 
-    #[ORM\Column(name: 'RVID', type: 'integer', unique: true)]
-    private ?int $rvid = null;
-    #[ORM\Column(name: 'SETTING', type: 'json', nullable: false)]
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, unique: true)]
+    private int $rvid;
+
+    #[ORM\Column(name: 'SETTING', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     private array $settings;
 
-    #[ORM\Column(name: 'CREATED_AT', type: 'datetime', nullable: true, options: ['default' => 'CURRENT_TIMESTAMP'])]
+    #[ORM\Column(name: 'CREATED_AT', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true, options: ['default' => 'CURRENT_TIMESTAMP'])]
     private ?\DateTimeInterface $createdAt = null;
 
 
-    #[ORM\Column(name: 'UPDATED_AT', type: 'datetime', nullable: true, options: ['default' => 'CURRENT_TIMESTAMP'])]
+    #[ORM\Column(name: 'UPDATED_AT', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true, options: ['default' => 'CURRENT_TIMESTAMP'])]
     private ?\DateTimeInterface $updatedAt = null;
 
 
@@ -217,6 +218,17 @@ class JournalSettingNg
     public function setId(int $id): self
     {
         $this->id = $id;
+        return $this;
+    }
+
+    public function getRvid(): int
+    {
+        return $this->rvid;
+    }
+
+    public function setRvid(int $rvid): self
+    {
+        $this->rvid = $rvid;
         return $this;
     }
 

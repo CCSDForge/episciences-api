@@ -38,7 +38,7 @@ class SolrAuthorService extends AbstractSolrService
             );
         } catch (JsonException|TransportExceptionInterface|ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface $e) {
             $this->logger->critical($e->getMessage());
-            throw new RuntimeException('Oops! An error occurred');
+            throw new RuntimeException('Oops! An error occurred', $e->getCode(), $e);
         }
     }
 

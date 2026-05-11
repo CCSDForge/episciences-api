@@ -20,11 +20,8 @@ class PapersVoter extends Voter
 
     public const PAPERS_FOLLOW = 'papers_follow';
 
-    private Security $security;
-
-    public function __construct(Security $security)
+    public function __construct(private readonly Security $security)
     {
-        $this->security = $security;
     }
 
     protected function supports(string $attribute, mixed $subject): bool

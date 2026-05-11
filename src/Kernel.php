@@ -26,11 +26,12 @@ class Kernel extends BaseKernel
             (require $path)($container->withPath($path), $this);
         }
 
+        $appVersion = '1.0.0';
         if (is_file($path = \dirname(__DIR__) . '/version.php') && is_readable($path)) {
             include($path);
         }
 
-        $container->parameters()->set('git_application_version', $appVersion ?? '1.0.0');
+        $container->parameters()->set('git_application_version', $appVersion);
     }
 
     protected function configureRoutes(RoutingConfigurator $routes): void
@@ -46,6 +47,7 @@ class Kernel extends BaseKernel
     }
 
 
+    #[\Override]
     public function getCacheDir(): string
     {
         return isset($_ENV['CACHE_PATH']) &&
@@ -54,6 +56,7 @@ class Kernel extends BaseKernel
             $_ENV['CACHE_PATH'] . $this->environment : parent::getCacheDir();
     }
 
+    #[\Override]
     public function getLogDir(): string
     {
 
