@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - New endpoint "/api/journals/front/configuration?code=rvcode": To retrieve the public interface configuration for sites migrated to the new interfaces
 ### Fixed
+- [#1015](https://github.com/CCSDForge/episciences/issues/1015): miscalculation of average times: Previously, when a statistics start date was set in the parameters, document versions prior to that date were not taken into account. As a result, the first submission date depended on this parameter, which could lead to inaccurate results for some documents. Now, if the first submission date is earlier than the statistics start date, the document is excluded.
 - [RT#282494]: the number of reviews requested is incorrect.
 - The range years for the evaluation statistics does include the period during witch no article was published.
 ### Changed
