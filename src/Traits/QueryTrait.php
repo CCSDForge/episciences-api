@@ -39,7 +39,7 @@ trait QueryTrait
 
         $yFilters = array_unique($yFilters);
 
-        return array_filter($yFilters, 
+        return array_filter($yFilters,
             // Supprime à la fois les valeurs nulles et les valeurs vides
             static fn($val) => !empty($val));
 
@@ -165,5 +165,22 @@ trait QueryTrait
         }
 
         return $qb->andWhere($orExp);
+    }
+
+    final public function whereYears(string &$sql, array|string|int $years = null, string $refDate = 'p.SUBMISSION_DATE'): void
+    {
+
+        if (!empty($years)) {
+
+            $sql .= ' AND';
+
+            if (is_array($years)) {
+                $years = implode(',', $years);
+                $sql .= " YEAR($refDate) IN ($years)";
+            } else {
+                $sql .= " YEAR($refDate) = $years";
+            }
+
+        }
     }
 }

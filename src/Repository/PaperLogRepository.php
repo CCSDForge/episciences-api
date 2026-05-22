@@ -143,9 +143,6 @@ class PaperLogRepository extends ServiceEntityRepository
             $sql .= " AND pl1.rvid = $rvId";
         }
 
-        if ($years) {
-            $this->whereYears($sql, $years, 'pl1.DATE');
-        }
 
         $sql .= " GROUP BY pl1.PAPERID, pl1.RVID ) t1 INNER JOIN(";
         $sql .= " SELECT pl2.PAPERID, MAX(pl2.DATE) AS max_date, pl2.RVID FROM PAPER_LOG pl2 WHERE pl2.status = ";
@@ -154,11 +151,6 @@ class PaperLogRepository extends ServiceEntityRepository
         if ($rvId) {
             $sql .= " AND pl2.rvid = $rvId";
         }
-
-        if ($years) {
-            $this->whereYears($sql, $years, 'pl2.DATE');
-        }
-
 
         $sql .= " GROUP BY pl2.PAPERID, pl2.RVID ) t2 ON t1.PAPERID = t2.PAPERID AND t1.RVID = t2.RVID";
         $sql .= " WHERE NOT EXISTS (SELECT 1 FROM PAPERS p WHERE p.PAPERID = t1.PAPERID AND ( p.FLAG = 'imported'";
@@ -170,6 +162,8 @@ class PaperLogRepository extends ServiceEntityRepository
         }
 
         $sql .= " ))";
+
+        $this->whereYears($sql, $years, 't2.max_date');
 
         return $sql;
     }
@@ -425,22 +419,5 @@ class PaperLogRepository extends ServiceEntityRepository
     public function getRefusalRate(array $options = []): float|null
     {
         return $this->getRateByStatus('refused', $options);
-    }
-
-    private function whereYears(string &$sql, array|string|int $years = null, string $refDate = 'p.SUBMISSION_DATE'): void
-    {
-
-        if (!empty($years)) {
-
-           $sql .= ' AND';
-
-           if (is_array($years)) {
-                $years = implode(',', $years);
-              $sql .= " YEAR($refDate) IN ($years)";
-           } else {
-               $sql .= " YEAR($refDate) = $years";
-           }
-
-       }
     }
 }
