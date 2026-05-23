@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\OpenApi;
 
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
@@ -9,9 +11,10 @@ use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\OpenApi;
 use Symfony\Component\HttpFoundation\Response;
 
-class OpenApiFactory implements OpenApiFactoryInterface
+final class OpenApiFactory implements OpenApiFactoryInterface
 {
     public const OAF_HIDDEN = 'hidden';
+
     public const OAF_TAGS = [
         'auth' => 'Sign in - Myspace',
         'stats' => 'Statistics',
@@ -21,27 +24,147 @@ class OpenApiFactory implements OpenApiFactoryInterface
         'browse_search' => 'Browse | Search',
         'paper' => 'Papers'
     ];
-    public const JWT_POST_LOGIN_OPERATION_ID = 'login_check_post';
-    public const USER_GET_COLLECTION_PATH = '/api/users';
 
-    private readonly OpenApiFactoryInterface $decorated;
+    public const LOGIN_PATH = '/api/login';
+    public const REFRESH_PATH = '/api/token/refresh';
 
-    public function __construct(OpenApiFactoryInterface $decorated)
-    {
-        $this->decorated = $decorated;
-    }
+    public function __construct(
+        private readonly OpenApiFactoryInterface $decorated
+    ) {}
 
     public function __invoke(array $context = []): OpenApi
     {
-        return $this->applyToDefaultEndPoints(
-            $this->applyToCustomEndPoints(
-                $this->decorated->__invoke($context)
+        $openApi = ($this->decorated)($context);
+
+        $openApi = $this->filterHiddenEndpoints($openApi);
+
+        $openApi = $this->addAuthSchemas($openApi);
+
+        $openApi = $this->addAuthPaths($openApi);
+
+        return $openApi;
+    }
+
+    // -----------------------------------
+    // REMOVE HIDDEN ENDPOINTS
+    // -----------------------------------
+    private function filterHiddenEndpoints(OpenApi $openApi): OpenApi
+    {
+        $paths = $openApi->getPaths();
+
+        foreach ($paths->getPaths() as $key => $path) {
+            $get = $path->getGet();
+
+            if ($get && $get->getSummary() === self::OAF_HIDDEN) {
+                $paths->addPath($key, $path->withGet(null));
+            }
+        }
+
+        return $openApi->withPaths($paths);
+    }
+
+    // -----------------------------------
+    // AUTH SCHEMAS
+    // -----------------------------------
+    private function addAuthSchemas(OpenApi $openApi): OpenApi
+    {
+        $components = $openApi->getComponents();
+
+        $securitySchemes = $components->getSecuritySchemes();
+        $schemas = $components->getSchemas();
+
+        $securitySchemes['bearerAuth'] = new \ArrayObject([
+            'type' => 'http',
+            'scheme' => 'bearer',
+            'bearerFormat' => 'JWT',
+        ]);
+
+        $schemas['Credentials'] = $this->credentialsSchema();
+        $schemas['Token'] = $this->tokenSchema();
+        $schemas['RefreshTokenCredential'] = $this->refreshSchema();
+
+        return $openApi->withComponents(
+            $components
+                ->withSecuritySchemes($securitySchemes)
+                ->withSchemas($schemas)
+        );
+    }
+
+    // -----------------------------------
+    // AUTH ROUTES
+    // -----------------------------------
+    private function addAuthPaths(OpenApi $openApi): OpenApi
+    {
+        $paths = $openApi->getPaths();
+
+        $paths->addPath(
+            self::LOGIN_PATH,
+            $this->loginPath()
+        );
+
+        $paths->addPath(
+            self::REFRESH_PATH,
+            $this->refreshPath()
+        );
+
+        return $openApi->withPaths($paths);
+    }
+
+    // -----------------------------------
+    // LOGIN PATH
+    // -----------------------------------
+    private function loginPath(): PathItem
+    {
+        return new PathItem(
+            post: new Operation(
+                operationId: 'postApiLogin',
+                tags: [self::OAF_TAGS['auth']],
+                responses: $this->tokenResponse('User token created'),
+                summary: '',
+                description: 'The lifetime of the token is 1 hour',
+                requestBody: $this->requestBody('#/components/schemas/Credentials')
             )
         );
     }
 
+    // -----------------------------------
+    // REFRESH PATH
+    // -----------------------------------
+    private function refreshPath(): PathItem
+    {
+        return new PathItem(
+            post: new Operation(
+                operationId: 'postApiRefreshToken',
+                tags: [self::OAF_TAGS['auth']],
+                responses: $this->tokenResponse('User token refreshed'),
+                summary: '',
+                description: 'The lifetime of the new token will be extended by one month',
+                requestBody: $this->requestBody('#/components/schemas/RefreshTokenCredential'),
+                security: [
+                    ['bearerAuth' => []],
+                ]
+            )
+        );
+    }
 
-    private function outputToken(string $description): array
+    // -----------------------------------
+    // HELPERS
+    // -----------------------------------
+    private function requestBody(string $ref): RequestBody
+    {
+        return new RequestBody(
+            description: 'Request payload',
+            content: new \ArrayObject([
+                'application/json' => [
+                    'schema' => [
+                        '$ref' => $ref,
+                    ],
+                ],
+            ])
+        );
+    }
+
+    private function tokenResponse(string $description): array
     {
         return [
             Response::HTTP_OK => [
@@ -49,169 +172,67 @@ class OpenApiFactory implements OpenApiFactoryInterface
                 'content' => [
                     'application/json' => [
                         'schema' => [
-                            '$ref' => '#/components/schemas/Token'
-                        ]
-                    ]
-                ]
-            ]
+                            '$ref' => '#/components/schemas/Token',
+                        ],
+                    ],
+                ],
+            ],
         ];
     }
 
-
-    private function applyToDefaultEndPoints(OpenApi $openApi): OpenApi
+    // -----------------------------------
+    // SCHEMAS
+    // -----------------------------------
+    private function credentialsSchema(): \ArrayObject
     {
-        //todo see how to rename this filter 'roles.rvid' in 'users' end point
-        return $openApi;
-    }
-
-
-    private function applyToCustomEndPoints(OpenApi $openApi): OpenApi
-    {
-        foreach ($openApi->getPaths()->getPaths() as $key => $path) {
-
-            if ($path->getGet() && ($path->getGet()->getSummary() === self::OAF_HIDDEN)) {
-                $openApi->getPaths()->addPath($key, $path->withGet(null));
-            }
-
-//            if ($path->getPost() && ($path->getPost()->getOperationId() === self::JWT_POST_LOGIN_OPERATION_ID)) {
-//                $openApi->getPaths()->addPath($key, $path->withPost(null));
-//            }
-
-        }
-
-        $schemas = $openApi->getComponents()->getSecuritySchemes();
-
-        $schemas['bearerAuth'] = new \ArrayObject([
-                'type' => 'http',
-                'scheme' => 'bearer',
-                'bearerFormat' => 'JWT'
-            ]
-        );
-
-        $schemas = $openApi->getComponents()->getSchemas();
-
-        $schemas['Credentials'] = new \ArrayObject([
+        return new \ArrayObject([
             'type' => 'object',
             'properties' => [
                 'username' => [
                     'type' => 'string',
                     'example' => 'Your login',
-                    'nullable' => false,
                 ],
-
                 'password' => [
                     'type' => 'string',
                     'example' => 'Your API password',
-                    'nullable' => false,
                 ],
-
                 'code' => [
                     'type' => 'string',
                     'example' => "Journal's code",
                     'nullable' => true,
-                ]
-
+                ],
             ],
             'required' => ['username', 'password'],
         ]);
+    }
 
-        $schemas['Token'] = new \ArrayObject([
+    private function tokenSchema(): \ArrayObject
+    {
+        return new \ArrayObject([
             'type' => 'object',
             'properties' => [
                 'token' => [
                     'type' => 'string',
-                    'readOnly' => true,
-                    'nullable' => false,
                 ],
                 'refresh_token' => [
                     'type' => 'string',
-                    'readOnly' => true,
-                    'nullable' => false,
-                ]
+                ],
             ],
             'required' => ['token'],
         ]);
+    }
 
-
-        $schemas['RefreshTokenCredential'] = new \ArrayObject([
+    private function refreshSchema(): \ArrayObject
+    {
+        return new \ArrayObject([
             'type' => 'object',
             'properties' => [
                 'refresh_token' => [
                     'type' => 'string',
                     'example' => 'd50de0498e38b6489d7....',
-                    'nullable' => false,
                 ],
             ],
             'required' => ['refresh_token'],
         ]);
-
-
-        // login path item
-        $pathItem = new PathItem(
-            null,
-            '',
-            '',
-            null,
-            null,
-            new Operation(
-                'postApiLogin',
-                [self::OAF_TAGS['auth']],
-                $this->outputToken('User token created'),
-                '',
-                'The lifetime of the token is 1 hour',
-                null,
-                [],
-                new RequestBody(
-                    'The login data',
-                    new \ArrayObject([
-                            'application/json' => [
-                                'schema' => [
-                                    '$ref' => '#/components/schemas/Credentials'
-                                ]
-                            ]
-                        ]
-                    )
-                )
-            )
-        );
-
-        $openApi->getPaths()->addPath('/api/login', $pathItem);
-
-        // refresh token path item
-        $pathItem = new PathItem(
-            null,
-            '',
-            '',
-            null,
-            null,
-            new Operation(
-                'postApiRefreshToken',
-                [self::OAF_TAGS['auth']],
-                $this->outputToken('User token refreshed'),
-                '',
-                'The lifetime of the new token will be extended by one month',
-                null,
-                [],
-                new RequestBody(
-                    'The login data',
-                    new \ArrayObject([
-                            'application/json' => [
-                                'schema' => [
-                                    '$ref' => '#/components/schemas/RefreshTokenCredential'
-                                ]
-                            ]
-                        ]
-                    )
-                ),
-                security: [
-                    ['bearerAuth' => []]
-                ]
-            )
-        );
-
-        $openApi->getPaths()->addPath('/api/token/refresh', $pathItem);
-
-        return $openApi;
-
     }
 }
