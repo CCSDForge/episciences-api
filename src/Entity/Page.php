@@ -20,8 +20,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Entity(repositoryClass: PageRepository::class)]
 #[ORM\UniqueConstraint(name: 'uid', columns: ['uid'])]
-#[ORM\UniqueConstraint(name: 'rvcode', columns: ['code'])]
-#[ORM\UniqueConstraint(name: 'page_code', columns: ['page_code'])]
+#[ORM\UniqueConstraint(name: 'rvcode_page_code', columns: ['code', 'page_code'])]
 #[ApiResource(
     operations: [
 

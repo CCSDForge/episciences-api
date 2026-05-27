@@ -19,7 +19,6 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Table(name: self::TABLE)]
 #[ORM\UniqueConstraint(name: 'uid', columns: ['uid'])]
-#[ORM\UniqueConstraint(name: 'rvcode', columns: ['code'])]
 #[ORM\Entity(repositoryClass: NewsRepository::class)]
 
 #[ApiResource(
