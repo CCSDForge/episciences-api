@@ -4,14 +4,14 @@ monolog:
             type: fingers_crossed
             action_level: error
             handler: grouped
-            grouped:
-                type: group
-                members: [streamed] # eg. members: [streamed, swift]
-            streamed:
-                type: rotating_file
-                path: "%kernel.logs_dir%/%kernel.environment%.log"
-                max_files: 10
-                level: error
+        grouped:
+            type: group
+            members: [streamed] # eg. members: [streamed, swift]
+        streamed:
+            type: rotating_file
+            path: "%kernel.logs_dir%/%kernel.environment%.log"
+            max_files: 10
+            level: error
 #            swift:
 #                type: swift_mailer
 #                from_email: 'alert@project.net'
