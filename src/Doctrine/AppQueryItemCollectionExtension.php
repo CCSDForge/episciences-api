@@ -138,7 +138,9 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 $this->processOrExpression($queryBuilder, $alias, $newsYear, $resourceClass);
             }
 
-            $queryBuilder->andWhere("JSON_EXTRACT ($alias.visibility, '$[0]') = :visibility")->setParameter('visibility', 'public');
+            // Use the indexed stored generated column instead of JSON_EXTRACT() to avoid
+            // full-table scans that triggered sort_buffer_size overflow (MySQL error 1038).
+            $queryBuilder->andWhere("$alias.is_public = :isPublic")->setParameter('isPublic', true);
 
         } elseif ($resourceClass === Paper::class) {
 
