@@ -121,6 +121,19 @@ class Page
     )]
     private array $visibility = [];
 
+    /**
+     * MySQL stored generated column: 1 when visibility[0] = 'public', NULL otherwise.
+     * Indexed — used instead of JSON_EXTRACT() in WHERE clauses to avoid full-table scans.
+     */
+    #[ORM\Column(
+        name: 'is_public',
+        nullable: true,
+        insertable: false,
+        updatable: false,
+        columnDefinition: "TINYINT(1) GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(visibility, '\$[0]')) = 'public') STORED"
+    )]
+    private ?bool $is_public = null;
+
 
     #[ORM\Column(name: 'date_creation', type: Types::DATETIME_MUTABLE, nullable: true)]
     #[groups(
@@ -221,6 +234,11 @@ class Page
         $this->visibility = $visibility;
 
         return $this;
+    }
+
+    public function isPublic(): ?bool
+    {
+        return $this->is_public;
     }
 
     public function getPageCode(): ?string
