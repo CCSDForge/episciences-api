@@ -19,16 +19,20 @@ services:
     container_name: episciences-api_apache
     ports:
       - "8080:80"
-      - "8443:443"
     volumes:
       - .:/var/www/html
       - ./docker/apache/vhost.conf:/usr/local/apache2/conf/vhost.conf
-      - ./docker/apache/vhost-ssl.conf:/usr/local/apache2/conf/vhost-ssl.conf
-      - ./docker/apache/ssl:/usr/local/apache2/conf/ssl
     depends_on:
       - php
     networks:
       - epi-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.epi-api-apache.loadbalancer.server.port=80"
+      - "traefik.http.routers.epi-api.rule=Host(`api-dev.episciences.org`)"
+      - "traefik.http.routers.epi-api.entrypoints=websecure"
+      - "traefik.http.routers.epi-api.tls=true"
+      - "traefik.http.routers.epi-api.service=epi-api-apache"
 
 
 networks:
