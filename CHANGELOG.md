@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<!-- 
+<!--
 ## Unreleased
 ### Fixed
 ### Added
@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New endpoint "/api/journals/front/configuration?code=rvcode": To retrieve the public interface configuration for sites migrated to the new interfaces
 ### Fixed
 - [#1015](https://github.com/CCSDForge/episciences/issues/1015): miscalculation of average times: Previously, when a statistics start date was set in the parameters, document versions prior to that date were not taken into account. As a result, the first submission date depended on this parameter, which could lead to inaccurate results for some documents. Now, if the first submission date is earlier than the statistics start date, the document is excluded.
+## v1.2.6 2026-04-24
+### Fixed
 - [RT#282494]: the number of reviews requested is incorrect.
 - The range years for the evaluation statistics does include the period during witch no article was published.
 ### Changed
@@ -62,12 +64,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Updated robots.txt rules
 - Updated API Platform component and related project dependencies
-- Updated the API documentation code 
+- Updated the API documentation code
 
 ## v1.2.1 2025-01-09
 ### Changed
 - Updated label for status 'reviewed' has been updated to 'reviewed pending editorial decision'
-- Updated API Platform component and related project dependencies 
+- Updated API Platform component and related project dependencies
 
 ## v1.2.0 2024-11-25
 ### Fixed
@@ -146,13 +148,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Loss of roles when requesting a new token with a refresh token & new attribute User::currentJournalID & refactoring.
 - Improvements: consuming a REST API endpoint: taking into account "conflicts of interest"
- 
+
 ## v1.1.3 2024-02-01
 ### Fixed:
 - [#11](https://github.com/CCSDForge/episciences-api/issues/11) Administrator do not have access to all journal's papers.
 
 ## v1.1.2 2024-01-31
-### Changed 
+### Changed
 - Disabling the Pagination Client-side Globally:
   The pagination can now be enabled or disabled by adding a query parameter named pagination:
   GET /papers?pagination=false: disabled
@@ -163,7 +165,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v1.1.1 2024-01-17
 ### Changed
-- Limit API Platform to v. 3.1.* 
+- Limit API Platform to v. 3.1.*
 
 ## v1.1 2023-11-24
 ### Changed
