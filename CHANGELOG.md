@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
+
+## Unreleased
+
+### Added
+- Added `is_public` stored generated column to `Pages` and `News` entities to optimize query filtering.
+- Added regression tests for the `is_public` generated column filter.
+
+### Changed
+- Replaced non-indexed `JSON_EXTRACT` visibility filter with the new `is_public` column in Doctrine queries.
+
+### Fixed
+- Fixed invalid `UniqueConstraints` on `pages` and `news` tables.
 ## v1.3.0 2026-07-15
 ### Added
 - New endpoint "/api/journals/front/configuration?code=rvcode": To retrieve the public interface configuration for sites migrated to the new interfaces
