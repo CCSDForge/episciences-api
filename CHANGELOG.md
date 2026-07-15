@@ -14,11 +14,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
-## Unreleased
+## v1.3.0 2026-07-15
 ### Added
 - New endpoint "/api/journals/front/configuration?code=rvcode": To retrieve the public interface configuration for sites migrated to the new interfaces
+- Added unit tests for `JournalSettingNg` entities, repository queries, and state providers.
+
+### Changed
+- Migrated codebase and Docker infrastructure to PHP 8.3, applying Rector transformations (constructor promotion, typed properties, return types, modern PHP 8.x syntax) and fixing PHPStan level-1 type errors.
+- Moved deployment configurations to `deployment/ansible/` using Ansistrano, renamed the staging environment to `preprod`, and added deployment hooks for cache/Composer/Yarn tasks and php-fpm reload.
+- Routed HTTPS via Traefik, shared database/Solr services with `episciences-infrastructure`, and cleaned up Apache SSL configuration.
+- Updated project dependencies in `composer.lock`.
+
 ### Fixed
-- [#1015](https://github.com/CCSDForge/episciences/issues/1015): miscalculation of average times: Previously, when a statistics start date was set in the parameters, document versions prior to that date were not taken into account. As a result, the first submission date depended on this parameter, which could lead to inaccurate results for some documents. Now, if the first submission date is earlier than the statistics start date, the document is excluded.
+- [#1015](https://github.com/CCSDForge/episciences/issues/1015) / [RT#281920]: miscalculation of average times: Previously, when a statistics start date was set in the parameters, document versions prior to that date were not taken into account. As a result, the first submission date depended on this parameter, which could lead to inaccurate results for some documents. Now, if the first submission date is earlier than the statistics start date, the document is excluded.
+- Fixed indentation of grouped and streamed handlers in production Monolog configuration.
+- Fixed duplicate `ORM\Column` attribute in `UserAssignment` entity.
+- Fixed variable resolution bug in `VolumeRepository::listQuery()` by replacing `$context` with `$filters`.
+- Fixed variable mapping bug in `findOneByWithContext()` by mapping `$context` to `$context['isGranted']`.
+- Fixed default `$appVersion` initialization in `Kernel` before include.
+- Removed undefined class in `JournalSettingNgProvider`.
+
 ## v1.2.6 2026-04-24
 ### Fixed
 - [RT#282494]: the number of reviews requested is incorrect.
