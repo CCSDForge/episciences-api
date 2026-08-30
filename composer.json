@@ -20,7 +20,7 @@
         "doctrine/annotations": "^2.0",
         "doctrine/doctrine-bundle": "^2.8",
         "doctrine/doctrine-migrations-bundle": "^3.2",
-        "doctrine/orm": "^2.14",
+        "doctrine/orm": "^3.0",
         "gesdinet/jwt-refresh-token-bundle": "^1.1",
         "laminas/laminas-feed": "^2.26",
         "lexik/jwt-authentication-bundle": "^3.1",
