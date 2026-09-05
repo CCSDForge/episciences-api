@@ -36,7 +36,7 @@
         "symfony/flex": "^2",
         "symfony/framework-bundle": "^7.0",
         "symfony/http-client": "^7.1",
-        "symfony/monolog-bundle": "^3.6",
+        "symfony/monolog-bundle": "^4.0",
         "symfony/property-access": "^7.0",
         "symfony/property-info": "^7.0",
         "symfony/proxy-manager-bridge": "^6.2",
