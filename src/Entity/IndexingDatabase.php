@@ -42,12 +42,12 @@ class IndexingDatabase
     private IndexingDatabaseStatus $status = IndexingDatabaseStatus::PENDING;
 
     #[ORM\Column(name: 'created_at', type: Types::DATETIME_MUTABLE, nullable: true)]
-    #[Groups(['read:IndexingDatabase'])]
+    #[Groups(['read:IndexingDatabase', 'read:IndexingDatabases'])]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private ?DateTimeInterface $createdAt = null;
 
     #[ORM\Column(name: 'updated_at', type: Types::DATETIME_MUTABLE, nullable: true)]
-    #[Groups(['read:IndexingDatabase'])]
+    #[Groups(['read:IndexingDatabase', 'read:IndexingDatabases'])]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private ?DateTimeInterface $updatedAt = null;
 

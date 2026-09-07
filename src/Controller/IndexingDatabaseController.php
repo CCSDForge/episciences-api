@@ -29,7 +29,6 @@ class IndexingDatabaseController extends AbstractController
         $indexingDatabases = [];
         $page = 1;
         $itemsPerPage = 30;
-        $firstResult = 0;
 
         if ($request instanceof Request) {
             $code = $request->attributes->get('code');
@@ -48,7 +47,7 @@ class IndexingDatabaseController extends AbstractController
                 $indexingDatabases = $indexingDbRepo->findByReviewId($journal->getRvid());
 
                 $page = max(1, $request->query->getInt('page', 1));
-                $itemsPerPage = $request->query->getInt('itemsPerPage', 30);
+                $itemsPerPage = max(1, $request->query->getInt('itemsPerPage', 30));
             }
         }
 
