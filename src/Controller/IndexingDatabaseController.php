@@ -47,7 +47,7 @@ class IndexingDatabaseController extends AbstractController
                 $indexingDbRepo = $this->entityManager->getRepository(IndexingDatabase::class);
                 $indexingDatabases = $indexingDbRepo->findByReviewId($journal->getRvid());
 
-                $page = $request->query->getInt('page', 1);
+                $page = max(1, $request->query->getInt('page', 1));
                 $itemsPerPage = $request->query->getInt('itemsPerPage', 30);
             }
         }
