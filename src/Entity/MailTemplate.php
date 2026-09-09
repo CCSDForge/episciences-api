@@ -6,62 +6,39 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * MailTemplate
- *
- * @ORM\Table(name="MAIL_TEMPLATE", indexes={@ORM\Index(name="KEY", columns={"KEY"}), @ORM\Index(name="RVCODE", columns={"RVCODE"}), @ORM\Index(name="RVID", columns={"RVID"})})
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'MAIL_TEMPLATE')]
+#[ORM\Index(name: 'KEY', columns: ['KEY'])]
+#[ORM\Index(name: 'RVCODE', columns: ['RVCODE'])]
+#[ORM\Index(name: 'RVID', columns: ['RVID'])]
 class MailTemplate
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="ID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
      */
+    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $id;
 
-    /**
-     * @var int|null
-     *
-     * @ORM\Column(name="PARENTID", type="integer", nullable=true, options={"unsigned"=true})
-     */
-    private $parentid;
+    #[ORM\Column(name: 'PARENTID', type: 'integer', nullable: true, options: ['unsigned' => true])]
+    private ?int $parentid = null;
 
-    /**
-     * @var int|null
-     *
-     * @ORM\Column(name="RVID", type="integer", nullable=true, options={"unsigned"=true})
-     */
-    private $rvid;
+    #[ORM\Column(name: 'RVID', type: 'integer', nullable: true, options: ['unsigned' => true])]
+    private ?int $rvid = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="RVCODE", type="string", length=25, nullable=true)
-     */
-    private $rvcode;
+    #[ORM\Column(name: 'RVCODE', type: 'string', length: 25, nullable: true)]
+    private ?string $rvcode = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="KEY", type="string", length=255, nullable=false)
-     */
-    private $key;
+    #[ORM\Column(name: 'KEY', type: 'string', length: 255, nullable: false)]
+    private ?string $key = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="TYPE", type="string", length=255, nullable=false)
-     */
-    private $type;
+    #[ORM\Column(name: 'TYPE', type: 'string', length: 255, nullable: false)]
+    private ?string $type = null;
 
-    /**
-     * @var int|null
-     *
-     * @ORM\Column(name="POSITION", type="integer", nullable=true, options={"unsigned"=true})
-     */
-    private $position;
+    #[ORM\Column(name: 'POSITION', type: 'integer', nullable: true, options: ['unsigned' => true])]
+    private ?int $position = null;
 
     public function getId(): ?int
     {

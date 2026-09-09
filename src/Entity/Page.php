@@ -20,8 +20,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Entity(repositoryClass: PageRepository::class)]
 #[ORM\UniqueConstraint(name: 'uid', columns: ['uid'])]
-#[ORM\UniqueConstraint(name: 'rvcode', columns: ['code'])]
-#[ORM\UniqueConstraint(name: 'page_code', columns: ['page_code'])]
+#[ORM\UniqueConstraint(name: 'rvcode_page_code', columns: ['code', 'page_code'])]
 #[ApiResource(
     operations: [
 
@@ -87,7 +86,7 @@ class Page
     private int $id;
 
 
-    #[ORM\Column(name: 'uid', type: 'integer', nullable: false)]
+    #[ORM\Column(name: 'uid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false)]
     private int $uid;
 
 
@@ -104,23 +103,36 @@ class Page
     )]
     private string $rvcode;
 
-    #[ORM\Column(name: 'title', type: 'json', nullable: false)]
+    #[ORM\Column(name: 'title', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     #[groups(
         ['read:Page', 'read:Pages']
     )]
     private array $title = [];
 
-    #[ORM\Column(name: 'content', type: 'json', nullable: false)]
+    #[ORM\Column(name: 'content', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     #[groups(
         ['read:Page', 'read:Pages']
     )]
     private array $content = [];
 
-    #[ORM\Column(name: 'visibility', type: 'json', nullable: false)]
+    #[ORM\Column(name: 'visibility', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     #[groups(
         ['read:Page']
     )]
     private array $visibility = [];
+
+    /**
+     * MySQL stored generated column: 1 when visibility[0] = 'public', NULL otherwise.
+     * Indexed — used instead of JSON_EXTRACT() in WHERE clauses to avoid full-table scans.
+     */
+    #[ORM\Column(
+        name: 'is_public',
+        nullable: true,
+        insertable: false,
+        updatable: false,
+        columnDefinition: "TINYINT(1) GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(visibility, '\$[0]')) = 'public') STORED"
+    )]
+    private ?bool $is_public = null;
 
 
     #[ORM\Column(name: 'date_creation', type: Types::DATETIME_MUTABLE, nullable: true)]
@@ -222,6 +234,11 @@ class Page
         $this->visibility = $visibility;
 
         return $this;
+    }
+
+    public function isPublic(): ?bool
+    {
+        return $this->is_public;
     }
 
     public function getPageCode(): ?string

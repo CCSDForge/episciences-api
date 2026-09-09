@@ -17,12 +17,12 @@ class ReviewSetting
     public const ALLOW_BROWSE_ACCEPTED_ARTICLE = 'allowBrowseAcceptedDocuments';
     public const DISPLAY_EMPTY_VOLUMES = 'displayEmptyVolumes';
 
-    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private $rvid;
+    private int $rvid;
 
-    #[ORM\Column(name: 'SETTING', type: 'string', length: 200, nullable: false)]
+    #[ORM\Column(name: 'SETTING', type: \Doctrine\DBAL\Types\Types::STRING, length: 200, nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
     #[Groups(
@@ -33,7 +33,7 @@ class ReviewSetting
 
     )]
 
-    private $setting;
+    private string $setting;
     #[Groups(
         [
             'read:Review',
@@ -42,14 +42,14 @@ class ReviewSetting
 
     )]
 
-    #[ORM\Column(name: 'VALUE', type: 'string', length: 65535, nullable: true)]
+    #[ORM\Column(name: 'VALUE', type: \Doctrine\DBAL\Types\Types::STRING, length: 65535, nullable: true)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
 
 
 
 
-    private $value;
+    private ?string $value = null;
 
     #[ORM\ManyToOne(targetEntity: Review::class, inversedBy: 'settings')]
     #[ORM\JoinColumn(name: 'RVID', referencedColumnName: 'RVID', nullable: false)]

@@ -26,6 +26,7 @@ use Psr\Log\LogLevel;
  * @method PaperLog[]    findAll()
  * @method PaperLog[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  *
+ * @extends \Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository<\App\Entity\PaperLog>
  */
 class PaperLogRepository extends ServiceEntityRepository
 {
@@ -37,12 +38,9 @@ class PaperLogRepository extends ServiceEntityRepository
 
     public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE];
 
-    private LoggerInterface $logger;
-
-    public function __construct(ManagerRegistry $registry, LoggerInterface $logger)
+    public function __construct(ManagerRegistry $registry, private LoggerInterface $logger)
     {
         parent::__construct($registry, PaperLog::class);
-        $this->logger = $logger;
     }
 
     /**
@@ -139,35 +137,33 @@ class PaperLogRepository extends ServiceEntityRepository
         $referenceStatus = Paper::STATUS_SUBMITTED;
 
         $sql = "SELECT YEAR(t2.max_date) AS year, t1.RVID AS rvid, TIMESTAMPDIFF($unit, min_date, max_date) AS delay, t1.PAPERID, t1.min_date, t2.max_date FROM (";
-        $sql .= "SELECT pl1.PAPERID, MIN(pl1.DATE) AS min_date, pl1.RVID FROM PAPER_LOG pl1 WHERE pl1.status IS NOT NULL AND pl1.status = $referenceStatus";
+        $sql .= "SELECT pl1.PAPERID, MIN(pl1.DATE) AS min_date, pl1.RVID FROM PAPER_LOG pl1 WHERE pl1.status = $referenceStatus";
 
-        if ($startStatsDate) {
-            $sql .= " AND DATE(pl1.DATE) > '$startStatsDate'";
+        if ($rvId) {
+            $sql .= " AND pl1.rvid = $rvId";
         }
 
 
         $sql .= " GROUP BY pl1.PAPERID, pl1.RVID ) t1 INNER JOIN(";
-        $sql .= " SELECT pl2.PAPERID, MAX(pl2.DATE) AS max_date, pl2.RVID FROM PAPER_LOG pl2 WHERE pl2.status IS NOT NULL AND pl2.status = ";
+        $sql .= " SELECT pl2.PAPERID, MAX(pl2.DATE) AS max_date, pl2.RVID FROM PAPER_LOG pl2 WHERE pl2.status = ";
         $sql .= ($latestStatus === Paper::STATUS_STRICTLY_ACCEPTED ? Paper::STATUS_STRICTLY_ACCEPTED . " OR pl2.status = " . Paper::STATUS_TMP_VERSION_ACCEPTED : $latestStatus);
-        $sql .= " GROUP BY pl2.PAPERID, pl2.RVID ) t2 ON t1.PAPERID = t2.PAPERID AND t1.RVID = t2.RVID HAVING t1.PAPERID NOT IN(";
-        $sql .= " SELECT DISTINCT p.PAPERID FROM PAPERS p WHERE p.FLAG = 'imported')";
 
         if ($rvId) {
-            $sql .= " AND rvid = $rvId";
+            $sql .= " AND pl2.rvid = $rvId";
         }
 
-        if ($years) {
+        $sql .= " GROUP BY pl2.PAPERID, pl2.RVID ) t2 ON t1.PAPERID = t2.PAPERID AND t1.RVID = t2.RVID";
+        $sql .= " WHERE NOT EXISTS (SELECT 1 FROM PAPERS p WHERE p.PAPERID = t1.PAPERID AND ( p.FLAG = 'imported'";
 
-            $sql .= ' AND';
-
-            if (is_array($years)) {
-                $years = implode(',', $years);
-                $sql .= " YEAR(t2.max_date) IN ($years)";
-            } else {
-                $sql .= " YEAR(t2.max_date) = $years";
-            }
-
+        if ($startStatsDate) {
+            $sql .= " OR p.SUBMISSION_DATE < '$startStatsDate'";
+            // This not includes the entire day of $startStatsDate (until 23:59:59)
+            // $sql .= " OR p.SUBMISSION_DATE < DATE_ADD('$startStatsDate', INTERVAL 1 DAY)";
         }
+
+        $sql .= " ))";
+
+        $this->whereYears($sql, $years, 't2.max_date');
 
         return $sql;
     }
@@ -178,7 +174,7 @@ class PaperLogRepository extends ServiceEntityRepository
         $papers = 'PAPERS';
         $paperLog = 'PAPER_LOG';
 
-        $year = !$isSubmittedSameYear ? "$papers.SUBMISSION_DATE" : "pl.DATE";
+        $year = $isSubmittedSameYear ? "pl.DATE" : "$papers.SUBMISSION_DATE";
 
 
         $sql = "SELECT $papers.RVID AS rvid, YEAR($year) AS `year`, COUNT(DISTINCT($papers.PAPERID)) AS $as";
@@ -229,9 +225,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
         $delay = array_column($result, self::DELAY);
 
-        $validValues = array_filter($delay, static function ($value) {
-            return is_numeric($value);
-        });
+        $validValues = array_filter($delay, static fn($value) => is_numeric($value));
 
         try {
             $median = $this->getMedian($validValues);
@@ -250,7 +244,7 @@ class PaperLogRepository extends ServiceEntityRepository
         $qb = $this->getEntityManager()->createQueryBuilder();
         $qb->addSelect("COUNT(DISTINCT(pl.paperid)) AS total");
 
-        if (!empty($years)) {
+        if ($years !== []) {
             $qb->addSelect("YEAR(pl.date) As year");
         }
 
@@ -287,7 +281,7 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
 
-    public function getAccepted(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
+    public function getAccepted(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
 
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
@@ -295,7 +289,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    public function getRefused(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
+    public function getRefused(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
 
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_REFUSED, $ignoreImportedArticles);
@@ -307,7 +301,7 @@ class PaperLogRepository extends ServiceEntityRepository
     {
         $total = 0;
 
-        if (empty($years)) {
+        if ($years === []) {
             try {
                 return $qb->getQuery()->getSingleScalarResult();
             } catch (NoResultException|NonUniqueResultException  $e) {
@@ -331,14 +325,14 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    public function getSubmissions(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
+    public function getSubmissions(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_SUBMITTED, $ignoreImportedArticles);
         return $this->processResult($qb, $years);
 
     }
 
-    public function getPublished(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
+    public function getPublished(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_PUBLISHED, $ignoreImportedArticles);
         return $this->processResult($qb, $years);
@@ -346,7 +340,7 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
 
-    public function getAllAcceptedNotYetPublished(int $rvId = null, array $years = [], string $startAfterDate = null, $ignoreImportedArticles = true): int
+    public function getAllAcceptedNotYetPublished(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
 
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
@@ -385,7 +379,7 @@ class PaperLogRepository extends ServiceEntityRepository
     private function getRateByStatus(string $status = 'accepted', array $options = []): float|null
     {
         $years = $options['year'] ?? [];
-        $rvId = $options['rvid'] ? (int)$options['rvid'] : null;
+        $rvId = isset($options['rvid']) ? (int)$options['rvid'] : null;
         $startAfterDate = $options['startAfterDate'] ?? null;
 
         $acceptedTotal = $options['acceptedTotal'] ?? $this->getAccepted($rvId, $years, $startAfterDate);
@@ -426,6 +420,4 @@ class PaperLogRepository extends ServiceEntityRepository
     {
         return $this->getRateByStatus('refused', $options);
     }
-
-
 }

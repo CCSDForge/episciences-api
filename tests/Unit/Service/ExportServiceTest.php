@@ -10,8 +10,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class ExportServiceTest extends TestCase
 {
-    private Export $exportService;
-    private ParameterBagInterface $parameterBag;
+    private \PHPUnit\Framework\MockObject\MockObject $exportService;
+    private \PHPUnit\Framework\MockObject\MockObject $parameterBag;
 
     protected function setUp(): void
     {

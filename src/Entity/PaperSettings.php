@@ -6,41 +6,27 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * PaperSettings
- *
- * @ORM\Table(name="PAPER_SETTINGS")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'PAPER_SETTINGS')]
 class PaperSettings
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="PSID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
      */
+    #[ORM\Column(name: 'PSID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $psid;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="DOCID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $docid;
+    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    private ?int $docid = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="SETTING", type="string", length=100, nullable=false)
-     */
-    private $setting;
+    #[ORM\Column(name: 'SETTING', type: 'string', length: 100, nullable: false)]
+    private ?string $setting = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="VALUE", type="string", length=250, nullable=true)
-     */
-    private $value;
+    #[ORM\Column(name: 'VALUE', type: 'string', length: 250, nullable: true)]
+    private ?string $value = null;
 
     public function getPsid(): ?int
     {

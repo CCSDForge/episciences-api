@@ -4,7 +4,7 @@
   gather_facts: true
   vars:
     ansistrano_after_symlink_shared_paths_tasks_file: "{{ playbook_dir }}/hooks/after-symlink-shared.yml"
-    ansistrano_before_symlink_tasks_file: "{{ playbook_dir }}/hooks/before-symlink.yml"
+    ansistrano_after_symlink_tasks_file: "{{ playbook_dir }}/hooks/after-symlink.yml"
 
   roles:
     - role: ansistrano.deploy

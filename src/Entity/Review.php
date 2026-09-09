@@ -27,6 +27,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use App\Repository\ReviewRepository;
 use App\OpenApi\OpenApiFactory;
+use App\Controller\IndexingDatabaseController;
+use App\Entity\IndexingDatabase;
 
 
 #[ORM\Table(name: self::TABLE)]
@@ -357,6 +359,28 @@ use App\OpenApi\OpenApiFactory;
     paginationMaximumItemsPerPage: 30
 
 )]
+
+#[ApiResource(
+    uriTemplate: self::URI_TEMPLATE . 'indexing-database/{code}',
+    operations: [
+        new GetCollection(
+            openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['review']],
+                summary: 'Indexing Databases',
+                description: 'List of indexing databases for a journal (DOAJ, Scopus, etc.)',
+            ),
+            normalizationContext: [
+                'groups' => ['read:IndexingDatabases'],
+                'serialize_null' => true
+            ],
+            read: false,
+        ),
+    ],
+    controller: IndexingDatabaseController::class,
+    output: IndexingDatabase::class
+)]
+
+
 class Review
 {
     public const TABLE = 'REVIEW';
@@ -365,7 +389,7 @@ class Review
     public const STATUS_ENABLED = 1;
     public const URI_TEMPLATE = '/journals/';
 
-    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     #[groups(
@@ -379,7 +403,7 @@ class Review
     private int $rvid;
 
 
-    #[ORM\Column(name: 'CODE', type: 'string', length: 50, nullable: false)]
+    #[ORM\Column(name: 'CODE', type: \Doctrine\DBAL\Types\Types::STRING, length: 50, nullable: false)]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -391,29 +415,29 @@ class Review
     private string $code;
 
 
-    #[ORM\Column(name: 'NAME', type: 'string', length: 2000, nullable: false)]
+    #[ORM\Column(name: 'NAME', type: \Doctrine\DBAL\Types\Types::STRING, length: 2000, nullable: false)]
     #[Groups(['read:Reviews', 'read:Review'])]
     private string $name;
 
-    #[ORM\Column(name: 'SUBTITLE', type: 'string', length: 255, nullable: true)]
+    #[ORM\Column(name: 'SUBTITLE', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: true)]
     #[Groups(['read:Reviews', 'read:Review'])]
-    #[ApiProperty(readable: true, writable: true, description: 'Le sous-titre du journal')]
+    #[ApiProperty(description: 'Le sous-titre du journal', readable: true, writable: true)]
     private ?string $subtitle = null;
 
-    #[ORM\Column(name: 'STATUS', type: 'smallint', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'STATUS', type: \Doctrine\DBAL\Types\Types::SMALLINT, nullable: false, options: ['unsigned' => true])]
     #[Groups(['read:Reviews'])]
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")] // Property viewable and writable only by users with ROLE_ADMIN
     private int $status;
 
 
-    #[ORM\Column(name: 'CREATION', type: 'datetime', nullable: false)]
+    #[ORM\Column(name: 'CREATION', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     #[Groups(['read:Reviews'])]
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTimeInterface $creation;
 
 
-    #[ORM\Column(name: 'PIWIKID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'PIWIKID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[Groups(['read:Reviews'])]
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
     private int $piwikid;
@@ -432,10 +456,14 @@ class Review
     )]
     private Collection $settings;
 
+    #[ORM\ManyToMany(targetEntity: IndexingDatabase::class, mappedBy: 'reviews')]
+    private Collection $indexingDatabases;
+
     public function __construct()
     {
         $this->papers = new ArrayCollection();
         $this->settings = new ArrayCollection();
+        $this->indexingDatabases = new ArrayCollection();
     }
 
     public function getRvid(): ?int
@@ -515,7 +543,7 @@ class Review
     }
 
     /**
-     * @return Collection
+     * @return \Doctrine\Common\Collections\Collection<int, \App\Entity\Paper>
      */
     public function getPapers(): Collection
     {
@@ -581,5 +609,30 @@ class Review
 
         return null;
 
+    }
+
+    /**
+     * @return Collection<int, IndexingDatabase>
+     */
+    public function getIndexingDatabases(): Collection
+    {
+        return $this->indexingDatabases;
+    }
+
+    public function addIndexingDatabase(IndexingDatabase $indexingDatabase): self
+    {
+        if (!$this->indexingDatabases->contains($indexingDatabase)) {
+            $this->indexingDatabases->add($indexingDatabase);
+            $indexingDatabase->addReview($this);
+        }
+        return $this;
+    }
+
+    public function removeIndexingDatabase(IndexingDatabase $indexingDatabase): self
+    {
+        if ($this->indexingDatabases->removeElement($indexingDatabase)) {
+            $indexingDatabase->removeReview($this);
+        }
+        return $this;
     }
 }

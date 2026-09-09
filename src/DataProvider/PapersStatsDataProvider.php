@@ -15,7 +15,7 @@ final class PapersStatsDataProvider extends AbstractDataProvider implements Prov
     public function supports(Operation $operation = null): bool
     {
         return (
-            $operation &&
+            $operation instanceof \ApiPlatform\Metadata\Operation &&
             (Paper::class === $operation->getClass()) &&
             in_array($operation->getName(), AppConstants::APP_CONST['custom_operations']['items']['papers'], true)
         );

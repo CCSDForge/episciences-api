@@ -70,7 +70,7 @@ class VolumeSubscriberTest extends TestCase
         $volume->method('getVid')->willReturn(1);
         $volume->expects($this->once())
             ->method('setPapers')
-            ->with($this->callback(static fn(ArrayCollection $c) => count($c) === 2))
+            ->with($this->callback(static fn(ArrayCollection $c): bool => count($c) === 2))
             ->willReturnSelf();
         $volume->method('getPapers')->willReturn(new ArrayCollection());
 

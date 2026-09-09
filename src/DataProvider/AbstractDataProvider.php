@@ -37,7 +37,7 @@ abstract class AbstractDataProvider
 
             $journal = $this->statsService->getJournal($context['uri_variables']);
 
-            if (!$journal) {
+            if (!$journal instanceof \App\Entity\Review) {
                 throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $context['uri_variables']['code']));
             }
 

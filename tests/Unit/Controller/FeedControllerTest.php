@@ -17,17 +17,18 @@ use Symfony\Component\HttpFoundation\Response;
 class FeedControllerTest extends TestCase
 {
     private FeedController $controller;
-    private MockObject|SolrFeedService $feedService;
-    private MockObject|EntityManagerInterface $entityManager;
-    private MockObject|ReviewRepository $reviewRepository;
-    private MockObject|Review $journal;
-    private MockObject|Feed $feed;
+    private \PHPUnit\Framework\MockObject\MockObject $feedService;
+    private \PHPUnit\Framework\MockObject\MockObject $entityManager;
+    private \PHPUnit\Framework\MockObject\MockObject $reviewRepository;
+    private \PHPUnit\Framework\MockObject\MockObject $journal;
+    private \PHPUnit\Framework\MockObject\MockObject $feed;
 
     protected function setUp(): void
     {
-        $this->controller = new FeedController();
         $this->feedService = $this->createMock(SolrFeedService::class);
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
+        $this->controller = new FeedController($this->feedService, $this->entityManager);
+        
         $this->reviewRepository = $this->createMock(ReviewRepository::class);
         $this->journal = $this->createMock(Review::class);
         $this->feed = $this->createMock(Feed::class);
@@ -40,7 +41,7 @@ class FeedControllerTest extends TestCase
 
     public function testInvokeWithRssPath(): void
     {
-        $request = Request::create('/api/feed/rss/testjournal', 'GET');
+        $request = Request::create('/api/feed/rss/testjournal', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
         $request->attributes->set('code', 'testjournal');
 
         $this->reviewRepository
@@ -65,7 +66,7 @@ class FeedControllerTest extends TestCase
             ->with('rss')
             ->willReturn('<rss>content</rss>');
 
-        $response = $this->controller->__invoke($request, $this->feedService, $this->entityManager);
+        $response = $this->controller->__invoke($request);
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
@@ -75,7 +76,7 @@ class FeedControllerTest extends TestCase
 
     public function testInvokeWithAtomPath(): void
     {
-        $request = Request::create('/api/feed/atom/testjournal', 'GET');
+        $request = Request::create('/api/feed/atom/testjournal', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
         $request->attributes->set('code', 'testjournal');
 
         $this->reviewRepository
@@ -100,7 +101,7 @@ class FeedControllerTest extends TestCase
             ->with('atom')
             ->willReturn('<feed>content</feed>');
 
-        $response = $this->controller->__invoke($request, $this->feedService, $this->entityManager);
+        $response = $this->controller->__invoke($request);
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
@@ -110,7 +111,7 @@ class FeedControllerTest extends TestCase
 
     public function testInvokeThrowsExceptionWhenJournalNotFound(): void
     {
-        $request = Request::create('/api/feed/rss/nonexistent', 'GET');
+        $request = Request::create('/api/feed/rss/nonexistent', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
         $request->attributes->set('code', 'nonexistent');
 
         $this->reviewRepository
@@ -121,12 +122,12 @@ class FeedControllerTest extends TestCase
         $this->expectException(ResourceNotFoundException::class);
         $this->expectExceptionMessage('Oops! Feed cannot be generated: not found Journal nonexistent');
 
-        $this->controller->__invoke($request, $this->feedService, $this->entityManager);
+        $this->controller->__invoke($request);
     }
 
     public function testFormatDetectionWithAtomInPath(): void
     {
-        $request = Request::create('/api/feed/atom/myjournal', 'GET');
+        $request = Request::create('/api/feed/atom/myjournal', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
         $request->attributes->set('code', 'myjournal');
 
         $this->reviewRepository
@@ -145,12 +146,12 @@ class FeedControllerTest extends TestCase
 
         $this->feed->method('export')->willReturn('');
 
-        $this->controller->__invoke($request, $this->feedService, $this->entityManager);
+        $this->controller->__invoke($request);
     }
 
     public function testFormatDetectionDefaultsToRss(): void
     {
-        $request = Request::create('/api/feed/rss/myjournal', 'GET');
+        $request = Request::create('/api/feed/rss/myjournal', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
         $request->attributes->set('code', 'myjournal');
 
         $this->reviewRepository
@@ -169,6 +170,6 @@ class FeedControllerTest extends TestCase
 
         $this->feed->method('export')->willReturn('');
 
-        $this->controller->__invoke($request, $this->feedService, $this->entityManager);
+        $this->controller->__invoke($request);
     }
 }

@@ -16,9 +16,9 @@ use Symfony\Component\HttpFoundation\Request;
 class PapersControllerTest extends TestCase
 {
     private PapersController $controller;
-    private MockObject|EntityManagerInterface $entityManager;
-    private MockObject|UserRepository $userRepository;
-    private MockObject|PapersRepository $paperRepository;
+    private \PHPUnit\Framework\MockObject\MockObject $entityManager;
+    private \PHPUnit\Framework\MockObject\MockObject $userRepository;
+    private \PHPUnit\Framework\MockObject\MockObject $paperRepository;
 
     protected function setUp(): void
     {
@@ -71,7 +71,7 @@ class PapersControllerTest extends TestCase
 
     public function testThrowsMissingParameterExceptionWhenDocumentIdAbsent(): void
     {
-        $request = Request::create('/api/papers/citations', 'GET');
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
 
         $this->expectException(MissingRequestParameterException::class);
         $this->expectExceptionMessage('Required "documentId" parameter in "Request query" is not present.');
@@ -83,7 +83,7 @@ class PapersControllerTest extends TestCase
 
     public function testReturnsFalseWhenUserIdIsZeroInAttributes(): void
     {
-        $request = Request::create('/api/papers/citations', 'GET', ['documentId' => 42]);
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
         // uid not set in route attributes → (int)null = 0 → skip user lookup
 
         $this->entityManager->expects($this->never())->method('getRepository');
@@ -100,7 +100,7 @@ class PapersControllerTest extends TestCase
      */
     public function testUidFromQueryStringIsNotUsed(): void
     {
-        $request = Request::create('/api/papers/citations', 'GET', ['documentId' => 42, 'uid' => 99]);
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42, 'uid' => 99]);
         // No attributes->set('uid') → secure path: uid is 0 → no DB lookup
 
         $this->entityManager->expects($this->never())->method('getRepository');
@@ -114,7 +114,7 @@ class PapersControllerTest extends TestCase
 
     public function testReturnsFalseWhenUserNotFound(): void
     {
-        $request = Request::create('/api/papers/citations', 'GET', ['documentId' => 42]);
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
         $request->attributes->set('uid', 99);
 
         $this->entityManager->method('getRepository')->willReturnMap([
@@ -130,7 +130,7 @@ class PapersControllerTest extends TestCase
 
     public function testReturnsFalseWhenPaperNotFound(): void
     {
-        $request = Request::create('/api/papers/citations', 'GET', ['documentId' => 42]);
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
         $request->attributes->set('uid', 99);
 
         $user = $this->createMock(User::class);
@@ -152,9 +152,10 @@ class PapersControllerTest extends TestCase
     /**
      * @dataProvider rolesGrantingAccessDataProvider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('rolesGrantingAccessDataProvider')]
     public function testReturnsTrueWhenUserHasAllowedRole(string $role): void
     {
-        $request = Request::create('/api/papers/citations', 'GET', ['documentId' => 42]);
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
         $request->attributes->set('uid', 99);
 
         $rvId = 5;
@@ -163,7 +164,7 @@ class PapersControllerTest extends TestCase
         $paper = $this->buildPaperMock($rvId, ownerUid: 0);
 
         $user->method('hasRole')->willReturnCallback(
-            static fn($r, $rv) => $r === $role && $rv === $rvId
+            static fn($r, $rv): bool => $r === $role && $rv === $rvId
         );
 
         $this->entityManager->method('getRepository')->willReturnMap([
@@ -192,7 +193,7 @@ class PapersControllerTest extends TestCase
 
     public function testReturnsTrueWhenUserIsTheOwnerOfPaper(): void
     {
-        $request = Request::create('/api/papers/citations', 'GET', ['documentId' => 42]);
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
         $request->attributes->set('uid', 99);
 
         $user = $this->createMock(User::class);
@@ -216,7 +217,7 @@ class PapersControllerTest extends TestCase
 
     public function testReturnsTrueWhenUserIsCoAuthorOfPaper(): void
     {
-        $request = Request::create('/api/papers/citations', 'GET', ['documentId' => 42]);
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
         $request->attributes->set('uid', 99);
 
         $user = $this->createMock(User::class);
@@ -239,7 +240,7 @@ class PapersControllerTest extends TestCase
 
     public function testReturnsTrueWhenUserIsEditorOfPaper(): void
     {
-        $request = Request::create('/api/papers/citations', 'GET', ['documentId' => 42]);
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
         $request->attributes->set('uid', 99);
 
         $user = $this->createMock(User::class);
@@ -262,7 +263,7 @@ class PapersControllerTest extends TestCase
 
     public function testReturnsTrueWhenUserIsCopyEditorOfPaper(): void
     {
-        $request = Request::create('/api/papers/citations', 'GET', ['documentId' => 42]);
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
         $request->attributes->set('uid', 99);
 
         $user = $this->createMock(User::class);
@@ -285,7 +286,7 @@ class PapersControllerTest extends TestCase
 
     public function testReturnsFalseWhenUserHasNoRoleAndNotInAnyEditorList(): void
     {
-        $request = Request::create('/api/papers/citations', 'GET', ['documentId' => 42]);
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
         $request->attributes->set('uid', 99);
 
         $user = $this->createMock(User::class);
@@ -311,7 +312,7 @@ class PapersControllerTest extends TestCase
 
     public function testDocumentIdIsReadFromQueryStringAndCastToInt(): void
     {
-        $request = Request::create('/api/papers/citations', 'GET', ['documentId' => 7]);
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 7]);
         $request->attributes->set('uid', 10);
 
         $user = $this->createMock(User::class);

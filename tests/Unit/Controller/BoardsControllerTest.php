@@ -23,18 +23,19 @@ use Symfony\Component\HttpFoundation\Request;
 class BoardsControllerTest extends TestCase
 {
     private BoardsController $controller;
-    private MockObject|EntityManagerInterface $entityManager;
-    private MockObject|LoggerInterface $logger;
-    private MockObject|ReviewRepository $reviewRepository;
-    private MockObject|UserRolesRepository $userRolesRepository;
-    private MockObject|SectionRepository $sectionRepository;
-    private MockObject|Review $journal;
+    private \PHPUnit\Framework\MockObject\MockObject $entityManager;
+    private \PHPUnit\Framework\MockObject\MockObject $logger;
+    private \PHPUnit\Framework\MockObject\MockObject $reviewRepository;
+    private \PHPUnit\Framework\MockObject\MockObject $userRolesRepository;
+    private \PHPUnit\Framework\MockObject\MockObject $sectionRepository;
+    private \PHPUnit\Framework\MockObject\MockObject $journal;
 
     protected function setUp(): void
     {
-        $this->controller = new BoardsController();
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
+        $this->controller = new BoardsController($this->entityManager, $this->logger);
+        
         $this->reviewRepository = $this->createMock(ReviewRepository::class);
         $this->userRolesRepository = $this->createMock(UserRolesRepository::class);
         $this->sectionRepository = $this->createMock(SectionRepository::class);
@@ -63,7 +64,7 @@ class BoardsControllerTest extends TestCase
 
     public function testReturnsEmptyPaginatorWhenRequestIsNull(): void
     {
-        $result = $this->controller->__invoke($this->entityManager, $this->logger, null);
+        $result = $this->controller->__invoke(null);
 
         $this->assertInstanceOf(ArrayPaginator::class, $result);
         $this->assertCount(0, $result);
@@ -71,7 +72,7 @@ class BoardsControllerTest extends TestCase
 
     public function testDefaultMaxResultsWithNullRequest(): void
     {
-        $result = $this->controller->__invoke($this->entityManager, $this->logger, null);
+        $result = $this->controller->__invoke(null);
 
         // With no request: pagination=true, page=1, firstResult=0, maxResults=SOLR_MAX
         $this->assertCount(0, $result);
@@ -81,10 +82,10 @@ class BoardsControllerTest extends TestCase
 
     public function testRequestWithoutPaginationParamAndNoCode(): void
     {
-        $request = Request::create('/api/boards', 'GET');
+        $request = Request::create('/api/boards', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
         // no 'pagination' query param, no 'code' attribute
 
-        $result = $this->controller->__invoke($this->entityManager, $this->logger, $request);
+        $result = $this->controller->__invoke($request);
 
         $this->assertInstanceOf(ArrayPaginator::class, $result);
         $this->assertCount(0, $result);
@@ -94,7 +95,7 @@ class BoardsControllerTest extends TestCase
 
     public function testThrowsResourceNotFoundExceptionWhenJournalNotFound(): void
     {
-        $request = Request::create('/api/boards/unknown', 'GET');
+        $request = Request::create('/api/boards/unknown', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
         $request->attributes->set('code', 'unknown');
 
         $this->entityManager->method('getRepository')
@@ -108,14 +109,14 @@ class BoardsControllerTest extends TestCase
         $this->expectException(ResourceNotFoundException::class);
         $this->expectExceptionMessage('unknown');
 
-        $this->controller->__invoke($this->entityManager, $this->logger, $request);
+        $this->controller->__invoke($request);
     }
 
     // ─── Empty board tags ──────────────────────────────────────────────────────
 
     public function testReturnsEmptyPaginatorWhenNoBoardTagsFound(): void
     {
-        $request = Request::create('/api/boards/myjournal', 'GET');
+        $request = Request::create('/api/boards/myjournal', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
         $request->attributes->set('code', 'myjournal');
 
         $this->journal->method('getRvid')->willReturn(3);
@@ -128,7 +129,7 @@ class BoardsControllerTest extends TestCase
         $this->userRolesRepository->method('boardsUsersQuery')
             ->willReturn($this->stubQueryBuilder([]));
 
-        $result = $this->controller->__invoke($this->entityManager, $this->logger, $request);
+        $result = $this->controller->__invoke($request);
 
         $this->assertInstanceOf(ArrayPaginator::class, $result);
         $this->assertCount(0, $result);
@@ -138,7 +139,7 @@ class BoardsControllerTest extends TestCase
 
     public function testReturnsBoardMembersWhenDataExists(): void
     {
-        $request = Request::create('/api/boards/myjournal', 'GET');
+        $request = Request::create('/api/boards/myjournal', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
         $request->attributes->set('code', 'myjournal');
 
         $this->journal->method('getRvid')->willReturn(3);
@@ -188,7 +189,7 @@ class BoardsControllerTest extends TestCase
         $this->sectionRepository->method('getAssignedSection')
             ->willReturn([]);
 
-        $result = $this->controller->__invoke($this->entityManager, $this->logger, $request);
+        $result = $this->controller->__invoke($request);
 
         $this->assertInstanceOf(ArrayPaginator::class, $result);
         $this->assertCount(1, $result);
@@ -198,7 +199,7 @@ class BoardsControllerTest extends TestCase
 
     public function testSkipsUserWithNullUserDataAndLogsInfo(): void
     {
-        $request = Request::create('/api/boards/myjournal', 'GET');
+        $request = Request::create('/api/boards/myjournal', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
         $request->attributes->set('code', 'myjournal');
 
         $this->journal->method('getRvid')->willReturn(3);
@@ -226,7 +227,7 @@ class BoardsControllerTest extends TestCase
 
         $this->logger->expects($this->once())->method('info');
 
-        $result = $this->controller->__invoke($this->entityManager, $this->logger, $request);
+        $result = $this->controller->__invoke($request);
 
         $this->assertCount(0, $result);
     }
@@ -241,7 +242,7 @@ class BoardsControllerTest extends TestCase
     public function testNullRequestDoesNotCauseUndefinedVariableError(): void
     {
         // Before the fix this would throw "undefined variable $itemsPerPage"
-        $result = $this->controller->__invoke($this->entityManager, $this->logger, null);
+        $result = $this->controller->__invoke(null);
 
         $this->assertInstanceOf(ArrayPaginator::class, $result);
     }
@@ -250,13 +251,13 @@ class BoardsControllerTest extends TestCase
     {
         // With pagination=true (default), page=2, itemsPerPage=10:
         // firstResult = (2-1) * 10 = 10, maxResults = 10
-        $request = Request::create('/api/boards', 'GET', [
+        $request = Request::create('/api/boards', \Symfony\Component\HttpFoundation\Request::METHOD_GET, [
             'pagination'   => '1',
             'page'         => '2',
             'itemsPerPage' => '10',
         ]);
 
-        $result = $this->controller->__invoke($this->entityManager, $this->logger, $request);
+        $result = $this->controller->__invoke($request);
 
         $this->assertInstanceOf(ArrayPaginator::class, $result);
     }
@@ -264,9 +265,9 @@ class BoardsControllerTest extends TestCase
     public function testPaginationDisabledWhenParamAbsent(): void
     {
         // No 'pagination' query param → pagination=true, page=1, itemsPerPage=30
-        $request = Request::create('/api/boards', 'GET');
+        $request = Request::create('/api/boards', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
 
-        $result = $this->controller->__invoke($this->entityManager, $this->logger, $request);
+        $result = $this->controller->__invoke($request);
 
         $this->assertInstanceOf(ArrayPaginator::class, $result);
     }
@@ -275,7 +276,7 @@ class BoardsControllerTest extends TestCase
 
     public function testUserWithOnlyNonBoardRoleIsNotIncluded(): void
     {
-        $request = Request::create('/api/boards/myjournal', 'GET');
+        $request = Request::create('/api/boards/myjournal', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
         $request->attributes->set('code', 'myjournal');
 
         $this->journal->method('getRvid')->willReturn(3);
@@ -311,7 +312,7 @@ class BoardsControllerTest extends TestCase
         $this->sectionRepository->method('getAssignedSection')->willReturn([]);
 
         // boardsUsersQuery returns no rows → empty boards
-        $result = $this->controller->__invoke($this->entityManager, $this->logger, $request);
+        $result = $this->controller->__invoke($request);
 
         $this->assertCount(0, $result);
     }
@@ -320,7 +321,7 @@ class BoardsControllerTest extends TestCase
 
     public function testSectionExceptionIsHandledGracefully(): void
     {
-        $request = Request::create('/api/boards/myjournal', 'GET');
+        $request = Request::create('/api/boards/myjournal', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
         $request->attributes->set('code', 'myjournal');
 
         $this->journal->method('getRvid')->willReturn(3);
@@ -357,7 +358,7 @@ class BoardsControllerTest extends TestCase
         $this->logger->expects($this->once())->method('critical');
 
         // Must not throw — exception is caught internally
-        $result = $this->controller->__invoke($this->entityManager, $this->logger, $request);
+        $result = $this->controller->__invoke($request);
 
         $this->assertInstanceOf(ArrayPaginator::class, $result);
     }

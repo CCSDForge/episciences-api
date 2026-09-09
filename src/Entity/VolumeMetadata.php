@@ -17,23 +17,23 @@ class VolumeMetadata
 
     public const  TABLE = 'VOLUME_METADATA';
 
-    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private int $id;
 
-    #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'VID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private int $vid;
 
 
-    #[ORM\Column(name: 'POSITION', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'POSITION', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
         ]
 
     )]
-    private ?int $position;
+    private ?int $position = null;
 
     #[Groups(
         [
@@ -42,10 +42,10 @@ class VolumeMetadata
         ]
 
     )]
-    #[ORM\Column(name: 'titles', type: 'json', nullable: false)]
+    #[ORM\Column(name: 'titles', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     private array $titles;
 
-    #[ORM\Column(name: 'CONTENT', type: 'json', nullable: false)]
+    #[ORM\Column(name: 'CONTENT', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -53,9 +53,9 @@ class VolumeMetadata
         ]
 
     )]
-    private ?array $content;
+    private ?array $content = null;
 
-    #[ORM\Column(name: 'FILE', type: 'string', length: 250, nullable: true)]
+    #[ORM\Column(name: 'FILE', type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: true)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
@@ -64,7 +64,7 @@ class VolumeMetadata
         ]
 
     )]
-    private ?string $file;
+    private ?string $file = null;
 
     #[ORM\ManyToOne(targetEntity: Volume::class, inversedBy: 'metadata')]
     #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID', nullable: false)]

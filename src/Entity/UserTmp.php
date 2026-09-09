@@ -6,48 +6,30 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * UserTmp
- *
- * @ORM\Table(name="USER_TMP")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'USER_TMP')]
 class UserTmp
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="ID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
      */
+    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $id;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="EMAIL", type="string", length=250, nullable=true)
-     */
-    private $email;
+    #[ORM\Column(name: 'EMAIL', type: 'string', length: 250, nullable: true)]
+    private ?string $email = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="FIRSTNAME", type="string", length=100, nullable=true)
-     */
-    private $firstname;
+    #[ORM\Column(name: 'FIRSTNAME', type: 'string', length: 100, nullable: true)]
+    private ?string $firstname = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="LASTNAME", type="string", length=100, nullable=true)
-     */
-    private $lastname;
+    #[ORM\Column(name: 'LASTNAME', type: 'string', length: 100, nullable: true)]
+    private ?string $lastname = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="LANG", type="string", length=3, nullable=true)
-     */
-    private $lang;
+    #[ORM\Column(name: 'LANG', type: 'string', length: 3, nullable: true)]
+    private ?string $lang = null;
 
     public function getId(): ?int
     {

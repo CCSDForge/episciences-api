@@ -9,18 +9,18 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: VolumePaperPositionRepository::class)]
 class VolumePaperPosition
 {
-    #[ORM\Column(name: "VID", type: "integer", nullable: false, options: ["unsigned" => true])]
+    #[ORM\Column(name: "VID", type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ["unsigned" => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: "NONE")]
-    private $vid;
+    private int $vid;
 
-    #[ORM\Column(name: "PAPERID", type: "integer", nullable: false, options: ["unsigned" => true])]
+    #[ORM\Column(name: "PAPERID", type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ["unsigned" => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: "NONE")]
-    private $paperid;
+    private int $paperid;
 
-    #[ORM\Column(name: "POSITION", type: "integer", nullable: false, options: ["unsigned" => true])]
-    private $position;
+    #[ORM\Column(name: "POSITION", type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ["unsigned" => true])]
+    private int $position;
 
     public function getVid(): ?int
     {

@@ -6,110 +6,66 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * PaperStat
- *
- * @ORM\Table(name="PAPER_STAT")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'PAPER_STAT')]
 class PaperStat
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="DOCID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
      */
+    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     private $docid;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="CONSULT", type="string", length=0, nullable=false, options={"default"="notice"})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
-    private $consult = 'notice';
+    #[ORM\Column(name: 'CONSULT', type: 'string', length: 0, nullable: false, options: ['default' => 'notice'])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
+    private string $consult = 'notice';
 
     /**
      * @var int
-     *
-     * @ORM\Column(name="IP", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
      */
+    #[ORM\Column(name: 'IP', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     private $ip;
 
-    /**
-     * @var bool
-     *
-     * @ORM\Column(name="ROBOT", type="boolean", nullable=false)
-     */
-    private $robot;
+    #[ORM\Column(name: 'ROBOT', type: 'boolean', nullable: false)]
+    private ?bool $robot = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="AGENT", type="string", length=2000, nullable=true)
-     */
-    private $agent;
+    #[ORM\Column(name: 'AGENT', type: 'string', length: 2000, nullable: true)]
+    private ?string $agent = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="DOMAIN", type="string", length=100, nullable=true)
-     */
-    private $domain;
+    #[ORM\Column(name: 'DOMAIN', type: 'string', length: 100, nullable: true)]
+    private ?string $domain = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="CONTINENT", type="string", length=100, nullable=true)
-     */
-    private $continent;
+    #[ORM\Column(name: 'CONTINENT', type: 'string', length: 100, nullable: true)]
+    private ?string $continent = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="COUNTRY", type="string", length=100, nullable=true)
-     */
-    private $country;
+    #[ORM\Column(name: 'COUNTRY', type: 'string', length: 100, nullable: true)]
+    private ?string $country = null;
 
-    /**
-     * @var string|null
-     *
-     * @ORM\Column(name="CITY", type="string", length=100, nullable=true)
-     */
-    private $city;
+    #[ORM\Column(name: 'CITY', type: 'string', length: 100, nullable: true)]
+    private ?string $city = null;
 
-    /**
-     * @var float|null
-     *
-     * @ORM\Column(name="LAT", type="float", precision=10, scale=0, nullable=true)
-     */
-    private $lat;
+    #[ORM\Column(name: 'LAT', type: 'float', precision: 10, scale: 0, nullable: true)]
+    private ?float $lat = null;
 
-    /**
-     * @var float|null
-     *
-     * @ORM\Column(name="LON", type="float", precision=10, scale=0, nullable=true)
-     */
-    private $lon;
+    #[ORM\Column(name: 'LON', type: 'float', precision: 10, scale: 0, nullable: true)]
+    private ?float $lon = null;
 
     /**
      * @var \DateTime
-     *
-     * @ORM\Column(name="HIT", type="date", nullable=false)
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
      */
+    #[ORM\Column(name: 'HIT', type: 'date', nullable: false)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     private $hit;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="COUNTER", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $counter;
+    #[ORM\Column(name: 'COUNTER', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    private ?int $counter = null;
 
     public function getDocid(): ?int
     {

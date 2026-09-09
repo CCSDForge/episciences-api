@@ -9,14 +9,8 @@ use Symfony\Bundle\SecurityBundle\Security;
 class MeController
 {
 
-    private Security $security;
-    private ManagerRegistry $doctrine;
-
-    public function __construct(Security $security, ManagerRegistry $doctrine)
+    public function __construct(private readonly Security $security, private readonly ManagerRegistry $doctrine)
     {
-        $this->security = $security;
-        $this->doctrine = $doctrine;
-
     }
 
     public function __invoke()

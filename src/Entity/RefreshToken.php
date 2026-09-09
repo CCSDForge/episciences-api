@@ -17,40 +17,41 @@ class RefreshToken extends AbstractRefreshTokenAlias
 {
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    #[ORM\Column(name: 'id', type: 'integer')]
-    protected $id;
+    #[ORM\Column(name: 'id', type: \Doctrine\DBAL\Types\Types::INTEGER)]
+    protected $id = null;
 
 
     /**
      * @var string|null
      */
-    #[ORM\Column(name: 'refreshToken', type: 'string')]
-    protected $refreshToken;
+    #[ORM\Column(name: 'refreshToken', type: \Doctrine\DBAL\Types\Types::STRING)]
+    protected $refreshToken = null;
 
     /**
      * @var string|null
      */
-    #[ORM\Column(name: 'username', type: 'string')]
-    protected $username;
+    #[ORM\Column(name: 'username', type: \Doctrine\DBAL\Types\Types::STRING)]
+    protected $username = null;
 
     /**
      * @var \DateTimeInterface|null
      */
-    #[ORM\Column(name: 'valid', type: 'datetime')]
-    protected $valid;
+    #[ORM\Column(name: 'valid', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE)]
+    protected $valid = null;
 
     #[ORM\Column(name: 'rvid', nullable: true)]
     private ?int $rvId = null;
 
-    #[ORM\Column(type: 'datetime', options: ['default' => 'CURRENT_TIMESTAMP'])]
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, options: ['default' => 'CURRENT_TIMESTAMP'])]
     private ?\DateTimeInterface $date = null;
 
 
 
+    #[\Override]
     public static function createForUserWithTtl(string $refreshToken, User|UserInterface $user, int $ttl): RefreshTokenInterface
     {
         /** @var  $model static */
-        $model = Parent::createForUserWithTtl($refreshToken, $user, $ttl);
+        $model = parent::createForUserWithTtl($refreshToken, $user, $ttl);
         $model->setRvid($user->getCurrentJournalID());
         $model->setDate();
 

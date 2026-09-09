@@ -18,7 +18,7 @@ class SectionSetting
     /**
      * @var int
      */
-    #[ORM\Column(name: 'SID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'SID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
     private int $sid;
@@ -26,7 +26,7 @@ class SectionSetting
     /**
      * @var string
      */
-    #[ORM\Column(name: 'SETTING', type: 'string', length: 200, nullable: false)]
+    #[ORM\Column(name: 'SETTING', type: \Doctrine\DBAL\Types\Types::STRING, length: 200, nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
     #[Groups(
@@ -42,7 +42,7 @@ class SectionSetting
     /**
      * @var string|null
      */
-    #[ORM\Column(name: 'VALUE', type: 'text', length: 65535, nullable: true)]
+    #[ORM\Column(name: 'VALUE', type: \Doctrine\DBAL\Types\Types::TEXT, length: 65535, nullable: true)]
 
     #[Groups(
         [
@@ -52,7 +52,7 @@ class SectionSetting
         ]
 
     )]
-    private ?string $value;
+    private ?string $value = null;
 
     #[ORM\ManyToOne(targetEntity: Section::class, inversedBy: 'settings')]
     #[ORM\JoinColumn(name: 'SID', referencedColumnName: 'SID', nullable: false)]

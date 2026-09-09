@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<!-- 
+<!--
 ## Unreleased
 ### Fixed
 ### Added
@@ -14,7 +14,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
+
 ## Unreleased
+
+### Added
+- Added `is_public` stored generated column to `Pages` and `News` entities to optimize query filtering.
+- Added regression tests for the `is_public` generated column filter.
+
+### Changed
+- Replaced non-indexed `JSON_EXTRACT` visibility filter with the new `is_public` column in Doctrine queries.
+
+### Fixed
+- Fixed invalid `UniqueConstraints` on `pages` and `news` tables.
+## v1.3.0 2026-07-15
+### Added
+- New endpoint "/api/journals/front/configuration?code=rvcode": To retrieve the public interface configuration for sites migrated to the new interfaces
+- Added unit tests for `JournalSettingNg` entities, repository queries, and state providers.
+
+### Changed
+- Migrated codebase and Docker infrastructure to PHP 8.3, applying Rector transformations (constructor promotion, typed properties, return types, modern PHP 8.x syntax) and fixing PHPStan level-1 type errors.
+- Moved deployment configurations to `deployment/ansible/` using Ansistrano, renamed the staging environment to `preprod`, and added deployment hooks for cache/Composer/Yarn tasks and php-fpm reload.
+- Routed HTTPS via Traefik, shared database/Solr services with `episciences-infrastructure`, and cleaned up Apache SSL configuration.
+- Updated project dependencies in `composer.lock`.
+
+### Fixed
+- [#1015](https://github.com/CCSDForge/episciences/issues/1015) / [RT#281920]: miscalculation of average times: Previously, when a statistics start date was set in the parameters, document versions prior to that date were not taken into account. As a result, the first submission date depended on this parameter, which could lead to inaccurate results for some documents. Now, if the first submission date is earlier than the statistics start date, the document is excluded.
+- Fixed indentation of grouped and streamed handlers in production Monolog configuration.
+- Fixed duplicate `ORM\Column` attribute in `UserAssignment` entity.
+- Fixed variable resolution bug in `VolumeRepository::listQuery()` by replacing `$context` with `$filters`.
+- Fixed variable mapping bug in `findOneByWithContext()` by mapping `$context` to `$context['isGranted']`.
+- Fixed default `$appVersion` initialization in `Kernel` before include.
+- Removed undefined class in `JournalSettingNgProvider`.
+
+## v1.2.6 2026-04-24
+### Fixed
+- [RT#282494]: the number of reviews requested is incorrect.
+- The range years for the evaluation statistics does include the period during witch no article was published.
+### Changed
+- SQl Query optimization
+
+## v1.2.5 2026-04-09
 ### Added
 - Docs: document testing and static analysis tools in README
 - Unit tests
@@ -52,12 +91,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Updated robots.txt rules
 - Updated API Platform component and related project dependencies
-- Updated the API documentation code 
+- Updated the API documentation code
 
 ## v1.2.1 2025-01-09
 ### Changed
 - Updated label for status 'reviewed' has been updated to 'reviewed pending editorial decision'
-- Updated API Platform component and related project dependencies 
+- Updated API Platform component and related project dependencies
 
 ## v1.2.0 2024-11-25
 ### Fixed
@@ -136,13 +175,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Loss of roles when requesting a new token with a refresh token & new attribute User::currentJournalID & refactoring.
 - Improvements: consuming a REST API endpoint: taking into account "conflicts of interest"
- 
+
 ## v1.1.3 2024-02-01
 ### Fixed:
 - [#11](https://github.com/CCSDForge/episciences-api/issues/11) Administrator do not have access to all journal's papers.
 
 ## v1.1.2 2024-01-31
-### Changed 
+### Changed
 - Disabling the Pagination Client-side Globally:
   The pagination can now be enabled or disabled by adding a query parameter named pagination:
   GET /papers?pagination=false: disabled
@@ -153,7 +192,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v1.1.1 2024-01-17
 ### Changed
-- Limit API Platform to v. 3.1.* 
+- Limit API Platform to v. 3.1.*
 
 ## v1.1 2023-11-24
 ### Changed

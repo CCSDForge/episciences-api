@@ -14,23 +14,21 @@ return RectorConfig::configure()
         __DIR__ . '/src',
         __DIR__ . '/tests',
     ])
-    // Target PHP 8.2
-    ->withPhpSets(php82: true)
-    // Register Symfony container for advanced rules (uncomment if var/cache/dev exists)
-    // ->withSymfonyContainerXml(__DIR__ . '/var/cache/dev/App_KernelDevDebugContainer.xml')
+    // Target PHP 8.3
+    ->withPhpSets(php83: true)
+    ->withAttributesSets(symfony: true, doctrine: true)
+    ->withComposerBased(doctrine: true, symfony: true)
     ->withSets([
-        DoctrineSetList::ANNOTATIONS_TO_ATTRIBUTES,
-        SymfonySetList::ANNOTATIONS_TO_ATTRIBUTES,
-        SymfonySetList::SYMFONY_70,
+        DoctrineSetList::DOCTRINE_CODE_QUALITY,
         SymfonySetList::SYMFONY_CODE_QUALITY,
         SymfonySetList::SYMFONY_CONSTRUCTOR_INJECTION,
     ])
+    // Register Symfony container for advanced rules (uncomment if var/cache/dev exists)
     ->withPreparedSets(
-        deadCode: true,
+        deadCode: false,
         codeQuality: true,
         typeDeclarations: true,
-        privatization: true,
-        instanceof: true,
-        earlyReturn: true,
-        strictBooleans: true
+        privatization: false,
+        instanceOf: true,
+        earlyReturn: false
     );

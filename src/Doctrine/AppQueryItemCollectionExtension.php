@@ -28,11 +28,8 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 {
     use QueryTrait;
 
-    private Security $security;
-
-    public function __construct(Security $security)
+    public function __construct(private Security $security)
     {
-        $this->security = $security;
     }
 
     /**
@@ -138,7 +135,9 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 $this->processOrExpression($queryBuilder, $alias, $newsYear, $resourceClass);
             }
 
-            $queryBuilder->andWhere("JSON_EXTRACT ($alias.visibility, '$[0]') = :visibility")->setParameter('visibility', 'public');
+            // Use the indexed stored generated column instead of JSON_EXTRACT() to avoid
+            // full-table scans that triggered sort_buffer_size overflow (MySQL error 1038).
+            $queryBuilder->andWhere("$alias.is_public = :isPublic")->setParameter('isPublic', true);
 
         } elseif ($resourceClass === Paper::class) {
 
@@ -209,7 +208,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         $operation = $context['operation'] ?? null;
         $operationName = $operation?->getName();
 
-        if ($resourceClass === Paper::class || $resourceClass === Volume::class || $resourceClass === Section::class) {
+        if (in_array($resourceClass, [Paper::class, Volume::class, Section::class], true)) {
             if ($resourceClass === Paper::class) {
                 $allowBrowseAcceptedDocuments = isset($context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE]) && filter_var($context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE], FILTER_VALIDATE_BOOLEAN);
                 $isOnlyAccepted = isset($context['filters']['only_accepted']) && filter_var($context['filters']['only_accepted'], FILTER_VALIDATE_BOOLEAN);
@@ -251,7 +250,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         string        $resourceClass,
         User          $currentUser,
         HttpOperation $operation = null,
-                      $context = []
+                      array $context = []
     ): void
     {
         $isOnlyAccepted = isset($context['filters']['only_accepted']) && filter_var($context['filters']['only_accepted'], FILTER_VALIDATE_BOOLEAN);
@@ -309,10 +308,10 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             if ($this->security->isGranted('ROLE_EDITOR')) {
 
                 if (
-                    $operation &&
+                    $operation instanceof \ApiPlatform\Metadata\HttpOperation &&
                     (
-                        str_starts_with($operation->getUriTemplate(), Volume::DEFAULT_URI_TEMPLATE) ||
-                        str_starts_with($operation->getUriTemplate(), Section::DEFAULT_URI_TEMPLATE)
+                        str_starts_with((string) $operation->getUriTemplate(), Volume::DEFAULT_URI_TEMPLATE) ||
+                        str_starts_with((string) $operation->getUriTemplate(), Section::DEFAULT_URI_TEMPLATE)
                     )
                 ) {
 

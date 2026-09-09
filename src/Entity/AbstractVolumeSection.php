@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Traits\ToolsTrait;
+use Doctrine\Common\Collections\Collection;
 
 abstract class AbstractVolumeSection
 {
@@ -41,6 +42,8 @@ abstract class AbstractVolumeSection
     {
         return $this->totalPublishedArticles;
     }
+
+    abstract public function getPapers(): Collection;
 
     /**
      * @return AbstractVolumeSection

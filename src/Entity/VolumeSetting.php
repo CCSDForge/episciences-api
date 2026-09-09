@@ -16,13 +16,13 @@ class VolumeSetting
     public const TABLE = 'VOLUME_SETTING';
 
 
-    #[ORM\Column(name: 'VID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'VID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy:'NONE')]
     private int $vid;
 
 
-    #[ORM\Column(name: 'SETTING', type: 'string', length: 200, nullable: false)]
+    #[ORM\Column(name: 'SETTING', type: \Doctrine\DBAL\Types\Types::STRING, length: 200, nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
 
@@ -37,7 +37,7 @@ class VolumeSetting
     private string $setting;
 
 
-    #[ORM\Column(name: 'VALUE', type: 'text', length: 65535, nullable: true)]
+    #[ORM\Column(name: 'VALUE', type: \Doctrine\DBAL\Types\Types::TEXT, length: 65535, nullable: true)]
 
     #[Groups(
         [

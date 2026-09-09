@@ -19,7 +19,6 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Table(name: self::TABLE)]
 #[ORM\UniqueConstraint(name: 'uid', columns: ['uid'])]
-#[ORM\UniqueConstraint(name: 'rvcode', columns: ['code'])]
 #[ORM\Entity(repositoryClass: NewsRepository::class)]
 
 #[ApiResource(
@@ -29,7 +28,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
             openapi: new OpenApiOperation(
                 summary: 'List of News',
-                description: 'Retrieving a list of News',
+                description: 'Retrieving a list of News sorted in descending order',
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
@@ -125,16 +124,16 @@ class News
     )]
     private ?string $rvcode = null;
 
-    #[ORM\Column(name: 'uid', type: 'integer', nullable: false)]
+    #[ORM\Column(name: 'uid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false)]
     private ?int $uid = null;
 
-    #[ORM\Column(name: 'title', type: 'json', nullable: false, options: ['comment' => 'Page title'])]
+    #[ORM\Column(name: 'title', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false, options: ['comment' => 'Page title'])]
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
     private array $title = [];
 
-    #[ORM\Column(name: 'content', type: 'json', nullable: true)]
+    #[ORM\Column(name: 'content', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
@@ -163,6 +162,19 @@ class News
         ['read:News']
     )]
     private array $visibility = [];
+
+    /**
+     * MySQL stored generated column: 1 when visibility[0] = 'public', NULL otherwise.
+     * Indexed — used instead of JSON_EXTRACT() in WHERE clauses to avoid full-table scans.
+     */
+    #[ORM\Column(
+        name: 'is_public',
+        nullable: true,
+        insertable: false,
+        updatable: false,
+        columnDefinition: "TINYINT(1) GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(visibility, '\$[0]')) = 'public') STORED"
+    )]
+    private ?bool $is_public = null;
 
     public function getId(): ?int
     {
@@ -275,6 +287,11 @@ class News
         $this->visibility = $visibility;
 
         return $this;
+    }
+
+    public function isPublic(): ?bool
+    {
+        return $this->is_public;
     }
 
     public function getCreator(): ?User

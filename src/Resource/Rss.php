@@ -40,8 +40,8 @@ class Rss
         $domain = 'episciences.org';
 
         $review = $this->getReview();
-        $code = $review ? $review->getCode() : 'portal';
-        $journalName = $review ? $review->getName() : 'Episciences';
+        $code = $review instanceof \App\Entity\Review ? $review->getCode() : 'portal';
+        $journalName = $review instanceof \App\Entity\Review ? $review->getName() : 'Episciences';
 
         $applicationUrl = sprintf('https://%s.%s', $code, $domain);
         $journalLogo = sprintf('%s/logos/logo-%s-small.svg', $applicationUrl, $code);

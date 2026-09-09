@@ -28,15 +28,15 @@ use Psr\Log\LoggerInterface;
 
 class StatsTest extends TestCase
 {
-    private MockObject|EntityManagerInterface $em;
-    private MockObject|MetadataSources $metadataSources;
-    private MockObject|LoggerInterface $logger;
+    private \PHPUnit\Framework\MockObject\MockObject $em;
+    private \PHPUnit\Framework\MockObject\MockObject $metadataSources;
+    private \PHPUnit\Framework\MockObject\MockObject $logger;
     private Stats $stats;
 
-    private MockObject|PaperLogRepository $paperLogRepo;
-    private MockObject|PapersRepository $papersRepo;
-    private MockObject|UserRepository $userRepo;
-    private MockObject|ReviewRepository $reviewRepo;
+    private \PHPUnit\Framework\MockObject\MockObject $paperLogRepo;
+    private \PHPUnit\Framework\MockObject\MockObject $papersRepo;
+    private \PHPUnit\Framework\MockObject\MockObject $userRepo;
+    private \PHPUnit\Framework\MockObject\MockObject $reviewRepo;
 
     protected function setUp(): void
     {
@@ -49,7 +49,7 @@ class StatsTest extends TestCase
         $this->userRepo     = $this->createMock(UserRepository::class);
         $this->reviewRepo   = $this->createMock(ReviewRepository::class);
 
-        $this->em->method('getRepository')->willReturnCallback(fn (string $class) => match ($class) {
+        $this->em->method('getRepository')->willReturnCallback(fn (string $class): \PHPUnit\Framework\MockObject\MockObject|\App\Repository\PaperLogRepository|\App\Repository\PapersRepository|\App\Repository\UserRepository|\App\Repository\ReviewRepository|null => match ($class) {
             PaperLog::class => $this->paperLogRepo,
             Paper::class    => $this->papersRepo,
             User::class     => $this->userRepo,
@@ -526,5 +526,39 @@ class StatsTest extends TestCase
 
         $this->assertNotNull($result->getDetails());
         $this->assertNotEmpty($result->getDetails());
+    }
+
+    public function testGetSubmissionByYearStatsPopulatesDetails(): void
+    {
+        $filters = ['is' => ['rvid' => 8]];
+        $rvId = 8;
+        $details = [];
+
+        $this->papersRepo->method('getSubmissionYearRange')->willReturn([2023]);
+        $this->papersRepo->method('getAvailableRepositories')->willReturn([1]);
+        $this->metadataSources->method('getLabel')->with(1)->willReturn('HAL');
+
+        // Mocking various repository calls inside the loop
+        $this->papersRepo->method('submissionsQuery')->willReturn($this->makeScalarQb(10));
+        $this->papersRepo->method('getSubmissionsWithoutImported')->willReturn(8);
+        
+        $this->paperLogRepo->method('getAccepted')->willReturn(5);
+        $this->paperLogRepo->method('getRefused')->willReturn(2);
+        $this->paperLogRepo->method('getPublished')->willReturn(4);
+        $this->paperLogRepo->method('getAllAcceptedNotYetPublished')->willReturn(1);
+        $this->paperLogRepo->method('getAcceptanceRate')->willReturn(71.4);
+        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn(null); // Simple case for getNbPapersByStatus
+
+        $this->stats->getSubmissionByYearStats($filters, $rvId, $details);
+
+        $this->assertArrayHasKey(Stats::SUBMISSIONS_BY_YEAR, $details);
+        $this->assertArrayHasKey(2023, $details[Stats::SUBMISSIONS_BY_YEAR]);
+        $this->assertEquals(10, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['submissions']);
+        $this->assertEquals(4, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['published']);
+        
+        $this->assertArrayHasKey('submissionsByRepo', $details);
+        $this->assertArrayHasKey(2023, $details['submissionsByRepo']);
+        $this->assertArrayHasKey('HAL', $details['submissionsByRepo'][2023]);
+        $this->assertEquals(10, $details['submissionsByRepo'][2023]['HAL']['submissions']);
     }
 }

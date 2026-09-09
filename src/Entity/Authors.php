@@ -6,48 +6,30 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * Authors
- *
- * @ORM\Table(name="AUTHORS")
- * @ORM\Entity
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'AUTHORS')]
 class Authors
 {
     /**
      * @var int
-     *
-     * @ORM\Column(name="ID", type="integer", nullable=false, options={"unsigned"=true})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="IDENTITY")
      */
+    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private $id;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="FIRSTNAME", type="string", length=255, nullable=false)
-     */
-    private $firstname;
+    #[ORM\Column(name: 'FIRSTNAME', type: 'string', length: 255, nullable: false)]
+    private ?string $firstname = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="LASTNAME", type="string", length=255, nullable=false)
-     */
-    private $lastname;
+    #[ORM\Column(name: 'LASTNAME', type: 'string', length: 255, nullable: false)]
+    private ?string $lastname = null;
 
-    /**
-     * @var string
-     *
-     * @ORM\Column(name="ORCID", type="string", length=255, nullable=false)
-     */
-    private $orcid;
+    #[ORM\Column(name: 'ORCID', type: 'string', length: 255, nullable: false)]
+    private ?string $orcid = null;
 
-    /**
-     * @var int
-     *
-     * @ORM\Column(name="UID", type="integer", nullable=false, options={"unsigned"=true})
-     */
-    private $uid;
+    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    private ?int $uid = null;
 
     public function getId(): ?int
     {

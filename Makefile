@@ -16,7 +16,7 @@ DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then ech
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install ssl-certs ssl-clean test test-unit test-coverage cov test-file validate clean phpstan rector check docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer setup-help deploy deploy-branch deploy-tag
+.PHONY: help check-prereqs install test test-unit test-coverage cov test-file validate clean phpstan rector local-rector check docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer docker-composer-update setup-help deploy deploy-branch deploy-tag
 
 # Help target - displays all available commands
 help:
@@ -26,16 +26,15 @@ help:
 	@echo "$(BLUE)Setup Commands:$(NC)"
 	@echo "  $(BOLD)check-prereqs$(NC)     Check if all prerequisites are installed"
 	@echo "  $(BOLD)install$(NC)           Install PHP dependencies"
-	@echo "  $(BOLD)ssl-certs$(NC)         Generate SSL certificates for HTTPS development"
-	@echo "  $(BOLD)ssl-clean$(NC)         Remove SSL certificates"
 	@echo ""
-	@echo "$(BLUE)Testing Commands:$(NC)"
+	@echo "$(BLUE)Testing & Analysis Commands:$(NC)"
 	@echo "  $(BOLD)test$(NC)              Run all PHPUnit tests"
 	@echo "  $(BOLD)test-unit$(NC)         Run only unit tests"
 	@echo "  $(BOLD)test-coverage$(NC)     Run tests with coverage report"
 	@echo "  $(BOLD)test-file$(NC)         Run specific test file (usage: make test-file FILE=path/to/TestFile.php)"
 	@echo "  $(BOLD)phpstan$(NC)           Run PHPStan in container (usage: make phpstan LEVEL=1 TARGET=src DRY_RUN=1)"
 	@echo "  $(BOLD)rector$(NC)            Run Rector in container (usage: make rector TARGET=src DRY_RUN=1)"
+	@echo "  $(BOLD)local-rector$(NC)      Run Rector on host (usage: make local-rector TARGET=src DRY_RUN=1)"
 	@echo "  $(BOLD)check$(NC)             Run both PHPStan and Rector"
 	@echo ""
 	@echo "$(BLUE)Utility Commands:$(NC)"
@@ -68,7 +67,7 @@ help:
 	@echo "  $(BOLD)deploy-tag$(NC)         Deploy specific tag (usage: make deploy-tag TAG=v1.0.0)"
 	@echo ""
 	@echo "$(YELLOW)Prerequisites (Local Development):$(NC)"
-	@echo "  - PHP 8.2+ (php8.2 command)"
+	@echo "  - PHP 8.3+ (php8.3 command)"
 	@echo "  - Local composer binary (./composer)"
 	@echo "  - OpenSSL (for SSL certificate generation)"
 	@echo "  - Installed dependencies (vendor/)"
@@ -84,22 +83,22 @@ help:
 check-prereqs:
 	@echo "$(BOLD)Checking Prerequisites...$(NC)"
 	@echo ""
-	@# Check PHP 8.2
-	@if ! command -v php8.2 >/dev/null 2>&1; then \
-		echo "$(RED)✗ PHP 8.2 not found$(NC)"; \
-		echo "  Install PHP 8.2:"; \
-		echo "    Ubuntu/Debian: $(BOLD)sudo apt install php8.2 php8.2-cli php8.2-mbstring php8.2-xml php8.2-mysql$(NC)"; \
+	@# Check PHP 8.3
+	@if ! command -v php8.3 >/dev/null 2>&1; then \
+		echo "$(RED)✗ PHP 8.3 not found$(NC)"; \
+		echo "  Install PHP 8.3:"; \
+		echo "    Ubuntu/Debian: $(BOLD)sudo apt install php8.3 php8.3-cli php8.3-mbstring php8.3-xml php8.3-mysql$(NC)"; \
 		echo "    CentOS/RHEL:   $(BOLD)sudo yum install php82 php82-cli php82-mbstring php82-xml php82-mysqlnd$(NC)"; \
 		echo ""; \
 		exit 1; \
 	else \
-		echo "$(GREEN)✓ PHP 8.2 found$(NC) ($$(php8.2 --version | head -n1))"; \
+		echo "$(GREEN)✓ PHP 8.3 found$(NC) ($$(php8.3 --version | head -n1))"; \
 	fi
 	@# Check local composer
 	@if [ ! -f "./composer" ]; then \
 		echo "$(RED)✗ Local composer not found$(NC)"; \
 		echo "  Download composer:"; \
-		echo "    $(BOLD)curl -sS https://getcomposer.org/installer | php8.2$(NC)"; \
+		echo "    $(BOLD)curl -sS https://getcomposer.org/installer | php8.3$(NC)"; \
 		echo "    $(BOLD)mv composer.phar composer$(NC)"; \
 		echo ""; \
 		exit 1; \
@@ -131,79 +130,15 @@ check-prereqs:
 	else \
 		echo "$(GREEN)✓ PHPUnit available$(NC)"; \
 	fi
-	@# Check OpenSSL
-	@if ! command -v openssl >/dev/null 2>&1; then \
-		echo "$(YELLOW)⚠ OpenSSL not found$(NC)"; \
-		echo "  Install OpenSSL:"; \
-		echo "    Ubuntu/Debian: $(BOLD)sudo apt install openssl$(NC)"; \
-		echo "    CentOS/RHEL:   $(BOLD)sudo yum install openssl$(NC)"; \
-		echo "    macOS:         $(BOLD)brew install openssl$(NC)"; \
-		echo ""; \
-	else \
-		echo "$(GREEN)✓ OpenSSL available$(NC)"; \
-	fi
 	@echo ""
 	@echo "$(GREEN)$(BOLD)✓ All prerequisites met!$(NC)"
 
 # Install PHP dependencies
 install: check-prereqs
 	@echo "$(BOLD)Installing PHP dependencies...$(NC)"
-	php8.2 ./composer install --no-progress --prefer-dist --optimize-autoloader
+	php8.3 ./composer install --no-progress --prefer-dist --optimize-autoloader
 	@echo "$(GREEN)✓ Dependencies installed successfully$(NC)"
 
-# Generate SSL certificates for HTTPS development
-ssl-certs:
-	@echo "$(BOLD)Generating SSL certificates for development...$(NC)"
-	@if ! command -v openssl >/dev/null 2>&1; then \
-		echo "$(RED)✗ OpenSSL not found$(NC)"; \
-		echo "  Install OpenSSL:"; \
-		echo "    Ubuntu/Debian: $(BOLD)sudo apt install openssl$(NC)"; \
-		echo "    CentOS/RHEL:   $(BOLD)sudo yum install openssl$(NC)"; \
-		echo "    macOS:         $(BOLD)brew install openssl$(NC)"; \
-		exit 1; \
-	fi
-	@mkdir -p docker/apache/ssl
-	@echo "[req]" > docker/apache/ssl/openssl.conf
-	@echo "default_bits = 2048" >> docker/apache/ssl/openssl.conf
-	@echo "prompt = no" >> docker/apache/ssl/openssl.conf
-	@echo "distinguished_name = req_distinguished_name" >> docker/apache/ssl/openssl.conf
-	@echo "req_extensions = v3_req" >> docker/apache/ssl/openssl.conf
-	@echo "" >> docker/apache/ssl/openssl.conf
-	@echo "[req_distinguished_name]" >> docker/apache/ssl/openssl.conf
-	@echo "C = FR" >> docker/apache/ssl/openssl.conf
-	@echo "ST = France" >> docker/apache/ssl/openssl.conf
-	@echo "L = Lyon" >> docker/apache/ssl/openssl.conf
-	@echo "O = Episciences" >> docker/apache/ssl/openssl.conf
-	@echo "OU = Development" >> docker/apache/ssl/openssl.conf
-	@echo "CN = api-dev.episciences.org" >> docker/apache/ssl/openssl.conf
-	@echo "emailAddress = dev@episciences.org" >> docker/apache/ssl/openssl.conf
-	@echo "" >> docker/apache/ssl/openssl.conf
-	@echo "[v3_req]" >> docker/apache/ssl/openssl.conf
-	@echo "keyUsage = keyEncipherment, dataEncipherment, digitalSignature" >> docker/apache/ssl/openssl.conf
-	@echo "extendedKeyUsage = serverAuth" >> docker/apache/ssl/openssl.conf
-	@echo "subjectAltName = @alt_names" >> docker/apache/ssl/openssl.conf
-	@echo "" >> docker/apache/ssl/openssl.conf
-	@echo "[alt_names]" >> docker/apache/ssl/openssl.conf
-	@echo "DNS.1 = api-dev.episciences.org" >> docker/apache/ssl/openssl.conf
-	@echo "DNS.2 = localhost" >> docker/apache/ssl/openssl.conf
-	@echo "IP.1 = 127.0.0.1" >> docker/apache/ssl/openssl.conf
-	@if [ ! -f "docker/apache/ssl/api-dev.episciences.org.crt" ]; then \
-		openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-			-keyout docker/apache/ssl/api-dev.episciences.org.key \
-			-out docker/apache/ssl/api-dev.episciences.org.crt \
-			-config docker/apache/ssl/openssl.conf \
-			-extensions v3_req; \
-		echo "$(GREEN)✓ SSL certificates generated$(NC)"; \
-	else \
-		echo "$(YELLOW)⚠ SSL certificates already exist$(NC)"; \
-		echo "  Run 'make ssl-clean ssl-certs' to regenerate"; \
-	fi
-
-# Clean SSL certificates
-ssl-clean:
-	@echo "$(BOLD)Cleaning SSL certificates...$(NC)"
-	@rm -rf docker/apache/ssl/
-	@echo "$(GREEN)✓ SSL certificates cleaned$(NC)"
 
 # Run all tests
 test: check-prereqs
@@ -212,7 +147,7 @@ test: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running all PHPUnit tests...$(NC)"
-	php8.2 vendor/bin/phpunit
+	php8.3 vendor/bin/phpunit
 	@echo "$(GREEN)✓ Tests completed$(NC)"
 
 # Run only unit tests
@@ -222,7 +157,7 @@ test-unit: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running unit tests...$(NC)"
-	php8.2 vendor/bin/phpunit tests/Unit/
+	php8.3 vendor/bin/phpunit tests/Unit/
 	@echo "$(GREEN)✓ Unit tests completed$(NC)"
 
 # Run tests with coverage
@@ -254,13 +189,13 @@ test-file: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running test file: $(FILE)$(NC)"
-	php8.2 vendor/bin/phpunit $(FILE)
+	php8.3 vendor/bin/phpunit $(FILE)
 	@echo "$(GREEN)✓ Test file completed$(NC)"
 
 # Validate PHP syntax of test files
 validate:
 	@echo "$(BOLD)Validating PHP syntax of test files...$(NC)"
-	@find tests/ -name "*.php" -exec php8.2 -l {} \; | grep -v "No syntax errors detected" || true
+	@find tests/ -name "*.php" -exec php8.3 -l {} \; | grep -v "No syntax errors detected" || true
 	@echo "$(GREEN)✓ PHP syntax validation completed$(NC)"
 
 # Run PHPStan in container
@@ -279,10 +214,20 @@ phpstan:
 rector:
 	@TARGET=$${TARGET:-src}; \
 	DRY_RUN_ARG=""; \
-	if [ "$${DRY_RUN}" = "1" ]; then DRY_RUN_ARG="--dry-run"; fi; \
+	if [ "$$DRY_RUN" = "1" ]; then DRY_RUN_ARG="--dry-run"; fi; \
 	echo "$(BOLD)Running Rector on $$TARGET...$(NC)"; \
 	$(DOCKER_COMPOSE) exec php vendor/bin/rector process $$TARGET $$DRY_RUN_ARG
 	@echo "$(GREEN)✓ Rector completed$(NC)"
+
+# Run Rector locally using host PHP
+# Usage: make local-rector TARGET=src DRY_RUN=1
+local-rector:
+	@TARGET=$${TARGET:-src}; \
+	DRY_RUN_ARG=""; \
+	if [ "$$DRY_RUN" = "1" ]; then DRY_RUN_ARG="--dry-run"; fi; \
+	echo "$(BOLD)Running Rector locally on $$TARGET...$(NC)"; \
+	php8.3 vendor/bin/rector process $$TARGET $$DRY_RUN_ARG
+	@echo "$(GREEN)✓ Local Rector completed$(NC)"
 
 # Run both PHPStan and Rector
 check: phpstan rector
@@ -298,7 +243,7 @@ clean:
 # ===========================
 
 # Start all containers in detached mode
-docker-up: ssl-certs
+docker-up:
 	@echo "$(BOLD)Starting Docker containers...$(NC)"
 	@if [ -z "$(DOCKER_COMPOSE)" ]; then \
 		echo "$(RED)✗ Docker Compose not found$(NC)"; \
@@ -314,8 +259,8 @@ docker-up: ssl-certs
 	@echo "$(GREEN)✓ Containers started$(NC)"
 	@echo ""
 	@echo "$(BOLD)🌐 Application URLs:$(NC)"
-	@echo "  $(BLUE)HTTP:$(NC)  http://api-dev.episciences.org:8080"
-	@echo "  $(BLUE)HTTPS:$(NC) https://api-dev.episciences.org:8443"
+	@echo "  $(BLUE)HTTPS:$(NC) https://api-dev.episciences.org/ (via Traefik)"
+	@echo "  $(BLUE)HTTP direct:$(NC)  http://api-dev.episciences.org:8080"
 	@echo ""
 	@echo "$(YELLOW)⚠️  Setup Required:$(NC)"
 	@echo "  Add this line to your $(BOLD)/etc/hosts$(NC) file:"
@@ -324,7 +269,7 @@ docker-up: ssl-certs
 	@echo "  Run '$(BOLD)make setup-help$(NC)' for detailed setup instructions."
 
 # Start containers with CI database (standalone)
-docker-up-ci: ssl-certs
+docker-up-ci:
 	@echo "$(BOLD)Starting Docker containers (CI mode with standalone database)...$(NC)"
 	@if [ -z "$(DOCKER_COMPOSE)" ]; then \
 		echo "$(RED)✗ Docker Compose not found$(NC)"; \
@@ -339,8 +284,8 @@ docker-up-ci: ssl-certs
 	@echo "$(GREEN)✓ CI containers started with standalone database$(NC)"
 	@echo ""
 	@echo "$(BOLD)🌐 Application URLs:$(NC)"
-	@echo "  $(BLUE)HTTP:$(NC)  http://api-dev.episciences.org:8080"
-	@echo "  $(BLUE)HTTPS:$(NC) https://api-dev.episciences.org:8443"
+	@echo "  $(BLUE)HTTPS:$(NC) https://api-dev.episciences.org/ (via Traefik)"
+	@echo "  $(BLUE)HTTP direct:$(NC)  http://api-dev.episciences.org:8080"
 
 # Stop all containers
 docker-down:
@@ -361,8 +306,8 @@ docker-restart:
 	@echo "$(GREEN)✓ Containers restarted$(NC)"
 	@echo ""
 	@echo "$(BOLD)🌐 Application URLs:$(NC)"
-	@echo "  $(BLUE)HTTP:$(NC)  http://api-dev.episciences.org:8080"
-	@echo "  $(BLUE)HTTPS:$(NC) https://api-dev.episciences.org:8443"
+	@echo "  $(BLUE)HTTPS:$(NC) https://api-dev.episciences.org/ (via Traefik)"
+	@echo "  $(BLUE)HTTP direct:$(NC)  http://api-dev.episciences.org:8080"
 	@echo ""
 	@echo "$(YELLOW)⚠️  Setup Required:$(NC)"
 	@echo "  Add this line to your $(BOLD)/etc/hosts$(NC) file:"
@@ -422,7 +367,7 @@ docker-test:
 # Run tests with coverage in PHP container
 docker-test-coverage:
 	@echo "$(BOLD)Running tests with coverage in Docker container...$(NC)"
-	$(DOCKER_COMPOSE) exec -e XDEBUG_MODE=coverage php vendor/bin/phpunit --coverage-text --coverage-html coverage/
+	$(DOCKER_COMPOSE) exec -e XDEBUG_MODE=coverage php vendor/bin/phpunit --coverage-text --coverage-html coverage/ --coverage-clover coverage.xml
 	@echo "$(GREEN)✓ Docker tests with coverage completed$(NC)"
 
 # Run unit tests only in PHP container
@@ -446,12 +391,22 @@ docker-install:
 	$(DOCKER_COMPOSE) exec -u root php git config --global --add safe.directory /var/www/html || true
 	@echo "$(GREEN)✓ Dependencies installed securely with proper permissions$(NC)"
 
+# Update dependencies in container
+docker-composer-update:
+	@echo "$(BOLD)Updating dependencies inside a temporary Composer container...$(NC)"
+	docker run --rm \
+		-v $(PWD):/app \
+		-w /app \
+		-u $(shell id -u):$(shell id -g) \
+		composer:2 update --no-progress --prefer-dist --optimize-autoloader
+	@echo "$(GREEN)✓ Dependencies updated and composer.lock refreshed$(NC)"
+
 # Install dependencies optimized for CI
 docker-install-ci:
-	@echo "$(BOLD)Installing dependencies in PHP 8.2 container (CI optimized)...$(NC)"
+	@echo "$(BOLD)Installing dependencies in PHP 8.3 container (CI optimized)...$(NC)"
 	@echo "$(BLUE)Creating Symfony directories...$(NC)"
 	mkdir -p var/cache var/log
-	@echo "$(BLUE)Installing composer dependencies inside the PHP 8.2 container...$(NC)"
+	@echo "$(BLUE)Installing composer dependencies inside the PHP 8.3 container...$(NC)"
 	$(DOCKER_COMPOSE) exec -T php composer install --no-progress --prefer-dist --optimize-autoloader --classmap-authoritative --no-scripts
 	@echo "$(BLUE)Setting proper permissions on cache and log directories...$(NC)"
 	chmod -R 775 var/cache var/log || true
@@ -490,14 +445,16 @@ setup-help:
 	@echo "$(BLUE)2. Start the application$(NC)"
 	@echo "   Run: $(BOLD)make docker-up$(NC)"
 	@echo ""
-	@echo "$(BLUE)3. Access the application$(NC)"
-	@echo "   • $(BOLD)HTTP:$(NC)  http://api-dev.episciences.org:8080"
-	@echo "   • $(BOLD)HTTPS:$(NC) https://api-dev.episciences.org:8443 (uses self-signed certificate)"
+	@echo "$(BLUE)3. Start episciences-infrastructure first$(NC)"
+	@echo "   $(BOLD)cd ../episciences-infrastructure && make up$(NC)"
+	@echo ""
+	@echo "$(BLUE)4. Access the application$(NC)"
+	@echo "   • $(BOLD)HTTPS:$(NC) https://api-dev.episciences.org/ (via Traefik, auto-signed cert)"
+	@echo "   • $(BOLD)HTTP direct:$(NC) http://api-dev.episciences.org:8080"
 	@echo ""
 	@echo "$(YELLOW)📝 Notes:$(NC)"
-	@echo "   • The first HTTPS access will show a security warning (expected with self-signed certificates)"
-	@echo "   • Choose \"Advanced\" → \"Proceed to api-dev.episciences.org\" in your browser"
-	@echo "   • HTTP traffic is automatically redirected to HTTPS"
+	@echo "   • HTTPS is handled by Traefik (episciences-infrastructure) with an auto-signed certificate"
+	@echo "   • Accept the browser security warning on first access"
 	@echo ""
 	@echo "$(BLUE)4. Other useful commands$(NC)"
 	@echo "   • $(BOLD)make docker-restart$(NC)  - Restart containers"
@@ -556,8 +513,8 @@ define deploy-logic
 		echo "  Download composer.phar first"; \
 		exit 1; \
 	fi
-	@php8.2 composer.phar install -o --no-dev --ignore-platform-reqs
-	@php8.2 composer.phar dump-env production
+	@php8.3 composer.phar install -o --no-dev --ignore-platform-reqs
+	@php8.3 composer.phar dump-env production
 	@# Build assets
 	@echo "$(BLUE)Building production assets...$(NC)"
 	@if command -v yarn >/dev/null 2>&1; then \

@@ -48,8 +48,9 @@ phpstan.neon
 /config/reference.php
 
 # Ansible
-/ansible/inventory/production
-/ansible/roles/
+/deployment/ansible/inventory/production
+/deployment/ansible/inventory/preprod
+/deployment/ansible/roles/
 
 ###> phpunit/phpunit ###w
 /.phpunit.cache/
