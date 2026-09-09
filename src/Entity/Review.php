@@ -27,6 +27,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use App\Repository\ReviewRepository;
 use App\OpenApi\OpenApiFactory;
+use App\Controller\IndexingDatabaseController;
+use App\Entity\IndexingDatabase;
 
 
 #[ORM\Table(name: self::TABLE)]
@@ -357,6 +359,28 @@ use App\OpenApi\OpenApiFactory;
     paginationMaximumItemsPerPage: 30
 
 )]
+
+#[ApiResource(
+    uriTemplate: self::URI_TEMPLATE . 'indexing-database/{code}',
+    operations: [
+        new GetCollection(
+            openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['review']],
+                summary: 'Indexing Databases',
+                description: 'List of indexing databases for a journal (DOAJ, Scopus, etc.)',
+            ),
+            normalizationContext: [
+                'groups' => ['read:IndexingDatabases'],
+                'serialize_null' => true
+            ],
+            read: false,
+        ),
+    ],
+    controller: IndexingDatabaseController::class,
+    output: IndexingDatabase::class
+)]
+
+
 class Review
 {
     public const TABLE = 'REVIEW';
@@ -432,10 +456,14 @@ class Review
     )]
     private Collection $settings;
 
+    #[ORM\ManyToMany(targetEntity: IndexingDatabase::class, mappedBy: 'reviews')]
+    private Collection $indexingDatabases;
+
     public function __construct()
     {
         $this->papers = new ArrayCollection();
         $this->settings = new ArrayCollection();
+        $this->indexingDatabases = new ArrayCollection();
     }
 
     public function getRvid(): ?int
@@ -581,5 +609,30 @@ class Review
 
         return null;
 
+    }
+
+    /**
+     * @return Collection<int, IndexingDatabase>
+     */
+    public function getIndexingDatabases(): Collection
+    {
+        return $this->indexingDatabases;
+    }
+
+    public function addIndexingDatabase(IndexingDatabase $indexingDatabase): self
+    {
+        if (!$this->indexingDatabases->contains($indexingDatabase)) {
+            $this->indexingDatabases->add($indexingDatabase);
+            $indexingDatabase->addReview($this);
+        }
+        return $this;
+    }
+
+    public function removeIndexingDatabase(IndexingDatabase $indexingDatabase): self
+    {
+        if ($this->indexingDatabases->removeElement($indexingDatabase)) {
+            $indexingDatabase->removeReview($this);
+        }
+        return $this;
     }
 }
