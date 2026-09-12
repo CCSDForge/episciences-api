@@ -80,15 +80,15 @@
         <div class="info">
             Available formats:
             {% for format in formats|keys %}
-                <a href="{{ path(app.request.attributes.get('_route'), app.request.attributes.get('_route_params')|merge({'_format': format})) }}">{{ format }}</a>
+                <a href="{{ path(originalRoute, originalRouteParams|merge({'_format': format})) }}">{{ format }}</a>
             {% endfor %}
             <br>
             Other API docs:
             {% set active_ui = app.request.get('ui', 'swagger_ui') %}
-            {% if swaggerUiEnabled and active_ui != 'swagger_ui' %}<a href="{{ path('api_doc') }}">Swagger UI</a>{% endif %}
-            {% if reDocEnabled and active_ui != 're_doc' %}<a href="{{ path('api_doc', {'ui': 're_doc'}) }}">ReDoc</a>{% endif %}
+            {% if swaggerUiEnabled and active_ui != 'swagger_ui' %}<a href="{{ path(originalRoute, originalRouteParams) }}">Swagger UI</a>{% endif %}
+            {% if reDocEnabled and active_ui != 're_doc' %}<a href="{{ path(originalRoute, originalRouteParams|merge({'ui': 're_doc'})) }}">ReDoc</a>{% endif %}
+            {% if scalarEnabled and active_ui != 'scalar' %}<a href="{{ path(originalRoute, originalRouteParams|merge({'ui': 'scalar'})) }}">Scalar</a>{% endif %}
             {% if not graphQlEnabled or graphiQlEnabled %}<a {% if graphiQlEnabled %}href="{{ path('api_graphql_graphiql') }}"{% endif %} class="graphiql-link">GraphiQL</a>{% endif %}
-            {% if graphQlPlaygroundEnabled %}<a href="{{ path('api_graphql_graphql_playground') }}">GraphQL Playground (deprecated)</a>{% endif %}
         </div>
     </div>
 </div>
