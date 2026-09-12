@@ -347,7 +347,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this->username;
     }
 
-    public function setUsername(string $username = null): self
+    public function setUsername(?string $username = null): self
     {
         $this->username = $username;
 
@@ -595,7 +595,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @param int|null $rvId
      * @return array
      */
-    public function getRoles(int $rvId = null): array
+    public function getRoles(?int $rvId = null): array
     {
         if ($this->roles === []) {
             return $this->rolesProcessing($rvId);
@@ -604,7 +604,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this->roles;
     }
 
-    private function rolesProcessing(int $rvId = null): array
+    private function rolesProcessing(?int $rvId = null): array
     {
         $roles = [];
         $prefix = 'ROLE_';
@@ -698,7 +698,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this->additionalProfileInformation;
     }
 
-    public function setAdditionalProfileInformation(array $additionalProfileInformation = null): self
+    public function setAdditionalProfileInformation(?array $additionalProfileInformation = null): self
     {
         $this->additionalProfileInformation = $additionalProfileInformation;
         return $this;
@@ -709,7 +709,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this->orcid;
     }
 
-    public function setOrcid(string $orcid = null): self
+    public function setOrcid(?string $orcid = null): self
     {
         $this->orcid = $orcid;
         return $this;

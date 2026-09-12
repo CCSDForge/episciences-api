@@ -50,7 +50,7 @@ class UserRolesRepository extends ServiceEntityRepository
      * @return QueryBuilder
      */
 
-    public function getUserRolesStatsQuery(int $rvId = null, $uid = null, string $role = null, bool $withDetails = false): QueryBuilder
+    public function getUserRolesStatsQuery(?int $rvId = null, $uid = null, ?string $role = null, bool $withDetails = false): QueryBuilder
     {
         $userRolesAlias = self::USER_ROLES_ALIAS;
 
@@ -99,7 +99,7 @@ class UserRolesRepository extends ServiceEntityRepository
     }
 
 
-    public function joinUserRolesQuery(int $rvId = null): QueryBuilder
+    public function joinUserRolesQuery(?int $rvId = null): QueryBuilder
     {
 
         $qb = $this->communBoardsQuery($rvId);
@@ -108,7 +108,7 @@ class UserRolesRepository extends ServiceEntityRepository
 
     }
 
-    public function boardsUsersQuery(int $rvId = null): QueryBuilder
+    public function boardsUsersQuery(?int $rvId = null): QueryBuilder
     {
 
         $qb = $this->communBoardsQuery($rvId);
@@ -119,7 +119,7 @@ class UserRolesRepository extends ServiceEntityRepository
 
     }
 
-    public function communBoardsQuery(int $rvId = null): QueryBuilder
+    public function communBoardsQuery(?int $rvId = null): QueryBuilder
     {
 
         $qb = $this->createQueryBuilder("ur");

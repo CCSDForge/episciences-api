@@ -19,7 +19,7 @@ class NewsRepository extends ServiceEntityRepository implements RangeInterface
     }
 
 
-    public function getRange(string|int $journalIdentifier = null): array
+    public function getRange(string|int|null $journalIdentifier = null): array
     {
         $qb = $this->createQueryBuilder('n');
         $qb->distinct();

@@ -36,7 +36,7 @@ readonly class ApiItemNormalizer implements NormalizerInterface, SerializerAware
         if (
             $object instanceof AbstractVolumeSection &&
             is_array($data) &&
-            (new ReflectionClass($object::class))->implementsInterface(EntityIdentifierInterface::class)
+            new ReflectionClass($object::class)->implementsInterface(EntityIdentifierInterface::class)
         ) {
             /** @var SectionRepository | VolumeRepository $currentRepo */
             $currentRepo = $this->entityManager->getRepository($object::class);

@@ -41,7 +41,7 @@ trait QueryTrait
 
         return array_filter($yFilters,
             // Supprime à la fois les valeurs nulles et les valeurs vides
-            static fn($val) => !empty($val));
+            static fn($val): bool => !empty($val));
 
     }
 
@@ -167,10 +167,10 @@ trait QueryTrait
         return $qb->andWhere($orExp);
     }
 
-    final public function whereYears(string &$sql, array|string|int $years = null, string $refDate = 'p.SUBMISSION_DATE'): void
+    final public function whereYears(string &$sql, array|string|int|null $years = null, string $refDate = 'p.SUBMISSION_DATE'): void
     {
 
-        if (!empty($years)) {
+        if (!in_array($years, ['', '0', 0, []], true)) {
 
             $sql .= ' AND';
 

@@ -28,7 +28,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
         parent::__construct($registry, Volume::class);
     }
 
-    public function getRange(int|string $journalIdentifier = null, bool $isEmptyVolumeDisplayed = false, bool $onlyPublished = true): array
+    public function getRange(int|string|null $journalIdentifier = null, bool $isEmptyVolumeDisplayed = false, bool $onlyPublished = true): array
     {
         $qb = $this->createQueryBuilder('v');
         $qb->distinct();
@@ -52,7 +52,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
     }
 
 
-    public function getTypes(int|string $journalIdentifier = null, bool $isEmptyVolumeDisplayed = false, bool $onlyPublished = true ): array
+    public function getTypes(int|string|null $journalIdentifier = null, bool $isEmptyVolumeDisplayed = false, bool $onlyPublished = true ): array
     {
         $distinctTypes = [];
         $qb = $this->createQueryBuilder('v');
@@ -126,7 +126,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
     }
 
-    public function fetchSortedPapers(int $vid = null): array
+    public function fetchSortedPapers(?int $vid = null): array
     {
         $result = $this->fetchSortedPapersQuery($vid)->getResult();
 
@@ -142,7 +142,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
                 // To be checked : Inconsistency in the database: duplicate position
                 $toBeProcessed[$values['PAPERID']] = $values;
 
-                $paper = (new Paper())
+                $paper = new Paper()
                     ->setDocid($values['DOCID'])
                     ->setPaperid($values['PAPERID'])
                     ->setVid($vid)
@@ -150,7 +150,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
                 // Only create VolumePaperPosition if position is not NULL
                 if ($values['POSITION'] !== null) {
-                    $volumePaperPosition = (new VolumePaperPosition())
+                    $volumePaperPosition = new VolumePaperPosition()
                         ->setVid($vid)
                         ->setPaperid($paper?->getPaperid())
                         ->setPosition($values['POSITION']);
@@ -176,7 +176,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
         return ['privateCollection' => $privatePapersCollection, 'publicCollection' => $onlyPublishedCollection];
     }
 
-    public function fetchSortedPapersQuery(int $vid = null): NativeQuery
+    public function fetchSortedPapersQuery(?int $vid = null): NativeQuery
     {
         // Création du mapping des colonnes du résultat
         $rsm = new ResultSetMapping();
@@ -279,7 +279,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
      * @param int|array|null $ids
      * @return QueryBuilder
      */
-    public function getNoEmptyMasterVolumesQuery(int $rvId = null, bool $strictlyPublished = true, int|array $ids = null): QueryBuilder
+    public function getNoEmptyMasterVolumesQuery(?int $rvId = null, bool $strictlyPublished = true, int|array|null $ids = null): QueryBuilder
     {
         $qb = $this->getEntityManager()->createQueryBuilder();
         $qb->select('p.vid')->from(Paper::class, 'p')->distinct();
@@ -295,7 +295,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
      * @return array
      */
 
-    private function getNoEmptyVolumesIdentifiers(int $rvId = null, bool $onlyPublished = true, int|array $ids = null): array
+    private function getNoEmptyVolumesIdentifiers(?int $rvId = null, bool $onlyPublished = true, int|array|null $ids = null): array
     {
         $noEmptyMasterIds = array_column(array_values($this->getNoEmptyMasterVolumesQuery($rvId, $onlyPublished, $ids)->getQuery()->getArrayResult()), 'vid');
         $noEmptySecondaryVolumesIds = array_column(array_values($this->volumePaperRepository->getNoEmptySecondaryVolumes($rvId, $onlyPublished, $ids)->getQuery()->getResult()), 'vid');

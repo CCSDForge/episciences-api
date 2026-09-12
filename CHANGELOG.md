@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Replaced non-indexed `JSON_EXTRACT` visibility filter with the new `is_public` column in Doctrine queries.
+- Migrated codebase to PHP 8.4: applied Rector transformations (explicit nullable parameter types, typed properties, Doctrine `Types::*` constants, PHP 8.4 `RoundingMode`/`#[\Deprecated]` features) to fix PHP 8.4 deprecations.
 
 ### Fixed
 - Fixed invalid `UniqueConstraints` on `pages` and `news` tables.

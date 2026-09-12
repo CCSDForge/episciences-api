@@ -14,21 +14,21 @@ class Authors
     /**
      * @var int
      */
-    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $id;
+    private int $id;
 
-    #[ORM\Column(name: 'FIRSTNAME', type: 'string', length: 255, nullable: false)]
+    #[ORM\Column(name: 'FIRSTNAME', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $firstname = null;
 
-    #[ORM\Column(name: 'LASTNAME', type: 'string', length: 255, nullable: false)]
+    #[ORM\Column(name: 'LASTNAME', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $lastname = null;
 
-    #[ORM\Column(name: 'ORCID', type: 'string', length: 255, nullable: false)]
+    #[ORM\Column(name: 'ORCID', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $orcid = null;
 
-    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $uid = null;
 
     public function getId(): ?int

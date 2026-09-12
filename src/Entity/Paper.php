@@ -703,7 +703,7 @@ class Paper implements UserOwnedInterface
         return $this->review;
     }
 
-    public function setReview(Review $review = null): self
+    public function setReview(?Review $review = null): self
     {
         $this->review = $review;
 
@@ -992,7 +992,7 @@ class Paper implements UserOwnedInterface
     }
 
 
-    public function setType(array $type = null): self
+    public function setType(?array $type = null): self
     {
         $this->type = $type;
         return $this;

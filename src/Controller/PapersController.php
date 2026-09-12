@@ -20,7 +20,7 @@ class PapersController
      * @return bool
      * @throws MissingRequestParameterException
      */
-    public function __invoke(EntityManagerInterface $entityManager, Request $request = null): bool
+    public function __invoke(EntityManagerInterface $entityManager, ?Request $request = null): bool
     {
 
         if ($request instanceof \Symfony\Component\HttpFoundation\Request) {

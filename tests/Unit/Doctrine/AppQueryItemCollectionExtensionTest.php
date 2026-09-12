@@ -105,7 +105,7 @@ class AppQueryItemCollectionExtensionTest extends TestCase
         $andWhereConditions = [];
         $queryBuilder->expects($this->exactly(2))
             ->method('andWhere')
-            ->willReturnCallback(function ($condition) use ($queryBuilder, &$andWhereConditions) {
+            ->willReturnCallback(function ($condition) use ($queryBuilder, &$andWhereConditions): \PHPUnit\Framework\MockObject\MockObject {
                 $andWhereConditions[] = $condition;
 
                 return $queryBuilder;

@@ -14,12 +14,12 @@ class PaperStat
     /**
      * @var int
      */
-    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private $docid;
+    private int $docid;
 
-    #[ORM\Column(name: 'CONSULT', type: 'string', length: 0, nullable: false, options: ['default' => 'notice'])]
+    #[ORM\Column(name: 'CONSULT', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false, options: ['default' => 'notice'])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
     private string $consult = 'notice';
@@ -27,44 +27,44 @@ class PaperStat
     /**
      * @var int
      */
-    #[ORM\Column(name: 'IP', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'IP', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private $ip;
+    private int $ip;
 
-    #[ORM\Column(name: 'ROBOT', type: 'boolean', nullable: false)]
+    #[ORM\Column(name: 'ROBOT', type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: false)]
     private ?bool $robot = null;
 
-    #[ORM\Column(name: 'AGENT', type: 'string', length: 2000, nullable: true)]
+    #[ORM\Column(name: 'AGENT', type: \Doctrine\DBAL\Types\Types::STRING, length: 2000, nullable: true)]
     private ?string $agent = null;
 
-    #[ORM\Column(name: 'DOMAIN', type: 'string', length: 100, nullable: true)]
+    #[ORM\Column(name: 'DOMAIN', type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: true)]
     private ?string $domain = null;
 
-    #[ORM\Column(name: 'CONTINENT', type: 'string', length: 100, nullable: true)]
+    #[ORM\Column(name: 'CONTINENT', type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: true)]
     private ?string $continent = null;
 
-    #[ORM\Column(name: 'COUNTRY', type: 'string', length: 100, nullable: true)]
+    #[ORM\Column(name: 'COUNTRY', type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: true)]
     private ?string $country = null;
 
-    #[ORM\Column(name: 'CITY', type: 'string', length: 100, nullable: true)]
+    #[ORM\Column(name: 'CITY', type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: true)]
     private ?string $city = null;
 
-    #[ORM\Column(name: 'LAT', type: 'float', precision: 10, scale: 0, nullable: true)]
+    #[ORM\Column(name: 'LAT', type: \Doctrine\DBAL\Types\Types::FLOAT, precision: 10, scale: 0, nullable: true)]
     private ?float $lat = null;
 
-    #[ORM\Column(name: 'LON', type: 'float', precision: 10, scale: 0, nullable: true)]
+    #[ORM\Column(name: 'LON', type: \Doctrine\DBAL\Types\Types::FLOAT, precision: 10, scale: 0, nullable: true)]
     private ?float $lon = null;
 
     /**
      * @var \DateTime
      */
-    #[ORM\Column(name: 'HIT', type: 'date', nullable: false)]
+    #[ORM\Column(name: 'HIT', type: \Doctrine\DBAL\Types\Types::DATE_MUTABLE, nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private $hit;
+    private \DateTimeInterface $hit;
 
-    #[ORM\Column(name: 'COUNTER', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'COUNTER', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $counter = null;
 
     public function getDocid(): ?int

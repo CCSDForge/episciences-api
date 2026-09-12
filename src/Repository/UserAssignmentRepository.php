@@ -21,7 +21,7 @@ class UserAssignmentRepository extends ServiceEntityRepository
 
 
 
-    public function findInvitationsQuery(int $docId = null): QueryBuilder
+    public function findInvitationsQuery(?int $docId = null): QueryBuilder
     {
 
         $qb = $this->createQueryBuilder('ua');

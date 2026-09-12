@@ -16,7 +16,7 @@ class UserInvitationAnswer
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
     private int $id;
-    #[ORM\Column(name: 'ANSWER', type: 'string', length: 10, nullable: false)]
+    #[ORM\Column(name: 'ANSWER', type: \Doctrine\DBAL\Types\Types::STRING, length: 10, nullable: false)]
     private ?string $answer = null;
     #[ORM\Column(name: 'ANSWER_DATE', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     private \DateTimeInterface $answerDate;

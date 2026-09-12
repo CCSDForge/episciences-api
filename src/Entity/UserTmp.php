@@ -14,21 +14,21 @@ class UserTmp
     /**
      * @var int
      */
-    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $id;
+    private int $id;
 
-    #[ORM\Column(name: 'EMAIL', type: 'string', length: 250, nullable: true)]
+    #[ORM\Column(name: 'EMAIL', type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: true)]
     private ?string $email = null;
 
-    #[ORM\Column(name: 'FIRSTNAME', type: 'string', length: 100, nullable: true)]
+    #[ORM\Column(name: 'FIRSTNAME', type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: true)]
     private ?string $firstname = null;
 
-    #[ORM\Column(name: 'LASTNAME', type: 'string', length: 100, nullable: true)]
+    #[ORM\Column(name: 'LASTNAME', type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: true)]
     private ?string $lastname = null;
 
-    #[ORM\Column(name: 'LANG', type: 'string', length: 3, nullable: true)]
+    #[ORM\Column(name: 'LANG', type: \Doctrine\DBAL\Types\Types::STRING, length: 3, nullable: true)]
     private ?string $lang = null;
 
     public function getId(): ?int
