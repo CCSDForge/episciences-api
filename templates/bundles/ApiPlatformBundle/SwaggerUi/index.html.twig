@@ -22,6 +22,20 @@
     {% block head_javascript %}
         {{ encore_entry_script_tags('app') }}
 
+        {# Force le mode clair par défaut en neutralisant la détection automatique du thème OS. #}
+        <script>
+            (function () {
+                var originalMatchMedia = window.matchMedia;
+                window.matchMedia = function (query) {
+                    var mql = originalMatchMedia.call(this, query);
+                    if (String(query) === '(prefers-color-scheme: dark)') {
+                        Object.defineProperty(mql, 'matches', { get: function () { return false; } });
+                    }
+                    return mql;
+                };
+            })();
+        </script>
+
         {# json_encode(65) is for JSON_UNESCAPED_SLASHES|JSON_HEX_TAG to avoid JS XSS #}
         <script id="swagger-data" type="application/json">{{ swagger_data|merge(oauth_data)|json_encode(65)|raw }}</script>
     {% endblock %}
@@ -102,7 +116,31 @@
     <script src="{{ asset('bundles/apiplatform/swagger-ui/swagger-ui-standalone-preset.js', assetPackage) }}"></script>
     <script src="{{ asset('bundles/apiplatform/init-swagger-ui.js', assetPackage) }}"></script>
 {% endif %}
-<script src="{{ asset('bundles/apiplatform/init-common-ui.js', assetPackage) }}" defer></script>
+    <script src="{{ asset('bundles/apiplatform/init-common-ui.js', assetPackage) }}" defer></script>
+    <script>
+        window.addEventListener('load', function () {
+            var placeToggle = function () {
+                var toggle = document.querySelector('#swagger-ui .topbar .dark-mode-toggle');
+                var title = document.querySelector('#swagger-ui .info .title');
+                if (!toggle || !title) {
+                    setTimeout(placeToggle, 150);
+                    return;
+                }
+                if (document.querySelector('#swagger-ui .api-dark-mode')) {
+                    return;
+                }
+                var wrap = document.createElement('div');
+                wrap.className = 'api-dark-mode';
+                var label = document.createElement('span');
+                label.className = 'api-dark-mode-label';
+                label.textContent = 'Click to enable dark mode';
+                wrap.appendChild(toggle);
+                wrap.appendChild(label);
+                title.appendChild(wrap);
+            };
+            placeToggle();
+        });
+    </script>
 {% endblock %}
 
 </body>
