@@ -84,7 +84,7 @@
             {% endfor %}
             <br>
             Other API docs:
-            {% set active_ui = app.request.get('ui', 'swagger_ui') %}
+            {% set active_ui = app.request.query.get('ui', 'swagger_ui') %}
             {% if swaggerUiEnabled and active_ui != 'swagger_ui' %}<a href="{{ path(originalRoute, originalRouteParams) }}">Swagger UI</a>{% endif %}
             {% if reDocEnabled and active_ui != 're_doc' %}<a href="{{ path(originalRoute, originalRouteParams|merge({'ui': 're_doc'})) }}">ReDoc</a>{% endif %}
             {% if scalarEnabled and active_ui != 'scalar' %}<a href="{{ path(originalRoute, originalRouteParams|merge({'ui': 'scalar'})) }}">Scalar</a>{% endif %}
