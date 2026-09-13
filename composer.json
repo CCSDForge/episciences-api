@@ -16,8 +16,6 @@
         "ext-fileinfo": "*",
         "api-platform/core": "^4.3",
         "beberlei/doctrineextensions": "^1.5",
-        "composer/package-versions-deprecated": "1.11.99.1",
-        "doctrine/annotations": "^2.0",
         "doctrine/doctrine-bundle": "^2.8",
         "doctrine/doctrine-migrations-bundle": "^3.2",
         "doctrine/orm": "^2.14",
