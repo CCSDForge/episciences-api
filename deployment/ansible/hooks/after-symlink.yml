@@ -2,5 +2,5 @@
 - name: Reload PHP-FPM to flush opcache
   become: true
   ansible.builtin.systemd:
-    name: php8.2-fpm
+    name: php8.4-fpm
     state: reloaded

@@ -88,7 +88,7 @@ check-prereqs:
 		echo "$(RED)✗ PHP 8.4 not found$(NC)"; \
 		echo "  Install PHP 8.4:"; \
 		echo "    Ubuntu/Debian: $(BOLD)sudo apt install php8.4 php8.4-cli php8.4-mbstring php8.4-xml php8.4-mysql$(NC)"; \
-		echo "    CentOS/RHEL:   $(BOLD)sudo yum install php82 php82-cli php82-mbstring php82-xml php82-mysqlnd$(NC)"; \
+		echo "    CentOS/RHEL:   $(BOLD)sudo yum install php84 php84-cli php84-mbstring php84-xml php84-mysqlnd$(NC)"; \
 		echo ""; \
 		exit 1; \
 	else \
