@@ -62,7 +62,7 @@ class PapersRepository extends ServiceEntityRepository
                                      bool   $excludeTmpVersions = false,
                                      string $fieldDateToBeUsed = 'submissionDate',
                                      bool   $excludeImportedPapers = false,
-                                     string $flag = null,
+                                     ?string $flag = null,
                                      bool   $withoutObsolete = false
     ): QueryBuilder
     {
@@ -114,7 +114,7 @@ class PapersRepository extends ServiceEntityRepository
      * @param bool $excludeImportedPapers
      * @return QueryBuilder
      */
-    public function flexibleSubmissionsQueryDetails(array $filters = null, bool $excludeTmpVersions = false, bool $excludeImportedPapers = false): QueryBuilder
+    public function flexibleSubmissionsQueryDetails(?array $filters = null, bool $excludeTmpVersions = false, bool $excludeImportedPapers = false): QueryBuilder
     {
 
         $qb = $this
@@ -202,7 +202,7 @@ class PapersRepository extends ServiceEntityRepository
         return $qb;
     }
 
-    public function getSubmissionYearRange(array $filters = null, string $flag = null): array
+    public function getSubmissionYearRange(?array $filters = null, ?string $flag = null): array
     {
 
         $years = [];
@@ -230,12 +230,12 @@ class PapersRepository extends ServiceEntityRepository
 
         }
 
-        return array_filter($years, static fn($value) => $value >= Stats::REF_YEAR);
+        return array_filter($years, static fn($value): bool => $value >= Stats::REF_YEAR);
 
 
     }
 
-    public function getAvailableRepositories(array $filters = null, $strict = true): array
+    public function getAvailableRepositories(?array $filters = null, $strict = true): array
     {
 
         $repositories = [];
@@ -273,8 +273,8 @@ class PapersRepository extends ServiceEntityRepository
     public function getTotalArticlesBySectionOrVolumeQuery(
         string    $resourceClass = Section::class,
         int       $status = Paper::STATUS_PUBLISHED,
-        int|array $identifiers = null,
-        int       $rvId = null
+        int|array|null $identifiers = null,
+        ?int       $rvId = null
     ): QueryBuilder
     {
 
@@ -335,7 +335,7 @@ class PapersRepository extends ServiceEntityRepository
     }
 
 
-    public function getTotalArticleBySectionOrVolume(string $resourceClass = Section::class, int $status = Paper::STATUS_PUBLISHED, int|array $identifiers = null, int $rvId = null): array|float|bool|int|string|null
+    public function getTotalArticleBySectionOrVolume(string $resourceClass = Section::class, int $status = Paper::STATUS_PUBLISHED, int|array|null $identifiers = null, ?int $rvId = null): array|float|bool|int|string|null
     {
 
         $resultQuery = $this->getTotalArticlesBySectionOrVolumeQuery($resourceClass, $status, $identifiers, $rvId)->getQuery();
@@ -458,7 +458,7 @@ class PapersRepository extends ServiceEntityRepository
      * @return array
      */
 
-    public function getYearRange(int $rvId = null, string $flag = 'submitted'): array
+    public function getYearRange(?int $rvId = null, string $flag = 'submitted'): array
     {
 
         $years = [];
@@ -501,7 +501,7 @@ class PapersRepository extends ServiceEntityRepository
      * @return string|null
      */
 
-    public function paperToJson(int $docId, int $rvId = null, string $path = 'all', bool $strict = true): ?string
+    public function paperToJson(int $docId, ?int $rvId = null, string $path = 'all', bool $strict = true): ?string
     {
         $toJson = null;
 
@@ -534,7 +534,7 @@ class PapersRepository extends ServiceEntityRepository
 
     }
 
-    public function getSubmissionsWithoutImported(int $rvId = null, string $startAfterDate = null, array|string $years = null): int
+    public function getSubmissionsWithoutImported(?int $rvId = null, ?string $startAfterDate = null, array|string|null $years = null): int
     {
 
         $withoutImportedFilters = ['rvid' => $rvId, 'startAfterDate' => $startAfterDate, 'flag' => self::AVAILABLE_FLAG_VALUES['submitted'], 'year' => $years];

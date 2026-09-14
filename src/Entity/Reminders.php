@@ -14,24 +14,24 @@ class Reminders
     /**
      * @var int
      */
-    #[ORM\Column(name: 'ID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $id;
+    private int $id;
 
-    #[ORM\Column(name: 'RVID', type: 'integer', nullable: true, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true, options: ['unsigned' => true])]
     private ?int $rvid = null;
 
-    #[ORM\Column(name: 'TYPE', type: 'boolean', nullable: true)]
+    #[ORM\Column(name: 'TYPE', type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: true)]
     private ?bool $type = null;
 
-    #[ORM\Column(name: 'DELAY', type: 'smallint', nullable: true, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'DELAY', type: \Doctrine\DBAL\Types\Types::SMALLINT, nullable: true, options: ['unsigned' => true])]
     private ?int $delay = null;
 
-    #[ORM\Column(name: 'RECIPIENT', type: 'string', length: 25, nullable: false, options: ['default' => 'reviewer'])]
+    #[ORM\Column(name: 'RECIPIENT', type: \Doctrine\DBAL\Types\Types::STRING, length: 25, nullable: false, options: ['default' => 'reviewer'])]
     private string $recipient = 'reviewer';
 
-    #[ORM\Column(name: 'REPETITION', type: 'string', length: 20, nullable: true)]
+    #[ORM\Column(name: 'REPETITION', type: \Doctrine\DBAL\Types\Types::STRING, length: 20, nullable: true)]
     private ?string $repetition = null;
 
     public function getId(): ?int

@@ -12,7 +12,7 @@ use App\Entity\Paper;
 
 final class PapersStatsDataProvider extends AbstractDataProvider implements ProviderInterface
 {
-    public function supports(Operation $operation = null): bool
+    public function supports(?Operation $operation = null): bool
     {
         return (
             $operation instanceof \ApiPlatform\Metadata\Operation &&

@@ -47,7 +47,7 @@ class VolumePaperPosition
     /**
      * @param mixed $vid
      */
-    public function setVid($vid): self
+    public function setVid(int $vid): self
     {
         $this->vid = $vid;
         return $this;
@@ -56,7 +56,7 @@ class VolumePaperPosition
     /**
      * @param mixed $paperid
      */
-    public function setPaperid($paperid): self
+    public function setPaperid(int $paperid): self
     {
         $this->paperid = $paperid;
         return $this;

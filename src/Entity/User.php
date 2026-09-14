@@ -10,6 +10,8 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Parameter;
+use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
+use ApiPlatform\OpenApi\Model\MediaType;
 use App\AppConstants;
 use App\Controller\PapersController;
 use App\Repository\UserRepository;
@@ -81,7 +83,6 @@ use App\OpenApi\OpenApiFactory;
                 'groups' => ['read:Me']
             ],
             security: "is_granted('ROLE_USER')",
-            output: [true, false],
             read: false
 
         ),
@@ -92,11 +93,11 @@ use App\OpenApi\OpenApiFactory;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['user']],
                 responses: [
-                    Response::HTTP_OK => [
-                        'description' => "is allowed to edit document's citations?",
-                        'content' => [
-                            'application/json' => [
-                                'schema' => [
+                    Response::HTTP_OK => new OpenApiResponse(
+                        description: "is allowed to edit document's citations?",
+                        content: new \ArrayObject([
+                            'application/json' => new MediaType(
+                                schema: new \ArrayObject([
                                     'type' => 'object',
                                     'properties' => [
                                         'isAllowed' => [
@@ -105,10 +106,10 @@ use App\OpenApi\OpenApiFactory;
                                             'default' => false
                                         ],
                                     ],
-                                ],
-                            ],
-                        ],
-                    ]
+                                ])
+                            ),
+                        ])
+                    )
 
                 ],
                 summary: "is allowed to edit document's citations",
@@ -347,7 +348,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this->username;
     }
 
-    public function setUsername(string $username = null): self
+    public function setUsername(?string $username = null): self
     {
         $this->username = $username;
 
@@ -595,7 +596,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @param int|null $rvId
      * @return array
      */
-    public function getRoles(int $rvId = null): array
+    public function getRoles(?int $rvId = null): array
     {
         if ($this->roles === []) {
             return $this->rolesProcessing($rvId);
@@ -604,7 +605,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this->roles;
     }
 
-    private function rolesProcessing(int $rvId = null): array
+    private function rolesProcessing(?int $rvId = null): array
     {
         $roles = [];
         $prefix = 'ROLE_';
@@ -698,7 +699,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this->additionalProfileInformation;
     }
 
-    public function setAdditionalProfileInformation(array $additionalProfileInformation = null): self
+    public function setAdditionalProfileInformation(?array $additionalProfileInformation = null): self
     {
         $this->additionalProfileInformation = $additionalProfileInformation;
         return $this;
@@ -709,7 +710,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return $this->orcid;
     }
 
-    public function setOrcid(string $orcid = null): self
+    public function setOrcid(?string $orcid = null): self
     {
         $this->orcid = $orcid;
         return $this;

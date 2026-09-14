@@ -14,8 +14,8 @@ return RectorConfig::configure()
         __DIR__ . '/src',
         __DIR__ . '/tests',
     ])
-    // Target PHP 8.3
-    ->withPhpSets(php83: true)
+    // Target PHP 8.4
+    ->withPhpSets(php84: true)
     ->withAttributesSets(symfony: true, doctrine: true)
     ->withComposerBased(doctrine: true, symfony: true)
     ->withSets([

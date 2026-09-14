@@ -83,7 +83,7 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
 
 
         foreach ($result as $name => $count) {
-            $author = (new Facet())
+            $author = new Facet()
                 ->setField($authorFs)
                 ->setValues(['name' => $name, 'count' => $count]);
             $authors[] = $author;

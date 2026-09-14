@@ -11,13 +11,11 @@ api_platform:
     #global configuration defaults applied to all resources and all operations (2.6 only)
     defaults:
         #By default, API Platform generates all URLs as absolute paths to the base URL.
-        url_generation_strategy: !php/const ApiPlatform\Api\UrlGeneratorInterface::ABS_PATH
+        url_generation_strategy: !php/const ApiPlatform\Metadata\UrlGeneratorInterface::ABS_PATH
         pagination_client_enabled: true #Enabling Pagination Client-side Globally
         pagination_client_items_per_page: true
         pagination_maximum_items_per_page: !php/const App\AppConstants::MAXIMUM_ITEMS_PER_PAGE
         pagination_items_per_page: !php/const App\AppConstants::DEFAULT_ITEM_PER_PAGE
-        item_Operations: ~
-        collection_Operations: ~
         normalization_context:
             # Default value to omit null values in conformance with the JSON Merge Patch RFC.
             skip_null_values: false
@@ -68,7 +66,6 @@ api_platform:
         json: ['application/merge-patch+json']
     swagger:
         versions: [3]
-    keep_legacy_inflector: false
     exception_to_status:
         # Custom mapping
         App\Exception\ResourceNotFoundException : 404

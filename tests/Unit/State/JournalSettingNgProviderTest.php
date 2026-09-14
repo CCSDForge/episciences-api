@@ -97,7 +97,7 @@ class JournalSettingNgProviderTest extends TestCase
         $result = $this->provider->provide(new Get(), [], ['filters' => ['code' => 'myjournal']]);
 
         $this->assertInstanceOf(Response::class, $result);
-        $this->assertSame(Response::HTTP_OK, $result->getStatusCode());
+        $this->assertSame(Response::HTTP_OK, $result->getStatusCode(), (string) $result->getContent());
         $this->assertSame('application/json', $result->headers->get('Content-Type'));
         $this->assertSame($rawJson, $result->getContent());
     }
