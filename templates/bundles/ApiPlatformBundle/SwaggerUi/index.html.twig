@@ -115,20 +115,27 @@
     <script src="{{ asset('bundles/apiplatform/swagger-ui/swagger-ui-bundle.js', assetPackage) }}"></script>
     <script src="{{ asset('bundles/apiplatform/swagger-ui/swagger-ui-standalone-preset.js', assetPackage) }}"></script>
     <script src="{{ asset('bundles/apiplatform/init-swagger-ui.js', assetPackage) }}"></script>
-{% endif %}
-    <script src="{{ asset('bundles/apiplatform/init-common-ui.js', assetPackage) }}" defer></script>
     <script>
         window.addEventListener('load', function () {
+            var target = document.getElementById('swagger-ui');
+            if (!target) {
+                return;
+            }
+            var done = false;
             var placeToggle = function () {
+                if (done) {
+                    return;
+                }
                 var toggle = document.querySelector('#swagger-ui .topbar .dark-mode-toggle');
                 var title = document.querySelector('#swagger-ui .info .title');
                 if (!toggle || !title) {
-                    setTimeout(placeToggle, 150);
                     return;
                 }
                 if (document.querySelector('#swagger-ui .api-dark-mode')) {
                     return;
                 }
+                done = true;
+                observer.disconnect();
                 var wrap = document.createElement('div');
                 wrap.className = 'api-dark-mode';
                 var label = document.createElement('span');
@@ -138,9 +145,14 @@
                 wrap.appendChild(label);
                 title.appendChild(wrap);
             };
+            var observer = new MutationObserver(placeToggle);
+            observer.observe(target, { childList: true, subtree: true });
             placeToggle();
+            window.setTimeout(function () { observer.disconnect(); }, 5000);
         });
     </script>
+{% endif %}
+    <script src="{{ asset('bundles/apiplatform/init-common-ui.js', assetPackage) }}" defer></script>
 {% endblock %}
 
 </body>
