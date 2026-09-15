@@ -17,7 +17,7 @@ class UserTmp
     #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private int $id;
+    private ?int $id = null;
 
     #[ORM\Column(name: 'EMAIL', type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: true)]
     private ?string $email = null;

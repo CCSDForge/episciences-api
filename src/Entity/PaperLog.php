@@ -20,7 +20,7 @@ class PaperLog
     #[ORM\Column(name: 'LOGID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private int $logid;
+    private ?int $logid = null;
 
 
     #[ORM\Column(name: 'PAPERID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true] )]

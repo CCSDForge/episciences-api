@@ -19,7 +19,7 @@ class DoiQueue
     #[ORM\Column(name: 'id_doi_queue', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private int $idDoiQueue;
+    private ?int $idDoiQueue = null;
 
     #[ORM\Column(name: 'paperid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $paperid = null;

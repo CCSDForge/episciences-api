@@ -17,7 +17,7 @@ class WebsiteSettings
     #[ORM\Column(name: 'SID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private int $sid;
+    private ?int $sid = null;
 
     /**
      * @var string

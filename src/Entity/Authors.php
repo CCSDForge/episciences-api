@@ -17,7 +17,7 @@ class Authors
     #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private int $id;
+    private ?int $id = null;
 
     #[ORM\Column(name: 'FIRSTNAME', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $firstname = null;

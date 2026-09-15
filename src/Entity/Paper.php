@@ -284,7 +284,7 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
-    private int $docid;
+    private ?int $docid = null;
 
 
     #[ORM\Column(name: 'PAPERID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true, options: ['unsigned' => true])]

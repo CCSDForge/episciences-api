@@ -17,7 +17,7 @@ class WebsiteNavigation
     #[ORM\Column(name: 'NAVIGATIONID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private int $navigationid;
+    private ?int $navigationid = null;
 
     #[ORM\Column(name: 'SID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $sid = null;

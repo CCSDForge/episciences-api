@@ -18,7 +18,7 @@ class PaperComments
     #[ORM\Column(name: 'PCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private int $pcid;
+    private ?int $pcid = null;
 
     #[ORM\Column(name: 'PARENTID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true, options: ['unsigned' => true])]
     private ?int $parentid = null;

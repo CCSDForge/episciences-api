@@ -17,7 +17,7 @@ class UserMerge
     #[ORM\Column(name: 'MID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private int $mid;
+    private ?int $mid = null;
 
     #[ORM\Column(name: 'TOKEN', type: \Doctrine\DBAL\Types\Types::STRING, length: 40, nullable: true)]
     private ?string $token = null;
