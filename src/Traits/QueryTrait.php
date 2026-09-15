@@ -170,7 +170,7 @@ trait QueryTrait
     final public function whereYears(string &$sql, array|string|int|null $years = null, string $refDate = 'p.SUBMISSION_DATE'): void
     {
 
-        if (!in_array($years, ['', '0', 0, []], true)) {
+        if ($years !== null && !in_array($years, ['', '0', 0, []], true)) { // More explicit: empty() and $years !== null && !in_array(...) cover exactly the same set of empty values
 
             $sql .= ' AND';
 
