@@ -173,7 +173,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         } elseif ($operationClass === Paper::class) {
 
             $isOnlyAccepted = $filters['isOnlyAccepted'] ?? false;
-            $rangeType = (new RangeType())
+            $rangeType = new RangeType()
                 ->setTypes($repo->getTypes(['rvid' => $rvId, 'isOnlyAccepted' => $isOnlyAccepted]));
 
             if (!$isOnlyAccepted) {
@@ -185,7 +185,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $range;
 
         } elseif ($operationClass === News::class) {
-            $data[sprintf('hydra:%s', RangeInterface::RANGE)] = ['years' => $repo ? (new Range())->setYears($repo->getRange($rvCode))->getYears() : []];
+            $data[sprintf('hydra:%s', RangeInterface::RANGE)] = ['years' => $repo ? new Range()->setYears($repo->getRange($rvCode))->getYears() : []];
         } elseif ($operationClass === Volume::class || $operationClass === Section::class) {
             $data[sprintf('hydra:%s', PapersRepository::TOTAL_ARTICLE)] = 0;
 
@@ -194,7 +194,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
                 $isDisplayEmptyVolume = $filters[ReviewSetting::DISPLAY_EMPTY_VOLUMES] ?? false;
                 $onlyPublished = !isset($filters['isGranted']) || !$filters['isGranted']; // FALSE IF GRANTED SECRETARY
 
-                $rangeType = (new RangeType())
+                $rangeType = new RangeType()
                     ->setTypes($repo->getTypes($rvId, $isDisplayEmptyVolume, $onlyPublished))
                     ->setYears($repo->getRange($rvId, $isDisplayEmptyVolume, $onlyPublished));
 

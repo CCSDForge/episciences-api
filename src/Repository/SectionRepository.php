@@ -60,7 +60,10 @@ class SectionRepository extends ServiceEntityRepository
         return $sections;
     }
 
-    public function assignedSectionsQuery(int $rvId, int|array $uid = null): string
+    /**
+     * @param int|array<int>|null $uid
+     */
+    public function assignedSectionsQuery(int $rvId, int|array|null $uid = null): string
     {
 
         if (!is_array($uid)) {

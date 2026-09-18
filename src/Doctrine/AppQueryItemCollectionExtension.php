@@ -47,7 +47,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         QueryBuilder                $queryBuilder,
         QueryNameGeneratorInterface $queryNameGenerator,
         string                      $resourceClass,
-        Operation                   $operation = null,
+        ?Operation                   $operation = null,
         array                       $context = []
     ): void
     {
@@ -82,7 +82,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         QueryNameGeneratorInterface $queryNameGenerator,
         string                      $resourceClass,
         array                       $identifiers,
-        Operation                   $operation = null,
+        ?Operation                   $operation = null,
         array                       $context = []
     ): void
     {
@@ -93,7 +93,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
     /**
      */
-    private function addWhere(QueryBuilder $queryBuilder, string $resourceClass, HttpOperation $operation = null, array $context = []): void
+    private function addWhere(QueryBuilder $queryBuilder, string $resourceClass, ?HttpOperation $operation = null, array $context = []): void
     {
         $context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE] = true;
         /** @var User $currentUser */
@@ -249,7 +249,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         string        $alias,
         string        $resourceClass,
         User          $currentUser,
-        HttpOperation $operation = null,
+        ?HttpOperation $operation = null,
                       array $context = []
     ): void
     {
@@ -262,7 +262,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 ->andWhere("ur.roleid!= :epiAdminRole")->setParameter('epiAdminRole', User::ROLE_ROOT)
                 ->andWhere("$alias.uid!= :systemUid")->setParameter('systemUid', User::EPISCIENCES_UID)
                 ->andWhere("ur.rvid= :userVid")->setParameter('userVid', $currentUser->getCurrentJournalID());
-        } elseif ((new \ReflectionClass($resourceClass))->implementsInterface(UserOwnedInterface::class)) {
+        } elseif (new \ReflectionClass($resourceClass)->implementsInterface(UserOwnedInterface::class)) {
 
             if ($resourceClass === Paper::class) {
 

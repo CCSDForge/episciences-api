@@ -31,7 +31,7 @@ class PapersVoterTest extends TestCase
         $user = $this->createMock(User::class);
         $user->method('getUid')->willReturn($uid);
         $user->method('hasRole')->willReturnCallback(
-            static fn($role) => in_array('ROLE_' . strtoupper($role), $roles, true)
+            static fn($role): bool => in_array('ROLE_' . strtoupper((string) $role), $roles, true)
         );
         return $user;
     }
@@ -112,7 +112,7 @@ class PapersVoterTest extends TestCase
     public function testEpiAdminIsAlwaysGranted(): void
     {
         $this->security->method('isGranted')->willReturnCallback(
-            static fn($role) => $role === 'ROLE_EPIADMIN'
+            static fn($role): bool => $role === 'ROLE_EPIADMIN'
         );
         $user  = $this->makeUser(99);
         $token = $this->makeToken($user);
@@ -138,7 +138,7 @@ class PapersVoterTest extends TestCase
     public function testAdminWithoutSpecificRolesIsGranted(): void
     {
         $this->security->method('isGranted')->willReturnCallback(
-            static fn($role) => $role === 'ROLE_ADMINISTRATOR'
+            static fn($role): bool => $role === 'ROLE_ADMINISTRATOR'
         );
         $user = $this->makeUser(42);
         $user->method('hasRole')->willReturn(false);
@@ -152,11 +152,11 @@ class PapersVoterTest extends TestCase
     public function testAdminWithSecretaryRoleFallsThroughToAttributeChecks(): void
     {
         $this->security->method('isGranted')->willReturnCallback(
-            static fn($role) => in_array($role, ['ROLE_ADMINISTRATOR', 'ROLE_SECRETARY'], true)
+            static fn($role): bool => in_array($role, ['ROLE_ADMINISTRATOR', 'ROLE_SECRETARY'], true)
         );
         $user = $this->makeUser(42);
         $user->method('hasRole')->willReturnCallback(
-            static fn($role) => $role === User::ROLE_SECRETARY
+            static fn($role): bool => $role === User::ROLE_SECRETARY
         );
         $token = $this->makeToken($user);
         $paper = $this->makePaper(1, 1);
@@ -241,7 +241,7 @@ class PapersVoterTest extends TestCase
     public function testSecretaryCanEdit(): void
     {
         $this->security->method('isGranted')->willReturnCallback(
-            static fn($role) => $role === 'ROLE_SECRETARY'
+            static fn($role): bool => $role === 'ROLE_SECRETARY'
         );
         $user  = $this->makeUser(50);
         $token = $this->makeToken($user);
@@ -295,7 +295,7 @@ class PapersVoterTest extends TestCase
     public function testSecretaryCanManagePaperByOtherAuthor(): void
     {
         $this->security->method('isGranted')->willReturnCallback(
-            static fn($role) => $role === 'ROLE_SECRETARY'
+            static fn($role): bool => $role === 'ROLE_SECRETARY'
         );
         $user  = $this->makeUser(99);
         $token = $this->makeToken($user);
@@ -400,7 +400,7 @@ class PapersVoterTest extends TestCase
 
         // uid 70 IS in the 'no' group → no conflict → can view if co-author
         $conflicts = new ArrayCollection(['no' => [70 => new PaperConflicts()]]);
-        $paper     = $this->makePaper(10, coiEnabled: true, conflicts: $conflicts, coAuthors: [70 => []]);
+        $paper     = $this->makePaper(10, coAuthors: [70 => []], coiEnabled: true, conflicts: $conflicts);
         $user->method('hasRole')->willReturn(false);
 
         $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));

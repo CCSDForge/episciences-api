@@ -57,7 +57,7 @@ class JournalSettingNgProvider implements ProviderInterface
 
         } catch (NonUniqueResultException $e) {
             $this->logger->critical($e->getMessage());
-            throw new \RuntimeException('Oops! An internal error has occurred. Please try again.');
+            throw new \RuntimeException('Oops! An internal error has occurred. Please try again.', $e->getCode(), $e);
         }
 
         return new Response($json, Response::HTTP_OK, ['Content-Type' => 'application/json']);

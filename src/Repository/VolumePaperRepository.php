@@ -23,7 +23,7 @@ class VolumePaperRepository extends ServiceEntityRepository
         parent::__construct($registry, VolumePaper::class);
     }
 
-    public function getPapersInSecondaryVolumeWithoutPositionQuery(int $vid = null): QueryBuilder
+    public function getPapersInSecondaryVolumeWithoutPositionQuery(?int $vid = null): QueryBuilder
     {
 
         $qb = $this->getEntityManager()->createQueryBuilder();
@@ -43,7 +43,7 @@ class VolumePaperRepository extends ServiceEntityRepository
 
     }
 
-    public function getPapersFromSecondaryVolume(int $vid = null): ArrayCollection
+    public function getPapersFromSecondaryVolume(?int $vid = null): ArrayCollection
     {
 
         $collection = new ArrayCollection();
@@ -80,7 +80,7 @@ class VolumePaperRepository extends ServiceEntityRepository
      * @return QueryBuilder
      */
 
-    public function getNoEmptySecondaryVolumes(int $rvId = null, bool $strictlyPublished = true, int|array $ids = null) : QueryBuilder {
+    public function getNoEmptySecondaryVolumes(?int $rvId = null, bool $strictlyPublished = true, int|array|null $ids = null) : QueryBuilder {
 
         $qb = $this->createQueryBuilder('sv');
         $qb->select('sv.vid')

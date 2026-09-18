@@ -14,24 +14,24 @@ class UserMerge
     /**
      * @var int
      */
-    #[ORM\Column(name: 'MID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'MID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $mid;
+    private ?int $mid = null;
 
-    #[ORM\Column(name: 'TOKEN', type: 'string', length: 40, nullable: true)]
+    #[ORM\Column(name: 'TOKEN', type: \Doctrine\DBAL\Types\Types::STRING, length: 40, nullable: true)]
     private ?string $token = null;
 
-    #[ORM\Column(name: 'MERGER_UID', type: 'integer', nullable: false, options: ['unsigned' => true, 'comment' => 'CASID du compte à fusionner'])]
+    #[ORM\Column(name: 'MERGER_UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true, 'comment' => 'CASID du compte à fusionner'])]
     private ?int $mergerUid = null;
 
-    #[ORM\Column(name: 'KEEPER_UID', type: 'integer', nullable: false, options: ['unsigned' => true, 'comment' => 'CASID du compte à conserver'])]
+    #[ORM\Column(name: 'KEEPER_UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true, 'comment' => 'CASID du compte à conserver'])]
     private ?int $keeperUid = null;
 
-    #[ORM\Column(name: 'DETAIL', type: 'text', length: 65535, nullable: true)]
+    #[ORM\Column(name: 'DETAIL', type: \Doctrine\DBAL\Types\Types::TEXT, length: 65535, nullable: true)]
     private ?string $detail = null;
 
-    #[ORM\Column(name: 'DATE', type: 'datetime', nullable: false)]
+    #[ORM\Column(name: 'DATE', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     private \DateTime|\DateTimeInterface $date;
     public function __construct()
     {

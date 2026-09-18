@@ -56,10 +56,10 @@ class PaperLogRepository extends ServiceEntityRepository
 
     public function delayBetweenSubmissionAndLatestStatus(string           $unit = self::DEFAULT_UNIT,
                                                           int              $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED,
-                                                          string           $startDate = null,
-                                                          string|int|array $years = null,
+                                                          ?string           $startDate = null,
+                                                          string|int|array|null $years = null,
                                                           string           $method = Stats::DEFAULT_METHOD,
-                                                          int              $rvId = null
+                                                          ?int              $rvId = null
     ): ?array
     {
         $result = null;
@@ -80,9 +80,9 @@ class PaperLogRepository extends ServiceEntityRepository
     private function query(
         string           $unit = self::DEFAULT_UNIT,
         int              $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED,
-        string           $startStatsDate = null,
-        string|int|array $years = null,
-        int              $rvId = null,
+        ?string           $startStatsDate = null,
+        string|int|array|null $years = null,
+        ?int              $rvId = null,
         string           $method = Stats::DEFAULT_METHOD,
     ): string
     {
@@ -127,9 +127,9 @@ class PaperLogRepository extends ServiceEntityRepository
 
     private function timeDiffByArticleQuery(string           $unit = self::DEFAULT_UNIT,
                                             int              $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED,
-                                            string           $startStatsDate = null,
-                                            int              $rvId = null,
-                                            array|string|int $years = null,
+                                            ?string           $startStatsDate = null,
+                                            ?int              $rvId = null,
+                                            array|string|int|null $years = null,
 
     ): string
     {
@@ -211,7 +211,7 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
 
-    public function getSubmissionMedianTimeByStatusQuery(int $rvId = null, array $years = null, string $startAfterDate = null, string $operationName = 'median-submission-publication', string $unit = 'week'): float|int|null
+    public function getSubmissionMedianTimeByStatusQuery(?int $rvId = null, ?array $years = null, ?string $startAfterDate = null, string $operationName = 'median-submission-publication', string $unit = 'week'): float|int|null
     {
         $unit = strtoupper($unit);
 
@@ -225,7 +225,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
         $delay = array_column($result, self::DELAY);
 
-        $validValues = array_filter($delay, static fn($value) => is_numeric($value));
+        $validValues = array_filter($delay, is_numeric(...));
 
         try {
             $median = $this->getMedian($validValues);
@@ -239,7 +239,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    private function commonQuery(int $rvId = null, array $years = [], string $startAfterDate = null, int|array $status = [Paper::STATUS_STRICTLY_ACCEPTED], bool $ignoreImportedArticles = false): QueryBuilder
+    private function commonQuery(?int $rvId = null, array $years = [], ?string $startAfterDate = null, int|array $status = [Paper::STATUS_STRICTLY_ACCEPTED], bool $ignoreImportedArticles = false): QueryBuilder
     {
         $qb = $this->getEntityManager()->createQueryBuilder();
         $qb->addSelect("COUNT(DISTINCT(pl.paperid)) AS total");
@@ -281,7 +281,7 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
 
-    public function getAccepted(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
+    public function getAccepted(?int $rvId = null, array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
 
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
@@ -289,7 +289,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    public function getRefused(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
+    public function getRefused(?int $rvId = null, array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
 
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_REFUSED, $ignoreImportedArticles);
@@ -325,14 +325,14 @@ class PaperLogRepository extends ServiceEntityRepository
 
     }
 
-    public function getSubmissions(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
+    public function getSubmissions(?int $rvId = null, array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_SUBMITTED, $ignoreImportedArticles);
         return $this->processResult($qb, $years);
 
     }
 
-    public function getPublished(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
+    public function getPublished(?int $rvId = null, array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_PUBLISHED, $ignoreImportedArticles);
         return $this->processResult($qb, $years);
@@ -340,7 +340,7 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
 
-    public function getAllAcceptedNotYetPublished(int $rvId = null, array $years = [], string $startAfterDate = null, bool $ignoreImportedArticles = true): int
+    public function getAllAcceptedNotYetPublished(?int $rvId = null, array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
 
         $qb = $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
@@ -402,7 +402,7 @@ class PaperLogRepository extends ServiceEntityRepository
             return null;
         }
 
-        return round(($current / $totalBase) * 100, AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP);
+        return round(($current / $totalBase) * 100, AppConstants::RATE_DEFAULT_PRECISION, \RoundingMode::HalfAwayFromZero);
     }
 
     public function getPublicationRate(array $options = []): float|null

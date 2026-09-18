@@ -14,20 +14,20 @@ class WebsiteSettings
     /**
      * @var int
      */
-    #[ORM\Column(name: 'SID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'SID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private $sid;
+    private ?int $sid = null;
 
     /**
      * @var string
      */
-    #[ORM\Column(name: 'SETTING', type: 'string', length: 50, nullable: false)]
+    #[ORM\Column(name: 'SETTING', type: \Doctrine\DBAL\Types\Types::STRING, length: 50, nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private $setting;
+    private ?string $setting = null;
 
-    #[ORM\Column(name: 'VALUE', type: 'string', length: 1000, nullable: false)]
+    #[ORM\Column(name: 'VALUE', type: \Doctrine\DBAL\Types\Types::STRING, length: 1000, nullable: false)]
     private ?string $value = null;
 
     public function getSid(): ?int

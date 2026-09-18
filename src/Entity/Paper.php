@@ -284,7 +284,7 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
-    private int $docid;
+    private ?int $docid = null;
 
 
     #[ORM\Column(name: 'PAPERID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true, options: ['unsigned' => true])]
@@ -292,7 +292,7 @@ class Paper implements UserOwnedInterface
     private ?int $paperid = null;
 
     #[ORM\Column(name: 'TYPE', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
-    private array $type;
+    private ?array $type = null;
 
     #[ORM\Column(name: 'DOI', type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: true)]
     #[groups(
@@ -703,7 +703,7 @@ class Paper implements UserOwnedInterface
         return $this->review;
     }
 
-    public function setReview(Review $review = null): self
+    public function setReview(Review $review): self
     {
         $this->review = $review;
 
@@ -992,7 +992,7 @@ class Paper implements UserOwnedInterface
     }
 
 
-    public function setType(array $type = null): self
+    public function setType(?array $type = null): self
     {
         $this->type = $type;
         return $this;

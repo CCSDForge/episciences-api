@@ -25,7 +25,7 @@ class PaperConflicts
     #[ORM\Column(name: 'cid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private int $cid;
+    private ?int $cid = null;
 
     #[ORM\Column(name: 'paper_id', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[groups(

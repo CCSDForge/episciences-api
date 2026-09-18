@@ -9,28 +9,28 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'doi_queue')]
-#[ORM\Index(name: 'doi_status', columns: ['doi_status'])]
+#[ORM\Index(columns: ['doi_status'], name: 'doi_status')]
 #[ORM\UniqueConstraint(name: 'paperid', columns: ['paperid'])]
 class DoiQueue
 {
     /**
      * @var int
      */
-    #[ORM\Column(name: 'id_doi_queue', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'id_doi_queue', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $idDoiQueue;
+    private ?int $idDoiQueue = null;
 
-    #[ORM\Column(name: 'paperid', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'paperid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $paperid = null;
 
-    #[ORM\Column(name: 'doi_status', type: 'string', length: 0, nullable: false, options: ['default' => 'assigned'])]
+    #[ORM\Column(name: 'doi_status', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false, options: ['default' => 'assigned'])]
     private string $doiStatus = 'assigned';
 
-    #[ORM\Column(name: 'date_init', type: 'datetime', nullable: false)]
+    #[ORM\Column(name: 'date_init', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     private ?\DateTimeInterface $dateInit = null;
 
-    #[ORM\Column(name: 'date_updated', type: 'datetime', nullable: false)]
+    #[ORM\Column(name: 'date_updated', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     private \DateTime|\DateTimeInterface $dateUpdated;
     public function __construct()
     {

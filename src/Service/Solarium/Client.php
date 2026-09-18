@@ -75,7 +75,7 @@ class Client extends \Solarium\Client
 
     }
 
-    public function getSolrConfig(string $key, string $format = null): array
+    public function getSolrConfig(string $key, ?string $format = null): array
     {
         $toArray = [];
         $path = null;
@@ -121,7 +121,7 @@ class Client extends \Solarium\Client
         return $this->journal;
     }
 
-    public function setJournal(Review $journal = null): self
+    public function setJournal(?Review $journal = null): self
     {
         $this->journal = $journal;
         return $this;
@@ -132,7 +132,7 @@ class Client extends \Solarium\Client
         return $this->logger;
     }
 
-    public function setLogger(LoggerInterface $logger = null): self
+    public function setLogger(?LoggerInterface $logger = null): self
     {
         $this->logger = $logger;
         return $this;

@@ -41,7 +41,7 @@ class UserRepository extends ServiceEntityRepository
      * @param int|null $registrationYear
      * @return QueryBuilder
      */
-    public function findByReviewQuery(int $rvId = null, bool $withDetails = false, string $role = null, $uid = null, int $registrationYear = null): QueryBuilder
+    public function findByReviewQuery(?int $rvId = null, bool $withDetails = false, ?string $role = null, $uid = null, ?int $registrationYear = null): QueryBuilder
     {
         return $this->getEntityManager()->getRepository(UserRoles::class)->getUserRolesStatsQuery($rvId, $uid, $role, $withDetails);
     }
@@ -55,7 +55,7 @@ class UserRepository extends ServiceEntityRepository
      * @param int|null $registrationYear
      * @return QueryBuilder
      */
-    public function countByReviewQuery(int $rvId = null, $uid = null, string $role = null, int $registrationYear = null): QueryBuilder
+    public function countByReviewQuery(?int $rvId = null, $uid = null, ?string $role = null, ?int $registrationYear = null): QueryBuilder
     {
         $userAlias = self::USER_ALIAS;
         $userAlias1 = self::USER_ALIAS . 1;
@@ -116,7 +116,7 @@ class UserRepository extends ServiceEntityRepository
     }
 
 
-    public function boardsQuery(int $rvId = null): QueryBuilder
+    public function boardsQuery(?int $rvId = null): QueryBuilder
     {
 
         $qb = $this->createQueryBuilder("u");

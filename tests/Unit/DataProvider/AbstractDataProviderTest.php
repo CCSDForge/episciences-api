@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 
 class TestableDataProvider extends AbstractDataProvider
 {
-    public function supports(Operation $operation = null): bool
+    public function supports(?Operation $operation = null): bool
     {
         return true;
     }
@@ -120,13 +120,12 @@ class AbstractDataProviderTest extends TestCase
 
         $this->statsService->expects($this->once())
             ->method('getSubmissionsStat')
-            ->with($this->callback(function (array $filters) {
+            ->with($this->callback(
                 // Validates that addFilters mapped parameters correctly
-                return isset($filters['is']['rvid']) && $filters['is']['rvid'] === '42'
-                    && isset($filters['is'][AppConstants::WITH_DETAILS]) && $filters['is'][AppConstants::WITH_DETAILS] === true
-                    && isset($filters['is'][AppConstants::START_AFTER_DATE]) && $filters['is'][AppConstants::START_AFTER_DATE] === '2023-01-01'
-                    && isset($filters['is']['submissionDate']) && $filters['is']['submissionDate'] === '2022';
-            }))
+                fn(array $filters): bool => isset($filters['is']['rvid']) && $filters['is']['rvid'] === '42'
+                && isset($filters['is'][AppConstants::WITH_DETAILS]) && $filters['is'][AppConstants::WITH_DETAILS] === true
+                && isset($filters['is'][AppConstants::START_AFTER_DATE]) && $filters['is'][AppConstants::START_AFTER_DATE] === '2023-01-01'
+                && isset($filters['is']['submissionDate']) && $filters['is']['submissionDate'] === '2022'))
             ->willReturn(new SubmissionOutput());
 
         $this->dataProvider->exposeGetCollection($operation, $context);
