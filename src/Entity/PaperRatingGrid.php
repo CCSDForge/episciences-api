@@ -17,7 +17,7 @@ class PaperRatingGrid
     #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private int $docid;
+    private ?int $docid = null;
 
     /**
      * @var int
@@ -25,7 +25,7 @@ class PaperRatingGrid
     #[ORM\Column(name: 'RGID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private int $rgid;
+    private ?int $rgid = null;
 
     public function getDocid(): ?int
     {

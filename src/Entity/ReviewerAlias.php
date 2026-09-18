@@ -17,7 +17,7 @@ class ReviewerAlias
     #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private int $uid;
+    private ?int $uid = null;
 
     /**
      * @var int
@@ -25,7 +25,7 @@ class ReviewerAlias
     #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private int $docid;
+    private ?int $docid = null;
 
     /**
      * @var int
@@ -33,7 +33,7 @@ class ReviewerAlias
     #[ORM\Column(name: 'ALIAS', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private int $alias;
+    private ?int $alias = null;
 
     public function getUid(): ?int
     {

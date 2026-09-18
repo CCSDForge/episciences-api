@@ -25,7 +25,7 @@ class WebsiteSettings
     #[ORM\Column(name: 'SETTING', type: \Doctrine\DBAL\Types\Types::STRING, length: 50, nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private string $setting;
+    private ?string $setting = null;
 
     #[ORM\Column(name: 'VALUE', type: \Doctrine\DBAL\Types\Types::STRING, length: 1000, nullable: false)]
     private ?string $value = null;

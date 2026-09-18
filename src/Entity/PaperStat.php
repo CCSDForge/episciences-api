@@ -17,7 +17,7 @@ class PaperStat
     #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private int $docid;
+    private ?int $docid = null;
 
     #[ORM\Column(name: 'CONSULT', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false, options: ['default' => 'notice'])]
     #[ORM\Id]
@@ -30,7 +30,7 @@ class PaperStat
     #[ORM\Column(name: 'IP', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private int $ip;
+    private ?int $ip = null;
 
     #[ORM\Column(name: 'ROBOT', type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: false)]
     private ?bool $robot = null;
@@ -62,7 +62,7 @@ class PaperStat
     #[ORM\Column(name: 'HIT', type: \Doctrine\DBAL\Types\Types::DATE_MUTABLE, nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private \DateTimeInterface $hit;
+    private ?\DateTimeInterface $hit = null;
 
     #[ORM\Column(name: 'COUNTER', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $counter = null;

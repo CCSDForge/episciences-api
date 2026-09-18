@@ -17,7 +17,7 @@ class ReviewerPool
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private int $rvid;
+    private ?int $rvid = null;
 
     /**
      * @var int
@@ -25,7 +25,7 @@ class ReviewerPool
     #[ORM\Column(name: 'VID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private int $vid;
+    private ?int $vid = null;
 
     /**
      * @var int
@@ -33,7 +33,7 @@ class ReviewerPool
     #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private int $uid;
+    private ?int $uid = null;
 
     public function getRvid(): ?int
     {

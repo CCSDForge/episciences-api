@@ -17,7 +17,7 @@ class WebsiteHeader
     #[ORM\Column(name: 'LOGOID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private int $logoid;
+    private ?int $logoid = null;
 
     /**
      * @var int
@@ -25,7 +25,7 @@ class WebsiteHeader
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private int $rvid;
+    private ?int $rvid = null;
 
     #[ORM\Column(name: 'TYPE', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false)]
     private ?string $type = null;
