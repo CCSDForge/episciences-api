@@ -76,7 +76,7 @@ class MetadataSources
     #[ORM\Column(name: 'paper_url', type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: false, options: ['comment' => 'PDF'])]
     private string $paperUrl;
 
-    public function getId(): int
+    public function getId(): ?int
     {
         return $this->id;
     }
