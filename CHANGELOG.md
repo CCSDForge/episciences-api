@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
+## Unreleased
+### Fixed
+- Sections collection (`GET /api/sections`) is now sorted by ascending `position` within each journal (was sorted by descending identifier); `position` is now exposed in section outputs.
+- Relative `CACHE_PATH` / `LOG_PATH` values (local Docker setup) are now resolved against the project directory instead of the current working directory, so PHP-FPM and `bin/console` share the same cache and log directories.
+- `CACHE_PATH` / `LOG_PATH` are also read from real environment variables (`$_SERVER`), and are normalized (a missing trailing slash on `CACHE_PATH` no longer yields `var/cachedev`).
+- CI: `make docker-test-coverage` now generates the `coverage.xml` Clover report expected by the workflow.
+
 ## v1.3.0 2026-07-15
 ### Added
 - New endpoint "/api/journals/front/configuration?code=rvcode": To retrieve the public interface configuration for sites migrated to the new interfaces

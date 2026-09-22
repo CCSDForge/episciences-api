@@ -4,6 +4,7 @@ namespace App;
 
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\Filesystem\Path;
 use Symfony\Component\HttpKernel\Kernel as BaseKernel;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
 
@@ -50,21 +51,30 @@ class Kernel extends BaseKernel
     #[\Override]
     public function getCacheDir(): string
     {
-        return isset($_ENV['CACHE_PATH']) &&
-        is_string($_ENV['CACHE_PATH']) &&
-        $_ENV['CACHE_PATH'] !== '' ?
-            $_ENV['CACHE_PATH'] . $this->environment : parent::getCacheDir();
+        $cachePath = $this->resolveEnvPath('CACHE_PATH');
+
+        return $cachePath !== null ? $cachePath . '/' . $this->environment : parent::getCacheDir();
     }
 
     #[\Override]
     public function getLogDir(): string
     {
+        return $this->resolveEnvPath('LOG_PATH') ?? parent::getLogDir();
+    }
 
-        return isset($_ENV['LOG_PATH']) &&
-        is_string($_ENV['LOG_PATH']) &&
-        $_ENV['LOG_PATH'] !== '' ?
-            $_ENV['LOG_PATH'] : parent::getLogDir();
+    /**
+     * Relative paths are resolved against the project directory, not the current working directory
+     * (e.g. PHP-FPM runs from public/, bin/console from the project root).
+     * The returned path is canonical, without trailing slash.
+     */
+    private function resolveEnvPath(string $name): ?string
+    {
+        $path = $_SERVER[$name] ?? $_ENV[$name] ?? null;
 
+        if (!is_string($path) || $path === '') {
+            return null;
+        }
 
+        return Path::makeAbsolute($path, $this->getProjectDir());
     }
 }
