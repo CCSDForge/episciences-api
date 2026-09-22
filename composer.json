@@ -11,9 +11,9 @@
     "require": {
         "php": "^8.3",
         "ext-ctype": "*",
+        "ext-fileinfo": "*",
         "ext-iconv": "*",
         "ext-json": "*",
-        "ext-fileinfo": "*",
         "api-platform/core": "^3.2",
         "beberlei/doctrineextensions": "^1.5",
         "composer/package-versions-deprecated": "1.11.99.1",
@@ -33,6 +33,7 @@
         "symfony/console": "^7.0",
         "symfony/dotenv": "^7.0",
         "symfony/expression-language": "^7.0",
+        "symfony/filesystem": "^7.0",
         "symfony/flex": "^2",
         "symfony/framework-bundle": "^7.0",
         "symfony/http-client": "^7.1",

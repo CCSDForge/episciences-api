@@ -53,4 +53,12 @@ class SectionTest extends TestCase
         self::assertContains($sectionGroups['item']['read'][0], $groups);
         self::assertContains($sectionGroups['collection']['read'][0], $groups);
     }
+
+    public function testPositionAccessorsReturnNonNullableInt(): void
+    {
+        $section = (new Section())->setPosition(4);
+
+        self::assertSame(4, $section->getPosition());
+        self::assertSame('int', (string)(new \ReflectionMethod(Section::class, 'getPosition'))->getReturnType());
+    }
 }
