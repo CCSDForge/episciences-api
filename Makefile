@@ -367,7 +367,7 @@ docker-test:
 # Run tests with coverage in PHP container
 docker-test-coverage:
 	@echo "$(BOLD)Running tests with coverage in Docker container...$(NC)"
-	$(DOCKER_COMPOSE) exec -e XDEBUG_MODE=coverage php vendor/bin/phpunit --coverage-text --coverage-html coverage/
+	$(DOCKER_COMPOSE) exec -e XDEBUG_MODE=coverage php vendor/bin/phpunit --coverage-text --coverage-html coverage/ --coverage-clover coverage.xml
 	@echo "$(GREEN)✓ Docker tests with coverage completed$(NC)"
 
 # Run unit tests only in PHP container
