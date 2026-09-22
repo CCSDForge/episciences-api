@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
-## Unreleased
+## v1.3.1 2026-09-22
 ### Fixed
 - Sections collection (`GET /api/sections`) is now sorted by ascending `position` within each journal (was sorted by descending identifier); `position` is now exposed in section outputs.
 - Relative `CACHE_PATH` / `LOG_PATH` values (local Docker setup) are now resolved against the project directory instead of the current working directory, so PHP-FPM and `bin/console` share the same cache and log directories.
