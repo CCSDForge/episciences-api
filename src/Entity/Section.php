@@ -61,7 +61,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
                 security: [['bearerAuth' => []],]
 
             ),
-            order: ['rvid' => AppConstants::ORDER_DESC, 'sid' => AppConstants::ORDER_DESC],
+            order: ['rvid' => AppConstants::ORDER_DESC, 'position' => AppConstants::ORDER_ASC, 'sid' => AppConstants::ORDER_ASC],
             normalizationContext: [
                 'groups' => [AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0]],
             ],
@@ -108,6 +108,13 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
      * @var int
      */
     #[ORM\Column(name: 'POSITION', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
+    #[Groups(
+        [
+            AppConstants::APP_CONST['normalizationContext']['groups']['section']['item']['read'][0],
+            AppConstants::APP_CONST['normalizationContext']['groups']['section']['collection']['read'][0],
+        ]
+
+    )]
     private int $position;
 
     #[ORM\Column(name: 'titles', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
