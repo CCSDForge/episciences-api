@@ -181,7 +181,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         return $this;
     }
 
-    public function getPosition(): ?int
+    public function getPosition(): int
     {
         return $this->position;
     }

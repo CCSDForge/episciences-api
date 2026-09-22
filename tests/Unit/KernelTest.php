@@ -11,24 +11,26 @@ class KernelTest extends TestCase
 {
     private const array VARS = ['CACHE_PATH', 'LOG_PATH'];
 
-    /** @var array<string, mixed> */
+    /** @var array<string, array{env: mixed, server: mixed}> */
     private array $backup = [];
 
     protected function setUp(): void
     {
         foreach (self::VARS as $name) {
-            $this->backup[$name] = $_ENV[$name] ?? null;
-            unset($_ENV[$name]);
+            $this->backup[$name] = ['env' => $_ENV[$name] ?? null, 'server' => $_SERVER[$name] ?? null];
+            unset($_ENV[$name], $_SERVER[$name]);
         }
     }
 
     protected function tearDown(): void
     {
-        foreach ($this->backup as $name => $value) {
-            if ($value === null) {
-                unset($_ENV[$name]);
-            } else {
-                $_ENV[$name] = $value;
+        foreach ($this->backup as $name => $values) {
+            unset($_ENV[$name], $_SERVER[$name]);
+            if ($values['env'] !== null) {
+                $_ENV[$name] = $values['env'];
+            }
+            if ($values['server'] !== null) {
+                $_SERVER[$name] = $values['server'];
             }
         }
     }
@@ -46,19 +48,35 @@ class KernelTest extends TestCase
         self::assertSame($kernel->getProjectDir() . '/var/cache/test', $kernel->getCacheDir());
     }
 
-    public function testRelativeCachePathDoesNotDependOnWorkingDirectory(): void
+    public function testRelativeCachePathWithoutTrailingSlashIsResolved(): void
     {
-        $_ENV['CACHE_PATH'] = 'var/cache/';
+        $_ENV['CACHE_PATH'] = 'var/cache';
         $kernel = $this->kernel();
-        $expected = $kernel->getCacheDir();
 
-        $cwd = getcwd();
-        chdir($kernel->getProjectDir() . '/public');
-        try {
-            self::assertSame($expected, $kernel->getCacheDir());
-        } finally {
-            chdir((string)$cwd);
-        }
+        self::assertSame($kernel->getProjectDir() . '/var/cache/test', $kernel->getCacheDir());
+    }
+
+    public function testRelativeCachePathIsCanonicalized(): void
+    {
+        $_ENV['CACHE_PATH'] = './var/../var/cache/';
+        $kernel = $this->kernel();
+
+        self::assertSame($kernel->getProjectDir() . '/var/cache/test', $kernel->getCacheDir());
+    }
+
+    public function testServerVariableTakesPrecedenceOverEnv(): void
+    {
+        $_SERVER['CACHE_PATH'] = '/tmp/server-cache';
+        $_ENV['CACHE_PATH'] = '/tmp/env-cache';
+
+        self::assertSame('/tmp/server-cache/test', $this->kernel()->getCacheDir());
+    }
+
+    public function testServerOnlyVariableIsUsed(): void
+    {
+        $_SERVER['LOG_PATH'] = '/tmp/server-log';
+
+        self::assertSame('/tmp/server-log', $this->kernel()->getLogDir());
     }
 
     public function testAbsoluteCachePathIsKept(): void

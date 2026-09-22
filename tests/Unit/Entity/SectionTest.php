@@ -47,10 +47,18 @@ class SectionTest extends TestCase
         $attributes = (new \ReflectionProperty(Section::class, 'position'))->getAttributes(Groups::class);
         self::assertCount(1, $attributes);
 
-        $groups = $attributes[0]->newInstance()->getGroups();
+        $groups = $attributes[0]->newInstance()->groups;
         $sectionGroups = AppConstants::APP_CONST['normalizationContext']['groups']['section'];
 
         self::assertContains($sectionGroups['item']['read'][0], $groups);
         self::assertContains($sectionGroups['collection']['read'][0], $groups);
+    }
+
+    public function testPositionAccessorsReturnNonNullableInt(): void
+    {
+        $section = (new Section())->setPosition(4);
+
+        self::assertSame(4, $section->getPosition());
+        self::assertSame('int', (string)(new \ReflectionMethod(Section::class, 'getPosition'))->getReturnType());
     }
 }
