@@ -450,7 +450,7 @@ class Paper implements UserOwnedInterface
         ]
     )]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
-    private Collection $conflicts;
+    private ?Collection $conflicts = null;
 
     #[ORM\OneToOne(targetEntity: VolumePaperPosition::class)]
     #[ORM\JoinColumn(name: 'PAPERID', referencedColumnName: 'PAPERID')]
@@ -909,7 +909,7 @@ class Paper implements UserOwnedInterface
     {
 
         $this->conflictsProcess();
-        return $this->conflicts;
+        return $this->conflicts ?? new ArrayCollection();
     }
 
     /**
@@ -924,6 +924,8 @@ class Paper implements UserOwnedInterface
 
     public function addConflict(PaperConflicts $conflict): self
     {
+        $this->conflicts ??= new ArrayCollection();
+
         if (!$this->conflicts->contains($conflict)) {
             $this->conflicts->add($conflict);
         }
@@ -933,6 +935,7 @@ class Paper implements UserOwnedInterface
 
     public function removeConflict(PaperConflicts $conflict): self
     {
+        $this->conflicts ??= new ArrayCollection();
         $this->conflicts->removeElement($conflict);
 
         return $this;
@@ -941,6 +944,8 @@ class Paper implements UserOwnedInterface
 
     private function conflictsProcess(): void
     {
+        $this->conflicts ??= new ArrayCollection();
+
         $conflicts = [];
 
         /** @var PaperConflicts $conflict */
