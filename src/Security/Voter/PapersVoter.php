@@ -5,6 +5,7 @@ namespace App\Security\Voter;
 use App\Entity\Paper;
 use App\Entity\PaperConflicts;
 use App\Entity\User;
+use App\Repository\PaperConflictsRepository;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
@@ -20,8 +21,10 @@ class PapersVoter extends Voter
 
     public const PAPERS_FOLLOW = 'papers_follow';
 
-    public function __construct(private readonly Security $security)
-    {
+    public function __construct(
+        private readonly Security $security,
+        private readonly PaperConflictsRepository $paperConflictsRepository
+    ) {
     }
 
     protected function supports(string $attribute, mixed $subject): bool
@@ -150,6 +153,10 @@ class PapersVoter extends Voter
 
         if(!$isCoiEnabled){
             return false;
+        }
+
+        if ($currentPaper->getPaperid() !== null && $currentPaper->getConflicts()->isEmpty()) {
+            $currentPaper->setConflicts($this->paperConflictsRepository->findByPaperId($currentPaper->getPaperid()));
         }
 
         $noConflictGroup = $currentPaper->getConflicts()->get(PaperConflicts::AVAILABLE_ANSWER['no']);
