@@ -353,7 +353,7 @@ class BoardsControllerTest extends TestCase
         $this->userRolesRepository->method('joinUserRolesQuery')
             ->willReturn($this->stubQueryBuilder($joinRows));
         $this->sectionRepository->method('getAssignedSection')
-            ->willThrowException(new \Doctrine\DBAL\Exception('DB error'));
+            ->willThrowException($this->createMock(\Doctrine\DBAL\Exception::class));
 
         $this->logger->expects($this->once())->method('critical');
 
