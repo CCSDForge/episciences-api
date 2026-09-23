@@ -41,6 +41,14 @@ class PaperConflictsRepository extends ServiceEntityRepository
         }
     }
 
+    /**
+     * @return PaperConflicts[]
+     */
+    public function findByPaperId(int $paperId): array
+    {
+        return $this->findBy(['paperId' => $paperId]);
+    }
+
 //    /**
 //     * @return PaperConflicts[] Returns an array of PaperConflicts objects
 //     */

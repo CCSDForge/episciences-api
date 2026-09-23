@@ -73,10 +73,6 @@ class PaperConflicts
     )]
     private ?\DateTimeInterface $date = null;
 
-    #[ORM\ManyToOne( fetch: 'EAGER', inversedBy: 'conflicts')]
-    #[ORM\JoinColumn(name: 'paper_id', referencedColumnName: 'PAPERID', nullable: true)]
-    private ?Paper $papers = null;
-
     public function getCid(): ?int
     {
         return $this->cid;
@@ -138,18 +134,6 @@ class PaperConflicts
     public function setDate(\DateTimeInterface $date): self
     {
         $this->date = $date;
-
-        return $this;
-    }
-
-    public function getPapers(): ?Paper
-    {
-        return $this->papers;
-    }
-
-    public function setPapers(?Paper $papers): self
-    {
-        $this->papers = $papers;
 
         return $this;
     }
