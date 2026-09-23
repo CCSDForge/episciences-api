@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced non-indexed `JSON_EXTRACT` visibility filter with the new `is_public` column in Doctrine queries.
 - Migrated codebase to PHP 8.4: applied Rector transformations (explicit nullable parameter types, typed properties, Doctrine `Types::*` constants, PHP 8.4 `RoundingMode`/`#[\Deprecated]` features) to fix PHP 8.4 deprecations.
 - Migrated to API Platform 4.3: updated `api-platform/core` to `^4.3`, removed legacy config keys (`keep_legacy_inflector`, `item_Operations`, `collection_Operations`), switched `UrlGeneratorInterface` to the `ApiPlatform\Metadata` namespace, moved `ApiPlatform\Exception\RuntimeException` to `ApiPlatform\Metadata\Exception\RuntimeException`, and converted OpenAPI operation `output`/`responses` from arrays to proper `ApiPlatform\OpenApi\Model` objects.
+- Migrated to Doctrine ORM 3.7: updated `doctrine/orm` constraint from `^2.14` to `^3.7` and aligned unit test mocks (mocked `Doctrine\DBAL\Exception` and `Doctrine\ORM\Query` instances) with the new ORM/DBAL APIs.
 
 ### Fixed
 - Fixed invalid `UniqueConstraints` on `pages` and `news` tables.

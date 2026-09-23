@@ -444,14 +444,13 @@ class Paper implements UserOwnedInterface
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private array $coAuthors = [];
 
-    #[ORM\OneToMany(mappedBy: 'papers', targetEntity: PaperConflicts::class)]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         ]
     )]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
-    private Collection $conflicts;
+    private ?Collection $conflicts = null;
 
     #[ORM\OneToOne(targetEntity: VolumePaperPosition::class)]
     #[ORM\JoinColumn(name: 'PAPERID', referencedColumnName: 'PAPERID')]
@@ -910,14 +909,25 @@ class Paper implements UserOwnedInterface
     {
 
         $this->conflictsProcess();
-        return $this->conflicts;
+        return $this->conflicts ?? new ArrayCollection();
+    }
+
+    /**
+     * @param iterable<PaperConflicts> $conflicts
+     */
+    public function setConflicts(iterable $conflicts): self
+    {
+        $this->conflicts = new ArrayCollection(is_array($conflicts) ? $conflicts : iterator_to_array($conflicts));
+
+        return $this;
     }
 
     public function addConflict(PaperConflicts $conflict): self
     {
+        $this->conflicts ??= new ArrayCollection();
+
         if (!$this->conflicts->contains($conflict)) {
             $this->conflicts->add($conflict);
-            $conflict->setPapers($this);
         }
 
         return $this;
@@ -925,10 +935,8 @@ class Paper implements UserOwnedInterface
 
     public function removeConflict(PaperConflicts $conflict): self
     {
-        // set the owning side to null (unless already changed)
-        if ($this->conflicts->removeElement($conflict) && $conflict->getPapers() === $this) {
-            $conflict->setPapers(null);
-        }
+        $this->conflicts ??= new ArrayCollection();
+        $this->conflicts->removeElement($conflict);
 
         return $this;
     }
@@ -936,6 +944,8 @@ class Paper implements UserOwnedInterface
 
     private function conflictsProcess(): void
     {
+        $this->conflicts ??= new ArrayCollection();
+
         $conflicts = [];
 
         /** @var PaperConflicts $conflict */
