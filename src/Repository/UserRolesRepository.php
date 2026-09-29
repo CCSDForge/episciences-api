@@ -90,7 +90,7 @@ class UserRolesRepository extends ServiceEntityRepository
         }
 
         if ($withDetails) {
-            $qb->orderBy("$userRolesAlias.rvid", 'ASC');
+            $qb->orderBy("$userRolesAlias.rvid", \SortDirection::Ascending);
             $qb->groupBy("$userRolesAlias.rvid");
             $qb->addGroupBy("$userRolesAlias.roleid");
         }

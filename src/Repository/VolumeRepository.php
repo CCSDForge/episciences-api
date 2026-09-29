@@ -44,7 +44,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
         }
 
-        $qb->orderBy('year', 'DESC');
+        $qb->orderBy('year', \SortDirection::Descending);
         $result = $this->arrayCleaner(array_column(array_values($qb->getQuery()->getResult()), 'year'));
         $this->processYearRanges($result);
         return $result;
@@ -262,7 +262,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
             $qb->setMaxResults(self::DEFAULT_MAX_RESULT); // To avoid possible OUT OF MEMORY errors
         }
 
-        $qb->orderBy(sprintf('%s.position',$alias), 'ASC');
+        $qb->orderBy(sprintf('%s.position',$alias), \SortDirection::Ascending);
 
         return $qb;
     }
