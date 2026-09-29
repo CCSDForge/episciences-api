@@ -74,11 +74,18 @@ class PapersVoterTest extends TestCase
         $paper->method('getReview')->willReturn($review);
 
         $currentConflicts = $conflicts ?? new ArrayCollection();
+        $conflictsLoaded  = $conflicts !== null;
         $paper->method('getConflicts')->willReturnCallback(static function () use (&$currentConflicts): \Doctrine\Common\Collections\ArrayCollection {
             return $currentConflicts;
         });
+        $paper->method('conflictsLoaded')->willReturnCallback(
+            static function () use (&$conflictsLoaded): bool {
+                return $conflictsLoaded;
+            }
+        );
         $paper->method('setConflicts')->willReturnCallback(
-            static function (iterable $c) use (&$currentConflicts, $paper): Paper {
+            static function (iterable $c) use (&$currentConflicts, &$conflictsLoaded, $paper): Paper {
+                $conflictsLoaded = true;
                 $items = is_array($c) ? $c : iterator_to_array($c);
                 $grouped = [];
                 foreach ($items as $conflict) {

@@ -452,6 +452,8 @@ class Paper implements UserOwnedInterface
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private ?Collection $conflicts = null;
 
+    private bool $conflictsLoaded = false;
+
     #[ORM\OneToOne(targetEntity: VolumePaperPosition::class)]
     #[ORM\JoinColumn(name: 'PAPERID', referencedColumnName: 'PAPERID')]
     #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID')]
@@ -918,8 +920,14 @@ class Paper implements UserOwnedInterface
     public function setConflicts(iterable $conflicts): self
     {
         $this->conflicts = new ArrayCollection(is_array($conflicts) ? $conflicts : iterator_to_array($conflicts));
+        $this->conflictsLoaded = true;
 
         return $this;
+    }
+
+    public function conflictsLoaded(): bool
+    {
+        return $this->conflictsLoaded;
     }
 
     public function addConflict(PaperConflicts $conflict): self

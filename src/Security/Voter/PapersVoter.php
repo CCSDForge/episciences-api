@@ -155,7 +155,7 @@ class PapersVoter extends Voter
             return false;
         }
 
-        if ($currentPaper->getPaperid() !== null && $currentPaper->getConflicts()->isEmpty()) {
+        if ($currentPaper->getPaperid() !== null && !$currentPaper->conflictsLoaded()) {
             $currentPaper->setConflicts($this->paperConflictsRepository->findByPaperId($currentPaper->getPaperid()));
         }
 
