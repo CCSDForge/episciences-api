@@ -69,7 +69,7 @@ class UserRepository extends ServiceEntityRepository
         $qb
             ->select("$userRolesAlias.rvid, YEAR($userAlias1.registrationDate) AS year, $userRolesAlias.roleid as role, count(DISTINCT ($userAlias1.uid) ) as nbUsers, $userAlias1.uid")
             ->from(User::class, $userAlias)
-            ->innerJoin(UserRoles::class, $userRolesAlias, Join::WITH, sprintf('%s.uid = %s.uid', $userAlias1, $userRolesAlias));
+            ->innerJoin(UserRoles::class, $userRolesAlias, Join::ON, sprintf('%s.uid = %s.uid', $userAlias1, $userRolesAlias));
 
 
         if ($rvId !== null) {

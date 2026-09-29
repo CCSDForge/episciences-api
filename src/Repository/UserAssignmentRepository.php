@@ -25,7 +25,7 @@ class UserAssignmentRepository extends ServiceEntityRepository
     {
 
         $qb = $this->createQueryBuilder('ua');
-        $qb->join(UserInvitation::class, 'ui', Join::WITH, 'ua.invitationId = ui.id');
+        $qb->join(UserInvitation::class, 'ui', Join::ON, 'ua.invitationId = ui.id');
         $qb->andWhere('ua.item =:item')->setParameter('item', UserAssignment::ITEM_PAPER);
 
         if($docId){
@@ -33,7 +33,7 @@ class UserAssignmentRepository extends ServiceEntityRepository
         }
 
         $qb->andWhere('ua.roleid =:roleId')->setParameter('roleId', UserAssignment::ROLE_REVIEWER);
-        $qb->orderBy('ua.when', 'DESC');
+        $qb->orderBy('ua.when', \SortDirection::Descending);
         $qb->addGroupBy('ua.status', 'ASC');
         return $qb;
 

@@ -31,7 +31,7 @@ class VolumePaperRepository extends ServiceEntityRepository
         $qb =
             $qb->select('vp')
                 ->from(VolumePaper::class, 'vp')
-                ->innerJoin(Paper::class, 'p', Join::WITH, 'vp.docid = p.docid')
+                ->innerJoin(Paper::class, 'p', Join::ON, 'vp.docid = p.docid')
                 ->groupBy('vp.vid')
                 ->groupBy('vp.docid');
 
@@ -85,7 +85,7 @@ class VolumePaperRepository extends ServiceEntityRepository
         $qb = $this->createQueryBuilder('sv');
         $qb->select('sv.vid')
             ->distinct()
-            ->innerJoin(Paper::class, 'p', Join::WITH, 'sv.docid = p.docid');
+            ->innerJoin(Paper::class, 'p', Join::ON, 'sv.docid = p.docid');
 
         $this->addWhere($rvId, $qb, $strictlyPublished, $ids);
 

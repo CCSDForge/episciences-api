@@ -249,7 +249,7 @@ class PaperLogRepository extends ServiceEntityRepository
         }
 
         $qb->from(PaperLog::class, 'pl')
-            ->innerJoin(Paper::class, 'p', Join::WITH, 'pl.docid = p.docid')
+            ->innerJoin(Paper::class, 'p', Join::ON, 'pl.docid = p.docid')
             ->andWhere('p.status != :deleted')->setParameter('deleted', Paper::STATUS_DELETED)
             ->andWhere('p.status != :removed')->setParameter('removed', Paper::STATUS_REMOVED)
             ->andWhere("pl.status IS NOT NULL");

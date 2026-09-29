@@ -141,7 +141,7 @@ class PapersRepository extends ServiceEntityRepository
         $qb->andWhere('p.status != :deleted');
         $qb->setParameter('deleted', Paper::STATUS_DELETED);
 
-        $qb->orderBy('year', 'ASC');
+        $qb->orderBy('year', \SortDirection::Ascending);
         $qb->addOrderBy('p.rvid', 'ASC');
         $qb->addOrderBy('p.status', 'DESC');
         $qb->groupBy('p.rvid');
@@ -219,7 +219,7 @@ class PapersRepository extends ServiceEntityRepository
                 ->setParameter('flag', self::AVAILABLE_FLAG_VALUES[$flag]);
         }
 
-        $qb->orderBy('year', 'ASC');
+        $qb->orderBy('year', \SortDirection::Ascending);
         $qb->groupBy('year');
 
         $result = $qb->getQuery()->getResult();
@@ -319,7 +319,7 @@ class PapersRepository extends ServiceEntityRepository
             $this->andOrExp($qb, sprintf("%s.%s", self::PAPERS_ALIAS, $tableId), $identifiers);
 
         } elseif ($resourceClass === Volume::class) { // Include papers published in secondary volumes
-            $qb->leftJoin(VolumePaper::class, 'vp', Join::WITH, sprintf('%s.docid = vp.docid', self::PAPERS_ALIAS));
+            $qb->leftJoin(VolumePaper::class, 'vp', Join::ON, sprintf('%s.docid = vp.docid', self::PAPERS_ALIAS));
             $qb->andWhere(sprintf('%s.%s > 0 OR vp.%s > 0 ', self::PAPERS_ALIAS, $tableId, $tableId));
         } else { // section
             $qb->andWhere(sprintf('%s.%s > 0', self::PAPERS_ALIAS, $tableId));
@@ -399,7 +399,7 @@ class PapersRepository extends ServiceEntityRepository
 
         $this->andWhere($qb, $filters);
 
-        $qb->orderBy('year', 'DESC');
+        $qb->orderBy('year', \SortDirection::Descending);
 
         return $this->arrayCleaner(array_column(array_values($qb->getQuery()->getResult()), 'year'));
 
