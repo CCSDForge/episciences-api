@@ -20,8 +20,8 @@ doctrine:
         #Explicitly configure `true` to keep existing behaviour.
         controller_resolver:
             auto_mapping: true
-        # Enables the new implementation of proxies based on lazy ghosts instead of using the legacy implementation
-        enable_lazy_ghost_objects: true
+        # Enables the new implementation of proxies based on native lazy objects
+        enable_native_lazy_objects: true
         entity_managers:
             default:
                 connection: default

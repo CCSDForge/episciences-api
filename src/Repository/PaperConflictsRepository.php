@@ -41,28 +41,11 @@ class PaperConflictsRepository extends ServiceEntityRepository
         }
     }
 
-//    /**
-//     * @return PaperConflicts[] Returns an array of PaperConflicts objects
-//     */
-//    public function findByExampleField($value): array
-//    {
-//        return $this->createQueryBuilder('p')
-//            ->andWhere('p.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->orderBy('p.id', 'ASC')
-//            ->setMaxResults(10)
-//            ->getQuery()
-//            ->getResult()
-//        ;
-//    }
-
-//    public function findOneBySomeField($value): ?PaperConflicts
-//    {
-//        return $this->createQueryBuilder('p')
-//            ->andWhere('p.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
+    /**
+     * @return PaperConflicts[]
+     */
+    public function findByPaperId(int $paperId): array
+    {
+        return $this->findBy(['paperId' => $paperId]);
+    }
 }

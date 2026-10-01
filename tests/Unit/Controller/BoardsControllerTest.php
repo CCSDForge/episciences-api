@@ -353,9 +353,9 @@ class BoardsControllerTest extends TestCase
         $this->userRolesRepository->method('joinUserRolesQuery')
             ->willReturn($this->stubQueryBuilder($joinRows));
         $this->sectionRepository->method('getAssignedSection')
-            ->willThrowException(new \Doctrine\DBAL\Exception('DB error'));
+            ->willThrowException(new \Doctrine\DBAL\Exception\InvalidArgumentException('DB error'));
 
-        $this->logger->expects($this->once())->method('critical');
+        $this->logger->expects($this->once())->method('critical')->with('DB error');
 
         // Must not throw — exception is caught internally
         $result = $this->controller->__invoke($request);
