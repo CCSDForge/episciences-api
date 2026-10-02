@@ -256,7 +256,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
 
 
     #[ORM\Column(name: "MODIFICATION_DATE", type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true, options: [
-        'default' => 'CURRENT_TIMESTAMP', 'comment' => 'Date de modification du compte'])
+        'default' => new \Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp(), 'comment' => 'Date de modification du compte'])
     ]
     #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
