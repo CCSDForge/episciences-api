@@ -379,7 +379,9 @@ docker-test-unit:
 # Validate Doctrine mapping in container (no DB sync needed)
 docker-validate:
 	@echo "$(BOLD)Validating Doctrine mapping in Docker container...$(NC)"
-	$(DOCKER_COMPOSE) exec php bin/console doctrine:schema:validate --skip-sync
+	# Run as root so the kernel can create its cache dir (default CACHE_PATH="/var/cache/"
+	# is not writable by the non-root DOCKER_USER).
+	$(DOCKER_COMPOSE) exec -u root php bin/console doctrine:schema:validate --skip-sync
 	@echo "$(GREEN)✓ Doctrine mapping validated$(NC)"
 
 # Install dependencies in container
