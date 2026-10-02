@@ -68,9 +68,9 @@ class UserInvitationRepository extends ServiceEntityRepository
         }
 
         $qb->orderBy('ua.rvid', \SortDirection::Descending);
-        $qb->addOrderBy('i.id', 'DESC');
-        $qb->addOrderBy('ua.itemid', 'DESC');
-        $qb->addOrderBy('ua.uid', 'DESC');
+        $qb->addOrderBy('i.id', \SortDirection::Descending);
+        $qb->addOrderBy('ua.itemid', \SortDirection::Descending);
+        $qb->addOrderBy('ua.uid', \SortDirection::Descending);
 
         return $qb;
 

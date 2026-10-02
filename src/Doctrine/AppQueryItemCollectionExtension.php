@@ -183,7 +183,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             andWhere("$field= :published")->
             setParameter('published', Paper::STATUS_PUBLISHED);
             if ($resourceClass === Paper::class) {
-                $queryBuilder->addOrderBy(sprintf("%s.publicationDate", $queryBuilder->getRootAliases()[0]), 'DESC');
+                $queryBuilder->addOrderBy(sprintf("%s.publicationDate", $queryBuilder->getRootAliases()[0]), \SortDirection::Descending);
             }
         } else {
             $this->andOrExp($queryBuilder, $field, array_merge(Paper::STATUS_ACCEPTED, [Paper::STATUS_PUBLISHED]));
@@ -196,7 +196,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     private function adnWhereAcceptedOnly(QueryBuilder $queryBuilder, string $alias): QueryBuilder
     {
         $this->andOrExp($queryBuilder, sprintf('%s.status', $alias), Paper::STATUS_ACCEPTED);
-        $queryBuilder->addOrderBy(sprintf("%s.modificationDate", $alias), 'DESC');
+        $queryBuilder->addOrderBy(sprintf("%s.modificationDate", $alias), \SortDirection::Descending);
         return $queryBuilder;
 
     }

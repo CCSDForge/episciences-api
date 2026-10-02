@@ -142,8 +142,8 @@ class PapersRepository extends ServiceEntityRepository
         $qb->setParameter('deleted', Paper::STATUS_DELETED);
 
         $qb->orderBy('year', \SortDirection::Ascending);
-        $qb->addOrderBy('p.rvid', 'ASC');
-        $qb->addOrderBy('p.status', 'DESC');
+        $qb->addOrderBy('p.rvid', \SortDirection::Ascending);
+        $qb->addOrderBy('p.status', \SortDirection::Descending);
         $qb->groupBy('p.rvid');
         $qb->groupBy('p.paperid');
         $qb->groupBy('year');
@@ -328,7 +328,7 @@ class PapersRepository extends ServiceEntityRepository
         if (!$rvId) {
             $qb->addGroupBy(sprintf('%s.rvid', self::PAPERS_ALIAS));
             $qb->addGroupBy(sprintf('%s.%s', self::PAPERS_ALIAS, $tableId));
-            $qb->addOrderBy(sprintf('%s.rvid', self::PAPERS_ALIAS), 'DESC');
+            $qb->addOrderBy(sprintf('%s.rvid', self::PAPERS_ALIAS), \SortDirection::Descending);
         }
 
         return $qb;

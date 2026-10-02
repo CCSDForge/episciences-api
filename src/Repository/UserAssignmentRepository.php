@@ -34,7 +34,7 @@ class UserAssignmentRepository extends ServiceEntityRepository
 
         $qb->andWhere('ua.roleid =:roleId')->setParameter('roleId', UserAssignment::ROLE_REVIEWER);
         $qb->orderBy('ua.when', \SortDirection::Descending);
-        $qb->addGroupBy('ua.status', 'ASC');
+        $qb->addGroupBy('ua.status');
         return $qb;
 
     }

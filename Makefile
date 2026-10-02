@@ -380,8 +380,9 @@ docker-test-unit:
 docker-validate:
 	@echo "$(BOLD)Validating Doctrine mapping in Docker container...$(NC)"
 	# Run as root so the kernel can create its cache dir (default CACHE_PATH="/var/cache/"
-	# is not writable by the non-root DOCKER_USER).
-	$(DOCKER_COMPOSE) exec -u root php bin/console doctrine:schema:validate --skip-sync
+	# is not writable by the non-root DOCKER_USER), then restore ownership so the
+	# subsequent non-root steps (e.g. docker-test-coverage) can still write to it.
+	$(DOCKER_COMPOSE) exec -u root php sh -c 'bin/console doctrine:schema:validate --skip-sync; rc=$$?; chown -R "$$(id -u):$$(id -g)" /var/cache /var/log 2>/dev/null || true; exit $$rc'
 	@echo "$(GREEN)✓ Doctrine mapping validated$(NC)"
 
 # Install dependencies in container

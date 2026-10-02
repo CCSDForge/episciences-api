@@ -67,8 +67,8 @@ class ReviewerReportRepository extends ServiceEntityRepository
         $qb->innerJoin(Paper::class, 'p', Join::ON, 'p.docid = r.docid');
 
         $qb->orderBy('p.rvid', \SortDirection::Descending);
-        $qb->orderBy('r.docid', \SortDirection::Descending);
-        $qb->orderBy('r.uid', \SortDirection::Descending);
+        $qb->addOrderBy('r.docid', \SortDirection::Descending);
+        $qb->addOrderBy('r.uid', \SortDirection::Descending);
 
         $qb->groupBy('p.rvid');
         $qb->addGroupBy('r.status');
