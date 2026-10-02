@@ -16,7 +16,7 @@ DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then ech
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install test test-unit test-coverage cov test-file validate clean phpstan rector local-rector check docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer docker-composer-update setup-help deploy deploy-branch deploy-tag
+.PHONY: help check-prereqs install test test-unit test-coverage cov test-file validate clean phpstan rector local-rector check docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer docker-composer-update docker-validate setup-help deploy deploy-branch deploy-tag
 
 # Help target - displays all available commands
 help:
@@ -375,6 +375,15 @@ docker-test-unit:
 	@echo "$(BOLD)Running unit tests in Docker container...$(NC)"
 	$(DOCKER_COMPOSE) exec php vendor/bin/phpunit tests/Unit/
 	@echo "$(GREEN)✓ Docker unit tests completed$(NC)"
+
+# Validate Doctrine mapping in container (no DB sync needed)
+docker-validate:
+	@echo "$(BOLD)Validating Doctrine mapping in Docker container...$(NC)"
+	# Run as root so the kernel can create its cache dir (default CACHE_PATH="/var/cache/"
+	# is not writable by the non-root DOCKER_USER), then restore ownership so the
+	# subsequent non-root steps (e.g. docker-test-coverage) can still write to it.
+	$(DOCKER_COMPOSE) exec -u root php sh -c 'bin/console doctrine:schema:validate --skip-sync; rc=$$?; chown -R "$$(id -u):$$(id -g)" /var/cache /var/log 2>/dev/null || true; exit $$rc'
+	@echo "$(GREEN)✓ Doctrine mapping validated$(NC)"
 
 # Install dependencies in container
 docker-install:

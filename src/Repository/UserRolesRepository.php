@@ -90,7 +90,7 @@ class UserRolesRepository extends ServiceEntityRepository
         }
 
         if ($withDetails) {
-            $qb->orderBy("$userRolesAlias.rvid", 'ASC');
+            $qb->orderBy("$userRolesAlias.rvid", \SortDirection::Ascending);
             $qb->groupBy("$userRolesAlias.rvid");
             $qb->addGroupBy("$userRolesAlias.roleid");
         }
@@ -126,7 +126,7 @@ class UserRolesRepository extends ServiceEntityRepository
         $qb->andWhere("ur.roleid != :epiAdminRole")->setParameter('epiAdminRole', User::ROLE_ROOT);
         $qb->join("ur.user", 'u', Join::WITH, "ur.uid = u.uid");
 
-        $qb->addOrderBy('u.lastname', 'ASC');
+        $qb->addOrderBy('u.lastname', \SortDirection::Ascending);
 
         if ($rvId) {
             $qb->andWhere("ur.rvid = :rvId")->setParameter('rvId', $rvId);

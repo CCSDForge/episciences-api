@@ -64,11 +64,11 @@ class ReviewerReportRepository extends ServiceEntityRepository
             $this->andOrExp($qb, 'YEAR(r.creationDate)', $years);
         }
 
-        $qb->innerJoin(Paper::class, 'p', Join::WITH, 'p.docid = r.docid');
+        $qb->innerJoin(Paper::class, 'p', Join::ON, 'p.docid = r.docid');
 
-        $qb->orderBy('p.rvid', 'DESC');
-        $qb->orderBy('r.docid', 'DESC');
-        $qb->orderBy('r.uid', 'DESC');
+        $qb->orderBy('p.rvid', \SortDirection::Descending);
+        $qb->addOrderBy('r.docid', \SortDirection::Descending);
+        $qb->addOrderBy('r.uid', \SortDirection::Descending);
 
         $qb->groupBy('p.rvid');
         $qb->addGroupBy('r.status');

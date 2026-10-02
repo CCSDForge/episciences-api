@@ -31,7 +31,7 @@ class NewsRepository extends ServiceEntityRepository implements RangeInterface
             $qb->setParameter('code',$journalIdentifier);
         }
 
-        $qb->orderBy('year', 'DESC');
+        $qb->orderBy('year', \SortDirection::Descending);
 
         return $this->arrayCleaner(array_column(array_values($qb->getQuery()->getResult()), 'year'));
 

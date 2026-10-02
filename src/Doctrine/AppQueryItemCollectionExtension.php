@@ -183,7 +183,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             andWhere("$field= :published")->
             setParameter('published', Paper::STATUS_PUBLISHED);
             if ($resourceClass === Paper::class) {
-                $queryBuilder->addOrderBy(sprintf("%s.publicationDate", $queryBuilder->getRootAliases()[0]), 'DESC');
+                $queryBuilder->addOrderBy(sprintf("%s.publicationDate", $queryBuilder->getRootAliases()[0]), \SortDirection::Descending);
             }
         } else {
             $this->andOrExp($queryBuilder, $field, array_merge(Paper::STATUS_ACCEPTED, [Paper::STATUS_PUBLISHED]));
@@ -196,7 +196,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     private function adnWhereAcceptedOnly(QueryBuilder $queryBuilder, string $alias): QueryBuilder
     {
         $this->andOrExp($queryBuilder, sprintf('%s.status', $alias), Paper::STATUS_ACCEPTED);
-        $queryBuilder->addOrderBy(sprintf("%s.modificationDate", $alias), 'DESC');
+        $queryBuilder->addOrderBy(sprintf("%s.modificationDate", $alias), \SortDirection::Descending);
         return $queryBuilder;
 
     }
@@ -258,7 +258,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         // @see operation security allowed only for ROLE_SECRETARY
         if ($resourceClass === User::class) {
             $queryBuilder->
-            join(UserRoles::class, 'ur', 'WITH', "$alias.uid = ur.uid")
+            join(UserRoles::class, 'ur', 'ON', "$alias.uid = ur.uid")
                 ->andWhere("ur.roleid!= :epiAdminRole")->setParameter('epiAdminRole', User::ROLE_ROOT)
                 ->andWhere("$alias.uid!= :systemUid")->setParameter('systemUid', User::EPISCIENCES_UID)
                 ->andWhere("ur.rvid= :userVid")->setParameter('userVid', $currentUser->getCurrentJournalID());
@@ -274,7 +274,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
                     $queryBuilder
                         ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $currentUser->getCurrentJournalID())
-                        ->orderBy("$alias.when", "DESC");
+                        ->orderBy("$alias.when", \SortDirection::Descending);
 
 
                 } elseif (
@@ -285,11 +285,11 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 ) { // only assigned papers
 
                     $queryBuilder
-                        ->join(UserAssignment::class, 'uAss', 'WITH', "$alias.docid = uAss.itemid")
+                        ->join(UserAssignment::class, 'uAss', 'ON', "$alias.docid = uAss.itemid")
                         ->andWhere("uAss.item = :type")->setParameter('type', 'paper')
                         ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $currentUser->getCurrentJournalID())
                         ->andWhere("uAss.uid = :to")->setParameter('to', $currentUser->getUid())
-                        ->orderBy("$alias.when", "DESC");
+                        ->orderBy("$alias.when", \SortDirection::Descending);
 
 
                 } else { // author's papers

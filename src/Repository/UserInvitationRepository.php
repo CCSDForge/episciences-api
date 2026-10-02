@@ -41,7 +41,7 @@ class UserInvitationRepository extends ServiceEntityRepository
 
 
         $qb->from(UserAssignment::class, 'ua');
-        $qb->innerJoin(UserInvitation::class, 'i', Join::WITH, 'ua.invitationId = i.id');
+        $qb->innerJoin(UserInvitation::class, 'i', Join::ON, 'ua.invitationId = i.id');
 
         $qb->andWhere('ua.item =:item')->setParameter('item', UserAssignment::ITEM_PAPER);
 
@@ -67,10 +67,10 @@ class UserInvitationRepository extends ServiceEntityRepository
             $qb->andWhere('ua.uid = :uid')->setParameter('uid', $uid);
         }
 
-        $qb->orderBy('ua.rvid', 'DESC');
-        $qb->addOrderBy('i.id', 'DESC');
-        $qb->addOrderBy('ua.itemid', 'DESC');
-        $qb->addOrderBy('ua.uid', 'DESC');
+        $qb->orderBy('ua.rvid', \SortDirection::Descending);
+        $qb->addOrderBy('i.id', \SortDirection::Descending);
+        $qb->addOrderBy('ua.itemid', \SortDirection::Descending);
+        $qb->addOrderBy('ua.uid', \SortDirection::Descending);
 
         return $qb;
 
