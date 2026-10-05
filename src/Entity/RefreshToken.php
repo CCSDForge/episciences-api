@@ -42,7 +42,7 @@ class RefreshToken extends AbstractRefreshTokenAlias
     #[ORM\Column(name: 'rvid', nullable: true)]
     private ?int $rvId = null;
 
-    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, options: ['default' => 'CURRENT_TIMESTAMP'])]
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, options: ['default' => new \Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp()])]
     private ?\DateTimeInterface $date = null;
 
 

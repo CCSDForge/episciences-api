@@ -68,7 +68,7 @@ class PaperFiles
     /**
      * @var DateTime|null
      */
-    #[ORM\Column(name: 'time_modified', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true, options: ['default' => 'CURRENT_TIMESTAMP'])]
+    #[ORM\Column(name: 'time_modified', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true, options: ['default' => new \Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp()])]
     private ?\DateTimeInterface $timeModified = null;
 
 

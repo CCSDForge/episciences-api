@@ -64,7 +64,7 @@ class PaperConflicts
     )]
     private ?string $message = null;
 
-    #[ORM\Column(name: 'date', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false, options: ['default' => 'CURRENT_TIMESTAMP'])]
+    #[ORM\Column(name: 'date', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false, options: ['default' => new \Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp()])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
