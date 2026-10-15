@@ -18,7 +18,7 @@ class Rss
         return $this->review;
     }
 
-    public function setReview(Review $review = null): self
+    public function setReview(?Review $review = null): self
     {
         $this->review = $review;
         return $this;

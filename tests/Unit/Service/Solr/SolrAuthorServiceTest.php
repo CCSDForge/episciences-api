@@ -118,7 +118,7 @@ class SolrAuthorServiceTest extends TestCase
         $this->httpClient
             ->expects($this->once())
             ->method('request')
-            ->with('GET', $this->callback(fn($url) => str_contains((string) $url, 'author_fullname_t%3A')))
+            ->with('GET', $this->callback(fn($url): bool => str_contains((string) $url, 'author_fullname_t%3A')))
             ->willReturn($response);
 
         $this->authorService->getSolrAuthorsByFullName('O\'Brien, Patrick');

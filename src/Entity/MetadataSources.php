@@ -20,7 +20,7 @@ class MetadataSources
     #[ORM\Column(name: 'id', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private int $id;
+    private ?int $id = null;
 
     /**
      * @var string
@@ -76,7 +76,7 @@ class MetadataSources
     #[ORM\Column(name: 'paper_url', type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: false, options: ['comment' => 'PDF'])]
     private string $paperUrl;
 
-    public function getId(): int
+    public function getId(): ?int
     {
         return $this->id;
     }

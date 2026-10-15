@@ -562,10 +562,9 @@ class Review
 
     public function removePaper(Paper $paper): self
     {
-        // set the owning side to null (unless already changed)
-        if ($this->papers->removeElement($paper) && $paper->getReview() === $this) {
-            $paper->setReview();
-        }
+        // Paper::review is non-nullable (RVID NOT NULL): a paper always keeps its review,
+        // so removing it only detaches it from this collection without nulling the owning side.
+        $this->papers->removeElement($paper);
 
         return $this;
     }

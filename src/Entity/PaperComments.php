@@ -9,45 +9,45 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'PAPER_COMMENTS')]
-#[ORM\Index(name: 'DOCID', columns: ['DOCID'])]
+#[ORM\Index(columns: ['DOCID'], name: 'DOCID')]
 class PaperComments
 {
     /**
      * @var int
      */
-    #[ORM\Column(name: 'PCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'PCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $pcid;
+    private ?int $pcid = null;
 
-    #[ORM\Column(name: 'PARENTID', type: 'integer', nullable: true, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'PARENTID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true, options: ['unsigned' => true])]
     private ?int $parentid = null;
 
-    #[ORM\Column(name: 'TYPE', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'TYPE', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $type = null;
 
-    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $docid = null;
 
-    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $uid = null;
 
-    #[ORM\Column(name: 'MESSAGE', type: 'text', length: 16777215, nullable: true)]
+    #[ORM\Column(name: 'MESSAGE', type: \Doctrine\DBAL\Types\Types::TEXT, length: 16777215, nullable: true)]
     private ?string $message = null;
 
-    #[ORM\Column(name: 'FILE', type: 'string', length: 200, nullable: true)]
+    #[ORM\Column(name: 'FILE', type: \Doctrine\DBAL\Types\Types::STRING, length: 200, nullable: true)]
     private ?string $file = null;
 
-    #[ORM\Column(name: 'WHEN', type: 'datetime', nullable: false)]
+    #[ORM\Column(name: 'WHEN', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     private ?\DateTimeInterface $when = null;
 
     /**
      * @var \DateTime|null
      */
-    #[ORM\Column(name: 'DEADLINE', type: 'date', nullable: true)]
+    #[ORM\Column(name: 'DEADLINE', type: \Doctrine\DBAL\Types\Types::DATE_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $deadline = null;
 
-    #[ORM\Column(name: 'OPTIONS', type: 'text', length: 65535, nullable: true)]
+    #[ORM\Column(name: 'OPTIONS', type: \Doctrine\DBAL\Types\Types::TEXT, length: 65535, nullable: true)]
     private ?string $options = null;
 
     public function getPcid(): ?int

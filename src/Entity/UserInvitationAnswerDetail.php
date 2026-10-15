@@ -14,7 +14,7 @@ class UserInvitationAnswerDetail
     )]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private int $id;
+    private ?int $id = null;
 
     #[ORM\Column(name:'NAME', type: \Doctrine\DBAL\Types\Types::STRING, length: 30, nullable: false)]
     #[ORM\Id]

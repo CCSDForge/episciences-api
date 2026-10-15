@@ -66,6 +66,9 @@ jobs:
     - name: Install dependencies in container
       run: APP_ENV=test DOCKER_USER="$(id -u):$(id -g)" make docker-install-ci
       
+    - name: Validate Doctrine mapping
+      run: APP_ENV=test make docker-validate
+      
     - name: Run tests with coverage
       run: make docker-test-coverage
       

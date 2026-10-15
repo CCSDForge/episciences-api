@@ -16,7 +16,7 @@ final class ReviewStatsDataProvider extends AbstractDataProvider implements Prov
     public const array AVAILABLE_FILTERS = [AppConstants::START_AFTER_DATE, AppConstants::WITH_DETAILS, AppConstants::YEAR_PARAM];
 
 
-    public function supports(Operation $operation = null): bool
+    public function supports(?Operation $operation = null): bool
     {
         return (
             $operation instanceof \ApiPlatform\Metadata\Operation &&

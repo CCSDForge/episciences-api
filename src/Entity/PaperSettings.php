@@ -14,18 +14,18 @@ class PaperSettings
     /**
      * @var int
      */
-    #[ORM\Column(name: 'PSID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'PSID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $psid;
+    private ?int $psid = null;
 
-    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $docid = null;
 
-    #[ORM\Column(name: 'SETTING', type: 'string', length: 100, nullable: false)]
+    #[ORM\Column(name: 'SETTING', type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: false)]
     private ?string $setting = null;
 
-    #[ORM\Column(name: 'VALUE', type: 'string', length: 250, nullable: true)]
+    #[ORM\Column(name: 'VALUE', type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: true)]
     private ?string $value = null;
 
     public function getPsid(): ?int

@@ -9,30 +9,30 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'STAT_TEMP')]
-#[ORM\Index(name: 'DOCID', columns: ['DOCID'])]
+#[ORM\Index(columns: ['DOCID'], name: 'DOCID')]
 class StatTemp
 {
     /**
      * @var int
      */
-    #[ORM\Column(name: 'VISITID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'VISITID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $visitid;
+    private ?int $visitid = null;
 
-    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $docid = null;
 
-    #[ORM\Column(name: 'IP', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'IP', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $ip = null;
 
-    #[ORM\Column(name: 'HTTP_USER_AGENT', type: 'string', length: 2000, nullable: false)]
+    #[ORM\Column(name: 'HTTP_USER_AGENT', type: \Doctrine\DBAL\Types\Types::STRING, length: 2000, nullable: false)]
     private ?string $httpUserAgent = null;
 
-    #[ORM\Column(name: 'DHIT', type: 'datetime', nullable: false)]
+    #[ORM\Column(name: 'DHIT', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     private \DateTime|\DateTimeInterface $dhit;
 
-    #[ORM\Column(name: 'CONSULT', type: 'string', length: 0, nullable: false, options: ['default' => 'notice'])]
+    #[ORM\Column(name: 'CONSULT', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false, options: ['default' => 'notice'])]
     private string $consult = 'notice';
     public function __construct()
     {

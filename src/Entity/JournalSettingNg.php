@@ -195,11 +195,11 @@ class JournalSettingNg
     #[ORM\Column(name: 'SETTING', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     private array $settings;
 
-    #[ORM\Column(name: 'CREATED_AT', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true, options: ['default' => 'CURRENT_TIMESTAMP'])]
+    #[ORM\Column(name: 'CREATED_AT', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true, options: ['default' => new \Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp()])]
     private ?\DateTimeInterface $createdAt = null;
 
 
-    #[ORM\Column(name: 'UPDATED_AT', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true, options: ['default' => 'CURRENT_TIMESTAMP'])]
+    #[ORM\Column(name: 'UPDATED_AT', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true, options: ['default' => new \Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp()])]
     private ?\DateTimeInterface $updatedAt = null;
 
 

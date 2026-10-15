@@ -14,8 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
-
-## Unreleased
+# Unreleased
 
 ### Added
 - Added `is_public` stored generated column to `Pages` and `News` entities to optimize query filtering.
@@ -23,9 +22,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Replaced non-indexed `JSON_EXTRACT` visibility filter with the new `is_public` column in Doctrine queries.
+- Migrated codebase to PHP 8.4: applied Rector transformations (explicit nullable parameter types, typed properties, Doctrine `Types::*` constants, PHP 8.4 `RoundingMode`/`#[\Deprecated]` features) to fix PHP 8.4 deprecations.
+- Migrated to API Platform 4.3: updated `api-platform/core` to `^4.3`, removed legacy config keys (`keep_legacy_inflector`, `item_Operations`, `collection_Operations`), switched `UrlGeneratorInterface` to the `ApiPlatform\Metadata` namespace, moved `ApiPlatform\Exception\RuntimeException` to `ApiPlatform\Metadata\Exception\RuntimeException`, and converted OpenAPI operation `output`/`responses` from arrays to proper `ApiPlatform\OpenApi\Model` objects.
+- Migrated to Doctrine ORM 3.7: updated `doctrine/orm` constraint from `^2.14` to `^3.7` and aligned unit test mocks (mocked `Doctrine\DBAL\Exception` and `Doctrine\ORM\Query` instances) with the new ORM/DBAL APIs.
 
 ### Fixed
 - Fixed invalid `UniqueConstraints` on `pages` and `news` tables.
+- Fixed Swagger UI template (`templates/bundles/ApiPlatformBundle/SwaggerUi/index.html.twig`) for API Platform 4.3: replaced the removed `app.request.attributes.get('_route')` usage with `originalRoute`/`originalRouteParams` and removed the removed `graphQlPlaygroundEnabled` variable (GraphQL Playground).
+- Fixed CI `docker-validate` failure: the Doctrine mapping check now runs as `root` in the container so the kernel can create its cache directory (default `CACHE_PATH="/var/cache/"` is not writable by the non-root `DOCKER_USER`); ownership of the cache/log directories is then restored to the non-root user so subsequent steps (e.g. `docker-test-coverage`) can still write to them.
+- Fixed the `test` environment, where the kernel could not boot: `config/bundles.php` registered `WebProfilerBundle` and `DoctrineFixturesBundle` under a corrupted `'ApiCollectionNormalizer.php'` environment key instead of `'test'` (`Container extension "web_profiler" is not registered`), and `config/packages/test/framework.yaml` used the `framework.session.storage_id` option, removed in Symfony 6 (replaced by `storage_factory_id`).
+
+### Security
+- Upgraded `symfony/expression-language` from 7.4.18 to 7.4.21 (CVE-2026-109449: unbounded nesting in the expression parser lets untrusted expressions crash the process).
+
+## v1.3.1 2026-09-22
+### Fixed
+- Sections collection (`GET /api/sections`) is now sorted by ascending `position` within each journal (was sorted by descending identifier); `position` is now exposed in section outputs.
+- Relative `CACHE_PATH` / `LOG_PATH` values (local Docker setup) are now resolved against the project directory instead of the current working directory, so PHP-FPM and `bin/console` share the same cache and log directories.
+- `CACHE_PATH` / `LOG_PATH` are also read from real environment variables (`$_SERVER`), and are normalized (a missing trailing slash on `CACHE_PATH` no longer yields `var/cachedev`).
+- CI: `make docker-test-coverage` now generates the `coverage.xml` Clover report expected by the workflow.
 ## v1.3.0 2026-07-15
 ### Added
 - New endpoint "/api/journals/front/configuration?code=rvcode": To retrieve the public interface configuration for sites migrated to the new interfaces

@@ -77,7 +77,7 @@ class JWTSubscriberTest extends TestCase
 
         $event->expects($this->once())
             ->method('setData')
-            ->with($this->callback(static fn(array $d) => $d['uid'] === 42 && $d['rvId'] === 7 && isset($d['roles'])));
+            ->with($this->callback(static fn(array $d): bool => $d['uid'] === 42 && $d['rvId'] === 7 && isset($d['roles'])));
 
         $this->subscriber->onLexikJwtAuthenticationOnJwtCreated($event);
     }

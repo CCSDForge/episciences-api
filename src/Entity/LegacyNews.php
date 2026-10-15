@@ -9,30 +9,30 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'NEWS')]
-#[ORM\Index(name: 'RVID', columns: ['RVID'])]
+#[ORM\Index(columns: ['RVID'], name: 'RVID')]
 class LegacyNews
 {
     /**
      * @var int
      */
-    #[ORM\Column(name: 'NEWSID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'NEWSID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $newsid;
+    private ?int $newsid = null;
 
-    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $rvid = null;
 
-    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $uid = null;
 
-    #[ORM\Column(name: 'LINK', type: 'string', length: 2000, nullable: false)]
+    #[ORM\Column(name: 'LINK', type: \Doctrine\DBAL\Types\Types::STRING, length: 2000, nullable: false)]
     private ?string $link = null;
 
-    #[ORM\Column(name: 'ONLINE', type: 'boolean', nullable: false)]
+    #[ORM\Column(name: 'ONLINE', type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: false)]
     private ?bool $online = null;
 
-    #[ORM\Column(name: 'DATE_POST', type: 'datetime', nullable: false)]
+    #[ORM\Column(name: 'DATE_POST', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     private \DateTime|\DateTimeInterface $datePost;
     public function __construct()
     {

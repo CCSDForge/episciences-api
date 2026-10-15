@@ -23,7 +23,7 @@ abstract class AbstractDataProvider
     }
 
 
-    abstract protected function supports(Operation $operation = null): bool;
+    abstract protected function supports(?Operation $operation = null): bool;
 
     protected function getCollection(Operation $operation, array $context = []): array|AbstractStatResource|null
     {

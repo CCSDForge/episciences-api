@@ -14,26 +14,26 @@ class ReviewerAlias
     /**
      * @var int
      */
-    #[ORM\Column(name: 'UID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'UID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private $uid;
+    private ?int $uid = null;
 
     /**
      * @var int
      */
-    #[ORM\Column(name: 'DOCID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'DOCID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private $docid;
+    private ?int $docid = null;
 
     /**
      * @var int
      */
-    #[ORM\Column(name: 'ALIAS', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'ALIAS', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private $alias;
+    private ?int $alias = null;
 
     public function getUid(): ?int
     {

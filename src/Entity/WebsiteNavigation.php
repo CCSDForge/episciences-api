@@ -14,33 +14,33 @@ class WebsiteNavigation
     /**
      * @var int
      */
-    #[ORM\Column(name: 'NAVIGATIONID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'NAVIGATIONID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private $navigationid;
+    private ?int $navigationid = null;
 
-    #[ORM\Column(name: 'SID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'SID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $sid = null;
 
-    #[ORM\Column(name: 'PAGEID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'PAGEID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $pageid = null;
 
-    #[ORM\Column(name: 'TYPE_PAGE', type: 'string', length: 255, nullable: false)]
+    #[ORM\Column(name: 'TYPE_PAGE', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $typePage = null;
 
-    #[ORM\Column(name: 'CONTROLLER', type: 'string', length: 255, nullable: false)]
+    #[ORM\Column(name: 'CONTROLLER', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $controller = null;
 
-    #[ORM\Column(name: 'ACTION', type: 'string', length: 255, nullable: false)]
+    #[ORM\Column(name: 'ACTION', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $action = null;
 
-    #[ORM\Column(name: 'LABEL', type: 'string', length: 500, nullable: false)]
+    #[ORM\Column(name: 'LABEL', type: \Doctrine\DBAL\Types\Types::STRING, length: 500, nullable: false)]
     private ?string $label = null;
 
-    #[ORM\Column(name: 'PARENT_PAGEID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'PARENT_PAGEID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $parentPageid = null;
 
-    #[ORM\Column(name: 'PARAMS', type: 'text', length: 65535, nullable: false)]
+    #[ORM\Column(name: 'PARAMS', type: \Doctrine\DBAL\Types\Types::TEXT, length: 65535, nullable: false)]
     private ?string $params = null;
 
     public function getNavigationid(): ?int

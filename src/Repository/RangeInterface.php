@@ -9,6 +9,6 @@ use App\Resource\Range;
 interface RangeInterface
 {
     public const RANGE = 'range';
-    public function getRange(string|int $journalIdentifier = null): array ;
+    public function getRange(string|int|null $journalIdentifier = null): array ;
 
 }

@@ -13,7 +13,7 @@ use App\Entity\User;
 final class UsersStatsDataProvider extends AbstractDataProvider implements ProviderInterface
 {
 
-    public function supports(Operation $operation = null): bool
+    public function supports(?Operation $operation = null): bool
     {
         return (
             $operation instanceof \ApiPlatform\Metadata\Operation &&

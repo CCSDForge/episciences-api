@@ -24,7 +24,7 @@ class IndexingDatabaseController extends AbstractController
     /**
      * @throws ResourceNotFoundException
      */
-    public function __invoke(Request $request = null): ArrayPaginator
+    public function __invoke(?Request $request = null): ArrayPaginator
     {
         $indexingDatabases = [];
         $page = 1;

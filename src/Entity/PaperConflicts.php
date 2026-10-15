@@ -25,7 +25,7 @@ class PaperConflicts
     #[ORM\Column(name: 'cid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
-    private int $cid;
+    private ?int $cid = null;
 
     #[ORM\Column(name: 'paper_id', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[groups(
@@ -64,7 +64,7 @@ class PaperConflicts
     )]
     private ?string $message = null;
 
-    #[ORM\Column(name: 'date', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false, options: ['default' => 'CURRENT_TIMESTAMP'])]
+    #[ORM\Column(name: 'date', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false, options: ['default' => new \Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp()])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -72,10 +72,6 @@ class PaperConflicts
         ]
     )]
     private ?\DateTimeInterface $date = null;
-
-    #[ORM\ManyToOne( fetch: 'EAGER', inversedBy: 'conflicts')]
-    #[ORM\JoinColumn(name: 'paper_id', referencedColumnName: 'PAPERID', nullable: true)]
-    private ?Paper $papers = null;
 
     public function getCid(): ?int
     {
@@ -138,18 +134,6 @@ class PaperConflicts
     public function setDate(\DateTimeInterface $date): self
     {
         $this->date = $date;
-
-        return $this;
-    }
-
-    public function getPapers(): ?Paper
-    {
-        return $this->papers;
-    }
-
-    public function setPapers(?Paper $papers): self
-    {
-        $this->papers = $papers;
 
         return $this;
     }

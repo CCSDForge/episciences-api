@@ -6,6 +6,7 @@ use App\Entity\Paper;
 use App\Entity\PaperConflicts;
 use App\Entity\Review;
 use App\Entity\User;
+use App\Repository\PaperConflictsRepository;
 use App\Security\Voter\PapersVoter;
 use Doctrine\Common\Collections\ArrayCollection;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -16,12 +17,14 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 class PapersVoterTest extends TestCase
 {
     private Security&MockObject $security;
+    private PaperConflictsRepository&MockObject $paperConflictsRepository;
     private PapersVoter $voter;
 
     protected function setUp(): void
     {
         $this->security = $this->createMock(Security::class);
-        $this->voter    = new PapersVoter($this->security);
+        $this->paperConflictsRepository = $this->createMock(PaperConflictsRepository::class);
+        $this->voter = new PapersVoter($this->security, $this->paperConflictsRepository);
     }
 
     // ------------------------------------------------------------------ helpers
@@ -31,7 +34,7 @@ class PapersVoterTest extends TestCase
         $user = $this->createMock(User::class);
         $user->method('getUid')->willReturn($uid);
         $user->method('hasRole')->willReturnCallback(
-            static fn($role) => in_array('ROLE_' . strtoupper($role), $roles, true)
+            static fn($role): bool => in_array('ROLE_' . strtoupper((string) $role), $roles, true)
         );
         return $user;
     }
@@ -52,7 +55,8 @@ class PapersVoterTest extends TestCase
         array $copyEditors = [],
         array $coAuthors = [],
         bool $coiEnabled = false,
-        ?ArrayCollection $conflicts = null
+        ?ArrayCollection $conflicts = null,
+        int $paperid = 1
     ): Paper&MockObject {
         $review = $this->createMock(Review::class);
         $review->method('getSetting')
@@ -62,12 +66,37 @@ class PapersVoterTest extends TestCase
         $paper = $this->createMock(Paper::class);
         $paper->method('getUid')->willReturn($uid);
         $paper->method('getRvid')->willReturn($rvid);
+        $paper->method('getPaperid')->willReturn($paperid);
         $paper->method('getEditors')->willReturn($editors);
         $paper->method('getReviewers')->willReturn($reviewers);
         $paper->method('getCopyEditors')->willReturn($copyEditors);
         $paper->method('getCoAuthors')->willReturn($coAuthors);
         $paper->method('getReview')->willReturn($review);
-        $paper->method('getConflicts')->willReturn($conflicts ?? new ArrayCollection());
+
+        $currentConflicts = $conflicts ?? new ArrayCollection();
+        $conflictsLoaded  = $conflicts !== null;
+        $paper->method('getConflicts')->willReturnCallback(static function () use (&$currentConflicts): \Doctrine\Common\Collections\ArrayCollection {
+            return $currentConflicts;
+        });
+        $paper->method('conflictsLoaded')->willReturnCallback(
+            static function () use (&$conflictsLoaded): bool {
+                return $conflictsLoaded;
+            }
+        );
+        $paper->method('setConflicts')->willReturnCallback(
+            static function (iterable $c) use (&$currentConflicts, &$conflictsLoaded, $paper): Paper {
+                $conflictsLoaded = true;
+                $items = is_array($c) ? $c : iterator_to_array($c);
+                $grouped = [];
+                foreach ($items as $conflict) {
+                    if ($conflict instanceof PaperConflicts) {
+                        $grouped[$conflict->getAnswer()][$conflict->getBy()] = $conflict;
+                    }
+                }
+                $currentConflicts = new ArrayCollection($grouped !== [] ? $grouped : $items);
+                return $paper;
+            }
+        );
         return $paper;
     }
 
@@ -112,7 +141,7 @@ class PapersVoterTest extends TestCase
     public function testEpiAdminIsAlwaysGranted(): void
     {
         $this->security->method('isGranted')->willReturnCallback(
-            static fn($role) => $role === 'ROLE_EPIADMIN'
+            static fn($role): bool => $role === 'ROLE_EPIADMIN'
         );
         $user  = $this->makeUser(99);
         $token = $this->makeToken($user);
@@ -138,7 +167,7 @@ class PapersVoterTest extends TestCase
     public function testAdminWithoutSpecificRolesIsGranted(): void
     {
         $this->security->method('isGranted')->willReturnCallback(
-            static fn($role) => $role === 'ROLE_ADMINISTRATOR'
+            static fn($role): bool => $role === 'ROLE_ADMINISTRATOR'
         );
         $user = $this->makeUser(42);
         $user->method('hasRole')->willReturn(false);
@@ -152,11 +181,11 @@ class PapersVoterTest extends TestCase
     public function testAdminWithSecretaryRoleFallsThroughToAttributeChecks(): void
     {
         $this->security->method('isGranted')->willReturnCallback(
-            static fn($role) => in_array($role, ['ROLE_ADMINISTRATOR', 'ROLE_SECRETARY'], true)
+            static fn($role): bool => in_array($role, ['ROLE_ADMINISTRATOR', 'ROLE_SECRETARY'], true)
         );
         $user = $this->makeUser(42);
         $user->method('hasRole')->willReturnCallback(
-            static fn($role) => $role === User::ROLE_SECRETARY
+            static fn($role): bool => $role === User::ROLE_SECRETARY
         );
         $token = $this->makeToken($user);
         $paper = $this->makePaper(1, 1);
@@ -241,7 +270,7 @@ class PapersVoterTest extends TestCase
     public function testSecretaryCanEdit(): void
     {
         $this->security->method('isGranted')->willReturnCallback(
-            static fn($role) => $role === 'ROLE_SECRETARY'
+            static fn($role): bool => $role === 'ROLE_SECRETARY'
         );
         $user  = $this->makeUser(50);
         $token = $this->makeToken($user);
@@ -295,7 +324,7 @@ class PapersVoterTest extends TestCase
     public function testSecretaryCanManagePaperByOtherAuthor(): void
     {
         $this->security->method('isGranted')->willReturnCallback(
-            static fn($role) => $role === 'ROLE_SECRETARY'
+            static fn($role): bool => $role === 'ROLE_SECRETARY'
         );
         $user  = $this->makeUser(99);
         $token = $this->makeToken($user);
@@ -400,9 +429,54 @@ class PapersVoterTest extends TestCase
 
         // uid 70 IS in the 'no' group → no conflict → can view if co-author
         $conflicts = new ArrayCollection(['no' => [70 => new PaperConflicts()]]);
-        $paper     = $this->makePaper(10, coiEnabled: true, conflicts: $conflicts, coAuthors: [70 => []]);
+        $paper     = $this->makePaper(10, coAuthors: [70 => []], coiEnabled: true, conflicts: $conflicts);
         $user->method('hasRole')->willReturn(false);
 
         $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+    }
+
+    // ------------------------------------------------------------------ v2 article: conflicts loaded by PAPERID (shared across versions)
+
+    public function testV2ArticleLoadsConflictsByPaperIdWhenCoiEnabled(): void
+    {
+        $this->security->method('isGranted')->willReturn(false);
+        $user  = $this->makeUser(70);
+        $token = $this->makeToken($user);
+
+        // v2 article: docid (D2) differs from paperid (P1, shared by all versions).
+        // Conflicts are declared on the PAPERID, so they must be loaded by paperid.
+        $paperid    = 1234;
+        $noConflict = new PaperConflicts()->setPaperId($paperid)->setBy(70)->setAnswer('no');
+
+        $this->paperConflictsRepository->method('findByPaperId')
+            ->with($paperid)
+            ->willReturn([$noConflict]);
+
+        // user 70 is co-author and declared 'no' conflict → no conflict → can view
+        $paper = $this->makePaper(10, coAuthors: [70 => []], coiEnabled: true, paperid: $paperid);
+        $user->method('hasRole')->willReturn(false);
+
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+    }
+
+    public function testV2ArticleWithoutNoGroupIsDenied(): void
+    {
+        $this->security->method('isGranted')->willReturn(false);
+        $user  = $this->makeUser(70);
+        $token = $this->makeToken($user);
+
+        // v2 article: conflicts exist for the paperid but the user is NOT in the 'no' group
+        $paperid       = 1234;
+        $declaredOther = new PaperConflicts()->setPaperId($paperid)->setBy(99)->setAnswer('no');
+
+        $this->paperConflictsRepository->method('findByPaperId')
+            ->with($paperid)
+            ->willReturn([$declaredOther]);
+
+        // user 70 is co-author but has a conflict (not in 'no' group) → denied
+        $paper = $this->makePaper(10, coAuthors: [70 => []], coiEnabled: true, paperid: $paperid);
+        $user->method('hasRole')->willReturn(false);
+
+        $this->assertSame(-1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
     }
 }
