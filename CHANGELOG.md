@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed CI `docker-validate` failure: the Doctrine mapping check now runs as `root` in the container so the kernel can create its cache directory (default `CACHE_PATH="/var/cache/"` is not writable by the non-root `DOCKER_USER`); ownership of the cache/log directories is then restored to the non-root user so subsequent steps (e.g. `docker-test-coverage`) can still write to them.
 - Fixed the `test` environment, where the kernel could not boot: `config/bundles.php` registered `WebProfilerBundle` and `DoctrineFixturesBundle` under a corrupted `'ApiCollectionNormalizer.php'` environment key instead of `'test'` (`Container extension "web_profiler" is not registered`), and `config/packages/test/framework.yaml` used the `framework.session.storage_id` option, removed in Symfony 6 (replaced by `storage_factory_id`).
 
+### Security
+- Upgraded `symfony/expression-language` from 7.4.18 to 7.4.21 (CVE-2026-109449: unbounded nesting in the expression parser lets untrusted expressions crash the process).
+
 ## v1.3.1 2026-09-22
 ### Fixed
 - Sections collection (`GET /api/sections`) is now sorted by ascending `position` within each journal (was sorted by descending identifier); `position` is now exposed in section outputs.
