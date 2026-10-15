@@ -14,47 +14,47 @@ class WebsiteHeader
     /**
      * @var int
      */
-    #[ORM\Column(name: 'LOGOID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'LOGOID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private $logoid;
+    private ?int $logoid = null;
 
     /**
      * @var int
      */
-    #[ORM\Column(name: 'RVID', type: 'integer', nullable: false, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    private $rvid;
+    private ?int $rvid = null;
 
-    #[ORM\Column(name: 'TYPE', type: 'string', length: 0, nullable: false)]
+    #[ORM\Column(name: 'TYPE', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false)]
     private ?string $type = null;
 
-    #[ORM\Column(name: 'IMG', type: 'string', length: 255, nullable: false)]
+    #[ORM\Column(name: 'IMG', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $img = null;
 
-    #[ORM\Column(name: 'IMG_WIDTH', type: 'string', length: 255, nullable: false)]
+    #[ORM\Column(name: 'IMG_WIDTH', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $imgWidth = null;
 
-    #[ORM\Column(name: 'IMG_HEIGHT', type: 'string', length: 255, nullable: false)]
+    #[ORM\Column(name: 'IMG_HEIGHT', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $imgHeight = null;
 
-    #[ORM\Column(name: 'IMG_HREF', type: 'string', length: 255, nullable: false)]
+    #[ORM\Column(name: 'IMG_HREF', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $imgHref = null;
 
-    #[ORM\Column(name: 'IMG_ALT', type: 'string', length: 255, nullable: false)]
+    #[ORM\Column(name: 'IMG_ALT', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $imgAlt = null;
 
-    #[ORM\Column(name: 'TEXT', type: 'string', length: 1000, nullable: false)]
+    #[ORM\Column(name: 'TEXT', type: \Doctrine\DBAL\Types\Types::STRING, length: 1000, nullable: false)]
     private ?string $text = null;
 
-    #[ORM\Column(name: 'TEXT_CLASS', type: 'string', length: 255, nullable: false)]
+    #[ORM\Column(name: 'TEXT_CLASS', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $textClass = null;
 
-    #[ORM\Column(name: 'TEXT_STYLE', type: 'string', length: 255, nullable: false)]
+    #[ORM\Column(name: 'TEXT_STYLE', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]
     private ?string $textStyle = null;
 
-    #[ORM\Column(name: 'ALIGN', type: 'string', length: 10, nullable: false)]
+    #[ORM\Column(name: 'ALIGN', type: \Doctrine\DBAL\Types\Types::STRING, length: 10, nullable: false)]
     private ?string $align = null;
 
     public function getLogoid(): ?int

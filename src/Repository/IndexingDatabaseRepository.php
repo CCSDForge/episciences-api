@@ -28,7 +28,7 @@ class IndexingDatabaseRepository extends ServiceEntityRepository
             ->andWhere('idb.status = :status')
             ->setParameter('rvid', $rvid)
             ->setParameter('status', IndexingDatabaseStatus::VALIDATED)
-            ->orderBy('idb.name', 'ASC')
+            ->orderBy('idb.name', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }

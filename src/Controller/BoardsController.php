@@ -39,7 +39,7 @@ class BoardsController extends AbstractController
     /**
      * @throws ResourceNotFoundException
      */
-    public function __invoke(Request $request = null): ArrayPaginator
+    public function __invoke(?Request $request = null): ArrayPaginator
     {
         $boards = [];
         $pagination = true;
@@ -161,16 +161,7 @@ class BoardsController extends AbstractController
     private function hasBoardTags(array $tagsByUid, int $uid): bool
     {
 
-        $hasBoardTag = false;
-
-        foreach (UserRolesRepository::AVAILABLE_BOARD_TAGS as $tag) {
-
-            if (isset($tagsByUid[$tag]) && in_array($uid, $tagsByUid[$tag], true)) {
-                $hasBoardTag = true;
-                break;
-            }
-        }
-
+        $hasBoardTag = array_any(UserRolesRepository::AVAILABLE_BOARD_TAGS, fn($tag): bool => isset($tagsByUid[$tag]) && in_array($uid, $tagsByUid[$tag], true));
         return $hasBoardTag;
 
     }

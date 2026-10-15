@@ -9,18 +9,17 @@
     "minimum-stability": "stable",
     "prefer-stable": true,
     "require": {
-        "php": "^8.3",
+        "php": "^8.4",
         "ext-ctype": "*",
+        "ext-fileinfo": "*",
         "ext-iconv": "*",
         "ext-json": "*",
-        "ext-fileinfo": "*",
-        "api-platform/core": "^3.2",
+        "api-platform/core": "^4.3",
         "beberlei/doctrineextensions": "^1.5",
-        "composer/package-versions-deprecated": "1.11.99.1",
-        "doctrine/annotations": "^2.0",
         "doctrine/doctrine-bundle": "^2.8",
         "doctrine/doctrine-migrations-bundle": "^3.2",
-        "doctrine/orm": "^2.14",
+        "doctrine/dbal": "^4.4",
+        "doctrine/orm": "^3.7",
         "gesdinet/jwt-refresh-token-bundle": "^1.1",
         "laminas/laminas-feed": "^2.26",
         "lexik/jwt-authentication-bundle": "^3.1",
@@ -33,6 +32,7 @@
         "symfony/console": "^7.0",
         "symfony/dotenv": "^7.0",
         "symfony/expression-language": "^7.0",
+        "symfony/filesystem": "^7.0",
         "symfony/flex": "^2",
         "symfony/framework-bundle": "^7.0",
         "symfony/http-client": "^7.1",
@@ -52,7 +52,7 @@
     },
     "config": {
         "platform": {
-            "php": "8.3.30"
+            "php": "8.4.4"
         },
         "optimize-autoloader": true,
         "preferred-install": {

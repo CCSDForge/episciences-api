@@ -11,11 +11,11 @@ use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\OpenApi;
 use Symfony\Component\HttpFoundation\Response;
 
-final class OpenApiFactory implements OpenApiFactoryInterface
+final readonly class OpenApiFactory implements OpenApiFactoryInterface
 {
-    public const OAF_HIDDEN = 'hidden';
+    public const string OAF_HIDDEN = 'hidden';
 
-    public const OAF_TAGS = [
+    public const array OAF_TAGS = [
         'auth' => 'Sign in - Myspace',
         'stats' => 'Statistics',
         'review' => 'Journals | Boards',
@@ -25,11 +25,11 @@ final class OpenApiFactory implements OpenApiFactoryInterface
         'paper' => 'Papers'
     ];
 
-    public const LOGIN_PATH = '/api/login';
-    public const REFRESH_PATH = '/api/token/refresh';
+    public const string LOGIN_PATH = '/api/login';
+    public const string REFRESH_PATH = '/api/token/refresh';
 
     public function __construct(
-        private readonly OpenApiFactoryInterface $decorated
+        private OpenApiFactoryInterface $decorated
     ) {}
 
     public function __invoke(array $context = []): OpenApi

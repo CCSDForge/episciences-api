@@ -26,7 +26,7 @@ class ReviewRepository extends ServiceEntityRepository
      * @param bool $strict [true: only enabled journals]
      * @return Review|null
      */
-    public function getJournalByIdentifier(string|int $identifier = null, bool $strict = true): ?Review
+    public function getJournalByIdentifier(string|int|null $identifier = null, bool $strict = true): ?Review
     {
         $criteria = is_int($identifier) ? ['rvid' => $identifier] : ['code' => $identifier] ;
 

@@ -9,8 +9,8 @@ use PHPUnit\Framework\TestCase;
 
 class MetadataSourcesTest extends TestCase
 {
-    private $repository;
-    private $service;
+    private \PHPUnit\Framework\MockObject\MockObject $repository;
+    private \App\Service\MetadataSources $service;
 
     protected function setUp(): void
     {

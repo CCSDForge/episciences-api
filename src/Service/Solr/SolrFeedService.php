@@ -53,7 +53,7 @@ class SolrFeedService extends AbstractSolrService
     public function processSolrFeed(array $responseArray, string $format = 'rss'): Feed
     {
         $baseUrl = $this->requestStack?->getCurrentRequest()?->getSchemeAndHttpHost();
-        $feed = (new Rss())
+        $feed = new Rss()
             ->setReview($this->journal)
             ->setBaseUrl($baseUrl)
             ->setFeedType($format)

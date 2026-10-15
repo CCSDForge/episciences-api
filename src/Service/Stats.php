@@ -453,7 +453,7 @@ class Stats
 
         }
 
-        return (new SubmissionOutput())->
+        return new SubmissionOutput()->
         setAvailableFilters(self::AVAILABLE_PAPERS_FILTERS)->
         setRequestedFilters($filters['is'])->
         setName('nbSubmissions')->
@@ -600,7 +600,7 @@ class Stats
     {
 
         $values = array_column($array, $key);
-        $validValues = array_filter($values, static fn($value) => is_numeric($value));
+        $validValues = array_filter($values, is_numeric(...));
 
         if ($method !== self::MEDIAN_METHOD) {
             return $this->getAvg($validValues);
@@ -659,7 +659,7 @@ class Stats
     }
 
 
-    private function reformatPaperLogData(array $array, string $unit = null, string $extractedField = PaperLogRepository::DELAY, string $method = self::DEFAULT_METHOD): array
+    private function reformatPaperLogData(array $array, ?string $unit = null, string $extractedField = PaperLogRepository::DELAY, string $method = self::DEFAULT_METHOD): array
     {
 
         $result = [];
@@ -694,9 +694,8 @@ class Stats
     /**
      * @param array $data
      * @return array|int[]
-     * @deprecated use functions in PaperLogRepository
      */
-
+    #[\Deprecated(message: 'use functions in PaperLogRepository')]
     private function getPercentages(array $data = ['totalSubmissions' => 0, 'totalAccepted' => 0, 'totalPublished' => 0, 'totalRefused' => 0]): array
     {
 
@@ -704,10 +703,10 @@ class Stats
             return ['published' => 0, 'accepted' => 0, 'refused' => 0, 'other' => 0];
         }
 
-        $publishedPercentage = $data['totalPublished'] ? round($data['totalPublished'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP) : 0;
-        $acceptedPercentage = $data['totalAccepted'] ? round($data['totalAccepted'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP) : 0;
-        $refusedPercentage = $data['totalRefused'] ? round($data['totalRefused'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP) : 0;
-        $otherPercentage = round(100 - ($acceptedPercentage + $refusedPercentage), AppConstants::RATE_DEFAULT_PRECISION, PHP_ROUND_HALF_UP);
+        $publishedPercentage = $data['totalPublished'] ? round($data['totalPublished'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, \RoundingMode::HalfAwayFromZero) : 0;
+        $acceptedPercentage = $data['totalAccepted'] ? round($data['totalAccepted'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, \RoundingMode::HalfAwayFromZero) : 0;
+        $refusedPercentage = $data['totalRefused'] ? round($data['totalRefused'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, \RoundingMode::HalfAwayFromZero) : 0;
+        $otherPercentage = round(100 - ($acceptedPercentage + $refusedPercentage), AppConstants::RATE_DEFAULT_PRECISION, \RoundingMode::HalfAwayFromZero);
 
         return [
             'published' => $publishedPercentage,

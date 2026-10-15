@@ -50,7 +50,7 @@ class UserRolesRepository extends ServiceEntityRepository
      * @return QueryBuilder
      */
 
-    public function getUserRolesStatsQuery(int $rvId = null, $uid = null, string $role = null, bool $withDetails = false): QueryBuilder
+    public function getUserRolesStatsQuery(?int $rvId = null, $uid = null, ?string $role = null, bool $withDetails = false): QueryBuilder
     {
         $userRolesAlias = self::USER_ROLES_ALIAS;
 
@@ -90,7 +90,7 @@ class UserRolesRepository extends ServiceEntityRepository
         }
 
         if ($withDetails) {
-            $qb->orderBy("$userRolesAlias.rvid", 'ASC');
+            $qb->orderBy("$userRolesAlias.rvid", \SortDirection::Ascending);
             $qb->groupBy("$userRolesAlias.rvid");
             $qb->addGroupBy("$userRolesAlias.roleid");
         }
@@ -99,7 +99,7 @@ class UserRolesRepository extends ServiceEntityRepository
     }
 
 
-    public function joinUserRolesQuery(int $rvId = null): QueryBuilder
+    public function joinUserRolesQuery(?int $rvId = null): QueryBuilder
     {
 
         $qb = $this->communBoardsQuery($rvId);
@@ -108,7 +108,7 @@ class UserRolesRepository extends ServiceEntityRepository
 
     }
 
-    public function boardsUsersQuery(int $rvId = null): QueryBuilder
+    public function boardsUsersQuery(?int $rvId = null): QueryBuilder
     {
 
         $qb = $this->communBoardsQuery($rvId);
@@ -119,14 +119,14 @@ class UserRolesRepository extends ServiceEntityRepository
 
     }
 
-    public function communBoardsQuery(int $rvId = null): QueryBuilder
+    public function communBoardsQuery(?int $rvId = null): QueryBuilder
     {
 
         $qb = $this->createQueryBuilder("ur");
         $qb->andWhere("ur.roleid != :epiAdminRole")->setParameter('epiAdminRole', User::ROLE_ROOT);
         $qb->join("ur.user", 'u', Join::WITH, "ur.uid = u.uid");
 
-        $qb->addOrderBy('u.lastname', 'ASC');
+        $qb->addOrderBy('u.lastname', \SortDirection::Ascending);
 
         if ($rvId) {
             $qb->andWhere("ur.rvid = :rvId")->setParameter('rvId', $rvId);

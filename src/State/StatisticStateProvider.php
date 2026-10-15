@@ -119,19 +119,19 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                         $nbSubmissionStatsQuery = $this->entityManager->getRepository(Paper::class)
                             ->submissionsQuery(['is' => $currentFilters])
                             ->getQuery();
-                        $response[] = (new Statistic())
+                        $response[] = new Statistic()
                             ->setName($indicator)
                             ->setValue($nbSubmissionStatsQuery->getSingleScalarResult());
                     } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get']) {
 
-                        $response[] = (new Statistic())
+                        $response[] = new Statistic()
                             ->setName($indicator)
                             ->setValue($this->getAcceptanceRate($currentFilters))
                             ->setUnit('%');
 
 
                     } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'] || $indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get']) {
-                        $response[] = (new Statistic())
+                        $response[] = new Statistic()
                             ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS[sprintf('%s_get', $indicator)])
                             ->setValue($this->entityManager->getRepository(PaperLog::class)->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, $indicator, $unit))
                             ->setUnit(strtolower($unit));
@@ -159,27 +159,27 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                     $nbRefused = $paperLogRepo->getRefused($rvId, $years, $startAfterDate);
                     $nbAccepted = $paperLogRepo->getAccepted($rvId, $years, $startAfterDate);
 
-                    $response[] = (new Statistic())
+                    $response[] = new Statistic()
                         ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'])
                         ->setValue($nbSubmission);
 
-                    $response[] = (new Statistic())
+                    $response[] = new Statistic()
                         ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get'])
                         ->setValue($this->getAcceptanceRate($currentFilters))
                         ->setUnit('%');
 
 
-                    $response[] = (new Statistic())
+                    $response[] = new Statistic()
                         ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'])
                         ->setValue($paperLogRepo->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'], $unit))
                         ->setUnit(strtolower($unit));
-                    $response[] = (new Statistic())
+                    $response[] = new Statistic()
                         ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get'])
                         ->setValue($paperLogRepo->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get'], $unit))
                         ->setUnit(strtolower($unit));
 
 
-                    $response[] = (new Statistic())
+                    $response[] = new Statistic()
                         ->setName('nb-submissions-details')
                         ->setValue(
                             [
@@ -194,7 +194,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                                 ]
                             ]);
 
-                    $response[] = (new Statistic())->setName('evaluation')->setValue($this->getEvaluationStats($currentFilters));
+                    $response[] = new Statistic()->setName('evaluation')->setValue($this->getEvaluationStats($currentFilters));
                 }
 
             } elseif ($indicator) {// evaluations With indicators
@@ -206,13 +206,13 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                 $eval = $this->getEvaluationStats($currentFilters, $indicator);
 
                 if ($indicator === Statistic::EVAL_INDICATORS['median-reviews-number_get']) {
-                    $response[] = (new Statistic())->setName(Statistic::EVAL_INDICATORS['median-reviews-number_get'])->setValue($eval);
+                    $response[] = new Statistic()->setName(Statistic::EVAL_INDICATORS['median-reviews-number_get'])->setValue($eval);
 
                 } elseif ($indicator === Statistic::EVAL_INDICATORS['reviews-requested_get']) {
-                    $response[] = (new Statistic())->setName(Statistic::EVAL_INDICATORS['reviews-requested_get'])->setValue($eval);
+                    $response[] = new Statistic()->setName(Statistic::EVAL_INDICATORS['reviews-requested_get'])->setValue($eval);
 
                 } elseif ($indicator === Statistic::EVAL_INDICATORS['reviews-received_get']) {
-                    $response[] = (new Statistic())->setName(Statistic::EVAL_INDICATORS['reviews-received_get'])->setValue($eval);
+                    $response[] = new Statistic()->setName(Statistic::EVAL_INDICATORS['reviews-received_get'])->setValue($eval);
                 }
 
             } else {
@@ -237,7 +237,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             throw new ResourceNotFoundException(sprintf('Oops! invalid operation: %s', $operation->getUriTemplate()));
         }
 
-        $oStats = (new Statistic())->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS[$operationName]);
+        $oStats = new Statistic()->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS[$operationName]);
         $statsQuery = null;
 
         if ($operationName === 'nb-submissions_get') {
@@ -264,7 +264,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         return $logRepository->getAcceptanceRate($options);
     }
 
-    private function getEvaluationStats(array $options = [], string $indicator = null): null|float|array
+    private function getEvaluationStats(array $options = [], ?string $indicator = null): null|float|array
     {
         if (!$indicator) {
             $result = $this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult();
@@ -325,9 +325,9 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     private function getEvalCollection(array $currentFilters): array
     {
         $eval = $this->getEvaluationStats($currentFilters);
-        $response[] = (new Statistic())->setName(Statistic::EVAL_INDICATORS['reviews-requested_get'])->setValue($eval[Statistic::EVAL_INDICATORS['reviews-requested_get']]);
-        $response[] = (new Statistic())->setName(Statistic::EVAL_INDICATORS['reviews-received_get'])->setValue($eval[Statistic::EVAL_INDICATORS['reviews-received_get']]);
-        $response[] = (new Statistic())->setName(Statistic::EVAL_INDICATORS['median-reviews-number_get'])->setValue($eval[Statistic::EVAL_INDICATORS['median-reviews-number_get']]);
+        $response[] = new Statistic()->setName(Statistic::EVAL_INDICATORS['reviews-requested_get'])->setValue($eval[Statistic::EVAL_INDICATORS['reviews-requested_get']]);
+        $response[] = new Statistic()->setName(Statistic::EVAL_INDICATORS['reviews-received_get'])->setValue($eval[Statistic::EVAL_INDICATORS['reviews-received_get']]);
+        $response[] = new Statistic()->setName(Statistic::EVAL_INDICATORS['median-reviews-number_get'])->setValue($eval[Statistic::EVAL_INDICATORS['median-reviews-number_get']]);
         return $response;
 
     }

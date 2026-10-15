@@ -15,7 +15,7 @@ trait ToolsTrait
      * @param string|null $filter
      * @return array
      */
-    final public function applyFilterBy(array $result, string $extractedKey = null, string $filter = null): array
+    final public function applyFilterBy(array $result, ?string $extractedKey = null, ?string $filter = null): array
     {
         if (
             $result === [] |
@@ -127,7 +127,7 @@ trait ToolsTrait
         if (is_float($middleIndex)) {
             return $array[(int) $middleIndex];
         }
-        return round(($array[$middleIndex] + $array[$middleIndex - 1]) / 2, AppConstants::DEFAULT_PRECISION, PHP_ROUND_HALF_UP);
+        return round(($array[$middleIndex] + $array[$middleIndex - 1]) / 2, AppConstants::DEFAULT_PRECISION, \RoundingMode::HalfAwayFromZero);
     }
 
 
@@ -139,7 +139,7 @@ trait ToolsTrait
             return null;
         }
 
-        return round(array_sum($array) / $count, AppConstants::DEFAULT_PRECISION, PHP_ROUND_HALF_UP);
+        return round(array_sum($array) / $count, AppConstants::DEFAULT_PRECISION, \RoundingMode::HalfAwayFromZero);
 
     }
 
@@ -151,7 +151,7 @@ trait ToolsTrait
 
     public function arrayCleaner(array $array = []): array
     {
-        return array_filter($array, static fn($val) => !(empty($val)));
+        return array_filter($array, static fn($val): bool => !(empty($val)));
     }
 
     public function isValidYear( int|string|null $year = null) : bool
