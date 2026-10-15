@@ -145,8 +145,9 @@ class PaperLogRepository extends ServiceEntityRepository
 
 
         $sql .= " GROUP BY pl1.PAPERID, pl1.RVID ) t1 INNER JOIN(";
-        $sql .= " SELECT pl2.PAPERID, MAX(pl2.DATE) AS max_date, pl2.RVID FROM PAPER_LOG pl2 WHERE pl2.status = ";
-        $sql .= ($latestStatus === Paper::STATUS_STRICTLY_ACCEPTED ? Paper::STATUS_STRICTLY_ACCEPTED . " OR pl2.status = " . Paper::STATUS_TMP_VERSION_ACCEPTED : $latestStatus);
+        // IN (...) rather than "x OR y": the OR took precedence over the following "AND pl2.rvid", so the journal filter was ignored for the first status
+        $latestStatuses = $latestStatus === Paper::STATUS_STRICTLY_ACCEPTED ? [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED] : [$latestStatus];
+        $sql .= " SELECT pl2.PAPERID, MAX(pl2.DATE) AS max_date, pl2.RVID FROM PAPER_LOG pl2 WHERE pl2.status IN (" . implode(', ', $latestStatuses) . ")";
 
         if ($rvId) {
             $sql .= " AND pl2.rvid = $rvId";
@@ -155,7 +156,7 @@ class PaperLogRepository extends ServiceEntityRepository
         $sql .= " GROUP BY pl2.PAPERID, pl2.RVID ) t2 ON t1.PAPERID = t2.PAPERID AND t1.RVID = t2.RVID";
         $sql .= " WHERE NOT EXISTS (SELECT 1 FROM PAPERS p WHERE p.PAPERID = t1.PAPERID AND ( p.FLAG = 'imported'";
 
-        if ($startStatsDate) {
+        if ($startStatsDate && self::isValidDate($startStatsDate)) { // the date is concatenated into the SQL: only a valid date is accepted
             $sql .= " OR p.SUBMISSION_DATE < '$startStatsDate'";
             // This not includes the entire day of $startStatsDate (until 23:59:59)
             // $sql .= " OR p.SUBMISSION_DATE < DATE_ADD('$startStatsDate', INTERVAL 1 DAY)";
