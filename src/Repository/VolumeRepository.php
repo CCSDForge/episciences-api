@@ -9,9 +9,9 @@ use App\Entity\VolumePaperPosition;
 use App\Traits\ToolsTrait;
 use App\Traits\VolumeTrait;
 use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Exception;
-use Doctrine\ORM\NativeQuery;
-use Doctrine\ORM\Query\ResultSetMapping;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
@@ -128,96 +128,100 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
     public function fetchSortedPapers(?int $vid = null): array
     {
-        $result = $this->fetchSortedPapersQuery($vid)->getResult();
+        if ($vid === null) {
+            return ['privateCollection' => new ArrayCollection(), 'publicCollection' => new ArrayCollection()];
+        }
 
-        $onlyPublishedCollection = new ArrayCollection();
-        $privatePapersCollection = new ArrayCollection();
+        return $this->fetchSortedPapersByVolumes([$vid])[$vid];
+    }
 
-        $toBeProcessed = [];
+    /**
+     * Fetches the sorted papers of several volumes (primary and secondary) in a single query.
+     *
+     * @param int[] $vids
+     * @return array<int, array{privateCollection: ArrayCollection, publicCollection: ArrayCollection}> indexed by vid
+     * @throws Exception
+     */
+    public function fetchSortedPapersByVolumes(array $vids): array
+    {
+        $vids = array_values(array_unique(array_map('intval', $vids)));
+        $sorted = [];
+
+        foreach ($vids as $vid) {
+            $sorted[$vid] = ['privateCollection' => new ArrayCollection(), 'publicCollection' => new ArrayCollection()];
+        }
+
+        if ($vids === []) {
+            return $sorted;
+        }
+
+        $result = $this->getEntityManager()->getConnection()->executeQuery(
+            $this->fetchSortedPapersSql(),
+            ['vids' => $vids, 'obsolete' => Paper::STATUS_OBSOLETE],
+            ['vids' => ArrayParameterType::INTEGER, 'obsolete' => ParameterType::INTEGER]
+        )->fetchAllAssociative();
+
+        $processed = [];
 
         foreach ($result as $values) {
 
-            if (!isset($toBeProcessed[$values['PAPERID']])) {
+            $vid = (int)$values['VID'];
+            $paperId = (int)$values['PAPERID'];
 
-                // To be checked : Inconsistency in the database: duplicate position
-                $toBeProcessed[$values['PAPERID']] = $values;
-
-                $paper = new Paper()
-                    ->setDocid($values['DOCID'])
-                    ->setPaperid($values['PAPERID'])
-                    ->setVid($vid)
-                    ->setStatus($values['STATUS']);
-
-                // Only create VolumePaperPosition if position is not NULL
-                if ($values['POSITION'] !== null) {
-                    $volumePaperPosition = new VolumePaperPosition()
-                        ->setVid($vid)
-                        ->setPaperid($paper?->getPaperid())
-                        ->setPosition($values['POSITION']);
-
-                    $paper->setVolumePaperPosition($volumePaperPosition);
-                } else {
-                    $paper->setVolumePaperPosition(null);
-                }
-
-                if ($paper->isPublished() && !$onlyPublishedCollection->contains($paper)) {
-                    $onlyPublishedCollection->add($paper);
-
-                } elseif (!$privatePapersCollection->contains($paper)) {
-                    $privatePapersCollection->add($paper);
-                }
-
-                unset($paper, $volumePaperPosition);
-
-
+            // Several versions of the same paper may be attached to the volume: the latest one (highest DOCID) is kept
+            // To be checked : Inconsistency in the database: duplicate position
+            if (isset($processed[$vid][$paperId])) {
+                continue;
             }
 
+            $processed[$vid][$paperId] = true;
+
+            $paper = new Paper()
+                ->setDocid((int)$values['DOCID'])
+                ->setPaperid($paperId)
+                ->setVid($vid)
+                ->setStatus((int)$values['STATUS']);
+
+            // Only create VolumePaperPosition if position is not NULL
+            if ($values['POSITION'] !== null) {
+                $paper->setVolumePaperPosition(
+                    new VolumePaperPosition()
+                        ->setVid($vid)
+                        ->setPaperid($paperId)
+                        ->setPosition((int)$values['POSITION'])
+                );
+            } else {
+                $paper->setVolumePaperPosition(null);
+            }
+
+            $sorted[$vid][$paper->isPublished() ? 'publicCollection' : 'privateCollection']->add($paper);
         }
-        return ['privateCollection' => $privatePapersCollection, 'publicCollection' => $onlyPublishedCollection];
+
+        return $sorted;
     }
 
-    public function fetchSortedPapersQuery(?int $vid = null): NativeQuery
+    /**
+     * Papers attached to the volumes either as primary volume (PAPERS.VID) or as secondary volume (VOLUME_PAPER),
+     * ordered by their position in that volume.
+     * Filters are applied in each branch (WHERE) so that the PAPERS / VOLUME_PAPER indexes on VID can be used.
+     */
+    private function fetchSortedPapersSql(): string
     {
-        // Création du mapping des colonnes du résultat
-        $rsm = new ResultSetMapping();
-        $rsm->addScalarResult('DOCID', 'DOCID');
-        $rsm->addScalarResult('STATUS', 'STATUS');
-        $rsm->addScalarResult('PAPERID', 'PAPERID');
-        $rsm->addScalarResult('pv', 'pv');
-        $rsm->addScalarResult('sv', 'sv');
-        $rsm->addScalarResult('POSITION', 'POSITION');
-
-        $sql =
-            "SELECT
-            t1.PAPERID,
-            DOCID,
-            t1.STATUS,
-            pv,
-            sv,
-            COALESCE(vpp1.POSITION, vpp2.POSITION) AS POSITION
-            FROM(
-            SELECT
-            p.DOCID,
-            p.PAPERID,
-            p.STATUS,
-            p.VID AS pv,
-            vp.VID AS sv
-            FROM
-            PAPERS p
-            LEFT JOIN VOLUME_PAPER vp ON (p.DOCID = vp.DOCID)
-            ) t1
-            LEFT JOIN VOLUME_PAPER_POSITION vpp1 ON (vpp1.VID = t1.pv AND vpp1.PAPERID = t1.PAPERID)
-            LEFT JOIN VOLUME_PAPER_POSITION vpp2 ON (vpp2.VID = t1.sv AND vpp2.PAPERID = t1.PAPERID) ";
-        $sql .= "HAVING t1.STATUS != ";
-        $sql .= Paper::STATUS_OBSOLETE;
-
-        if ($vid !== null) {
-            $sql .= " AND (t1.pv = $vid OR t1.sv = $vid)";
-        }
-
-        $sql .= " ORDER BY COALESCE(vpp1.POSITION, vpp2.POSITION, 999999) ASC, t1.PAPERID ASC";
-
-        return $this->getEntityManager()->createNativeQuery($sql, $rsm);
+        return
+            "SELECT t.VID, t.DOCID, t.PAPERID, t.STATUS, t.POSITION
+            FROM (
+                SELECT p.VID AS VID, p.DOCID, p.PAPERID, p.STATUS, vpp.POSITION
+                FROM PAPERS p
+                LEFT JOIN VOLUME_PAPER_POSITION vpp ON (vpp.VID = p.VID AND vpp.PAPERID = p.PAPERID)
+                WHERE p.VID IN (:vids) AND p.STATUS != :obsolete
+                UNION ALL
+                SELECT vp.VID AS VID, p.DOCID, p.PAPERID, p.STATUS, vpp.POSITION
+                FROM VOLUME_PAPER vp
+                INNER JOIN PAPERS p ON (p.DOCID = vp.DOCID)
+                LEFT JOIN VOLUME_PAPER_POSITION vpp ON (vpp.VID = vp.VID AND vpp.PAPERID = p.PAPERID)
+                WHERE vp.VID IN (:vids) AND p.STATUS != :obsolete
+            ) t
+            ORDER BY t.VID ASC, COALESCE(t.POSITION, 999999) ASC, t.PAPERID ASC, t.DOCID DESC";
     }
 
     public function listQuery(array $filters = [], $isMaximumForced = false): QueryBuilder
