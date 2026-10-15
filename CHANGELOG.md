@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed invalid `UniqueConstraints` on `pages` and `news` tables.
 - Fixed Swagger UI template (`templates/bundles/ApiPlatformBundle/SwaggerUi/index.html.twig`) for API Platform 4.3: replaced the removed `app.request.attributes.get('_route')` usage with `originalRoute`/`originalRouteParams` and removed the removed `graphQlPlaygroundEnabled` variable (GraphQL Playground).
 - Fixed CI `docker-validate` failure: the Doctrine mapping check now runs as `root` in the container so the kernel can create its cache directory (default `CACHE_PATH="/var/cache/"` is not writable by the non-root `DOCKER_USER`); ownership of the cache/log directories is then restored to the non-root user so subsequent steps (e.g. `docker-test-coverage`) can still write to them.
+- Fixed the `test` environment, where the kernel could not boot: `config/bundles.php` registered `WebProfilerBundle` and `DoctrineFixturesBundle` under a corrupted `'ApiCollectionNormalizer.php'` environment key instead of `'test'` (`Container extension "web_profiler" is not registered`), and `config/packages/test/framework.yaml` used the `framework.session.storage_id` option, removed in Symfony 6 (replaced by `storage_factory_id`).
 
 ## v1.3.1 2026-09-22
 ### Fixed
