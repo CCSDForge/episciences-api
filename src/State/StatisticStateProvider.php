@@ -165,7 +165,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
                     $response[] = new Statistic()
                         ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get'])
-                        ->setValue($this->getAcceptanceRate($currentFilters))
+                        // Totals already computed above: avoids counting them again
+                        ->setValue($this->getAcceptanceRate(array_merge($currentFilters, ['acceptedTotal' => $nbAccepted, 'refusedTotal' => $nbRefused])))
                         ->setUnit('%');
 
 
