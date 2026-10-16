@@ -9,6 +9,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Index(columns: ['DOCID'], name: 'fk_T_PAPER_MODIF_T_PAPERS_idx')]
 #[ORM\Index(columns: ['UID'], name: 'fk_T_PAPER_MODIF_T_USER_idx')]
+#[ORM\Index(columns: ['status', 'RVID', 'PAPERID', 'DATE', 'DOCID'], name: 'idx_status_rvid_paperid_date_docid')]
+#[ORM\Index(columns: ['PAPERID', 'status'], name: 'idx_paperid_status')]
 #[ORM\Entity(repositoryClass: PaperLogRepository::class)]
 
 class PaperLog

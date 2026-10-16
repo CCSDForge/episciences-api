@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 ### Added
+- Added covering indexes on `PAPER_LOG` (migration `Version20261016120000`) to speed up the statistics endpoints (`GET /api/statistics/` from about 6 s to under 1 s on a full dataset).
 - Added `is_public` stored generated column to `Pages` and `News` entities to optimize query filtering.
 - Added regression tests for the `is_public` generated column filter.
 - Added a database test (`tests/Functional/`, MySQL in CI through `TEST_DATABASE_URL`, skipped otherwise) checking that the cap of the unpaginated collections keeps the to-many fetch-joined collections complete.
