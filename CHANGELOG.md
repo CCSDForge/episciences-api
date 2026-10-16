@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Solr collections requested without pagination (`/api/search/`, `/api/browse/authors/`, `/api/browse/authors-search/{author_fullname}`, `/api/statistics/`, `/api/statistics/evaluation`) now also hold the `X-Truncated-Max-Items` header when capped.
 - Fixed `GET /api/browse/authors-search/{author_fullname}` returning at most 10 papers (Solr default `rows`): up to 1000 are now requested, like the other Solr collections.
 - The OpenAPI documentation (`/api/docs`) describes the cap of the collections requested without pagination on the `pagination` parameter, and the `X-Truncated-Max-Items` response header.
+- Fixed the JSON-LD collections requested without pagination (`?pagination=false`): they were serialized as a plain list whose items had the collection URI as `@id` and lacked their nested data (e.g. journal settings, volume papers). They are now Hydra collections (`hydra:member`, `hydra:totalItems`…) with the same items as the paginated responses. Breaking change for the clients reading a plain list.
 
 ### Security
 - The `startAfterDate` filter is now validated (`Y-m-d`) before being concatenated into the delay statistics SQL query.
