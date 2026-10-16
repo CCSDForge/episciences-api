@@ -8,14 +8,17 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Operation;
 use App\Entity\Paper;
 use Doctrine\ORM\Mapping\ClassMetadata;
+use Doctrine\ORM\Query\Expr\Join;
+use Doctrine\ORM\Query\Expr\Select;
 use Doctrine\ORM\QueryBuilder;
+use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactoryInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 
 /**
- * Hydrates the Paper collection with partial objects so that only the fields
- * actually serialized in the collection (normalization groups of the operation)
- * are loaded.
+ * Hydrates the papers of a collection with partial objects so that only the fields
+ * actually serialized (normalization groups of the operation) are loaded: the Paper
+ * collection itself, and the papers fetch-joined in another collection (e.g. sections).
  *
  * Without this, every paper row is fully hydrated including the heavy scalar
  * columns RECORD (TEXT) and DOCUMENT (JSON, decoded to PHP arrays), which made
@@ -25,13 +28,17 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
  * the collection groups is loaded without touching this class. Fields that are
  * not loaded stay uninitialized on the hydrated objects: do not read them while
  * handling the collection.
+ *
+ * Applied after API Platform's EagerLoadingExtension (priority -18), which adds the fetch joins.
  */
+#[AsTaggedItem(priority: -20)]
 class PaperCollectionPartialExtension implements QueryCollectionExtensionInterface
 {
     /**
-     * Loaded even if not serialized: PapersVoter reads rvid.
+     * Loaded even if not serialized: PapersVoter reads rvid,
+     * AbstractVolumeSection::setTotalPublishedArticles() reads status.
      */
-    private const array ALWAYS_LOADED_FIELDS = ['rvid'];
+    private const array ALWAYS_LOADED_FIELDS = ['rvid', 'status'];
 
     public function __construct(private readonly ClassMetadataFactoryInterface $serializerMetadataFactory)
     {
@@ -45,7 +52,7 @@ class PaperCollectionPartialExtension implements QueryCollectionExtensionInterfa
         array $context = []
     ): void
     {
-        if ($resourceClass !== Paper::class || !$operation instanceof GetCollection) {
+        if (!$operation instanceof GetCollection) {
             return;
         }
 
@@ -55,10 +62,48 @@ class PaperCollectionPartialExtension implements QueryCollectionExtensionInterfa
             return;
         }
 
-        $fields = $this->getSerializedFields($queryBuilder->getEntityManager()->getClassMetadata(Paper::class), $groups);
+        $paperAliases = $this->getPaperAliases($queryBuilder);
 
-        // review (rvid, code) is joined and selected by API Platform's EagerLoadingExtension.
-        $queryBuilder->select(sprintf('partial %s.{%s}', $queryBuilder->getRootAliases()[0], implode(',', $fields)));
+        if ($paperAliases === []) {
+            return;
+        }
+
+        $partial = sprintf(
+            'partial %%s.{%s}',
+            implode(',', $this->getSerializedFields($queryBuilder->getEntityManager()->getClassMetadata(Paper::class), $groups))
+        );
+
+        $selectParts = [];
+
+        foreach ($queryBuilder->getDQLPart('select') as $select) {
+            foreach ($select instanceof Select ? $select->getParts() : [(string)$select] as $part) {
+                $selectParts[] = in_array(trim((string)$part), $paperAliases, true) ? sprintf($partial, trim((string)$part)) : $part;
+            }
+        }
+
+        $queryBuilder->select($selectParts);
+    }
+
+    /**
+     * @return string[] aliases of the Paper entities in the query: root entity or joined association
+     */
+    private function getPaperAliases(QueryBuilder $queryBuilder): array
+    {
+        $entityManager = $queryBuilder->getEntityManager();
+        $classByAlias = array_combine($queryBuilder->getRootAliases(), $queryBuilder->getRootEntities());
+
+        foreach ($queryBuilder->getDQLPart('join') as $joins) {
+            /** @var Join $join */
+            foreach ($joins as $join) {
+                [$parentAlias, $association] = array_pad(explode('.', $join->getJoin(), 2), 2, null);
+
+                if ($association !== null && isset($classByAlias[$parentAlias])) {
+                    $classByAlias[$join->getAlias()] = $entityManager->getClassMetadata($classByAlias[$parentAlias])->getAssociationTargetClass($association);
+                }
+            }
+        }
+
+        return array_keys(array_filter($classByAlias, static fn(string $class): bool => $class === Paper::class));
     }
 
     /**
