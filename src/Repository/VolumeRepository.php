@@ -224,7 +224,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
             ORDER BY t.VID ASC, COALESCE(t.POSITION, 999999) ASC, t.PAPERID ASC, t.DOCID DESC";
     }
 
-    public function listQuery(array $filters = [], $isMaximumForced = false): QueryBuilder
+    public function listQuery(array $filters = []): QueryBuilder
     {
         $alias = 'v';
 
@@ -257,13 +257,6 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
         if ($vIds) {
             $this->andOrExp($qb, sprintf('%s.vid', $alias), $vIds);
-        }
-
-        if (
-            !$rvId &&
-            $isMaximumForced
-        ) {
-            $qb->setMaxResults(self::DEFAULT_MAX_RESULT); // To avoid possible OUT OF MEMORY errors
         }
 
         $qb->orderBy(sprintf('%s.position',$alias), \SortDirection::Ascending);
