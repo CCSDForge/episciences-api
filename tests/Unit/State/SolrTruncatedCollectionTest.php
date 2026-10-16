@@ -6,9 +6,11 @@ namespace App\Tests\Unit\State;
 
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\State\Pagination\Pagination;
+use ApiPlatform\State\Pagination\PaginatorInterface;
 use App\Doctrine\UnpaginatedCollectionLimitExtension;
 use App\Resource\Browse;
 use App\Resource\Search;
+use App\Resource\SolrDoc;
 use App\Service\Solarium\Client;
 use App\Service\Solr\SolrAuthorService;
 use App\Service\Solr\SolrConstants;
@@ -33,37 +35,56 @@ class SolrTruncatedCollectionTest extends TestCase
 
     private Request $request;
 
+    /** @var int[] start and rows of the last Solr search */
+    private array $searchArguments = [];
+
     protected function setUp(): void
     {
         $this->request = new Request();
     }
 
-    public function testUnpaginatedSearchWithMoreMatchesThanDocumentsIsFlagged(): void
+    public function testUnpaginatedSearchAboveTheMaximumIsFlagged(): void
     {
-        $this->search(numFound: 5, returnedDocs: 2, pagination: self::UNPAGINATED);
+        $max = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
 
-        $this->assertSame(2, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $paginator = $this->search(matches: $max + 1, pagination: self::UNPAGINATED);
+
+        $this->assertSame([0, $max], $this->searchArguments);
+        $this->assertCount($max, iterator_to_array($paginator));
+        $this->assertSame((float)$max, $paginator->getTotalItems());
+        $this->assertSame($max, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
     }
 
     public function testUnpaginatedSearchCappedByItemsPerPageIsFlagged(): void
     {
-        $this->search(numFound: 3, returnedDocs: 3, pagination: self::UNPAGINATED, itemsPerPage: 2);
+        $this->search(matches: 5, pagination: self::UNPAGINATED, itemsPerPage: 2);
 
         $this->assertSame(2, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
     }
 
     public function testCompleteUnpaginatedSearchIsNotFlagged(): void
     {
-        $this->search(numFound: 2, returnedDocs: 2, pagination: self::UNPAGINATED);
+        $this->search(matches: 3, pagination: self::UNPAGINATED);
 
         $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
     }
 
     public function testPaginatedSearchIsNotFlagged(): void
     {
-        $this->search(numFound: 5, returnedDocs: 2, pagination: self::PAGINATED);
+        $this->search(matches: 5, pagination: self::PAGINATED, itemsPerPage: 2);
 
         $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+    }
+
+    public function testPaginatedSearchFetchesOnlyTheRequestedPage(): void
+    {
+        $paginator = $this->search(matches: 5, pagination: self::PAGINATED, itemsPerPage: 2, page: 2);
+
+        $this->assertSame([2, 2], $this->searchArguments); // start, rows sent to Solr
+        $this->assertSame([3, 4], array_map(static fn(SolrDoc $doc): int => $doc->getDocid(), iterator_to_array($paginator, false)));
+        $this->assertSame(5.0, $paginator->getTotalItems()); // Solr numFound
+        $this->assertSame(2.0, $paginator->getCurrentPage());
+        $this->assertSame(3.0, $paginator->getLastPage());
     }
 
     public function testUnpaginatedAuthorsAboveTheMaximumAreTruncatedAndFlagged(): void
@@ -95,18 +116,27 @@ class SolrTruncatedCollectionTest extends TestCase
         $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
     }
 
-    private function search(int $numFound, int $returnedDocs, string $pagination, ?int $itemsPerPage = null): void
+    /**
+     * Solr stub returning the requested slice ($start, $rows) of $matches documents.
+     *
+     * @return PaginatorInterface<SolrDoc>
+     */
+    private function search(int $matches, string $pagination, ?int $itemsPerPage = null, int $page = 1): PaginatorInterface
     {
-        $docs = array_map(static fn(int $i): array => ['docid' => $i], range(1, $returnedDocs));
-
-        $result = $this->createStub(ResultInterface::class);
-        $result->method('getData')->willReturn(['response' => ['numFound' => $numFound, 'docs' => $docs]]);
+        $docs = array_map(static fn(int $i): array => ['docid' => $i], range(1, $matches));
 
         $client = $this->createStub(Client::class);
         $client->method('setJournal')->willReturnSelf();
         $client->method('setLogger')->willReturnSelf();
         $client->method('setSearchPrams')->willReturnSelf();
-        $client->method('search')->willReturn($result);
+        $client->method('search')->willReturnCallback(function (string $terms, int $start, int $rows) use ($docs, $matches): ResultInterface {
+            $this->searchArguments = [$start, $rows];
+
+            $result = $this->createStub(ResultInterface::class);
+            $result->method('getData')->willReturn(['response' => ['numFound' => $matches, 'docs' => array_slice($docs, $start, $rows)]]);
+
+            return $result;
+        });
 
         $provider = new SearchStateProvider(
             $client,
@@ -116,13 +146,16 @@ class SolrTruncatedCollectionTest extends TestCase
         );
 
         $operation = new GetCollection(class: Search::class, paginationMaximumItemsPerPage: SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS);
-        $filters = [Search::TERMS_PARAM => 'graph', 'pagination' => $pagination];
+        $filters = [Search::TERMS_PARAM => 'graph', 'pagination' => $pagination, 'page' => $page];
 
         if ($itemsPerPage !== null) {
             $filters['itemsPerPage'] = $itemsPerPage;
         }
 
-        $provider->provide($operation, [], ['operation' => $operation, 'filters' => $filters, 'request' => $this->request]);
+        $paginator = $provider->provide($operation, [], ['operation' => $operation, 'filters' => $filters, 'request' => $this->request]);
+        $this->assertInstanceOf(PaginatorInterface::class, $paginator);
+
+        return $paginator;
     }
 
     public function testUnpaginatedAuthorsTotalExcludesTheExtraAuthor(): void
@@ -159,6 +192,8 @@ class SolrTruncatedCollectionTest extends TestCase
         $operation = new GetCollection(class: Browse::class);
 
         $paginator = $provider->provide($operation, [], ['operation' => $operation, 'filters' => ['pagination' => $pagination], 'request' => $this->request]);
+
+        $this->assertInstanceOf(PaginatorInterface::class, $paginator);
 
         if ($expectedTotal !== null) {
             $this->assertSame((float)$expectedTotal, $paginator->getTotalItems());
