@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added `is_public` stored generated column to `Pages` and `News` entities to optimize query filtering.
 - Added regression tests for the `is_public` generated column filter.
+- Added a database test (`tests/Functional/`, MySQL in CI through `TEST_DATABASE_URL`, skipped otherwise) checking that the cap of the unpaginated collections keeps the to-many fetch-joined collections complete.
 
 ### Changed
 - Replaced non-indexed `JSON_EXTRACT` visibility filter with the new `is_public` column in Doctrine queries.
