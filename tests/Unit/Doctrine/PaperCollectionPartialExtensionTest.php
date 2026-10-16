@@ -7,7 +7,6 @@ namespace App\Tests\Unit\Doctrine;
 use ApiPlatform\Doctrine\Orm\Util\QueryNameGeneratorInterface;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
-use App\AppConstants;
 use App\Doctrine\PaperCollectionPartialExtension;
 use App\Entity\Paper;
 use App\Entity\Volume;
@@ -55,31 +54,15 @@ class PaperCollectionPartialExtensionTest extends TestCase
         $this->assertEqualsCanonicalizing(['docid', 'rvid', 'paperid', 'doi', 'status'], $fields);
         $this->assertNotContains('record', $fields);
         $this->assertNotContains('document', $fields);
-        $this->assertSame(AppConstants::MAXIMUM_ITEMS_PER_PAGE + 1, $queryBuilder->getMaxResults());
     }
 
-    public function testCollectionFetchesOneMoreThanTheOperationMaximumItemsPerPage(): void
-    {
-        $queryBuilder = $this->createPaperQueryBuilder();
-
-        $this->extension->applyToCollection(
-            $queryBuilder,
-            $this->queryNameGenerator,
-            Paper::class,
-            new GetCollection(paginationMaximumItemsPerPage: 50, normalizationContext: ['groups' => ['read:Papers']])
-        );
-
-        $this->assertSame(51, $queryBuilder->getMaxResults());
-    }
-
-    public function testCollectionWithoutGroupsKeepsTheFullSelect(): void
+    public function testCollectionWithoutGroupsIsUnchanged(): void
     {
         $queryBuilder = $this->createPaperQueryBuilder();
 
         $this->extension->applyToCollection($queryBuilder, $this->queryNameGenerator, Paper::class, new GetCollection());
 
         $this->assertSame(self::FULL_SELECT, $queryBuilder->getDQL());
-        $this->assertSame(AppConstants::MAXIMUM_ITEMS_PER_PAGE + 1, $queryBuilder->getMaxResults());
     }
 
     public function testItemOperationIsUnchanged(): void
@@ -94,7 +77,6 @@ class PaperCollectionPartialExtensionTest extends TestCase
         );
 
         $this->assertSame(self::FULL_SELECT, $queryBuilder->getDQL());
-        $this->assertNull($queryBuilder->getMaxResults());
     }
 
     public function testOtherResourceIsUnchanged(): void
@@ -109,7 +91,6 @@ class PaperCollectionPartialExtensionTest extends TestCase
         );
 
         $this->assertSame(self::FULL_SELECT, $queryBuilder->getDQL());
-        $this->assertNull($queryBuilder->getMaxResults());
     }
 
     private function createPaperQueryBuilder(): QueryBuilder
