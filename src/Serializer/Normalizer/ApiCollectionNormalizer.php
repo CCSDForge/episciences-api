@@ -17,17 +17,28 @@ use App\Resource\Range;
 use App\Resource\RangeType;
 use App\Resource\Search;
 use App\Resource\Statistic;
+use App\State\PaperCollectionProvider;
 use App\Traits\QueryTrait;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Component\Serializer\SerializerAwareInterface;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Contracts\Service\Attribute\Required;
 
 final class ApiCollectionNormalizer extends AbstractNormalizer implements NormalizerInterface, NormalizerAwareInterface, SerializerAwareInterface
 {
     use QueryTrait;
 
     public const string FORMAT = 'jsonld';
+
+    private ?RequestStack $requestStack = null;
+
+    #[Required]
+    public function setRequestStack(RequestStack $requestStack): void
+    {
+        $this->requestStack = $requestStack;
+    }
 
     public function setNormalizer(NormalizerInterface $normalizer): void
     {
@@ -116,6 +127,14 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 
 
         $this->addHydraContext($data, $operationClass, $journal, $identifiers, $filters);
+
+        $truncatedMaxItems = $this->requestStack?->getCurrentRequest()?->attributes->get(PaperCollectionProvider::TRUNCATED_ATTRIBUTE);
+
+        if ($operationClass === Paper::class && $truncatedMaxItems !== null) { // ?pagination=false: the collection was capped
+            $data['hydra:truncated'] = true;
+            $data['hydra:maxItems'] = $truncatedMaxItems;
+        }
+
         $data['hydra:member'] = $hydraMember;
         return $data;
 

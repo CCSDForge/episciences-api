@@ -55,10 +55,10 @@ class PaperCollectionPartialExtensionTest extends TestCase
         $this->assertEqualsCanonicalizing(['docid', 'rvid', 'paperid', 'doi', 'status'], $fields);
         $this->assertNotContains('record', $fields);
         $this->assertNotContains('document', $fields);
-        $this->assertSame(AppConstants::MAXIMUM_ITEMS_PER_PAGE, $queryBuilder->getMaxResults());
+        $this->assertSame(AppConstants::MAXIMUM_ITEMS_PER_PAGE + 1, $queryBuilder->getMaxResults());
     }
 
-    public function testCollectionIsCappedToTheOperationMaximumItemsPerPage(): void
+    public function testCollectionFetchesOneMoreThanTheOperationMaximumItemsPerPage(): void
     {
         $queryBuilder = $this->createPaperQueryBuilder();
 
@@ -69,7 +69,7 @@ class PaperCollectionPartialExtensionTest extends TestCase
             new GetCollection(paginationMaximumItemsPerPage: 50, normalizationContext: ['groups' => ['read:Papers']])
         );
 
-        $this->assertSame(50, $queryBuilder->getMaxResults());
+        $this->assertSame(51, $queryBuilder->getMaxResults());
     }
 
     public function testCollectionWithoutGroupsKeepsTheFullSelect(): void
@@ -79,7 +79,7 @@ class PaperCollectionPartialExtensionTest extends TestCase
         $this->extension->applyToCollection($queryBuilder, $this->queryNameGenerator, Paper::class, new GetCollection());
 
         $this->assertSame(self::FULL_SELECT, $queryBuilder->getDQL());
-        $this->assertSame(AppConstants::MAXIMUM_ITEMS_PER_PAGE, $queryBuilder->getMaxResults());
+        $this->assertSame(AppConstants::MAXIMUM_ITEMS_PER_PAGE + 1, $queryBuilder->getMaxResults());
     }
 
     public function testItemOperationIsUnchanged(): void

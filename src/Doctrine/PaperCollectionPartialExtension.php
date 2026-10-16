@@ -28,7 +28,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
  * handling the collection.
  *
  * Without pagination (?pagination=false), the result is also capped to the
- * maximum number of items per page.
+ * maximum number of items per page (see PaperCollectionProvider).
  */
 class PaperCollectionPartialExtension implements QueryCollectionExtensionInterface
 {
@@ -61,9 +61,10 @@ class PaperCollectionPartialExtension implements QueryCollectionExtensionInterfa
             return;
         }
 
-        // To avoid possible OUT OF MEMORY errors with ?pagination=false.
+        // To avoid possible OUT OF MEMORY errors with ?pagination=false. One more paper is fetched so that
+        // PaperCollectionProvider can tell a truncated result.
         // When the pagination is enabled, API Platform's PaginationExtension (applied later) overrides this limit.
-        $queryBuilder->setMaxResults(self::getMaxItemsWithoutPagination($operation));
+        $queryBuilder->setMaxResults(self::getMaxItemsWithoutPagination($operation) + 1);
 
         $groups = (array)($operation->getNormalizationContext()[AbstractNormalizer::GROUPS] ?? []);
 
