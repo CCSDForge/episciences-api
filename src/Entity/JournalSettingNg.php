@@ -29,129 +29,81 @@ use ApiPlatform\OpenApi\Model\Response;
                         content: new \ArrayObject([
                             'application/json' => new MediaType(
                                 schema: new \ArrayObject([
-                                        'properties' => new \ArrayObject([
-
-                                            'menu' => [
-                                                'type' => 'object',
-                                                'additionalProperties' => false, // uniquement les propriétés déclarées sont autorisées
-                                                'example' => [
-                                                    'authorsRender' => true,
-                                                    'sectionsRender' => true,
-                                                    'specialIssuesRender' => true,
-                                                    'journalIndexingRender' => false,
-                                                    'acceptedArticlesRender' => true,
-                                                    'journalForReviewersRender' => false,
-                                                    'journalEthicalCharterRender' => true,
-                                                    'volumeTypeProceedingsRender' => true,
-                                                    'journalAcknowledgementsRender' => false,
-                                                    'journalProposingSpecialIssuesRender' => false,
-                                                    'journalForConferenceOrganisersRender' => false
-                                                ]
+                                    'type' => 'object',
+                                    'properties' => [
+                                        'api_domain' => ['type' => 'string', 'example' => 'api-dev.episciences.org'],
+                                        'theme' => [
+                                            'type' => 'object',
+                                            'properties' => [
+                                                'primaryColor' => self::OAS_COLOR + ['example' => '#49737e'],
+                                                'primaryTextColor' => self::OAS_COLOR + ['example' => '#ffffff'],
                                             ],
-                                            'theme' => [
-                                                'type' => 'object',
-                                                'additionalProperties' => false,
-                                                'example' => [
-                                                    'primaryColor' => '#49737e',
-                                                    'primaryTextColor' => '#ffffff'
-                                                ]
-
+                                        ],
+                                        'languages' => [
+                                            'type' => 'object',
+                                            'properties' => [
+                                                'default' => self::OAS_LANGUAGE + ['example' => 'en'],
+                                                'accepted' => ['type' => 'array', 'minItems' => 1, 'items' => self::OAS_LANGUAGE, 'example' => ['en', 'fr']],
                                             ],
-                                            'homepage' => [
-                                                'type' => 'object',
-                                                'additionalProperties' => false,
-                                                'example' => [
-
-                                                    'statsRender' => true,
-                                                    'lastNewsRender' => true,
-                                                    'specialIssuesRender' => true,
-                                                    'membersCarouselRender' => true,
-                                                    'journalIndexationRender' => true,
-                                                    'latestNewsCarouselRender' => true,
-                                                    'latestArticlesCarouselRender' => true,
-                                                    'latestAcceptedArticlesCarouselRender' => true
-                                                ]
+                                        ],
+                                        'homepage' => [
+                                            'type' => 'object',
+                                            'properties' => [
+                                                    'latestArticlesCarouselRender' => self::OAS_BOOLEAN,
+                                                    'latestNewsCarouselRender' => self::OAS_BOOLEAN,
+                                                    'membersCarouselRender' => self::OAS_BOOLEAN,
+                                                    'statsRender' => self::OAS_BOOLEAN,
+                                                    'journalIndexationRender' => self::OAS_BOOLEAN,
+                                                    'specialIssuesRender' => self::OAS_BOOLEAN,
+                                                    'latestAcceptedArticlesCarouselRender' => self::OAS_BOOLEAN,
+                                                    'lastNewsRender' => self::OAS_BOOLEAN,
                                             ],
-                                            'languages' => [
-                                                'type' => 'object',
-                                                'additionalProperties' => false,
-                                                'example' => [
-                                                    'default' => 'en',
-                                                    'accepted' => [
-                                                        'en',
-                                                        'fr',
-                                                        'es'
-                                                    ]
-                                                ]
+                                        ],
+                                        'homepageRightBlock' => [
+                                            'type' => 'object',
+                                            'properties' => [
+                                                'lastInformationRenderType' => [
+                                                    'type' => 'string',
+                                                    'enum' => ['last-news', 'last-volume', 'last-special-issue'],
+                                                    'example' => 'last-news',
+                                                ],
                                             ],
-                                            'api_domain' => [
-                                                'type' => 'string',
-                                                'example' => 'api-dev.episciences.org'
+                                        ],
+                                        'menu' => [
+                                            'type' => 'object',
+                                            'properties' => [
+                                                    'acceptedArticlesRender' => self::OAS_BOOLEAN,
+                                                    'volumeTypeProceedingsRender' => self::OAS_BOOLEAN,
+                                                    'specialIssuesRender' => self::OAS_BOOLEAN,
+                                                    'sectionsRender' => self::OAS_BOOLEAN,
+                                                    'authorsRender' => self::OAS_BOOLEAN,
+                                                    'journalIndexingRender' => self::OAS_BOOLEAN,
+                                                    'journalAcknowledgementsRender' => self::OAS_BOOLEAN,
+                                                    'journalEthicalCharterRender' => self::OAS_BOOLEAN,
+                                                    'journalForReviewersRender' => self::OAS_BOOLEAN,
+                                                    'journalForEditorsRender' => self::OAS_BOOLEAN,
+                                                    'journalForConferenceOrganisersRender' => self::OAS_BOOLEAN,
+                                                    'journalProposingSpecialIssuesRender' => self::OAS_BOOLEAN,
                                             ],
-
-                                            'statistics' => [
-                                                'type' => 'object',
-                                                'additionalProperties' => false,
-                                                'example' => [
-
-                                                    'colors' => [
-                                                        '#840909 ',
-                                                        '#295fba ',
-                                                        '#3f557a ',
-                                                        '#192132 '
-                                                    ],
-                                                    'nbSubmissions' => [
-                                                        'order' => 2,
-                                                        'render' => true
-                                                    ],
-                                                    'acceptanceRate' => [
-                                                        'order' => 10,
-                                                        'render' => true
-                                                    ],
-                                                    'reviewsReceived' => [
-                                                        'order' => 2,
-                                                        'render' => true
-                                                    ],
-                                                    'reviewsRequested' => [
-                                                        'order' => 1,
-                                                        'render' => true
-                                                    ],
-                                                    'medianReviewsNumber' => [
-                                                        'order' => 4,
-                                                        'render' => true
-                                                    ],
-                                                    'nbSubmissionsDetails' => [
-                                                        'order' => 3,
-                                                        'render' => true
-                                                    ],
-                                                    'medianSubmissionPublication' => [
-                                                        'order' => 3,
-                                                        'render' => true
-                                                    ]
-                                                ]
+                                        ],
+                                        'statistics' => [
+                                            'type' => 'object',
+                                            'properties' => [
+                                                'colors' => ['type' => 'array', 'items' => self::OAS_COLOR, 'example' => ['#840909', '#295fba', '#3f557a', '#192132']],
+                                                    'acceptanceRate' => self::OAS_STAT_OPTION,
+                                                    'nbSubmissions' => self::OAS_STAT_OPTION,
+                                                    'nbSubmissionsDetails' => self::OAS_STAT_OPTION,
+                                                    'reviewsRequested' => self::OAS_STAT_OPTION,
+                                                    'reviewsReceived' => self::OAS_STAT_OPTION,
+                                                    'medianSubmissionPublication' => self::OAS_STAT_OPTION,
+                                                    'medianReviewsNumber' => self::OAS_STAT_OPTION,
                                             ],
-
-                                            'homepageRightBlock' => [
-                                                'type' => 'object',
-                                                'additionalProperties' => false,
-                                                'example' => [
-                                                    'lastInformationRenderType' => 'last-news'
-                                                ]
-                                            ],
-
-
-                                        ])
-
-                                    ]
-
-
-                                )
-                            )
+                                        ],
+                                    ],
+                                ])
+                            ),
                         ])
-
-                    )
-
-
+                    ),
                 ],
                 summary: 'Retrieves the public interface configuration',
                 description: 'Retrieve the public interface configuration for sites migrated to the new interfaces',
@@ -182,6 +134,18 @@ use ApiPlatform\OpenApi\Model\Response;
 class JournalSettingNg
 {
     public const TABLE = 'JOURNAL_SETTING';
+
+    // OpenAPI schema fragments, aligned with the settings JSON schema of episciences-manager
+    private const array OAS_BOOLEAN = ['type' => 'boolean'];
+    private const array OAS_COLOR = ['type' => 'string', 'pattern' => '^#[0-9A-Fa-f]{6}$'];
+    private const array OAS_LANGUAGE = ['type' => 'string', 'enum' => ['en', 'fr', 'es', 'de']];
+    private const array OAS_STAT_OPTION = [
+        'type' => 'object',
+        'properties' => [
+            'render' => self::OAS_BOOLEAN,
+            'order' => ['type' => 'integer', 'minimum' => 0],
+        ],
+    ];
 
     #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]

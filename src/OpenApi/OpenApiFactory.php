@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\OpenApi;
 
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
+use ApiPlatform\OpenApi\Model\MediaType;
 use ApiPlatform\OpenApi\Model\Operation;
 use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\RequestBody;
@@ -118,8 +119,8 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     {
         $components = $openApi->getComponents();
 
-        $securitySchemes = $components->getSecuritySchemes();
-        $schemas = $components->getSchemas();
+        $securitySchemes = $components->getSecuritySchemes() ?? new \ArrayObject();
+        $schemas = $components->getSchemas() ?? new \ArrayObject();
 
         $securitySchemes[self::BEARER_AUTH] = new \ArrayObject([
             'type' => 'http',
@@ -210,28 +211,30 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         );
     }
 
+    /**
+     * @return array<int, OpenApiResponse>
+     */
     private function tokenResponse(string $description, string $unauthorizedDescription): array
     {
         return [
-            Response::HTTP_OK => [
-                'description' => $description,
-                'content' => [
-                    'application/json' => [
-                        'schema' => [
-                            '$ref' => '#/components/schemas/Token',
-                        ],
-                    ],
-                ],
-            ],
-            Response::HTTP_UNAUTHORIZED => [
-                'description' => $unauthorizedDescription,
-            ],
+            Response::HTTP_OK => new OpenApiResponse(
+                description: $description,
+                content: new \ArrayObject([
+                    'application/json' => new MediaType(
+                        schema: new \ArrayObject(['$ref' => '#/components/schemas/Token'])
+                    ),
+                ])
+            ),
+            Response::HTTP_UNAUTHORIZED => new OpenApiResponse($unauthorizedDescription),
         ];
     }
 
     // -----------------------------------
     // SCHEMAS
     // -----------------------------------
+    /**
+     * @return \ArrayObject<string, mixed>
+     */
     private function credentialsSchema(): \ArrayObject
     {
         return new \ArrayObject([
@@ -254,6 +257,9 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         ]);
     }
 
+    /**
+     * @return \ArrayObject<string, mixed>
+     */
     private function tokenSchema(): \ArrayObject
     {
         return new \ArrayObject([
@@ -270,6 +276,9 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         ]);
     }
 
+    /**
+     * @return \ArrayObject<string, mixed>
+     */
     private function refreshSchema(): \ArrayObject
     {
         return new \ArrayObject([
