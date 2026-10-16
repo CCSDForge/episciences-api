@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\OpenApi\OpenApiSchemas;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
@@ -126,6 +127,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $titles = null;
 
     #[ORM\Column(name: 'descriptions', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
@@ -136,6 +138,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $descriptions = null;
 
     #[ORM\OneToMany(mappedBy: 'section', targetEntity: Paper::class)]

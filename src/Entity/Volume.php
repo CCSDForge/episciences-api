@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\OpenApi\OpenApiSchemas;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
@@ -211,10 +212,10 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     )]
 
     #[ApiProperty(
-        openapiContext: [
-            'type' => 'string',
-            'enum' => ['special_issue', 'proceeding'],
-            'example' => 'special_issue'
+        schema: [
+            'type' => ['array', 'null'],
+            'items' => ['type' => 'string', 'enum' => ['special_issue', 'proceeding']],
+            'example' => ['special_issue'],
         ]
     )]
     #[ORM\Column(type: \Doctrine\DBAL\Types\Types::SIMPLE_ARRAY, nullable: true)]
@@ -249,6 +250,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $titles = null;
     #[ORM\Column(name: 'descriptions', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[Groups(
@@ -258,6 +260,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $descriptions = null;
 
     #[ORM\OneToMany(mappedBy: 'volume', targetEntity: Paper::class)]

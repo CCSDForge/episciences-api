@@ -6,8 +6,10 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\OpenApi\Model\MediaType;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
+use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use App\AppConstants;
 use App\Controller\BoardsController;
 use App\Controller\FeedController;
@@ -52,6 +54,8 @@ use App\Entity\IndexingDatabase;
             read: false,
         ),
     ],
+    // The html format renders Swagger UI, which is not supported by operations served by a custom controller
+    formats: ['jsonld', 'json', 'xml'],
     controller: BoardsController::class,
     output: Boards::class
 
@@ -62,6 +66,12 @@ use App\Entity\IndexingDatabase;
         new GetCollection(
             openapi: new OpenApiOperation(
                 tags: ['Feed'],
+                responses: [
+                    '200' => new OpenApiResponse(
+                        description: 'RSS feed',
+                        content: new \ArrayObject(['text/xml' => new MediaType(schema: new \ArrayObject(['type' => 'string']))])
+                    ),
+                ],
                 summary: 'Feed RSS',
                 description: 'An RSS Feed of the latest publications',
             ),
@@ -76,7 +86,7 @@ use App\Entity\IndexingDatabase;
 
         ),
     ],
-    formats: ['xml'],
+    formats: ['xml' => ['text/xml', 'application/xml']],
     controller: FeedController::class
 
 )]
@@ -86,6 +96,12 @@ use App\Entity\IndexingDatabase;
         new GetCollection(
             openapi: new OpenApiOperation(
                 tags: ['Feed'],
+                responses: [
+                    '200' => new OpenApiResponse(
+                        description: 'ATOM feed',
+                        content: new \ArrayObject(['text/xml' => new MediaType(schema: new \ArrayObject(['type' => 'string']))])
+                    ),
+                ],
                 summary: 'Feed ATOM',
                 description: 'An ATOM Feed of the latest publications',
             ),
@@ -99,7 +115,7 @@ use App\Entity\IndexingDatabase;
             read: false,
         ),
     ],
-    formats: ['xml'],
+    formats: ['xml' => ['text/xml', 'application/xml']],
     controller: FeedController::class
 )]
 #[ApiResource(
@@ -376,6 +392,8 @@ use App\Entity\IndexingDatabase;
             read: false,
         ),
     ],
+    // The html format renders Swagger UI, which is not supported by operations served by a custom controller
+    formats: ['jsonld', 'json', 'xml'],
     controller: IndexingDatabaseController::class,
     output: IndexingDatabase::class
 )]

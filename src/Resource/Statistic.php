@@ -2,6 +2,8 @@
 
 namespace App\Resource;
 
+use App\OpenApi\OpenApiSchemas;
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
@@ -514,6 +516,7 @@ class Statistic
     #[groups(['read:Statistic'])]
     private string $name;
     #[groups(['read:Statistic'])]
+    #[ApiProperty(schema: OpenApiSchemas::STAT_VALUE)]
     private array|float|null $value = null;
     #[groups(['read:Statistic'])]
     private string|null $unit = null;

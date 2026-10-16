@@ -70,6 +70,8 @@ use App\OpenApi\OpenApiFactory;
         ),
         new Get(
             uriTemplate: '/me',
+            // The html format renders Swagger UI, which is not supported by operations served by a custom controller
+            formats: ['jsonld', 'json', 'xml'],
             controller: MeController::class,
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['auth']],
@@ -98,14 +100,8 @@ use App\OpenApi\OpenApiFactory;
                         content: new \ArrayObject([
                             'application/json' => new MediaType(
                                 schema: new \ArrayObject([
-                                    'type' => 'object',
-                                    'properties' => [
-                                        'isAllowed' => [
-                                            'type' => 'boolean',
-                                            'readOnly' => true,
-                                            'default' => false
-                                        ],
-                                    ],
+                                    'type' => 'boolean',
+                                    'example' => false,
                                 ])
                             ),
                         ])
@@ -269,6 +265,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
 
     #[ORM\Column(name: 'ADDITIONAL_PROFILE_INFORMATION', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[ApiProperty(schema: [
+        'type' => ['object', 'array', 'null'],
+        'maxItems' => 0,
+        'properties' => [
+            'affiliations' => [
+                'type' => 'array',
+                'items' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'label' => ['type' => 'string'],
+                        'rorId' => ['type' => 'string', 'format' => 'uri'],
+                    ],
+                ],
+            ],
+        ],
+        'example' => ['affiliations' => [['label' => 'Centre pour la Communication Scientifique Directe', 'rorId' => 'https://ror.org/00680hx61']]],
+    ])]
     private ?array $additionalProfileInformation = null;
 
     #[ORM\Column(name: "IS_VALID", type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: false)]

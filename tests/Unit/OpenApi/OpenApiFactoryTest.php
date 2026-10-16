@@ -8,6 +8,7 @@ use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
 use ApiPlatform\OpenApi\Model\Components;
 use ApiPlatform\OpenApi\Model\Info;
 use ApiPlatform\OpenApi\Model\Operation;
+use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\Model\Paths;
@@ -28,6 +29,10 @@ class OpenApiFactoryTest extends TestCase
             security: [[OpenApiFactory::BEARER_AUTH => []]]
         )));
         $paths->addPath('/api/news', new PathItem(get: new Operation(responses: [200 => new Response('OK')])));
+        $paths->addPath('/api/volumes', new PathItem(get: new Operation(
+            responses: [200 => new Response('OK')],
+            parameters: [new Parameter('rvcode', 'query')]
+        )));
 
         $decorated->method('__invoke')->willReturn(
             new OpenApi(new Info('Episciences API', '1.0'), [], $paths, new Components(schemas: new \ArrayObject(), securitySchemes: new \ArrayObject()))
@@ -63,6 +68,15 @@ class OpenApiFactoryTest extends TestCase
 
         $this->assertSame([200, 403, 401], array_keys($secured));
         $this->assertSame([200], array_keys($public));
+    }
+
+    public function testNotFoundResponseIsAddedToOperationsFilteredByJournal(): void
+    {
+        $byJournal = $this->openApi->getPaths()->getPath('/api/volumes')?->getGet()?->getResponses();
+        $withoutJournal = $this->openApi->getPaths()->getPath('/api/news')?->getGet()?->getResponses();
+
+        $this->assertSame([200, 404], array_keys($byJournal));
+        $this->assertSame([200], array_keys($withoutJournal));
     }
 
     public function testBearerSecuritySchemeIsDeclared(): void

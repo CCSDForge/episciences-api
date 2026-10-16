@@ -33,6 +33,9 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
 
     private const array HTTP_METHODS = ['Get', 'Post', 'Put', 'Patch', 'Delete'];
 
+    /** Parameters holding a journal code: an unknown journal returns a 404 */
+    private const array JOURNAL_CODE_PARAMETERS = ['code', 'rvcode'];
+
     public function __construct(
         private OpenApiFactoryInterface $decorated
     ) {}
@@ -43,7 +46,19 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
 
         $openApi = $this->filterHiddenEndpoints($openApi);
 
-        $openApi = $this->addUnauthorizedResponses($openApi);
+        $openApi = $this->addMissingResponse(
+            $openApi,
+            Response::HTTP_UNAUTHORIZED,
+            'Authentication required, or invalid or expired JWT token',
+            $this->requiresBearerAuth(...)
+        );
+
+        $openApi = $this->addMissingResponse(
+            $openApi,
+            Response::HTTP_NOT_FOUND,
+            'Journal not found',
+            $this->hasJournalCodeParameter(...)
+        );
 
         $openApi = $this->addAuthSchemas($openApi);
 
@@ -71,9 +86,12 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     }
 
     // -----------------------------------
-    // 401 ON BEARER-SECURED OPERATIONS
+    // RESPONSES MISSING FROM THE OPERATIONS
     // -----------------------------------
-    private function addUnauthorizedResponses(OpenApi $openApi): OpenApi
+    /**
+     * @param callable(Operation): bool $isConcerned
+     */
+    private function addMissingResponse(OpenApi $openApi, int $status, string $description, callable $isConcerned): OpenApi
     {
         $paths = $openApi->getPaths();
 
@@ -81,17 +99,17 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             foreach (self::HTTP_METHODS as $method) {
                 $operation = $path->{'get' . $method}();
 
-                if (!$operation instanceof Operation || !$this->requiresBearerAuth($operation)) {
+                if (!$operation instanceof Operation || !$isConcerned($operation)) {
                     continue;
                 }
 
                 $responses = $operation->getResponses() ?? [];
 
-                if (isset($responses[Response::HTTP_UNAUTHORIZED])) {
+                if (isset($responses[$status])) {
                     continue;
                 }
 
-                $responses[Response::HTTP_UNAUTHORIZED] = new OpenApiResponse('Authentication required, or invalid or expired JWT token');
+                $responses[$status] = new OpenApiResponse($description);
                 $path = $path->{'with' . $method}($operation->withResponses($responses));
             }
 
@@ -99,6 +117,17 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         }
 
         return $openApi->withPaths($paths);
+    }
+
+    private function hasJournalCodeParameter(Operation $operation): bool
+    {
+        foreach ($operation->getParameters() ?? [] as $parameter) {
+            if (in_array($parameter->getName(), self::JOURNAL_CODE_PARAMETERS, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function requiresBearerAuth(Operation $operation): bool

@@ -2,6 +2,7 @@
 
 namespace App\Resource;
 
+use App\OpenApi\OpenApiSchemas;
 use ApiPlatform\Metadata\ApiProperty;
 use App\AppConstants;
 use JsonException;
@@ -13,25 +14,28 @@ abstract class AbstractStatResource implements \Stringable
     public function __construct(
 
         #[ApiProperty(
-            openapiContext: [
+            schema: [
                 'type' => 'array',
-                'enum' => [AppConstants::WITH_DETAILS],
-                'example' => AppConstants::WITH_DETAILS
+                'items' => ['type' => 'string'],
+                'example' => [AppConstants::WITH_DETAILS, AppConstants::YEAR_PARAM],
             ]
         )]
         #[Groups([AppConstants::APP_CONST['normalizationContext']['groups']['review']['item']['read'][0]])]
         private array  $availableFilters = [],
 
         #[Groups([AppConstants::APP_CONST['normalizationContext']['groups']['review']['item']['read'][0]])]
+        #[ApiProperty(schema: OpenApiSchemas::OBJECT)]
         private array  $requestedFilters = [],
 
         #[Groups([AppConstants::APP_CONST['normalizationContext']['groups']['review']['item']['read'][0]])]
         private string $name = '',
 
         #[Groups([AppConstants::APP_CONST['normalizationContext']['groups']['review']['item']['read'][0]])]
+        #[ApiProperty(schema: OpenApiSchemas::STAT_VALUE)]
         private        $value = null,
 
         #[Groups([AppConstants::APP_CONST['normalizationContext']['groups']['review']['item']['read'][0]])]
+        #[ApiProperty(schema: OpenApiSchemas::NULLABLE_OBJECT)]
         private        $details = null
 
     )
