@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The OpenAPI documentation (`/api/docs`) describes the cap of the collections requested without pagination on the `pagination` parameter, and the `X-Truncated-Max-Items` response header.
 - Fixed the JSON-LD collections requested without pagination (`?pagination=false`): they were serialized as a plain list whose items had the collection URI as `@id` and lacked their nested data (e.g. journal settings, volume papers). They are now Hydra collections (`hydra:member`, `hydra:totalItems`…) with the same items as the paginated responses. Breaking change for the clients reading a plain list.
 - Fixed the paginated search (`/api/search/`): only the first 1000 Solr results were fetched then paginated in PHP, so `hydra:totalItems` was at most 1000 and the next results were unreachable. Only the requested page is now fetched from Solr (`start`, `rows`), and `hydra:totalItems` is the Solr `numFound`.
+- The paginated search (`/api/search/`) without `itemsPerPage` now returns pages of the default size (30), like the other collections, instead of the maximum (1000). Without pagination, at most 1000 results are still returned.
 
 ### Security
 - The `startAfterDate` filter is now validated (`Y-m-d`) before being concatenated into the delay statistics SQL query.

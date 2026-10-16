@@ -7,6 +7,7 @@ namespace App\Tests\Unit\State;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\State\Pagination\Pagination;
 use ApiPlatform\State\Pagination\PaginatorInterface;
+use App\AppConstants;
 use App\Doctrine\UnpaginatedCollectionLimitExtension;
 use App\Resource\Browse;
 use App\Resource\Search;
@@ -74,6 +75,15 @@ class SolrTruncatedCollectionTest extends TestCase
         $this->search(matches: 5, pagination: self::PAGINATED, itemsPerPage: 2);
 
         $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+    }
+
+    public function testPaginatedSearchWithoutItemsPerPageUsesTheDefaultPageSize(): void
+    {
+        $paginator = $this->search(matches: 50, pagination: self::PAGINATED);
+
+        $this->assertSame([0, AppConstants::DEFAULT_ITEM_PER_PAGE], $this->searchArguments);
+        $this->assertCount(AppConstants::DEFAULT_ITEM_PER_PAGE, iterator_to_array($paginator));
+        $this->assertSame(50.0, $paginator->getTotalItems());
     }
 
     public function testPaginatedSearchFetchesOnlyTheRequestedPage(): void

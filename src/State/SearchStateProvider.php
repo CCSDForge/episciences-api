@@ -6,6 +6,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\Pagination\Pagination;
 use ApiPlatform\State\ProviderInterface;
+use App\AppConstants;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\Search;
 use App\Resource\SolrDoc;
@@ -45,9 +46,14 @@ class SearchStateProvider extends AbstractStateDataProvider implements ProviderI
         }
 
 
+        // Without itemsPerPage: the default page size, or the maximum without pagination
+        $defaultMaxResults = $isPaginationEnabled
+            ? $operation->getPaginationItemsPerPage() ?? AppConstants::DEFAULT_ITEM_PER_PAGE
+            : $operation->getPaginationMaximumItemsPerPage() ?? SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
+
         // Only the requested page is fetched from Solr
         $maxResults = max(1, min(
-            (int)($filters['itemsPerPage'] ?? $operation->getPaginationMaximumItemsPerPage() ?? SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS),
+            (int)($filters['itemsPerPage'] ?? $defaultMaxResults),
             SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS
         ));
         $firstResult = ($page - 1) * $maxResults;
