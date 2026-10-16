@@ -8,6 +8,7 @@ use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
 use ApiPlatform\OpenApi\Model\Operation;
 use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\RequestBody;
+use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use ApiPlatform\OpenApi\OpenApi;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -27,6 +28,9 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
 
     public const string LOGIN_PATH = '/api/login';
     public const string REFRESH_PATH = '/api/token/refresh';
+    public const string BEARER_AUTH = 'bearerAuth';
+
+    private const array HTTP_METHODS = ['Get', 'Post', 'Put', 'Patch', 'Delete'];
 
     public function __construct(
         private OpenApiFactoryInterface $decorated
@@ -37,6 +41,8 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         $openApi = ($this->decorated)($context);
 
         $openApi = $this->filterHiddenEndpoints($openApi);
+
+        $openApi = $this->addUnauthorizedResponses($openApi);
 
         $openApi = $this->addAuthSchemas($openApi);
 
@@ -64,6 +70,48 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     }
 
     // -----------------------------------
+    // 401 ON BEARER-SECURED OPERATIONS
+    // -----------------------------------
+    private function addUnauthorizedResponses(OpenApi $openApi): OpenApi
+    {
+        $paths = $openApi->getPaths();
+
+        foreach ($paths->getPaths() as $key => $path) {
+            foreach (self::HTTP_METHODS as $method) {
+                $operation = $path->{'get' . $method}();
+
+                if (!$operation instanceof Operation || !$this->requiresBearerAuth($operation)) {
+                    continue;
+                }
+
+                $responses = $operation->getResponses() ?? [];
+
+                if (isset($responses[Response::HTTP_UNAUTHORIZED])) {
+                    continue;
+                }
+
+                $responses[Response::HTTP_UNAUTHORIZED] = new OpenApiResponse('Authentication required, or invalid or expired JWT token');
+                $path = $path->{'with' . $method}($operation->withResponses($responses));
+            }
+
+            $paths->addPath($key, $path);
+        }
+
+        return $openApi->withPaths($paths);
+    }
+
+    private function requiresBearerAuth(Operation $operation): bool
+    {
+        foreach ($operation->getSecurity() ?? [] as $requirement) {
+            if (array_key_exists(self::BEARER_AUTH, (array) $requirement)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // -----------------------------------
     // AUTH SCHEMAS
     // -----------------------------------
     private function addAuthSchemas(OpenApi $openApi): OpenApi
@@ -73,7 +121,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         $securitySchemes = $components->getSecuritySchemes();
         $schemas = $components->getSchemas();
 
-        $securitySchemes['bearerAuth'] = new \ArrayObject([
+        $securitySchemes[self::BEARER_AUTH] = new \ArrayObject([
             'type' => 'http',
             'scheme' => 'bearer',
             'bearerFormat' => 'JWT',
@@ -119,8 +167,8 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             post: new Operation(
                 operationId: 'postApiLogin',
                 tags: [self::OAF_TAGS['auth']],
-                responses: $this->tokenResponse('User token created'),
-                summary: '',
+                responses: $this->tokenResponse('User token created', 'Invalid credentials'),
+                summary: 'Get a JWT token',
                 description: 'The lifetime of the token is 1 hour',
                 requestBody: $this->requestBody('#/components/schemas/Credentials')
             )
@@ -136,13 +184,10 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             post: new Operation(
                 operationId: 'postApiRefreshToken',
                 tags: [self::OAF_TAGS['auth']],
-                responses: $this->tokenResponse('User token refreshed'),
-                summary: '',
+                responses: $this->tokenResponse('User token refreshed', 'Invalid or expired refresh token'),
+                summary: 'Refresh a JWT token',
                 description: 'The lifetime of the new token will be extended by one month',
-                requestBody: $this->requestBody('#/components/schemas/RefreshTokenCredential'),
-                security: [
-                    ['bearerAuth' => []],
-                ]
+                requestBody: $this->requestBody('#/components/schemas/RefreshTokenCredential')
             )
         );
     }
@@ -160,11 +205,12 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
                         '$ref' => $ref,
                     ],
                 ],
-            ])
+            ]),
+            required: true
         );
     }
 
-    private function tokenResponse(string $description): array
+    private function tokenResponse(string $description, string $unauthorizedDescription): array
     {
         return [
             Response::HTTP_OK => [
@@ -176,6 +222,9 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
                         ],
                     ],
                 ],
+            ],
+            Response::HTTP_UNAUTHORIZED => [
+                'description' => $unauthorizedDescription,
             ],
         ];
     }
@@ -197,9 +246,8 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
                     'example' => 'Your API password',
                 ],
                 'code' => [
-                    'type' => 'string',
+                    'type' => ['string', 'null'],
                     'example' => "Journal's code",
-                    'nullable' => true,
                 ],
             ],
             'required' => ['username', 'password'],

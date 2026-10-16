@@ -57,30 +57,30 @@ use ApiPlatform\OpenApi\Model\Response;
                                                 ]
 
                                             ],
-                                            'homepage ' => [
+                                            'homepage' => [
                                                 'type' => 'object',
                                                 'additionalProperties' => false,
                                                 'example' => [
 
-                                                    'statsRender ' => true,
-                                                    'lastNewsRender ' => true,
-                                                    'specialIssuesRender ' => true,
-                                                    'membersCarouselRender ' => true,
-                                                    'journalIndexationRender ' => true,
-                                                    'latestNewsCarouselRender ' => true,
-                                                    'latestArticlesCarouselRender ' => true,
-                                                    'latestAcceptedArticlesCarouselRender ' => true
+                                                    'statsRender' => true,
+                                                    'lastNewsRender' => true,
+                                                    'specialIssuesRender' => true,
+                                                    'membersCarouselRender' => true,
+                                                    'journalIndexationRender' => true,
+                                                    'latestNewsCarouselRender' => true,
+                                                    'latestArticlesCarouselRender' => true,
+                                                    'latestAcceptedArticlesCarouselRender' => true
                                                 ]
                                             ],
-                                            'languages ' => [
+                                            'languages' => [
                                                 'type' => 'object',
                                                 'additionalProperties' => false,
                                                 'example' => [
-                                                    'default ' => 'en ',
-                                                    'accepted ' => [
-                                                        'en ',
-                                                        'fr ',
-                                                        'es '
+                                                    'default' => 'en',
+                                                    'accepted' => [
+                                                        'en',
+                                                        'fr',
+                                                        'es'
                                                     ]
                                                 ]
                                             ],
@@ -89,53 +89,53 @@ use ApiPlatform\OpenApi\Model\Response;
                                                 'example' => 'api-dev.episciences.org'
                                             ],
 
-                                            'statistics ' => [
+                                            'statistics' => [
                                                 'type' => 'object',
                                                 'additionalProperties' => false,
                                                 'example' => [
 
-                                                    'colors ' => [
+                                                    'colors' => [
                                                         '#840909 ',
                                                         '#295fba ',
                                                         '#3f557a ',
                                                         '#192132 '
                                                     ],
-                                                    'nbSubmissions ' => [
-                                                        'order ' => 2,
-                                                        'render ' => true
+                                                    'nbSubmissions' => [
+                                                        'order' => 2,
+                                                        'render' => true
                                                     ],
-                                                    'acceptanceRate ' => [
-                                                        'order ' => 10,
-                                                        'render ' => true
+                                                    'acceptanceRate' => [
+                                                        'order' => 10,
+                                                        'render' => true
                                                     ],
-                                                    'reviewsReceived ' => [
-                                                        'order ' => 2,
-                                                        'render ' => true
+                                                    'reviewsReceived' => [
+                                                        'order' => 2,
+                                                        'render' => true
                                                     ],
-                                                    'reviewsRequested ' => [
-                                                        'order ' => 1,
-                                                        'render ' => true
+                                                    'reviewsRequested' => [
+                                                        'order' => 1,
+                                                        'render' => true
                                                     ],
-                                                    'medianReviewsNumber ' => [
-                                                        'order ' => 4,
-                                                        'render ' => true
+                                                    'medianReviewsNumber' => [
+                                                        'order' => 4,
+                                                        'render' => true
                                                     ],
-                                                    'nbSubmissionsDetails ' => [
-                                                        'order ' => 3,
-                                                        'render ' => true
+                                                    'nbSubmissionsDetails' => [
+                                                        'order' => 3,
+                                                        'render' => true
                                                     ],
-                                                    'medianSubmissionPublication ' => [
-                                                        'order ' => 3,
-                                                        'render ' => true
+                                                    'medianSubmissionPublication' => [
+                                                        'order' => 3,
+                                                        'render' => true
                                                     ]
                                                 ]
                                             ],
 
-                                            'homepageRightBlock ' => [
-                                                'type' => 'string',
+                                            'homepageRightBlock' => [
+                                                'type' => 'object',
                                                 'additionalProperties' => false,
                                                 'example' => [
-                                                    'lastInformationRenderType ' => 'last-news '
+                                                    'lastInformationRenderType' => 'last-news'
                                                 ]
                                             ],
 

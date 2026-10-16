@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated to Doctrine ORM 3.7: updated `doctrine/orm` constraint from `^2.14` to `^3.7` and aligned unit test mocks (mocked `Doctrine\DBAL\Exception` and `Doctrine\ORM\Query` instances) with the new ORM/DBAL APIs.
 
 ### Fixed
+- Fixed OpenAPI spec: documented summaries, required request bodies and `401` responses for authentication endpoints, removed the bearer requirement from the token refresh endpoint, replaced the placeholder `operationId` of `GET /api/browse/authors/` and the OpenAPI 3.0 `nullable` keyword.
+- Fixed OpenAPI spec: documented `401` responses on bearer-secured operations, removed unreferenced component schemas, fixed property names and types in the front configuration schema, clarified the citations permission endpoint description.
 - Fixed invalid `UniqueConstraints` on `pages` and `news` tables.
 - Fixed `/api/docs.json` returning 404 (`Format "json" is not supported`) since API Platform 4.3, whose default `docs_formats` no longer include `json`: the documentation formats are now declared explicitly in `config/packages/api_platform.yaml`, restoring the OpenAPI JSON on `/api/docs.json`.
 - Fixed Swagger UI template (`templates/bundles/ApiPlatformBundle/SwaggerUi/index.html.twig`) for API Platform 4.3: replaced the removed `app.request.attributes.get('_route')` usage with `originalRoute`/`originalRouteParams` and removed the removed `graphQlPlaygroundEnabled` variable (GraphQL Playground).

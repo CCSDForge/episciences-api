@@ -113,7 +113,7 @@ use App\OpenApi\OpenApiFactory;
 
                 ],
                 summary: "is allowed to edit document's citations",
-                description: "Check if current user is allowed to edit paper's citations",
+                description: "Check if the given user is allowed to edit the document's citations",
                 parameters: [
                     new Parameter(
                         name: 'documentId',
