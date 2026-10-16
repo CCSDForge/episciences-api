@@ -9,6 +9,7 @@ use ApiPlatform\State\ProviderInterface;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\Search;
 use App\Resource\SolrDoc;
+use App\Service\Solr\SolrConstants;
 use App\Service\Solarium\Client;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -67,6 +68,9 @@ class SearchStateProvider extends AbstractStateDataProvider implements ProviderI
         foreach ($docs as $values) {
             $oDocs[] = new SolrDoc($values);
         }
+
+        // Solr returns SOLR_MAX_RETURNED_FACETS_RESULTS documents at most (Client::buildSearchQuery())
+        $this->flagIfTruncated($context, (int)($response['numFound'] ?? count($oDocs)), min((int)$maxResults, count($oDocs)));
 
         $paginator = new ArrayPaginator($oDocs, $firstResult, $maxResults);
         $this->checkSeekPosition($paginator);

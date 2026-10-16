@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `GET /api/papers` memory usage: the collection now loads only the `PAPERS` columns serialized in the `read:Papers` group (list derived from the serializer metadata), so the heavy `RECORD` and `DOCUMENT` columns are no longer hydrated (`?pagination=false` exhausted the PHP memory limit).
 - Fixed possible out of memory errors on the Doctrine collections requested without pagination (`?pagination=false`): they are now capped to the global maximum number of items per page (1000), and a truncated response holds the `X-Truncated-Max-Items` header (exposed through CORS). With a to-many join (journals, sections, users), the limit applies to the root entities, so the nested collections stay complete.
 - Fixed possible out of memory errors on `GET /api/volumes?pagination=false`: the volumes are capped like the Doctrine collections (1000, `X-Truncated-Max-Items` header when truncated).
+- The Solr collections requested without pagination (`/api/search/`, `/api/browse/authors/`, `/api/browse/authors-search/{author_fullname}`, `/api/statistics/`, `/api/statistics/evaluation`) now also hold the `X-Truncated-Max-Items` header when capped.
 
 ### Security
 - The `startAfterDate` filter is now validated (`Y-m-d`) before being concatenated into the delay statistics SQL query.

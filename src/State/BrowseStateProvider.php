@@ -55,6 +55,8 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
                 $response[] = new SolrDoc($values);
             }
 
+            $this->flagIfTruncated($context, (int)($result['response']['numFound'] ?? count($response)), min($maxResults, count($response)));
+
             if ($isPaginationEnabled) {
                 $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;
                 $firstResult = ($page - 1) * $maxResults;
@@ -75,7 +77,8 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
 
         $result = $this->facetService->setJournal($journal)->getSolrFacet([
             'facetFieldName' => $authorFs,
-            'facetLimit' => $maxResults,
+            // Without pagination, one more author is requested to tell a truncated result.
+            'facetLimit' => $isPaginationEnabled ? $maxResults : $maxResults + 1,
             'letter' => $letter,
             'sortType' => $sortType,
             'search' => $search
@@ -88,6 +91,8 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
                 ->setValues(['name' => $name, 'count' => $count]);
             $authors[] = $author;
         }
+
+        $this->flagIfTruncated($context, count($authors), $maxResults);
 
         if ($isPaginationEnabled) {
             $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;

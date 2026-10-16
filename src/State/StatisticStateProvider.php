@@ -222,6 +222,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
             $maxResults = $operation->getPaginationMaximumItemsPerPage() ?: 30;
 
+            $this->flagIfTruncated($context, count($response), $maxResults);
+
             if ($isPaginationEnabled) {
                 $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;
                 $firstResult = ($page - 1) * $maxResults;
