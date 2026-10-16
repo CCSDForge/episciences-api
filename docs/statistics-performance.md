@@ -85,6 +85,56 @@ Local measurements (`curl`, warm cache):
 - `make docker-validate`: mapping OK.
 - `make test-unit`: OK.
 
+## Journal dashboard (`GET /api/journals/stats/dashboard/{code}`)
+
+### Symptom
+
+For the `dev` journal, on the base of `fix/performance-audit` (without the indexes):
+
+| Request | Time |
+|---|---|
+| `GET /api/journals/stats/dashboard/dev` | 4.0 s |
+| `GET /api/journals/stats/dashboard/dev?withDetails=1` | 7.0 s |
+| `GET /api/journals/stats/dashboard/dev?withDetails=1&year=2023` | 6.0 – 7.0 s |
+| `GET /api/journals/stats/dashboard/dev?startAfterDate=2020-01-01&withDetails=1` | 5.9 – 6.1 s |
+
+### Analysis
+
+- The dashboard runs the same `PAPER_LOG` queries as `GET /api/statistics/` (counts by status, delays,
+  medians), restricted to one journal: the indexes above already bring it to 0.16 s (0.27 s with `withDetails`).
+- With `withDetails`, `Stats::getSubmissionByYearStats()` still ran an N+1 pattern: for **each year** (11 years
+  for `dev`), one count of the submissions, one count of the submissions without the imported papers and one count
+  per repository. **92 SQL queries** in total.
+
+### Fix
+
+`PapersRepository` gets two grouped counters, built on `submissionsQuery()` so that the filters are unchanged:
+
+- `countSubmissionsByYear(array $filters)`: `COUNT(DISTINCT PAPERID)` grouped by `YEAR(SUBMISSION_DATE)`;
+- `countSubmissionsByYearAndRepository(array $filters)`: same count grouped by year and `REPOID`.
+
+`COUNT(DISTINCT PAPERID) ... GROUP BY YEAR(...)` counts each year independently, exactly like the former query
+filtered on one year: a paper with versions submitted in two different years is still counted in both years.
+
+`getSubmissionByYearStats()` now calls these counters once (three queries) before the loop over the years;
+the years without a result are set to 0, as before.
+
+### Results
+
+| Request | Before (with the indexes) | After |
+|---|---|---|
+| `GET /api/journals/stats/dashboard/dev` | 0.16 s | 0.09 s (16 queries) |
+| `GET /api/journals/stats/dashboard/dev?withDetails=1` | 0.27 s, 92 queries | 0.15 s, 29 queries |
+| `GET /api/journals/stats/dashboard/dmtcs?withDetails=1` | – | 0.25 s, 29 queries |
+
+The number of queries no longer depends on the number of years or repositories.
+
+### Verification
+
+The responses of 9 requests (journals `dev`, `hrj`, `epijinfo`, `dmtcs`; with and without `withDetails`, `year`,
+`year[]` and `startAfterDate`) are identical before and after the change (JSON compared without the generated `@id`).
+`tests/Unit/Service/StatsTest.php` checks that the submission counters are fetched once for all the years.
+
 ## Deployment notes
 
 - `PAPER_LOG` belongs to the database shared with Episciences: the migration must be run on every environment

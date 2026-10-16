@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed the Doctrine mappings that made the schema tools fail (`doctrine:schema:create`, schema comparison): string `unsigned` option of `UserInvitationAnswer`, MySQL `ENUM` columns mapped as strings of length 0 (now the DBAL `enum` type), unused `LegacyNews` entity clashing with the `news` table, `ReviewSetting` primary key and `VALUE` type, index typos (`UserAssignment`), nonexistent indexes (`Paper.RECORD`, unique `news.uid`), join column order to `VolumePaperPosition`. No database change; same API responses.
 ### Added
 ### Changed
+- Journal dashboard statistics (`withDetails`): the submissions are counted by year and by repository in grouped queries instead of one query per year and per repository (92 queries down to 29 for a journal with 11 years of activity).
 ### Deprecated
 ### Removed
 ### Security
