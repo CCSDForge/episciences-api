@@ -36,7 +36,6 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 #[ORM\Index(columns: ['SUBMISSION_DATE'], name: 'SUBMISSION_DATE')]
 #[ORM\Index(columns: ['PUBLICATION_DATE'], name: 'PUBLICATION_DATE')]
 #[ORM\Index(columns: ['FLAG'], name: 'FLAG')]
-#[ORM\Index(columns: ['RECORD'], name: 'RECORD')]
 #[ORM\Entity(repositoryClass: PapersRepository::class)]
 #[ApiResource(
     operations: [
@@ -366,7 +365,7 @@ class Paper implements UserOwnedInterface
     #[ORM\Column(name: 'CONCEPT_IDENTIFIER', type: \Doctrine\DBAL\Types\Types::STRING, length: 500, nullable: true, options: ['comment' => 'This identifier represents all versions'])]
     private ?string $conceptIdentifier = null;
 
-    #[ORM\Column(name: 'FLAG', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false, options: ['default' => 'submitted'])]
+    #[ORM\Column(name: 'FLAG', type: \Doctrine\DBAL\Types\Types::ENUM, nullable: false, options: ['values' => ['submitted', 'imported'], 'default' => 'submitted'])]
     #[ApiProperty(security: "is_granted('papers_manage', object)")]
     private string $flag = 'submitted';
 
@@ -455,8 +454,9 @@ class Paper implements UserOwnedInterface
     private bool $conflictsLoaded = false;
 
     #[ORM\OneToOne(targetEntity: VolumePaperPosition::class)]
-    #[ORM\JoinColumn(name: 'PAPERID', referencedColumnName: 'PAPERID')]
+    // Same order as the identifier of VolumePaperPosition (VID, PAPERID)
     #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID')]
+    #[ORM\JoinColumn(name: 'PAPERID', referencedColumnName: 'PAPERID')]
     private ?VolumePaperPosition $volumePaperPosition = null;
 
     public function __construct()

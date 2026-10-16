@@ -9,8 +9,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 
 #[ORM\Table(name: 'USER_ASSIGNMENT')]
-#[ORM\Index(columns: ['ITEMID"'], name: 'FK_ITEMID_idx')]
-#[ORM\Index(columns: ['UID"'], name: 'FK_UID_idx')]
+#[ORM\Index(columns: ['ITEMID'], name: 'FK_ITEMID_idx')]
+#[ORM\Index(columns: ['UID'], name: 'FK_UID_idx')]
 #[ORM\Entity(repositoryClass: UserAssignmentRepository::class)]
 
 class UserAssignment

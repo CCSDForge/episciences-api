@@ -46,7 +46,7 @@ class PaperConflicts
     private int $by;
 
 
-    #[ORM\Column(name: 'answer', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, options: ['unsigned' => true])]
+    #[ORM\Column(name: 'answer', type: \Doctrine\DBAL\Types\Types::ENUM, options: ['values' => ['yes', 'no']])]
     #[groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
