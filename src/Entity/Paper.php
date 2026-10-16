@@ -15,7 +15,6 @@ use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\OpenApi\OpenApiFactory;
 use App\Repository\PapersRepository;
-use App\State\PaperCollectionProvider;
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -119,8 +118,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
             ),
             normalizationContext: [
                 'groups' => ['read:Papers']
-            ],
-            provider: PaperCollectionProvider::class
+            ]
         ),
     ],
     order: ['rvid' => 'DESC'],
