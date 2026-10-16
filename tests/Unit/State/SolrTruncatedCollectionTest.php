@@ -168,6 +168,13 @@ class SolrTruncatedCollectionTest extends TestCase
         return $paginator;
     }
 
+    public function testPaginatedAuthorsWithoutItemsPerPageUseTheDefaultPageSize(): void
+    {
+        $authors = $this->browseAuthors(facets: 50, pagination: self::PAGINATED, expectedFacetLimit: SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS, expectedTotal: 50);
+
+        $this->assertCount(AppConstants::DEFAULT_ITEM_PER_PAGE, $authors);
+    }
+
     public function testUnpaginatedAuthorsTotalExcludesTheExtraAuthor(): void
     {
         $max = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;

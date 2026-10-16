@@ -5,6 +5,7 @@ namespace App\State;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\ArrayPaginator;
 use ApiPlatform\State\ProviderInterface;
+use App\AppConstants;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\Facet;
 use App\Resource\SolrDoc;
@@ -96,7 +97,8 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
         $authors = array_slice($authors, 0, $maxResults); // without the extra author requested to tell a truncated result
 
         if ($isPaginationEnabled) {
-            $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;
+            // Without itemsPerPage: the default page size, like the other collections
+            $maxResults = $context['filters']['itemsPerPage'] ?? $operation->getPaginationItemsPerPage() ?? AppConstants::DEFAULT_ITEM_PER_PAGE;
             $firstResult = ($page - 1) * $maxResults;
         }
 
