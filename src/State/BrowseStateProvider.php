@@ -93,6 +93,7 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
         }
 
         $this->flagIfTruncated($context, count($authors), $maxResults);
+        $authors = array_slice($authors, 0, $maxResults); // without the extra author requested to tell a truncated result
 
         if ($isPaginationEnabled) {
             $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;

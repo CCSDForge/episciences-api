@@ -125,10 +125,17 @@ class SolrTruncatedCollectionTest extends TestCase
         $provider->provide($operation, [], ['operation' => $operation, 'filters' => $filters, 'request' => $this->request]);
     }
 
+    public function testUnpaginatedAuthorsTotalExcludesTheExtraAuthor(): void
+    {
+        $max = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
+
+        $this->browseAuthors(facets: $max + 1, pagination: self::UNPAGINATED, expectedFacetLimit: $max + 1, expectedTotal: $max);
+    }
+
     /**
      * @return object[] the returned authors
      */
-    private function browseAuthors(int $facets, string $pagination, int $expectedFacetLimit): array
+    private function browseAuthors(int $facets, string $pagination, int $expectedFacetLimit, ?int $expectedTotal = null): array
     {
         $facetService = $this->createMock(SolrFacetService::class);
         $facetService->method('setJournal')->willReturnSelf();
@@ -152,6 +159,10 @@ class SolrTruncatedCollectionTest extends TestCase
         $operation = new GetCollection(class: Browse::class);
 
         $paginator = $provider->provide($operation, [], ['operation' => $operation, 'filters' => ['pagination' => $pagination], 'request' => $this->request]);
+
+        if ($expectedTotal !== null) {
+            $this->assertSame((float)$expectedTotal, $paginator->getTotalItems());
+        }
 
         return iterator_to_array($paginator, false);
     }
