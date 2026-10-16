@@ -6,6 +6,7 @@ use ApiPlatform\Doctrine\Orm\Extension\QueryCollectionExtensionInterface;
 use ApiPlatform\Doctrine\Orm\Util\QueryNameGeneratorInterface;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Operation;
+use App\AppConstants;
 use App\Entity\Paper;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\QueryBuilder;
@@ -25,6 +26,9 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
  * the collection groups is loaded without touching this class. Fields that are
  * not loaded stay uninitialized on the hydrated objects: do not read them while
  * handling the collection.
+ *
+ * Without pagination (?pagination=false), the result is also capped to the
+ * maximum number of items per page.
  */
 class PaperCollectionPartialExtension implements QueryCollectionExtensionInterface
 {
@@ -35,6 +39,14 @@ class PaperCollectionPartialExtension implements QueryCollectionExtensionInterfa
 
     public function __construct(private readonly ClassMetadataFactoryInterface $serializerMetadataFactory)
     {
+    }
+
+    /**
+     * Maximum number of papers returned without pagination (?pagination=false).
+     */
+    public static function getMaxItemsWithoutPagination(Operation $operation): int
+    {
+        return $operation->getPaginationMaximumItemsPerPage() ?? AppConstants::MAXIMUM_ITEMS_PER_PAGE;
     }
 
     public function applyToCollection(
@@ -48,6 +60,10 @@ class PaperCollectionPartialExtension implements QueryCollectionExtensionInterfa
         if ($resourceClass !== Paper::class || !$operation instanceof GetCollection) {
             return;
         }
+
+        // To avoid possible OUT OF MEMORY errors with ?pagination=false.
+        // When the pagination is enabled, API Platform's PaginationExtension (applied later) overrides this limit.
+        $queryBuilder->setMaxResults(self::getMaxItemsWithoutPagination($operation));
 
         $groups = (array)($operation->getNormalizationContext()[AbstractNormalizer::GROUPS] ?? []);
 
