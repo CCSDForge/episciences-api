@@ -36,7 +36,6 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 #[ORM\Index(columns: ['SUBMISSION_DATE'], name: 'SUBMISSION_DATE')]
 #[ORM\Index(columns: ['PUBLICATION_DATE'], name: 'PUBLICATION_DATE')]
 #[ORM\Index(columns: ['FLAG'], name: 'FLAG')]
-#[ORM\Index(columns: ['RECORD'], name: 'RECORD')]
 #[ORM\Entity(repositoryClass: PapersRepository::class)]
 #[ApiResource(
     operations: [
@@ -455,8 +454,9 @@ class Paper implements UserOwnedInterface
     private bool $conflictsLoaded = false;
 
     #[ORM\OneToOne(targetEntity: VolumePaperPosition::class)]
-    #[ORM\JoinColumn(name: 'PAPERID', referencedColumnName: 'PAPERID')]
+    // Same order as the identifier of VolumePaperPosition (VID, PAPERID)
     #[ORM\JoinColumn(name: 'VID', referencedColumnName: 'VID')]
+    #[ORM\JoinColumn(name: 'PAPERID', referencedColumnName: 'PAPERID')]
     private ?VolumePaperPosition $volumePaperPosition = null;
 
     public function __construct()
