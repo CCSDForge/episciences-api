@@ -32,7 +32,7 @@ class StatTemp
     #[ORM\Column(name: 'DHIT', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     private \DateTime|\DateTimeInterface $dhit;
 
-    #[ORM\Column(name: 'CONSULT', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false, options: ['default' => 'notice'])]
+    #[ORM\Column(name: 'CONSULT', type: \Doctrine\DBAL\Types\Types::ENUM, nullable: false, options: ['values' => ['notice', 'file', 'oai'], 'default' => 'notice'])]
     private string $consult = 'notice';
     public function __construct()
     {
