@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed possible out of memory errors on `GET /api/volumes?pagination=false`: the volumes are capped like the Doctrine collections (1000, `X-Truncated-Max-Items` header when truncated).
 - The Solr collections requested without pagination (`/api/search/`, `/api/browse/authors/`, `/api/browse/authors-search/{author_fullname}`, `/api/statistics/`, `/api/statistics/evaluation`) now also hold the `X-Truncated-Max-Items` header when capped.
 - Fixed `GET /api/browse/authors-search/{author_fullname}` returning at most 10 papers (Solr default `rows`): up to 1000 are now requested, like the other Solr collections.
+- The OpenAPI documentation (`/api/docs`) describes the cap of the collections requested without pagination on the `pagination` parameter, and the `X-Truncated-Max-Items` response header.
 
 ### Security
 - The `startAfterDate` filter is now validated (`Y-m-d`) before being concatenated into the delay statistics SQL query.

@@ -6,9 +6,13 @@ namespace App\OpenApi;
 
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
 use ApiPlatform\OpenApi\Model\Operation;
+use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\RequestBody;
+use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use ApiPlatform\OpenApi\OpenApi;
+use App\AppConstants;
+use App\EventSubscriber\TruncatedCollectionSubscriber;
 use Symfony\Component\HttpFoundation\Response;
 
 final readonly class OpenApiFactory implements OpenApiFactoryInterface
@@ -42,7 +46,83 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
 
         $openApi = $this->addAuthPaths($openApi);
 
+        $openApi = $this->documentUnpaginatedCap($openApi);
+
         return $openApi;
+    }
+
+    // -----------------------------------
+    // CAP OF THE UNPAGINATED COLLECTIONS
+    // -----------------------------------
+    /**
+     * Documents, on the collections that can be requested without pagination, the cap
+     * applied to ?pagination=false and the TRUNCATED_HEADER response header.
+     */
+    private function documentUnpaginatedCap(OpenApi $openApi): OpenApi
+    {
+        $paths = $openApi->getPaths();
+
+        foreach ($paths->getPaths() as $key => $path) {
+            $get = $path->getGet();
+            $parameters = $get?->getParameters() ?? [];
+            $paginationIndex = $this->findPaginationParameter($parameters);
+
+            if ($paginationIndex === null) {
+                continue;
+            }
+
+            $description = rtrim($parameters[$paginationIndex]->getDescription(), '. ');
+
+            $parameters[$paginationIndex] = $parameters[$paginationIndex]->withDescription(ltrim(sprintf(
+                '%s. Without pagination, at most %d items are returned: a truncated response holds the %s header.',
+                $description,
+                AppConstants::MAXIMUM_ITEMS_PER_PAGE,
+                TruncatedCollectionSubscriber::TRUNCATED_HEADER
+            ), '. '));
+
+            $paths->addPath($key, $path->withGet(
+                $get->withParameters($parameters)->withResponses($this->withTruncatedHeader($get->getResponses() ?? []))
+            ));
+        }
+
+        return $openApi->withPaths($paths);
+    }
+
+    /**
+     * @param array<int|string, mixed> $parameters
+     */
+    private function findPaginationParameter(array $parameters): int|string|null
+    {
+        foreach ($parameters as $index => $parameter) {
+            if ($parameter instanceof Parameter && $parameter->getName() === 'pagination' && $parameter->getIn() === 'query') {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<int|string, mixed> $responses
+     * @return array<int|string, mixed>
+     */
+    private function withTruncatedHeader(array $responses): array
+    {
+        $response = $responses[Response::HTTP_OK] ?? $responses[(string)Response::HTTP_OK] ?? null;
+
+        if (!$response instanceof OpenApiResponse) {
+            return $responses;
+        }
+
+        $headers = $response->getHeaders() ?? new \ArrayObject();
+        $headers[TruncatedCollectionSubscriber::TRUNCATED_HEADER] = new \ArrayObject([
+            'description' => 'Present only when the collection, requested without pagination, was truncated: maximum number of items returned.',
+            'schema' => ['type' => 'integer'],
+        ]);
+
+        $responses[Response::HTTP_OK] = $response->withHeaders($headers);
+
+        return $responses;
     }
 
     // -----------------------------------
