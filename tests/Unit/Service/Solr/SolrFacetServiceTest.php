@@ -265,6 +265,88 @@ class SolrFacetServiceTest extends TestCase
         ]);
     }
 
+    public function testGetSolrFacetPageRequestsOnePageWithTheTotal(): void
+    {
+        $facetData = [
+            'facets' => [
+                'count' => 1500,
+                'list' => [
+                    'numBuckets' => 1500,
+                    'buckets' => [['val' => 'Dupont, Jean', 'count' => 25], ['val' => 'Durand, Paul', 'count' => 3]],
+                ],
+            ],
+        ];
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getContent')->willReturn(json_encode($facetData));
+
+        $requestedFacet = null;
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->callback(static function (string $url) use (&$requestedFacet): bool {
+                parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
+                $requestedFacet = json_decode($query['json_facet'] ?? '', true);
+
+                return true;
+            }))
+            ->willReturn($response);
+
+        $page = $this->facetService->getSolrFacetPage([
+            'facetFieldName' => 'authorLastNameFirstNamePrefixed_fs',
+            'letter' => 'd',
+            'sortType' => SolrConstants::SOLR_FACET_COUNT,
+        ], 60, 30);
+
+        $this->assertSame([
+            'type' => 'terms',
+            'field' => 'authorLastNameFirstNamePrefixed_fs',
+            'offset' => 60,
+            'limit' => 30,
+            'mincount' => 1,
+            'sort' => 'count desc',
+            'numBuckets' => true,
+            'prefix' => 'D',
+        ], $requestedFacet['list'] ?? null);
+        $this->assertSame(['Dupont, Jean' => 25, 'Durand, Paul' => 3], $page['values']);
+        $this->assertSame(1500, $page['total']);
+    }
+
+    public function testGetSolrFacetPageWithoutMatchingDocuments(): void
+    {
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getContent')->willReturn(json_encode(['facets' => ['count' => 0]]));
+
+        $this->httpClient->method('request')->willReturn($response);
+
+        $page = $this->facetService->getSolrFacetPage(['facetFieldName' => 'authorLastNameFirstNamePrefixed_fs'], 0, 30);
+
+        $this->assertSame(['values' => [], 'total' => 0], $page);
+    }
+
+    public function testGetSolrFacetPageWithSearchFilterSlicesAllTheMatchingValues(): void
+    {
+        $facetData = ['facet_counts' => ['facet_fields' => ['list' => ['Dupont, Jean', 25, 'Dupont, Marie', 4, 'Dupontel, Luc', 1]]]];
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getContent')->willReturn(json_encode($facetData));
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->logicalAnd($this->stringContains('facet.contains=Dupont'), $this->stringContains('facet.limit=-1')))
+            ->willReturn($response);
+
+        $page = $this->facetService->getSolrFacetPage([
+            'facetFieldName' => 'authorLastNameFirstNamePrefixed_fs',
+            'search' => 'Dupont',
+        ], 1, 1);
+
+        $this->assertSame(['Dupont, Marie' => 4], $page['values']);
+        $this->assertSame(3, $page['total']);
+    }
+
     public function testSetAndGetJournal(): void
     {
         $mockJournal = $this->createMock(Review::class);

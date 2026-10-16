@@ -18,7 +18,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
 
 #[ORM\Table(name: self::TABLE)]
-#[ORM\UniqueConstraint(name: 'uid', columns: ['uid'])]
+#[ORM\Index(columns: ['uid'], name: 'uid')]
 #[ORM\Entity(repositoryClass: NewsRepository::class)]
 
 #[ApiResource(
@@ -124,7 +124,7 @@ class News
     )]
     private ?string $rvcode = null;
 
-    #[ORM\Column(name: 'uid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false)]
+    #[ORM\Column(name: 'uid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $uid = null;
 
     #[ORM\Column(name: 'title', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false, options: ['comment' => 'Page title'])]

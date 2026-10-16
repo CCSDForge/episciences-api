@@ -24,7 +24,7 @@ class DoiQueue
     #[ORM\Column(name: 'paperid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $paperid = null;
 
-    #[ORM\Column(name: 'doi_status', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false, options: ['default' => 'assigned'])]
+    #[ORM\Column(name: 'doi_status', type: \Doctrine\DBAL\Types\Types::ENUM, nullable: false, options: ['values' => ['assigned', 'requested', 'public', 'update-pending'], 'default' => 'assigned'])]
     private string $doiStatus = 'assigned';
 
     #[ORM\Column(name: 'date_init', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]

@@ -6,7 +6,6 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Table(name: self::TABLE)]
-#[ORM\UniqueConstraint(name: 'RVID', columns: ['SETTING'])]
 #[ORM\Entity]
 
 
@@ -42,13 +41,7 @@ class ReviewSetting
 
     )]
 
-    #[ORM\Column(name: 'VALUE', type: \Doctrine\DBAL\Types\Types::STRING, length: 65535, nullable: true)]
-    #[ORM\Id]
-    #[ORM\GeneratedValue(strategy: 'NONE')]
-
-
-
-
+    #[ORM\Column(name: 'VALUE', type: \Doctrine\DBAL\Types\Types::TEXT, length: 65535, nullable: true)]
     private ?string $value = null;
 
     #[ORM\ManyToOne(targetEntity: Review::class, inversedBy: 'settings')]

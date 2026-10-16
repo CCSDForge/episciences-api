@@ -27,7 +27,7 @@ class WebsiteHeader
     #[ORM\GeneratedValue(strategy: 'NONE')]
     private ?int $rvid = null;
 
-    #[ORM\Column(name: 'TYPE', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false)]
+    #[ORM\Column(name: 'TYPE', type: \Doctrine\DBAL\Types\Types::ENUM, nullable: false, options: ['values' => ['img', 'text']])]
     private ?string $type = null;
 
     #[ORM\Column(name: 'IMG', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: false)]

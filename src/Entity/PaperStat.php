@@ -19,7 +19,7 @@ class PaperStat
     #[ORM\GeneratedValue(strategy: 'NONE')]
     private ?int $docid = null;
 
-    #[ORM\Column(name: 'CONSULT', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false, options: ['default' => 'notice'])]
+    #[ORM\Column(name: 'CONSULT', type: \Doctrine\DBAL\Types\Types::ENUM, nullable: false, options: ['values' => ['notice', 'file', 'oai', 'api'], 'default' => 'notice'])]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
     private string $consult = 'notice';

@@ -6,6 +6,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\Pagination;
 use ApiPlatform\State\Pagination\PaginatorInterface;
 use App\AppConstants;
+use App\Doctrine\UnpaginatedCollectionLimitExtension;
 use App\Entity\Review;
 use App\Entity\ReviewSetting;
 use App\Entity\Volume;
@@ -15,6 +16,7 @@ use App\Traits\QueryTrait;
 use App\Traits\ToolsTrait;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\Request;
 
 abstract class AbstractStateDataProvider
 {
@@ -26,6 +28,26 @@ abstract class AbstractStateDataProvider
     public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger, protected Pagination $pagination)
     {
 
+    }
+
+    /**
+     * Without pagination, flags a capped collection like the Doctrine ones
+     * (X-Truncated-Max-Items header, see TruncatedCollectionSubscriber).
+     * To be called after checkAndProcessFilters().
+     *
+     * @param array<string, mixed> $context
+     * @param int $totalItems number of items matching the request
+     * @param int $maxItems number of items returned at most
+     */
+    protected function flagIfTruncated(array $context, int $totalItems, int $maxItems): void
+    {
+        $request = $context['request'] ?? null;
+
+        if (($context['filters']['pagination'] ?? true) || $totalItems <= $maxItems || !$request instanceof Request) {
+            return;
+        }
+
+        $request->attributes->set(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE, $maxItems);
     }
 
     /**

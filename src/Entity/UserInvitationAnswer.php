@@ -11,7 +11,7 @@ class UserInvitationAnswer
 {
 
     #[ORM\Column(
-        name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => 'true', 'comment' => 'Invitation ID']
+        name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true, 'comment' => 'Invitation ID']
     )]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'IDENTITY')]
