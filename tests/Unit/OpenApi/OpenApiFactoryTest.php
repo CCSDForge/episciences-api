@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\OpenApi;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
+use ApiPlatform\Metadata\Resource\Factory\ResourceNameCollectionFactoryInterface;
+use ApiPlatform\Metadata\Resource\ResourceMetadataCollection;
+use ApiPlatform\Metadata\Resource\ResourceNameCollection;
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
 use ApiPlatform\OpenApi\Model\Components;
 use ApiPlatform\OpenApi\Model\Info;
@@ -14,6 +20,8 @@ use ApiPlatform\OpenApi\Model\Paths;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
 use App\AppConstants;
+use App\Controller\BoardsController;
+use App\Entity\Review;
 use App\EventSubscriber\TruncatedCollectionSubscriber;
 use App\OpenApi\OpenApiFactory;
 use PHPUnit\Framework\TestCase;
@@ -22,6 +30,7 @@ class OpenApiFactoryTest extends TestCase
 {
     private const string COLLECTION_PATH = '/api/papers/';
     private const string ITEM_PATH = '/api/papers/{docid}';
+    private const string CONTROLLER_PATH = '/api/journals/boards/{code}';
 
     public function testUnpaginatedCapIsDocumentedOnTheCollections(): void
     {
@@ -42,6 +51,14 @@ class OpenApiFactoryTest extends TestCase
         $this->assertSame(['type' => 'integer'], $headers[TruncatedCollectionSubscriber::TRUNCATED_HEADER]['schema']);
     }
 
+    public function testCollectionServedByAControllerIsUnchanged(): void
+    {
+        $get = $this->createOpenApi()->getPaths()->getPath(self::CONTROLLER_PATH)->getGet();
+
+        $this->assertSame('Enable or disable pagination', $get->getParameters()[0]->getDescription());
+        $this->assertNull($get->getResponses()[200]->getHeaders());
+    }
+
     public function testOperationWithoutPaginationIsUnchanged(): void
     {
         $get = $this->createOpenApi()->getPaths()->getPath(self::ITEM_PATH)->getGet();
@@ -56,6 +73,10 @@ class OpenApiFactoryTest extends TestCase
             responses: [200 => new Response('Paper collection')],
             parameters: [new Parameter('pagination', 'query', 'Enable or disable pagination')]
         )));
+        $paths->addPath(self::CONTROLLER_PATH, new PathItem(get: new Operation(
+            responses: [200 => new Response('Journal boards')],
+            parameters: [new Parameter('pagination', 'query', 'Enable or disable pagination')]
+        )));
         $paths->addPath(self::ITEM_PATH, new PathItem(get: new Operation(
             responses: [200 => new Response('Paper resource')],
             parameters: [new Parameter('docid', 'path', 'Paper identifier', true)]
@@ -64,6 +85,17 @@ class OpenApiFactoryTest extends TestCase
         $decorated = $this->createStub(OpenApiFactoryInterface::class);
         $decorated->method('__invoke')->willReturn(new OpenApi(new Info('Episciences API', '1'), [], $paths, new Components(schemas: new \ArrayObject(), securitySchemes: new \ArrayObject())));
 
-        return new OpenApiFactory($decorated)();
+        $resourceNameCollectionFactory = $this->createStub(ResourceNameCollectionFactoryInterface::class);
+        $resourceNameCollectionFactory->method('create')->willReturn(new ResourceNameCollection([Review::class]));
+
+        $resourceMetadataCollectionFactory = $this->createStub(ResourceMetadataCollectionFactoryInterface::class);
+        $resourceMetadataCollectionFactory->method('create')->willReturn(new ResourceMetadataCollection(Review::class, [
+            new ApiResource(operations: [
+                'boards' => new GetCollection(uriTemplate: '/journals/boards/{code}', controller: BoardsController::class),
+                'journals' => new GetCollection(uriTemplate: '/journals/'),
+            ]),
+        ]));
+
+        return new OpenApiFactory($decorated, $resourceNameCollectionFactory, $resourceMetadataCollectionFactory)();
     }
 }

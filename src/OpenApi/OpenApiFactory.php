@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\OpenApi;
 
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
+use ApiPlatform\Metadata\Resource\Factory\ResourceNameCollectionFactoryInterface;
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
 use ApiPlatform\OpenApi\Model\Operation;
 use ApiPlatform\OpenApi\Model\Parameter;
@@ -33,7 +36,9 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     public const string REFRESH_PATH = '/api/token/refresh';
 
     public function __construct(
-        private OpenApiFactoryInterface $decorated
+        private OpenApiFactoryInterface $decorated,
+        private ResourceNameCollectionFactoryInterface $resourceNameCollectionFactory,
+        private ResourceMetadataCollectionFactoryInterface $resourceMetadataCollectionFactory
     ) {}
 
     public function __invoke(array $context = []): OpenApi
@@ -57,12 +62,20 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     /**
      * Documents, on the collections that can be requested without pagination, the cap
      * applied to ?pagination=false and the TRUNCATED_HEADER response header.
+     * The collections served by a Symfony controller are not capped: they are skipped.
      */
     private function documentUnpaginatedCap(OpenApi $openApi): OpenApi
     {
         $paths = $openApi->getPaths();
+        $controllerUriTemplates = $this->getControllerCollectionUriTemplates();
 
         foreach ($paths->getPaths() as $key => $path) {
+            foreach ($controllerUriTemplates as $uriTemplate) {
+                if (str_ends_with((string)$key, $uriTemplate)) {
+                    continue 2;
+                }
+            }
+
             $get = $path->getGet();
             $parameters = $get?->getParameters() ?? [];
             $paginationIndex = $this->findPaginationParameter($parameters);
@@ -86,6 +99,26 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         }
 
         return $openApi->withPaths($paths);
+    }
+
+    /**
+     * @return string[] URI templates (without the route prefix and the format) of the collections served by a Symfony controller
+     */
+    private function getControllerCollectionUriTemplates(): array
+    {
+        $uriTemplates = [];
+
+        foreach ($this->resourceNameCollectionFactory->create() as $resourceClass) {
+            foreach ($this->resourceMetadataCollectionFactory->create($resourceClass) as $resource) {
+                foreach ($resource->getOperations() ?? [] as $operation) {
+                    if ($operation instanceof GetCollection && $operation->getController() !== null && $operation->getUriTemplate() !== null) {
+                        $uriTemplates[] = str_replace('{._format}', '', $operation->getUriTemplate());
+                    }
+                }
+            }
+        }
+
+        return $uriTemplates;
     }
 
     /**
