@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed the paginated search (`/api/search/`): only the first 1000 Solr results were fetched then paginated in PHP, so `hydra:totalItems` was at most 1000 and the next results were unreachable. Only the requested page is now fetched from Solr (`start`, `rows`), and `hydra:totalItems` is the Solr `numFound`.
 - The paginated search (`/api/search/`) without `itemsPerPage` now returns pages of the default size (30), like the other collections, instead of the maximum (1000). Without pagination, at most 1000 results are still returned.
 - The paginated authors browsing (`/api/browse/authors/`) without `itemsPerPage` now returns pages of the default size (30) instead of 1000.
+- Fixed the paginated authors browsing (`/api/browse/authors/`): only the first 1000 authors (Solr facet limit) were fetched then paginated in PHP, so the next authors were unreachable. Only the requested page is now fetched from Solr (JSON Facet API: `offset`, `limit`), and `hydra:totalItems` is the real number of authors (`numBuckets`). With the `search` filter, the matching authors are all fetched then paginated.
 
 ### Security
 - The `startAfterDate` filter is now validated (`Y-m-d`) before being concatenated into the delay statistics SQL query.

@@ -4,6 +4,7 @@ namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\ArrayPaginator;
+use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\ProviderInterface;
 use App\AppConstants;
 use App\Exception\ResourceNotFoundException;
@@ -68,39 +69,39 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
         }
         $authorFs = 'authorLastNameFirstNamePrefixed_fs';
         // "browse/authors" collection
-        $authors = [];
         $letter = isset($context['filters']['letter']) ? mb_ucfirst($context['filters']['letter']) : 'all';
 
         $search = isset($context['filters']['search']) ? mb_ucfirst($context['filters']['search']) : '';
 
         $sortType = $context['filters']['sort'] ?? 'index';
 
-
-        $result = $this->facetService->setJournal($journal)->getSolrFacet([
+        $facetParams = [
             'facetFieldName' => $authorFs,
-            // Without pagination, one more author is requested to tell a truncated result.
-            'facetLimit' => $isPaginationEnabled ? $maxResults : $maxResults + 1,
             'letter' => $letter,
             'sortType' => $sortType,
             'search' => $search
-        ]);
+        ];
 
+        if ($isPaginationEnabled) {
+            // Only the requested page is fetched from Solr, with the total number of authors
+            $itemsPerPage = max(1, min(
+                (int)($context['filters']['itemsPerPage'] ?? $operation->getPaginationItemsPerPage() ?? AppConstants::DEFAULT_ITEM_PER_PAGE),
+                $maxResults
+            ));
 
-        foreach ($result as $name => $count) {
-            $author = new Facet()
-                ->setField($authorFs)
-                ->setValues(['name' => $name, 'count' => $count]);
-            $authors[] = $author;
+            $facetPage = $this->facetService->setJournal($journal)->getSolrFacetPage($facetParams, ($page - 1) * $itemsPerPage, $itemsPerPage);
+
+            $paginator = new TraversablePaginator(new \ArrayIterator($this->toFacets($authorFs, $facetPage['values'])), $page, $itemsPerPage, $facetPage['total']);
+            $this->checkSeekPosition($paginator);
+
+            return $paginator;
         }
+
+        // Without pagination, one more author is requested to tell a truncated result.
+        $authors = $this->toFacets($authorFs, $this->facetService->setJournal($journal)->getSolrFacet(['facetLimit' => $maxResults + 1] + $facetParams));
 
         $this->flagIfTruncated($context, count($authors), $maxResults);
         $authors = array_slice($authors, 0, $maxResults); // without the extra author requested to tell a truncated result
-
-        if ($isPaginationEnabled) {
-            // Without itemsPerPage: the default page size, like the other collections
-            $maxResults = $context['filters']['itemsPerPage'] ?? $operation->getPaginationItemsPerPage() ?? AppConstants::DEFAULT_ITEM_PER_PAGE;
-            $firstResult = ($page - 1) * $maxResults;
-        }
 
         $paginator = new ArrayPaginator($authors, $firstResult, $maxResults);
 
@@ -108,5 +109,22 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
 
         return $paginator;
 
+    }
+
+    /**
+     * @param array<string, mixed> $values facet values (name => count)
+     * @return Facet[]
+     */
+    private function toFacets(string $field, array $values): array
+    {
+        $facets = [];
+
+        foreach ($values as $name => $count) {
+            $facets[] = new Facet()
+                ->setField($field)
+                ->setValues(['name' => $name, 'count' => $count]);
+        }
+
+        return $facets;
     }
 }

@@ -39,6 +39,9 @@ class SolrTruncatedCollectionTest extends TestCase
     /** @var int[] start and rows of the last Solr search */
     private array $searchArguments = [];
 
+    /** @var int[] offset and limit of the last facet page */
+    private array $facetPageArguments = [];
+
     protected function setUp(): void
     {
         $this->request = new Request();
@@ -117,15 +120,6 @@ class SolrTruncatedCollectionTest extends TestCase
         $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
     }
 
-    public function testPaginatedAuthorsKeepTheFacetLimit(): void
-    {
-        $max = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
-
-        $this->browseAuthors(facets: $max, pagination: self::PAGINATED, expectedFacetLimit: $max);
-
-        $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
-    }
-
     /**
      * Solr stub returning the requested slice ($start, $rows) of $matches documents.
      *
@@ -170,9 +164,22 @@ class SolrTruncatedCollectionTest extends TestCase
 
     public function testPaginatedAuthorsWithoutItemsPerPageUseTheDefaultPageSize(): void
     {
-        $authors = $this->browseAuthors(facets: 50, pagination: self::PAGINATED, expectedFacetLimit: SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS, expectedTotal: 50);
+        $paginator = $this->browsePaginatedAuthors(totalAuthors: 50);
 
-        $this->assertCount(AppConstants::DEFAULT_ITEM_PER_PAGE, $authors);
+        $this->assertSame([0, AppConstants::DEFAULT_ITEM_PER_PAGE], $this->facetPageArguments); // offset, limit sent to Solr
+        $this->assertCount(AppConstants::DEFAULT_ITEM_PER_PAGE, iterator_to_array($paginator));
+        $this->assertSame(50.0, $paginator->getTotalItems());
+        $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+    }
+
+    public function testPaginatedAuthorsBeyondTheFacetLimitCanBeReached(): void
+    {
+        $paginator = $this->browsePaginatedAuthors(totalAuthors: 1500, itemsPerPage: 30, page: 40);
+
+        $this->assertSame([1170, 30], $this->facetPageArguments);
+        $this->assertSame('author1171', iterator_to_array($paginator, false)[0]->getValues()['name']);
+        $this->assertSame(1500.0, $paginator->getTotalItems());
+        $this->assertSame(50.0, $paginator->getLastPage());
     }
 
     public function testUnpaginatedAuthorsTotalExcludesTheExtraAuthor(): void
@@ -217,5 +224,44 @@ class SolrTruncatedCollectionTest extends TestCase
         }
 
         return iterator_to_array($paginator, false);
+    }
+
+    /**
+     * Facet service stub returning the requested page ($offset, $limit) of $totalAuthors authors.
+     *
+     * @return PaginatorInterface<object>
+     */
+    private function browsePaginatedAuthors(int $totalAuthors, ?int $itemsPerPage = null, int $page = 1): PaginatorInterface
+    {
+        $authors = array_fill_keys(array_map(static fn(int $i): string => 'author' . $i, range(1, $totalAuthors)), 1);
+
+        $facetService = $this->createStub(SolrFacetService::class);
+        $facetService->method('setJournal')->willReturnSelf();
+        $facetService->method('getSolrFacetPage')->willReturnCallback(function (array $params, int $offset, int $limit) use ($authors): array {
+            $this->facetPageArguments = [$offset, $limit];
+
+            return ['values' => array_slice($authors, $offset, $limit, true), 'total' => count($authors)];
+        });
+
+        $provider = new BrowseStateProvider(
+            $this->createStub(EntityManagerInterface::class),
+            $this->createStub(LoggerInterface::class),
+            new Pagination(['client_enabled' => true]),
+            $facetService,
+            $this->createStub(SolrAuthorService::class),
+            new RequestStack()
+        );
+
+        $operation = new GetCollection(class: Browse::class);
+        $filters = ['pagination' => self::PAGINATED, 'page' => $page];
+
+        if ($itemsPerPage !== null) {
+            $filters['itemsPerPage'] = $itemsPerPage;
+        }
+
+        $paginator = $provider->provide($operation, [], ['operation' => $operation, 'filters' => $filters, 'request' => $this->request]);
+        $this->assertInstanceOf(PaginatorInterface::class, $paginator);
+
+        return $paginator;
     }
 }
