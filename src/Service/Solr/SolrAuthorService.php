@@ -56,6 +56,7 @@ class SolrAuthorService extends AbstractSolrService
         $params = [
             'q' => 'author_fullname_t:' . addcslashes($fullName, '+-&|!(){}[]^"~*?:\\/'),
             'q.op' => 'AND',
+            'rows' => SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS, // Solr returns 10 documents by default
             'indent' => 'false',
         ];
 

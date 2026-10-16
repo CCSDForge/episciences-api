@@ -124,6 +124,20 @@ class SolrAuthorServiceTest extends TestCase
         $this->authorService->getSolrAuthorsByFullName('O\'Brien, Patrick');
     }
 
+    public function testGetSolrAuthorsByFullNameRequestsTheMaximumNumberOfDocuments(): void
+    {
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getContent')->willReturn(json_encode(['response' => ['numFound' => 0, 'docs' => []]]));
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->stringContains('rows=' . SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS))
+            ->willReturn($response);
+
+        $this->authorService->getSolrAuthorsByFullName('Dupont, Jean');
+    }
+
     public function testGetCountArticlesByAuthorsFirstLetter(): void
     {
         $facetResult = [
