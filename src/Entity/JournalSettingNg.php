@@ -166,7 +166,6 @@ use ApiPlatform\OpenApi\Model\Response;
                 )
 
                 ],
-                security: [['bearerAuth' => []],]
             ),
 
             normalizationContext: [

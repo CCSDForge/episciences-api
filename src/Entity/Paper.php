@@ -44,7 +44,6 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['paper']],
                 summary: 'The paper identified by docid or paperid',
-                security: [['bearerAuth' => []],]
             ),
             normalizationContext: [
                 'groups' => self::ITEM_NORMALIZATION_GROUPS,
@@ -113,7 +112,6 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                         allowReserved: false
                     ),
                 ],
-                security: [['bearerAuth' => []],]
             ),
             normalizationContext: [
                 'groups' => ['read:Papers']

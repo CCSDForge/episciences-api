@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
+use App\OpenApi\OpenApiFactory;
 use App\State\StatisticStateProvider;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -17,7 +18,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new GetCollection(
             uriTemplate: '/statistics/',
             openapi: new OpenApiOperation(
-                tags: ['Statistics | UX'],
+                tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Retrieve all available statistical indicators",
                 description: "",
                 parameters: [
@@ -101,7 +102,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new Get(
             uriTemplate: '/statistics/nb-submissions',
             openapi: new OpenApiOperation(
-                tags: ['Statistics | UX'],
+                tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Total number of submissions",
                 description: "",
                 parameters: [
@@ -203,7 +204,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new Get(
             uriTemplate: '/statistics/median-submission-publication',
             openapi: new OpenApiOperation(
-                tags: ['Statistics | UX'],
+                tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Median Time submission-publication",
                 description: self::INDICATOR_DESCRIPTION,
                 parameters: [
@@ -277,7 +278,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new Get(
             uriTemplate: '/statistics/median-submission-acceptance',
             openapi: new OpenApiOperation(
-                tags: ['Statistics | UX'],
+                tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Median Time submission-acceptance",
                 description: self::INDICATOR_DESCRIPTION,
                 parameters: [
@@ -352,7 +353,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new Get(
             uriTemplate: '/statistics/acceptance-rate',
             openapi: new OpenApiOperation(
-                tags: ['Statistics | UX'],
+                tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Acceptance rate",
                 description: self::INDICATOR_DESCRIPTION,
                 parameters: [
@@ -412,7 +413,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new GetCollection(
             uriTemplate: '/statistics/evaluation',
             openapi: new OpenApiOperation(
-                tags: ['Statistics | UX'],
+                tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Evaluation",
                 description: 'Evaluation',
                 parameters: [

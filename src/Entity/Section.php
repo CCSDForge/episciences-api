@@ -30,7 +30,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Consult a particular Section',
-                security: [['bearerAuth' => []],]
 
             ),
 
@@ -58,7 +57,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         explode: false,
                     ),
                 ],
-                security: [['bearerAuth' => []],]
 
             ),
             order: ['rvid' => AppConstants::ORDER_DESC, 'position' => AppConstants::ORDER_ASC, 'sid' => AppConstants::ORDER_ASC],
