@@ -31,7 +31,6 @@ abstract class AbstractStatResource implements \Stringable
         private string $name = '',
 
         #[Groups([AppConstants::APP_CONST['normalizationContext']['groups']['review']['item']['read'][0]])]
-        #[ApiProperty(schema: OpenApiSchemas::STAT_VALUE)]
         private        $value = null,
 
         #[Groups([AppConstants::APP_CONST['normalizationContext']['groups']['review']['item']['read'][0]])]
@@ -88,6 +87,7 @@ abstract class AbstractStatResource implements \Stringable
     }
 
     /**
+     * The schema of the value is documented by each subclass, with a class-level ApiProperty attribute
      * @return int|float|array|null
      */
     public function getValue(): int|float|array|null

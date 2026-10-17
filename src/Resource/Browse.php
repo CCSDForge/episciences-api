@@ -63,6 +63,7 @@ use App\State\BrowseStateProvider;
             normalizationContext: [
                 'groups' => ['read:Browse:Authors']
             ],
+            output: Facet::class,
         ),
         new GetCollection(
             uriTemplate: '/browse/authors-search/{author_fullname}',

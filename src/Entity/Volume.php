@@ -214,7 +214,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     #[ApiProperty(
         schema: [
             'type' => ['array', 'null'],
-            'items' => ['type' => 'string', 'enum' => ['special_issue', 'proceeding']],
+            'items' => ['type' => 'string', 'enum' => ['special_issue', 'proceedings']],
             'example' => ['special_issue'],
         ]
     )]
@@ -272,7 +272,19 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-
+    #[ApiProperty(
+        schema: [
+            'description' => 'Papers of the volume, sorted by position',
+            'type' => 'array',
+            'items' => [
+                'type' => 'object',
+                'properties' => [
+                    'paperid' => ['type' => 'integer'],
+                    'paperPosition' => ['type' => ['integer', 'null']],
+                ],
+            ],
+        ]
+    )]
     private Collection $papers;
 
     #[Groups(

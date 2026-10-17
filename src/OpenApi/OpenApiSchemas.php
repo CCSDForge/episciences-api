@@ -27,8 +27,18 @@ final class OpenApiSchemas
 
     public const array NULLABLE_OBJECT = ['type' => ['object', 'array', 'null'], 'maxItems' => 0];
 
-    /** Free-form value of a statistic: a number, or the details of the statistic */
-    public const array STAT_VALUE = ['type' => ['object', 'array', 'number', 'null']];
+    /** Free-form value of a statistic: a number, or the details of the statistic (the number comes first for the example) */
+    public const array STAT_VALUE = ['type' => ['number', 'object', 'array', 'null']];
+
+    /** Delay between two steps of the editorial process */
+    public const array STAT_DELAY = [
+        'type' => 'object',
+        'properties' => [
+            'value' => ['type' => ['number', 'null'], 'example' => 359],
+            'unit' => ['type' => 'string', 'example' => 'DAY'],
+            'method' => ['type' => 'string', 'enum' => ['average', 'median'], 'example' => 'average'],
+        ],
+    ];
 
     /** IRI of a related resource */
     public const array NULLABLE_IRI = ['type' => ['string', 'null'], 'format' => 'iri-reference', 'example' => '/api/users/1'];

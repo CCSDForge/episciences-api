@@ -516,7 +516,10 @@ class Statistic
     #[groups(['read:Statistic'])]
     private string $name;
     #[groups(['read:Statistic'])]
-    #[ApiProperty(schema: OpenApiSchemas::STAT_VALUE)]
+    #[ApiProperty(schema: [
+        'description' => 'A number, or an object detailing the indicator for "nb-submissions-details" and "evaluation"',
+        'example' => 43.72,
+    ] + OpenApiSchemas::STAT_VALUE)]
     private array|float|null $value = null;
     #[groups(['read:Statistic'])]
     private string|null $unit = null;

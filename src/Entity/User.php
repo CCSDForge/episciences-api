@@ -32,6 +32,7 @@ use App\Controller\MeController;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\OpenApi\OpenApiFactory;
+use App\OpenApi\OpenApiSchemas;
 
 #[ORM\Table(name: self::TABLE)]
 #[ORM\UniqueConstraint(name: 'uuid', columns: ['uuid'])]
@@ -156,6 +157,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @var array
      */
     #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    // Boards: one list of roles per board member
+    #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => ['string', 'array'], 'items' => ['type' => 'string']]])]
     private array $roles = [];
 
     #[ORM\Id]
@@ -279,8 +282,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
                     ],
                 ],
             ],
+            'webSites' => [
+                'type' => 'array',
+                'items' => ['type' => 'string', 'format' => 'uri'],
+            ],
         ],
-        'example' => ['affiliations' => [['label' => 'Centre pour la Communication Scientifique Directe', 'rorId' => 'https://ror.org/00680hx61']]],
+        'example' => [
+            'affiliations' => [['label' => 'Centre pour la Communication Scientifique Directe', 'rorId' => 'https://ror.org/00680hx61']],
+            'webSites' => ['https://www.episciences.org'],
+        ],
     ])]
     private ?array $additionalProfileInformation = null;
 
@@ -314,6 +324,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups(['read:User', 'read:Me'])]
     private Collection $news;
     #[Groups(['read:Boards'])]
+    #[ApiProperty(schema: [
+        'type' => ['array', 'null'],
+        'items' => [
+            'type' => 'object',
+            'properties' => [
+                'sid' => ['type' => 'integer'],
+                'titles' => OpenApiSchemas::NULLABLE_TRANSLATED_TEXT,
+            ],
+        ],
+    ])]
     private ?array $assignedSections = null;
 
     public function __construct(array $options = [])
