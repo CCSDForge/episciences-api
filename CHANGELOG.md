@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Security
 -->
+## Unreleased
+### Fixed
+- `GET /api/journals/stats/nb-submissions/{code}?withDetails`: `submissionsByYear[*].imported` now counts the imported submissions of each year (it repeated the total of all the years).
+
 ## v1.3.1 2026-09-22
 ### Fixed
 - Sections collection (`GET /api/sections`) is now sorted by ascending `position` within each journal (was sorted by descending identifier); `position` is now exposed in section outputs.

@@ -478,6 +478,8 @@ class Stats
         $startAfterDate = $filters['is']['startAfterDate'] ?? null;
         $repositories = $papersRepository->getAvailableRepositories($filters);
 
+        $importedByYear = $papersRepository->getImportedByYear($filters);
+
         foreach ($papersRepository->getSubmissionYearRange($filters) as $year) { // pour le dashboard
 
             try {
@@ -489,10 +491,7 @@ class Stats
 
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $submissions;
 
-                $imported = $papersRepository->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])
-                    ->getQuery()->getSingleScalarResult();
-
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $imported;
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $importedByYear[(int)$year] ?? 0;
 
                 //Il est possible que certaines versions soient importées tandis que d'autres ne le soient pas.
                 // D'où la nécessité d'une nouvelle requête plutôt que de faire la différence
