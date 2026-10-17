@@ -95,6 +95,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                 ]
             ),
@@ -197,6 +201,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                 ]
             ),
@@ -257,6 +265,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: 'unit',
@@ -331,6 +343,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: 'unit',
@@ -406,6 +422,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                 ]
             ),

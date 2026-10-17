@@ -118,6 +118,9 @@ use App\OpenApi\OpenApiSchemas;
                         description: 'Document identifier',
                         required: true,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'integer',
+                        ],
                     )
                 ]
             ),

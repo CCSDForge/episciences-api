@@ -169,6 +169,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
@@ -177,6 +180,10 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::WITH_DETAILS,
@@ -185,6 +192,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
                     )
                 ]
             ),
@@ -214,6 +224,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
@@ -222,6 +235,10 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::WITH_DETAILS,
@@ -230,6 +247,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
                     )
                 ]
             ),
@@ -259,6 +279,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
@@ -267,6 +290,10 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::WITH_DETAILS,
@@ -275,6 +302,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
                     )
                 ]
             ),
@@ -304,6 +334,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
@@ -312,6 +345,10 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::WITH_DETAILS,
@@ -320,6 +357,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
                     )
                 ]
             ),
@@ -349,8 +389,7 @@ use App\Entity\IndexingDatabase;
                         deprecated: false,
                         allowEmptyValue: true,
                         schema: [
-                            'type' => 'datetime',
-
+                            'type' => 'boolean',
                         ]
                     ),
                 ]
