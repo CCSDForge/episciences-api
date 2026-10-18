@@ -22,6 +22,9 @@ use Psr\Log\LoggerInterface;
 
 class StatisticStateProvider extends AbstractStateDataProvider implements ProviderInterface
 {
+    /** Units accepted by the delay indicators (MySQL TIMESTAMPDIFF units) */
+    public const array AVAILABLE_UNITS = ['second', 'minute', 'hour', 'day', 'week', 'month', 'quarter', 'year'];
+
     public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger, protected Pagination $pagination, protected Stats $statsService)
     {
         parent::__construct($entityManager, $logger, $pagination);
@@ -41,7 +44,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
         $filters = $context['filters'] ?? [];
         $code = $filters['rvcode'] ?? null;
-        $unit = $filters['unit'] ?? 'week';
+        $unit = $this->processUnit($filters['unit'] ?? 'week');
         $rvId = null;
 
         if ($code) {
@@ -72,12 +75,12 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         }
 
         $flag = $filters['flag'] ?? null;
-        $startAfterDate = $filters['startAfterDate'] ?? null;
+        $startAfterDate = $this->processStartAfterDate($filters[AppConstants::START_AFTER_DATE] ?? null);
 
         $isPaginationEnabled = $context['filters']['pagination'];
         $page = $context['filters']['page'];
         $firstResult = 0;
-        $indicator = $filters['indicator'] ?? null;
+        $indicator = $this->processIndicator($filters['indicator'] ?? null);
 
         $dictionaryKeys = array_keys($dictionary);
         $statusValues = array_values($status);
@@ -259,6 +262,63 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
     }
 
+
+    /**
+     * Accepts a single indicator, sent as "indicator" or "indicator[]".
+     * @throws ResourceNotFoundException
+     */
+    private function processIndicator(mixed $indicator): ?string
+    {
+        if (is_array($indicator)) {
+            $indicator = array_values(array_unique(array_filter($indicator, static fn($value) => $value !== '' && $value !== null)));
+
+            if (count($indicator) > 1) {
+                throw new ResourceNotFoundException('Oops! only one indicator can be requested at a time');
+            }
+
+            $indicator = $indicator[0] ?? null;
+        }
+
+        if ($indicator === null || $indicator === '') {
+            return null;
+        }
+
+        if (!is_string($indicator)) {
+            throw new ResourceNotFoundException('Oops! invalid indicator');
+        }
+
+        return $indicator;
+    }
+
+    /**
+     * @throws ResourceNotFoundException
+     */
+    private function processStartAfterDate(mixed $startAfterDate): ?string
+    {
+        if ($startAfterDate === null || $startAfterDate === '') {
+            return null;
+        }
+
+        $date = is_string($startAfterDate) ? \DateTimeImmutable::createFromFormat('!Y-m-d', $startAfterDate) : false;
+
+        if (!$date || $date->format('Y-m-d') !== $startAfterDate) {
+            throw new ResourceNotFoundException(sprintf('Oops! invalid %s: the expected format is YYYY-MM-DD', AppConstants::START_AFTER_DATE));
+        }
+
+        return $startAfterDate;
+    }
+
+    /**
+     * @throws ResourceNotFoundException
+     */
+    private function processUnit(mixed $unit): string
+    {
+        if (!is_string($unit) || !in_array(strtolower($unit), self::AVAILABLE_UNITS, true)) {
+            throw new ResourceNotFoundException(sprintf('Oops! invalid unit because the available values are: %s', implode(', ', self::AVAILABLE_UNITS)));
+        }
+
+        return strtolower($unit);
+    }
 
     public function getAcceptanceRate(array $options = []): float|null
     {

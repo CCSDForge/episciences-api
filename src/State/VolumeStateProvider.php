@@ -74,6 +74,13 @@ final class VolumeStateProvider extends AuthenticationStateProvider implements P
             return null;
         }
 
-        return $volumeRepo->findOneByWithContext(['vid' => $vid],null, $filters);
+        $criteria = ['vid' => $vid];
+
+        // the volume must belong to the requested journal
+        if (isset($filters['rvid'])) {
+            $criteria['rvid'] = $filters['rvid'];
+        }
+
+        return $volumeRepo->findOneByWithContext($criteria, null, $filters);
     }
 }

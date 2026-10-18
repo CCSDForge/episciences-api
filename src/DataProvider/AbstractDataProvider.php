@@ -99,6 +99,7 @@ abstract class AbstractDataProvider
 
                 if (
                     !isset($availableFilters[$filter]) &&
+                    $filter !== AppConstants::START_AFTER_DATE && // already checked above: ignored if invalid
                     in_array($filter, Stats::AVAILABLE_PAPERS_FILTERS, true)
                 ) {
                     $availableFilters[$filter] = $value;

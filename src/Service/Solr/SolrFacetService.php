@@ -28,8 +28,9 @@ class SolrFacetService extends AbstractSolrService
      * One page of facet values, with the total number of values matching the filters.
      *
      * Classic facets give no total, so the JSON Facet API is used (offset, limit, numBuckets).
-     * It has no equivalent of facet.contains: with a search filter, the matching values are all
-     * fetched (the search already narrows them) and the page is taken from them.
+     * It has no equivalent of facet.contains nor facet.matches: with a search filter (or a letter
+     * whose prefix also matches the "others" values), the matching values are all fetched
+     * (the filter already narrows them) and the page is taken from them.
      *
      * @param array<string, mixed> $params same parameters as getSolrFacet(), without facetLimit
      * @return array{values: array<string, mixed>, total: int}
@@ -42,10 +43,9 @@ class SolrFacetService extends AbstractSolrService
             return ['values' => [], 'total' => 0];
         }
 
-        if (($params['search'] ?? '') !== '') {
-            // A search filter (facet.contains) has no JSON-Facet equivalent: the matching
-            // values are all fetched with facetLimit = -1 (unbounded) because the search
-            // already narrows them, and the requested page is sliced off in PHP below.
+        $letter = isset($params['letter']) ? $this->normalizeLetter($params['letter']) : SolrConstants::SOLR_ALL_PREFIX;
+
+        if (($params['search'] ?? '') !== '' || $this->isOthersExcluded($letter)) {
             $values = $this->getSolrFacet(['facetLimit' => -1] + $params);
 
             return ['values' => array_slice($values, $offset, $limit, true), 'total' => count($values)];
@@ -60,8 +60,6 @@ class SolrFacetService extends AbstractSolrService
             'sort' => ($params['sortType'] ?? SolrConstants::SOLR_INDEX) === SolrConstants::SOLR_FACET_COUNT ? 'count desc' : 'index asc',
             'numBuckets' => true,
         ];
-
-        $letter = isset($params['letter']) ? $this->normalizeLetter($params['letter']) : SolrConstants::SOLR_ALL_PREFIX;
 
         if ($letter !== SolrConstants::SOLR_ALL_PREFIX) {
             $facet['prefix'] = $letter;
@@ -147,6 +145,22 @@ class SolrFacetService extends AbstractSolrService
         if ($normalizedLetter !== SolrConstants::SOLR_ALL_PREFIX) {
             $params['facet.prefix'] = $normalizedLetter;
         }
+
+        if ($this->isOthersExcluded($normalizedLetter)) {
+            $params['facet.matches'] = sprintf('^(?!%s).*', preg_quote(SolrConstants::SOLR_OTHERS_FACET_SEPARATOR, '/'));
+        }
+    }
+
+    /**
+     * The "others" values are indexed with the SOLR_OTHERS_FACET_SEPARATOR prefix:
+     * a letter prefix ("O") also matches them, they have to be excluded.
+     */
+    private function isOthersExcluded(string $normalizedLetter): bool
+    {
+        return
+            $normalizedLetter !== SolrConstants::SOLR_ALL_PREFIX &&
+            $normalizedLetter !== SolrConstants::SOLR_OTHERS_FACET_SEPARATOR &&
+            str_starts_with(SolrConstants::SOLR_OTHERS_FACET_SEPARATOR, $normalizedLetter);
     }
 
     private function applySearchFilter(array &$params, string $search): void

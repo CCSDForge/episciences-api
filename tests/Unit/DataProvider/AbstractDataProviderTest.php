@@ -130,4 +130,28 @@ class AbstractDataProviderTest extends TestCase
 
         $this->dataProvider->exposeGetCollection($operation, $context);
     }
+
+    /**
+     * An invalid startAfterDate is ignored (as documented), it must not reach the query.
+     */
+    public function testInvalidStartAfterDateIsIgnoredForSubmissions(): void
+    {
+        $journal = $this->createMock(Review::class);
+        $journal->method('getRvid')->willReturn(42);
+
+        $this->statsService->method('getJournal')->willReturn($journal);
+
+        $operation = new Get(name: AppConstants::STATS_NB_SUBMISSIONS_ITEM);
+        $context = [
+            'uri_variables' => ['code' => 'myjournal'],
+            'filters' => [AppConstants::START_AFTER_DATE => 'abc'],
+        ];
+
+        $this->statsService->expects($this->once())
+            ->method('getSubmissionsStat')
+            ->with($this->callback(fn(array $filters): bool => !array_key_exists(AppConstants::START_AFTER_DATE, $filters['is'])))
+            ->willReturn(new SubmissionOutput());
+
+        $this->dataProvider->exposeGetCollection($operation, $context);
+    }
 }

@@ -37,7 +37,7 @@ class Stats
     public const TOTAL_REFUSED_SUBMITTED_SAME_YEAR = 'refusedSubmittedSameYear';
     public const ACCEPTANCE_RATE = 'acceptanceRate'; // TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR / submissions by year
     public const REF_YEAR = 2013; // statistics since this year
-    public const AVAILABLE_PAPERS_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::PAPER_FLAG, AppConstants::PAPER_STATUS, AppConstants::PAPER_STATUS, AppConstants::YEAR_PARAM];
+    public const AVAILABLE_PAPERS_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::PAPER_FLAG, AppConstants::PAPER_STATUS, AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE];
     public const AVAILABLE_USER_ROLES_FILTERS = ['rvid', 'uid', 'role'];
     public const AVAILABLE_USERS_FILTERS = [AppConstants::WITH_DETAILS];
     public const DEFAULT_METHOD = 'average';
@@ -489,13 +489,7 @@ class Stats
         }
 
         // Values independent of the year, and PAPER_LOG counters for all the years: computed once, outside the loop
-        try {
-            $imported = $papersRepository->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])
-                ->getQuery()->getSingleScalarResult();
-        } catch (NoResultException|NonUniqueResultException $e) {
-            $imported = 0;
-            $this->logger->error($e->getMessage());
-        }
+        $importedByYear = $papersRepository->getImportedByYear($filters);
 
         $nbAcceptedSubmittedSameYear = $this->getNbPapersByStatus($rvId);
 
@@ -517,7 +511,7 @@ class Stats
 
             $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $submissionsByYear[(int)$year] ?? 0;
 
-            $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $imported;
+            $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $importedByYear[(int)$year] ?? 0;
 
             $submissionsWithoutImported = $submissionsWithoutImportedByYear[(int)$year] ?? 0;
 

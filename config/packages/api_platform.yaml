@@ -78,3 +78,4 @@ api_platform:
     exception_to_status:
         # Custom mapping
         App\Exception\ResourceNotFoundException : 404
+        App\Exception\MissingRequestParameterException : 400

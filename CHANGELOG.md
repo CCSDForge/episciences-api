@@ -34,6 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated to Doctrine ORM 3.7: updated `doctrine/orm` constraint from `^2.14` to `^3.7` and aligned unit test mocks (mocked `Doctrine\DBAL\Exception` and `Doctrine\ORM\Query` instances) with the new ORM/DBAL APIs.
 
 ### Fixed
+- `/api/statistics/*`: the `indicator[]` form (documented) is accepted again (a single indicator), and an invalid `startAfterDate` (expected format: `YYYY-MM-DD`) or `unit` is now rejected with a clear message instead of a server error or an ignored value.
+- `GET /api/journals/stats/nb-submissions/{code}?withDetails`: `submissionsByYear[*].imported` now counts the imported submissions of each year (it repeated the total of all the years).
+- An invalid pagination parameter (`page` lower than 1, negative `itemsPerPage`) now returns a `400` error instead of a server error.
+- `GET /api/volumes/{vid}` : the `rvcode` journal is now taken into account, a volume of another journal is no longer returned (`404`).
+- `GET /api/journals/stats/nb-submissions/{code}`: the documented `startAfterDate` filter is now accepted (it returned a `404` error), and ignored when its format is wrong; `status` is no longer listed twice in the available filters.
+- `GET /api/browse/authors/` : the letter `O` no longer includes the authors listed under `others`.
 - Fixed OpenAPI spec: documented summaries, required request bodies and `401` responses for authentication endpoints, removed the bearer requirement from the token refresh endpoint, replaced the placeholder `operationId` of `GET /api/browse/authors/` and the OpenAPI 3.0 `nullable` keyword.
 - Fixed OpenAPI spec: documented `401` responses on bearer-secured operations, removed unreferenced component schemas, aligned the front configuration schema with the journal settings schema (property names, types and missing properties), clarified the citations permission endpoint description.
 - Fixed OpenAPI spec to match the returned JSON: translated texts (`title`, `content`, `titles`, `descriptions`, `link`) documented as objects indexed by language, `vol_type` as an array, paper `document` and user `additionalProfileInformation` as objects, `userRoles[].user` as an IRI, statistics `value`, `details`, `availableFilters` and `requestedFilters` types, boolean response of the citations permission endpoint; documented `text/xml` for the feeds, the export media types and formats, and `404` responses for unknown journals.
