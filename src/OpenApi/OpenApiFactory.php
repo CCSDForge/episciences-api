@@ -42,6 +42,47 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     /** Parameters holding a journal code: an unknown journal returns a 404 */
     private const array JOURNAL_CODE_PARAMETERS = ['code', 'rvcode'];
 
+    public const string NOTE_PAPERS_MANAGE = 'Champ confidentiel : visible uniquement par les utilisateurs autorisés à gérer l\'article (voter `papers_manage`).';
+    public const string NOTE_ROLE_SECRETARY = 'Champ confidentiel : visible uniquement par les secrétaires de rédaction (ROLE_SECRETARY).';
+    public const string NOTE_ROLE_MEMBER = 'Champ confidentiel : visible uniquement par les membres authentifiés (ROLE_MEMBER).';
+    public const string NOTE_ROLE_EPIADMIN = 'Champ confidentiel : visible uniquement par les administrateurs EPI (ROLE_EPIADMIN).';
+
+    /**
+     * Role-conditioned serialized properties, scoped by owning resource (schema name prefix).
+     * Mirrors the `#[ApiProperty(security: ...)]` declarations in the entities.
+     *
+     * @var array<string, array<string, string>> Resource prefix -> (serialized property -> note)
+     */
+    public const array SENSITIVE_FIELDS = [
+        'Paper' => [
+            'flag' => self::NOTE_PAPERS_MANAGE,
+            'user' => self::NOTE_PAPERS_MANAGE,
+            'assignments' => self::NOTE_PAPERS_MANAGE,
+            'editors' => self::NOTE_PAPERS_MANAGE,
+            'reviewers' => self::NOTE_PAPERS_MANAGE,
+            'copyEditors' => self::NOTE_PAPERS_MANAGE,
+            'coAuthors' => self::NOTE_PAPERS_MANAGE,
+            'conflicts' => self::NOTE_PAPERS_MANAGE,
+        ],
+        'Volume' => [
+            'settings' => self::NOTE_ROLE_SECRETARY,
+        ],
+        'Section' => [
+            'settings' => self::NOTE_ROLE_SECRETARY,
+        ],
+        'User' => [
+            'username' => self::NOTE_ROLE_MEMBER,
+            'registrationDate' => self::NOTE_ROLE_EPIADMIN,
+            'modificationDate' => self::NOTE_ROLE_EPIADMIN,
+            'isValid' => self::NOTE_ROLE_EPIADMIN,
+        ],
+        'Review' => [
+            'status' => self::NOTE_ROLE_EPIADMIN,
+            'creation' => self::NOTE_ROLE_EPIADMIN,
+            'piwikid' => self::NOTE_ROLE_EPIADMIN,
+        ],
+    ];
+
     public function __construct(
         private OpenApiFactoryInterface $decorated,
         private ResourceNameCollectionFactoryInterface $resourceNameCollectionFactory,
@@ -73,6 +114,10 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         $openApi = $this->addAuthPaths($openApi);
 
         $openApi = $this->documentUnpaginatedCap($openApi);
+
+        $openApi = $this->documentOptionalAuthMode($openApi);
+
+        $openApi = $this->documentFieldConfidentiality($openApi);
 
         return $openApi;
     }
@@ -177,6 +222,136 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         $responses[Response::HTTP_OK] = $response->withHeaders($headers);
 
         return $responses;
+    }
+
+    // -----------------------------------
+    // OPTIONAL AUTH (DOUBLE MODE) ENDPOINTS
+    // -----------------------------------
+    /**
+     * Documents the "double mode" of the endpoints that are publicly readable but whose
+     * payload/scope changes when a JWT is provided: anonymous calls return only published
+     * items, authenticated calls return a richer scope depending on the role.
+     *
+     * The opening security (`bearerAuth`) is voluntarily not enforced (the operation stays
+     * public): the JWT is optional. This method only documents that behaviour.
+     */
+    private function documentOptionalAuthMode(OpenApi $openApi): OpenApi
+    {
+        /** @var array<string, string> $paths URI path -> human label */
+        $paths = $this->getOptionalAuthPaths();
+
+        foreach ($paths as $pathKey => $label) {
+            $path = $openApi->getPaths()->getPath($pathKey);
+            $get = $path?->getGet();
+
+            if (!$get instanceof Operation) {
+                continue;
+            }
+
+            $description = trim((string)$get->getDescription());
+            $note = 'JWT optionnel : l\'accès est public par défaut, mais la fourniture d\'un token étend ou restreint le périmètre renvoyé selon le rôle (mode connecté).';
+
+            $get = $get->withDescription($description !== '' ? $description . ' ' . $note : $note);
+
+            $openApi->getPaths()->addPath($pathKey, $path->withGet($get));
+        }
+
+        return $openApi;
+    }
+
+    /**
+     * @return array<string, string> The GET endpoints that behave in "double mode"
+     *                               (public + optional JWT enriching the scope).
+     */
+    private function getOptionalAuthPaths(): array
+    {
+        return [
+            '/api/papers/' => 'Papers',
+            '/api/papers/{docid}' => 'Paper',
+            '/api/volumes' => 'Volumes',
+            '/api/volumes/{vid}' => 'Volume',
+            '/api/sections' => 'Sections',
+            '/api/sections/{sid}' => 'Section',
+        ];
+    }
+
+    // -----------------------------------
+    // FIELD CONFIDENTIALITY
+    // -----------------------------------
+    /**
+     * Documents, on the response schemas, the role-conditioned fields that the
+     * generated spec declares unconditionally but that are in fact only exposed
+     * to specific roles (see the `#[ApiProperty(security: ...)]` declarations in
+     * the entities). Without this, the OpenAPI contract is misleading.
+     */
+    private function documentFieldConfidentiality(OpenApi $openApi): OpenApi
+    {
+        $components = $openApi->getComponents();
+        $schemas = $components->getSchemas();
+
+        foreach ($schemas as $name => $schema) {
+            $prefix = explode('.', (string)$name)[0];
+            $sensitive = self::SENSITIVE_FIELDS[$prefix] ?? null;
+            if ($sensitive === null) {
+                continue;
+            }
+
+            // Schemas are stored as (possibly nested) \ArrayObject; work on a plain array.
+            $schemaArray = json_decode((string)json_encode($schema), true);
+            if (!\is_array($schemaArray)) {
+                continue;
+            }
+
+            $updated = $this->annotateSensitiveProperties($schemaArray, $sensitive);
+            if ($updated !== $schemaArray) {
+                $schemas[$name] = new \ArrayObject($updated);
+            }
+        }
+
+        return $openApi->withComponents($components->withSchemas($schemas));
+    }
+
+    /**
+     * Recursively annotates sensitive properties declared in a schema (handles
+     * both top-level `properties` and collections of `allOf`/`oneOf`/`anyOf`).
+     *
+     * @param  array<array-key, mixed> $schema
+     * @param  array<string, string>   $sensitive Property name -> note
+     * @return array<array-key, mixed>
+     */
+    private function annotateSensitiveProperties(array $schema, array $sensitive): array
+    {
+        if (isset($schema['properties']) && \is_array($schema['properties'])) {
+            foreach ($schema['properties'] as $property => $definition) {
+                if (!\is_array($definition)) {
+                    continue;
+                }
+
+                $note = $sensitive[$property] ?? null;
+                if ($note === null) {
+                    continue;
+                }
+
+                $current = isset($definition['description']) && \is_string($definition['description'])
+                    ? rtrim($definition['description'], ' ')
+                    : '';
+
+                $definition['description'] = $current !== '' ? $current . ' ' . $note : $note;
+                $schema['properties'][$property] = $definition;
+            }
+        }
+
+        foreach (['allOf', 'oneOf', 'anyOf'] as $combinator) {
+            if (isset($schema[$combinator]) && \is_array($schema[$combinator])) {
+                foreach ($schema[$combinator] as $index => $subSchema) {
+                    if (\is_array($subSchema)) {
+                        $schema[$combinator][$index] = $this->annotateSensitiveProperties($subSchema, $sensitive);
+                    }
+                }
+            }
+        }
+
+        return $schema;
     }
 
     // -----------------------------------

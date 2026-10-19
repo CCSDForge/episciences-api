@@ -126,7 +126,6 @@ use App\Entity\IndexingDatabase;
                 tags: [OpenApiFactory::OAF_TAGS['review']],
                 summary: 'Journal',
                 description: 'Retrieves a Journal resource.',
-                security: [['bearerAuth' => []],]
             ),
 
             normalizationContext: [
@@ -143,7 +142,6 @@ use App\Entity\IndexingDatabase;
                 tags: [OpenApiFactory::OAF_TAGS['review']],
                 summary: 'All Journals',
                 description: 'Retrieves the collection of active journals',
-                security: [['bearerAuth' => []],]
             ),
             normalizationContext: [
                 'groups' => ['read:Reviews'],

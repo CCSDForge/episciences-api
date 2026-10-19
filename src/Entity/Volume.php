@@ -45,7 +45,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         explode: false,
                     )
                 ],
-                security: [['bearerAuth' => []],]
 
             ),
 
@@ -131,8 +130,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         explode: true
                     ),
                 ],
-
-                security: [['bearerAuth' => []],]
 
             ),
             order: ['position' => AppConstants::ORDER_ASC, 'rvid' => AppConstants::ORDER_DESC, 'vid' => AppConstants::ORDER_DESC],
