@@ -42,6 +42,9 @@ class SolrTruncatedCollectionTest extends TestCase
     /** @var int[] offset and limit of the last facet page */
     private array $facetPageArguments = [];
 
+    /** @var int[] start and rows of the last author papers search */
+    private array $authorPapersArguments = [];
+
     protected function setUp(): void
     {
         $this->request = new Request();
@@ -260,6 +263,91 @@ class SolrTruncatedCollectionTest extends TestCase
         }
 
         $paginator = $provider->provide($operation, [], ['operation' => $operation, 'filters' => $filters, 'request' => $this->request]);
+        $this->assertInstanceOf(PaginatorInterface::class, $paginator);
+
+        return $paginator;
+    }
+
+    public function testPaginatedAuthorPapersWithoutItemsPerPageUseTheDefaultPageSize(): void
+    {
+        $paginator = $this->browseAuthorPapers(totalPapers: 50);
+
+        $this->assertSame([0, AppConstants::DEFAULT_ITEM_PER_PAGE], $this->authorPapersArguments); // start, rows sent to Solr
+        $this->assertCount(AppConstants::DEFAULT_ITEM_PER_PAGE, iterator_to_array($paginator));
+        $this->assertSame(50.0, $paginator->getTotalItems());
+        $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+    }
+
+    public function testPaginatedAuthorPapersFetchesOnlyTheRequestedPage(): void
+    {
+        $paginator = $this->browseAuthorPapers(totalPapers: 1500, itemsPerPage: 30, page: 40);
+
+        $this->assertSame([1170, 30], $this->authorPapersArguments); // start, rows sent to Solr
+        $this->assertSame(1171, iterator_to_array($paginator, false)[0]->getDocid());
+        $this->assertSame(1500.0, $paginator->getTotalItems()); // Solr numFound, the late pages are reachable
+        $this->assertSame(50.0, $paginator->getLastPage());
+    }
+
+    public function testUnpaginatedAuthorPapersAboveTheMaximumAreFlagged(): void
+    {
+        $max = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
+
+        $paginator = $this->browseAuthorPapers(totalPapers: $max + 1, pagination: self::UNPAGINATED);
+
+        $this->assertSame([0, $max], $this->authorPapersArguments);
+        $this->assertCount($max, iterator_to_array($paginator));
+        $this->assertSame((float)$max, $paginator->getTotalItems());
+        $this->assertSame($max, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+    }
+
+    public function testCompleteUnpaginatedAuthorPapersAreNotFlagged(): void
+    {
+        $paginator = $this->browseAuthorPapers(totalPapers: 3, pagination: self::UNPAGINATED);
+
+        $this->assertSame([0, SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS], $this->authorPapersArguments);
+        $this->assertCount(3, iterator_to_array($paginator));
+        $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+    }
+
+    /**
+     * @return PaginatorInterface<SolrDoc>
+     */
+    private function browseAuthorPapers(int $totalPapers, ?string $pagination = null, ?int $itemsPerPage = null, int $page = 1): PaginatorInterface
+    {
+        $papers = array_map(static fn(int $i): array => ['docid' => $i], range(1, $totalPapers));
+
+        $authorService = $this->createStub(SolrAuthorService::class);
+        $authorService->method('setJournal')->willReturnSelf();
+        $authorService->method('getSolrAuthorsByFullName')->willReturnCallback(function (string $fullName, int $start, int $rows) use ($papers, $totalPapers): array {
+            $this->authorPapersArguments = [$start, $rows];
+
+            return ['response' => ['numFound' => $totalPapers, 'docs' => array_slice($papers, $start, $rows)]];
+        });
+
+        $requestStack = new RequestStack();
+        $requestStack->push($this->request);
+
+        $provider = new BrowseStateProvider(
+            $this->createStub(EntityManagerInterface::class),
+            $this->createStub(LoggerInterface::class),
+            new Pagination(['client_enabled' => true]),
+            $this->createStub(SolrFacetService::class),
+            $authorService,
+            $requestStack
+        );
+
+        $operation = new GetCollection(class: Browse::class);
+        $filters = ['pagination' => $pagination ?? self::PAGINATED, 'page' => $page];
+
+        if ($itemsPerPage !== null) {
+            $filters['itemsPerPage'] = $itemsPerPage;
+        }
+
+        $paginator = $provider->provide(
+            $operation,
+            [BrowseStateProvider::AUTHOR_FULlNAME => 'Dupont, Jean'],
+            ['operation' => $operation, 'filters' => $filters, 'request' => $this->request]
+        );
         $this->assertInstanceOf(PaginatorInterface::class, $paginator);
 
         return $paginator;

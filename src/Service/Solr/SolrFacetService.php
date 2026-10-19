@@ -43,6 +43,9 @@ class SolrFacetService extends AbstractSolrService
         }
 
         if (($params['search'] ?? '') !== '') {
+            // A search filter (facet.contains) has no JSON-Facet equivalent: the matching
+            // values are all fetched with facetLimit = -1 (unbounded) because the search
+            // already narrows them, and the requested page is sliced off in PHP below.
             $values = $this->getSolrFacet(['facetLimit' => -1] + $params);
 
             return ['values' => array_slice($values, $offset, $limit, true), 'total' => count($values)];

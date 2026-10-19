@@ -48,7 +48,20 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
         if (isset($uriVariables[self::AUTHOR_FULlNAME])) { // "browse/authors-search" collection
 
             $fullName = trim($uriVariables[self::AUTHOR_FULlNAME]);
-            $result = $this->authorService->setJournal($journal)->getSolrAuthorsByFullName($fullName);
+
+            // Page the query in Solr instead of fetching every result and slicing in PHP:
+            // unless pagination is disabled (then a single bounded page is returned).
+            $defaultMaxResults = $isPaginationEnabled
+                ? $operation->getPaginationItemsPerPage() ?? AppConstants::DEFAULT_ITEM_PER_PAGE
+                : SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
+
+            $maxResults = max(1, min(
+                (int)($context['filters']['itemsPerPage'] ?? $defaultMaxResults),
+                SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS
+            ));
+            $firstResult = ($page - 1) * $maxResults;
+
+            $result = $this->authorService->setJournal($journal)->getSolrAuthorsByFullName($fullName, $firstResult, $maxResults);
             $docs = $result['response']['docs'] ?? [];
 
             $response = [];
@@ -57,14 +70,17 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
                 $response[] = new SolrDoc($values);
             }
 
-            $this->flagIfTruncated($context, (int)($result['response']['numFound'] ?? count($response)), min($maxResults, count($response)));
+            $totalItems = (int)($result['response']['numFound'] ?? count($response));
 
-            if ($isPaginationEnabled) {
-                $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;
-                $firstResult = ($page - 1) * $maxResults;
+            if (!$isPaginationEnabled) {
+                $this->flagIfTruncated($context, $totalItems, count($response));
+                $totalItems = count($response); // like the other collections requested without pagination
             }
 
-            return new ArrayPaginator($response, $firstResult, $maxResults);
+            $paginator = new TraversablePaginator(new \ArrayIterator($response), $page, $maxResults, $totalItems);
+            $this->checkSeekPosition($paginator);
+
+            return $paginator;
 
         }
         $authorFs = 'authorLastNameFirstNamePrefixed_fs';
