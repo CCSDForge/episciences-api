@@ -36,6 +36,11 @@ services:
         arguments: ['@App\OpenApi\OpenApiFactory.inner']
         autoconfigure: false
 
+    App\OpenApi\OpenApiNormalizer:
+        decorates: 'api_platform.openapi.normalizer.legacy'
+        arguments: ['@App\OpenApi\OpenApiNormalizer.inner']
+        autoconfigure: false
+
     AppCustomJWTAuthenticator:
         class: App\Security\AppCustomJWTAuthenticator
         parent: lexik_jwt_authentication.security.jwt_authenticator

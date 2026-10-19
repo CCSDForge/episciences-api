@@ -6,12 +6,13 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\OpenApi\Model\MediaType;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
+use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use App\AppConstants;
 use App\Controller\BoardsController;
 use App\Controller\FeedController;
-use App\Resource\Boards;
 use App\Resource\DashboardOutput;
 use App\Resource\SubmissionAcceptanceDelayOutput;
 use App\Resource\SubmissionOutput;
@@ -52,8 +53,11 @@ use App\Entity\IndexingDatabase;
             read: false,
         ),
     ],
+    // The html format renders Swagger UI, which is not supported by operations served by a custom controller
+    formats: ['jsonld', 'json', 'xml'],
     controller: BoardsController::class,
-    output: Boards::class
+    // The controller returns the board members as users
+    output: User::class
 
 )]
 #[ApiResource(
@@ -62,6 +66,12 @@ use App\Entity\IndexingDatabase;
         new GetCollection(
             openapi: new OpenApiOperation(
                 tags: ['Feed'],
+                responses: [
+                    '200' => new OpenApiResponse(
+                        description: 'RSS feed',
+                        content: new \ArrayObject(['text/xml' => new MediaType(schema: new \ArrayObject(['type' => 'string']))])
+                    ),
+                ],
                 summary: 'Feed RSS',
                 description: 'An RSS Feed of the latest publications',
             ),
@@ -76,7 +86,7 @@ use App\Entity\IndexingDatabase;
 
         ),
     ],
-    formats: ['xml'],
+    formats: ['xml' => ['text/xml', 'application/xml']],
     controller: FeedController::class
 
 )]
@@ -86,6 +96,12 @@ use App\Entity\IndexingDatabase;
         new GetCollection(
             openapi: new OpenApiOperation(
                 tags: ['Feed'],
+                responses: [
+                    '200' => new OpenApiResponse(
+                        description: 'ATOM feed',
+                        content: new \ArrayObject(['text/xml' => new MediaType(schema: new \ArrayObject(['type' => 'string']))])
+                    ),
+                ],
                 summary: 'Feed ATOM',
                 description: 'An ATOM Feed of the latest publications',
             ),
@@ -99,7 +115,7 @@ use App\Entity\IndexingDatabase;
             read: false,
         ),
     ],
-    formats: ['xml'],
+    formats: ['xml' => ['text/xml', 'application/xml']],
     controller: FeedController::class
 )]
 #[ApiResource(
@@ -153,6 +169,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
@@ -161,6 +180,10 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::WITH_DETAILS,
@@ -169,6 +192,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
                     )
                 ]
             ),
@@ -198,6 +224,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
@@ -206,6 +235,10 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::WITH_DETAILS,
@@ -214,6 +247,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
                     )
                 ]
             ),
@@ -243,6 +279,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
@@ -251,6 +290,10 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::WITH_DETAILS,
@@ -259,6 +302,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
                     )
                 ]
             ),
@@ -288,6 +334,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
+                        schema: [
+                            'type' => 'integer',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
@@ -296,6 +345,10 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: AppConstants::WITH_DETAILS,
@@ -304,6 +357,9 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
                     )
                 ]
             ),
@@ -333,8 +389,7 @@ use App\Entity\IndexingDatabase;
                         deprecated: false,
                         allowEmptyValue: true,
                         schema: [
-                            'type' => 'datetime',
-
+                            'type' => 'boolean',
                         ]
                     ),
                 ]
@@ -376,6 +431,8 @@ use App\Entity\IndexingDatabase;
             read: false,
         ),
     ],
+    // The html format renders Swagger UI, which is not supported by operations served by a custom controller
+    formats: ['jsonld', 'json', 'xml'],
     controller: IndexingDatabaseController::class,
     output: IndexingDatabase::class
 )]

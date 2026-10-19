@@ -32,6 +32,7 @@ use App\Controller\MeController;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\OpenApi\OpenApiFactory;
+use App\OpenApi\OpenApiSchemas;
 
 #[ORM\Table(name: self::TABLE)]
 #[ORM\UniqueConstraint(name: 'uuid', columns: ['uuid'])]
@@ -70,6 +71,8 @@ use App\OpenApi\OpenApiFactory;
         ),
         new Get(
             uriTemplate: '/me',
+            // The html format renders Swagger UI, which is not supported by operations served by a custom controller
+            formats: ['jsonld', 'json', 'xml'],
             controller: MeController::class,
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['auth']],
@@ -98,14 +101,8 @@ use App\OpenApi\OpenApiFactory;
                         content: new \ArrayObject([
                             'application/json' => new MediaType(
                                 schema: new \ArrayObject([
-                                    'type' => 'object',
-                                    'properties' => [
-                                        'isAllowed' => [
-                                            'type' => 'boolean',
-                                            'readOnly' => true,
-                                            'default' => false
-                                        ],
-                                    ],
+                                    'type' => 'boolean',
+                                    'example' => false,
                                 ])
                             ),
                         ])
@@ -113,7 +110,7 @@ use App\OpenApi\OpenApiFactory;
 
                 ],
                 summary: "is allowed to edit document's citations",
-                description: "Check if current user is allowed to edit paper's citations",
+                description: "Check if the given user is allowed to edit the document's citations",
                 parameters: [
                     new Parameter(
                         name: 'documentId',
@@ -121,6 +118,9 @@ use App\OpenApi\OpenApiFactory;
                         description: 'Document identifier',
                         required: true,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'integer',
+                        ],
                     )
                 ]
             ),
@@ -160,6 +160,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
      * @var array
      */
     #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    // Boards: one list of roles per board member
+    #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => ['string', 'array'], 'items' => ['type' => 'string']]])]
     private array $roles = [];
 
     #[ORM\Id]
@@ -269,6 +271,30 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
 
     #[ORM\Column(name: 'ADDITIONAL_PROFILE_INFORMATION', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[ApiProperty(schema: [
+        'type' => ['object', 'array', 'null'],
+        'maxItems' => 0,
+        'properties' => [
+            'affiliations' => [
+                'type' => 'array',
+                'items' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'label' => ['type' => 'string'],
+                        'rorId' => ['type' => 'string', 'format' => 'uri'],
+                    ],
+                ],
+            ],
+            'webSites' => [
+                'type' => 'array',
+                'items' => ['type' => 'string', 'format' => 'uri'],
+            ],
+        ],
+        'example' => [
+            'affiliations' => [['label' => 'Centre pour la Communication Scientifique Directe', 'rorId' => 'https://ror.org/00680hx61']],
+            'webSites' => ['https://www.episciences.org'],
+        ],
+    ])]
     private ?array $additionalProfileInformation = null;
 
     #[ORM\Column(name: "IS_VALID", type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: false)]
@@ -301,6 +327,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups(['read:User', 'read:Me'])]
     private Collection $news;
     #[Groups(['read:Boards'])]
+    #[ApiProperty(schema: [
+        'type' => ['array', 'null'],
+        'items' => [
+            'type' => 'object',
+            'properties' => [
+                'sid' => ['type' => 'integer'],
+                'titles' => OpenApiSchemas::NULLABLE_TRANSLATED_TEXT,
+            ],
+        ],
+    ])]
     private ?array $assignedSections = null;
 
     public function __construct(array $options = [])

@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\OpenApi\OpenApiSchemas;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
@@ -131,18 +132,21 @@ class News
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
+    #[ApiProperty(schema: OpenApiSchemas::TRANSLATED_TEXT)]
     private array $title = [];
 
     #[ORM\Column(name: 'content', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $content = null;
 
     #[ORM\Column(nullable: true)]
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $link = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]

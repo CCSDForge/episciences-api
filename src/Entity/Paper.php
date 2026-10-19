@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\OpenApi\OpenApiSchemas;
 use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
@@ -361,6 +362,7 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         ]
     )]
+    #[ApiProperty(schema: OpenApiSchemas::OBJECT)]
     private array $document;
     #[ORM\Column(name: 'CONCEPT_IDENTIFIER', type: \Doctrine\DBAL\Types\Types::STRING, length: 500, nullable: true, options: ['comment' => 'This identifier represents all versions'])]
     private ?string $conceptIdentifier = null;

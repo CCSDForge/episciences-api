@@ -2,6 +2,8 @@
 
 namespace App\Resource;
 
+use App\OpenApi\OpenApiSchemas;
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
@@ -93,6 +95,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                 ]
             ),
@@ -195,6 +201,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                 ]
             ),
@@ -255,6 +265,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: 'unit',
@@ -329,6 +343,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: 'unit',
@@ -404,6 +422,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                 ]
             ),
@@ -514,6 +536,10 @@ class Statistic
     #[groups(['read:Statistic'])]
     private string $name;
     #[groups(['read:Statistic'])]
+    #[ApiProperty(schema: [
+        'description' => 'A number, or an object detailing the indicator for "nb-submissions-details" and "evaluation"',
+        'example' => 43.72,
+    ] + OpenApiSchemas::STAT_VALUE)]
     private array|float|null $value = null;
     #[groups(['read:Statistic'])]
     private string|null $unit = null;
