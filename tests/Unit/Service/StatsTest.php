@@ -542,10 +542,11 @@ class StatsTest extends TestCase
         $this->papersRepo->method('submissionsQuery')->willReturn($this->makeScalarQb(10));
         $this->papersRepo->method('getSubmissionsWithoutImported')->willReturn(8);
         
-        $this->paperLogRepo->method('getAccepted')->willReturn(5);
-        $this->paperLogRepo->method('getRefused')->willReturn(2);
-        $this->paperLogRepo->method('getPublished')->willReturn(4);
-        $this->paperLogRepo->method('getAllAcceptedNotYetPublished')->willReturn(1);
+        // PAPER_LOG counters are fetched once for all the years (not once per year)
+        $this->paperLogRepo->expects($this->once())->method('getAcceptedByYear')->with($rvId, [2023])->willReturn([2023 => 5]);
+        $this->paperLogRepo->expects($this->once())->method('getRefusedByYear')->willReturn([2023 => 2]);
+        $this->paperLogRepo->expects($this->once())->method('getPublishedByYear')->willReturn([2023 => 4]);
+        $this->paperLogRepo->expects($this->once())->method('getAllAcceptedNotYetPublishedByYear')->willReturn([2023 => 1]);
         $this->paperLogRepo->method('getAcceptanceRate')->willReturn(71.4);
         $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn(null); // Simple case for getNbPapersByStatus
 
@@ -555,6 +556,10 @@ class StatsTest extends TestCase
         $this->assertArrayHasKey(2023, $details[Stats::SUBMISSIONS_BY_YEAR]);
         $this->assertEquals(10, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['submissions']);
         $this->assertEquals(4, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['published']);
+        $this->assertEquals(5, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['accepted']);
+        $this->assertEquals(2, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['refused']);
+        $this->assertEquals(1, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['acceptedNotYetPublished']);
+        $this->assertEquals(1, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['others']);
         
         $this->assertArrayHasKey('submissionsByRepo', $details);
         $this->assertArrayHasKey(2023, $details['submissionsByRepo']);

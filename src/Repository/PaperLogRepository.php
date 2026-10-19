@@ -145,8 +145,9 @@ class PaperLogRepository extends ServiceEntityRepository
 
 
         $sql .= " GROUP BY pl1.PAPERID, pl1.RVID ) t1 INNER JOIN(";
-        $sql .= " SELECT pl2.PAPERID, MAX(pl2.DATE) AS max_date, pl2.RVID FROM PAPER_LOG pl2 WHERE pl2.status = ";
-        $sql .= ($latestStatus === Paper::STATUS_STRICTLY_ACCEPTED ? Paper::STATUS_STRICTLY_ACCEPTED . " OR pl2.status = " . Paper::STATUS_TMP_VERSION_ACCEPTED : $latestStatus);
+        // IN (...) rather than "x OR y": the OR took precedence over the following "AND pl2.rvid", so the journal filter was ignored for the first status
+        $latestStatuses = $latestStatus === Paper::STATUS_STRICTLY_ACCEPTED ? [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED] : [$latestStatus];
+        $sql .= " SELECT pl2.PAPERID, MAX(pl2.DATE) AS max_date, pl2.RVID FROM PAPER_LOG pl2 WHERE pl2.status IN (" . implode(', ', $latestStatuses) . ")";
 
         if ($rvId) {
             $sql .= " AND pl2.rvid = $rvId";
@@ -155,7 +156,7 @@ class PaperLogRepository extends ServiceEntityRepository
         $sql .= " GROUP BY pl2.PAPERID, pl2.RVID ) t2 ON t1.PAPERID = t2.PAPERID AND t1.RVID = t2.RVID";
         $sql .= " WHERE NOT EXISTS (SELECT 1 FROM PAPERS p WHERE p.PAPERID = t1.PAPERID AND ( p.FLAG = 'imported'";
 
-        if ($startStatsDate) {
+        if ($startStatsDate && self::isValidDate($startStatsDate)) { // the date is concatenated into the SQL: only a valid date is accepted
             $sql .= " OR p.SUBMISSION_DATE < '$startStatsDate'";
             // This not includes the entire day of $startStatsDate (until 23:59:59)
             // $sql .= " OR p.SUBMISSION_DATE < DATE_ADD('$startStatsDate', INTERVAL 1 DAY)";
@@ -283,46 +284,78 @@ class PaperLogRepository extends ServiceEntityRepository
 
     public function getAccepted(?int $rvId = null, array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
+        return $this->processResult($this->acceptedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles), $years);
+    }
 
-        $qb = $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
-        return $this->processResult($qb, $years);
-
+    /**
+     * @return array<int, int> number of accepted papers indexed by year (one query for all the years)
+     */
+    public function getAcceptedByYear(?int $rvId, array $years, ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
+    {
+        return $this->processResultByYear($this->acceptedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles), $years);
     }
 
     public function getRefused(?int $rvId = null, array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
+        return $this->processResult($this->refusedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles), $years);
+    }
 
-        $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_REFUSED, $ignoreImportedArticles);
-        return $this->processResult($qb, $years);
+    /**
+     * @return array<int, int> number of refused papers indexed by year (one query for all the years)
+     */
+    public function getRefusedByYear(?int $rvId, array $years, ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
+    {
+        return $this->processResultByYear($this->refusedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles), $years);
+    }
 
+    private function acceptedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
+    {
+        return $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
+    }
+
+    private function refusedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
+    {
+        return $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_REFUSED, $ignoreImportedArticles);
+    }
+
+    private function publishedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
+    {
+        return $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_PUBLISHED, $ignoreImportedArticles);
     }
 
     private function processResult(QueryBuilder $qb, array $years = []): int
     {
-        $total = 0;
-
         if ($years === []) {
             try {
-                return $qb->getQuery()->getSingleScalarResult();
+                return (int)$qb->getQuery()->getSingleScalarResult();
             } catch (NoResultException|NonUniqueResultException  $e) {
                 $this->logger->critical($e->getMessage());
+                return 0;
             }
-        } else {
-
-
-            $this->andOrExp($qb, 'YEAR(pl.date)', $years);
-            $qb->addGroupBy('year');
-
-            $result = $qb->getQuery()->getResult();
-
-            foreach ($result as $values) {
-                $total += $values['total'];
-            }
-
         }
 
-        return $total;
+        return array_sum($this->processResultByYear($qb, $years));
+    }
 
+    /**
+     * @return array<int, int> totals indexed by year; the requested years without result are set to 0
+     */
+    private function processResultByYear(QueryBuilder $qb, array $years): array
+    {
+        $totals = array_fill_keys(array_map('intval', $years), 0);
+
+        if ($years === []) {
+            return $totals;
+        }
+
+        $this->andOrExp($qb, 'YEAR(pl.date)', $years);
+        $qb->addGroupBy('year');
+
+        foreach ($qb->getQuery()->getResult() as $values) {
+            $totals[(int)$values['year']] = (int)$values['total'];
+        }
+
+        return $totals;
     }
 
     public function getSubmissions(?int $rvId = null, array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): int
@@ -334,45 +367,59 @@ class PaperLogRepository extends ServiceEntityRepository
 
     public function getPublished(?int $rvId = null, array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
-        $qb = $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_PUBLISHED, $ignoreImportedArticles);
-        return $this->processResult($qb, $years);
+        return $this->processResult($this->publishedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles), $years);
+    }
 
+    /**
+     * @return array<int, int> number of published papers indexed by year (one query for all the years)
+     */
+    public function getPublishedByYear(?int $rvId, array $years, ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
+    {
+        return $this->processResultByYear($this->publishedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles), $years);
     }
 
 
     public function getAllAcceptedNotYetPublished(?int $rvId = null, array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): int
     {
+        return $this->processResult($this->acceptedNotYetPublishedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles), $years);
+    }
 
-        $qb = $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
+    /**
+     * @return array<int, int> number of accepted but not yet published papers indexed by year (one query for all the years)
+     */
+    public function getAllAcceptedNotYetPublishedByYear(?int $rvId, array $years, ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
+    {
+        return $this->processResultByYear($this->acceptedNotYetPublishedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles), $years);
+    }
 
-        $subQb = $this->getEntityManager()->createQueryBuilder();
-        $subQb1 = $this->getEntityManager()->createQueryBuilder();
+    /**
+     * Accepted papers that have been neither published, refused nor abandoned.
+     * One NOT EXISTS per status: with an OR on the status, MySQL materializes the subquery with a full scan of PAPER_LOG.
+     */
+    private function acceptedNotYetPublishedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
+    {
+        $qb = $this->acceptedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles);
 
+        $excludedStatuses = [
+            'pStatus' => Paper::STATUS_PUBLISHED, // accepted and published
+            'rStatus' => Paper::STATUS_REFUSED, // accepted and refused
+            'aStatus' => Paper::STATUS_ABANDONED, // accepted and abandoned
+        ];
 
-        // accepted and published
-        $subQb->addSelect('1')
-            ->from(PaperLog::class, 'pl1')
-            ->andWhere('pl1.paperid = pl.paperid')
-            ->andWhere('pl1.status IS NOT NULL')
-            ->andWhere('pl1.status = :pStatus');
+        foreach ($excludedStatuses as $parameter => $status) {
+            $alias = sprintf('pl_%s', $parameter);
 
-        // accepted and (refused or abandoned)
+            $subQb = $this->getEntityManager()->createQueryBuilder()
+                ->addSelect('1')
+                ->from(PaperLog::class, $alias)
+                ->andWhere(sprintf('%s.paperid = pl.paperid', $alias))
+                ->andWhere(sprintf('%s.status = :%s', $alias, $parameter));
 
-        $subQb1->addSelect('1')
-            ->from(PaperLog::class, 'pl2')
-            ->andWhere('pl2.paperid = pl.paperid')
-            ->andWhere('pl2.status IS NOT NULL')
-            ->andWhere('pl2.status = :rStatus OR pl2.status = :aStatus');
+            $qb->andWhere($qb->expr()->not($qb->expr()->exists($subQb->getDQL())))
+                ->setParameter($parameter, $status);
+        }
 
-
-        $qb->andWhere($qb->expr()->not($qb->expr()->exists($subQb->getDQL())));
-        $qb->andWhere($qb->expr()->not($qb->expr()->exists($subQb1->getDQL())));
-        $qb->setParameter('pStatus', Paper::STATUS_PUBLISHED)
-            ->setParameter('rStatus', Paper::STATUS_REFUSED)
-            ->setParameter('aStatus', Paper::STATUS_ABANDONED);
-
-        return $this->processResult($qb, $years);
-
+        return $qb;
     }
 
 
@@ -394,7 +441,7 @@ class PaperLogRepository extends ServiceEntityRepository
         $current = match ($status) {
             'accepted' => $acceptedTotal,
             'refused' => $refusedTotal,
-            'published' => $this->getPublished($rvId, $years, $startAfterDate),
+            'published' => $options['publishedTotal'] ?? $this->getPublished($rvId, $years, $startAfterDate),
             default => null,
         };
 

@@ -5,14 +5,29 @@ namespace App\State;
 use ApiPlatform\Doctrine\Orm\Paginator;
 use ApiPlatform\Metadata\CollectionOperationInterface;
 use ApiPlatform\Metadata\Operation;
+use ApiPlatform\State\Pagination\Pagination;
 use ApiPlatform\State\ProviderInterface;
+use App\Doctrine\UnpaginatedCollectionLimitExtension;
 use App\Entity\ReviewSetting;
 use App\Entity\Volume;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\VolumeRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
+use Symfony\Bundle\SecurityBundle\Security;
 
 final class VolumeStateProvider extends AuthenticationStateProvider implements ProviderInterface
 {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        LoggerInterface $logger,
+        Pagination $pagination,
+        Security $security,
+        private readonly UnpaginatedCollectionLimitExtension $unpaginatedCollectionLimit
+    )
+    {
+        parent::__construct($entityManager, $logger, $pagination, $security);
+    }
 
     /**
      * @param Operation $operation
@@ -48,7 +63,8 @@ final class VolumeStateProvider extends AuthenticationStateProvider implements P
                 return new Paginator($doctrinePaginator);
             }
 
-            return $volumeRepo->listQuery($filters)->getQuery()->getResult();
+            // Capped like the Doctrine collections (?pagination=false), see UnpaginatedCollectionLimitExtension
+            return $this->unpaginatedCollectionLimit->getResult($volumeRepo->listQuery($filters), Volume::class, $operation, $context);
         }
 
         // return a single volume

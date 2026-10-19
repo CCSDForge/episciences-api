@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!--
 ## Unreleased
 ### Fixed
+- Fixed the Doctrine mappings that made the schema tools fail (`doctrine:schema:create`, schema comparison): string `unsigned` option of `UserInvitationAnswer`, MySQL `ENUM` columns mapped as strings of length 0 (now the DBAL `enum` type), unused `LegacyNews` entity clashing with the `news` table, `ReviewSetting` primary key and `VALUE` type, index typos (`UserAssignment`), nonexistent indexes (`Paper.RECORD`, unique `news.uid`), join column order to `VolumePaperPosition`. No database change; same API responses.
 ### Added
 ### Changed
 ### Deprecated
@@ -19,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added `is_public` stored generated column to `Pages` and `News` entities to optimize query filtering.
 - Added regression tests for the `is_public` generated column filter.
+- Added a database test (`tests/Functional/`, MySQL in CI through `TEST_DATABASE_URL`, skipped otherwise) checking that the cap of the unpaginated collections keeps the to-many fetch-joined collections complete.
 
 ### Changed
 - Replaced non-indexed `JSON_EXTRACT` visibility filter with the new `is_public` column in Doctrine queries.
@@ -32,8 +34,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed Swagger UI template (`templates/bundles/ApiPlatformBundle/SwaggerUi/index.html.twig`) for API Platform 4.3: replaced the removed `app.request.attributes.get('_route')` usage with `originalRoute`/`originalRouteParams` and removed the removed `graphQlPlaygroundEnabled` variable (GraphQL Playground).
 - Fixed CI `docker-validate` failure: the Doctrine mapping check now runs as `root` in the container so the kernel can create its cache directory (default `CACHE_PATH="/var/cache/"` is not writable by the non-root `DOCKER_USER`); ownership of the cache/log directories is then restored to the non-root user so subsequent steps (e.g. `docker-test-coverage`) can still write to them.
 - Fixed the `test` environment, where the kernel could not boot: `config/bundles.php` registered `WebProfilerBundle` and `DoctrineFixturesBundle` under a corrupted `'ApiCollectionNormalizer.php'` environment key instead of `'test'` (`Container extension "web_profiler" is not registered`), and `config/packages/test/framework.yaml` used the `framework.session.storage_id` option, removed in Symfony 6 (replaced by `storage_factory_id`).
+- Fixed `GET /api/volumes` performance (N+1): the papers of all the volumes of the page are now fetched in a single query (`VolumeRepository::fetchSortedPapersByVolumes()`), filtered in `WHERE` instead of a `HAVING` applied after a full scan of `PAPERS` for each volume (~10 s → ~0.4 s for a 30-volume page). Papers of a secondary volume are now sorted by their position in that volume (was the position in their primary volume), and when several versions of a paper are attached to a volume, the latest one is kept (was arbitrary).
+- Fixed statistics performance (journal dashboard, `/api/statistics`): the `PAPER_LOG` counters by year (accepted, refused, published, accepted not yet published) are computed in one grouped query instead of one query per year; year-independent queries were moved out of the loop; rates reuse the totals already computed; the "accepted not yet published" `NOT EXISTS` no longer uses an `OR` on the status (it caused a full scan of `PAPER_LOG`). Dashboard with details: ~88 s → ~11 s on a large journal, same results.
+- Fixed operator precedence in the delay statistics query (`status = 4 OR status = 25 AND rvid = …`): the journal filter is now applied to both statuses.
+- Fixed `GET /api/papers` memory usage: the collection now loads only the `PAPERS` columns serialized in the `read:Papers` group (list derived from the serializer metadata), so the heavy `RECORD` and `DOCUMENT` columns are no longer hydrated (`?pagination=false` exhausted the PHP memory limit).
+- Fixed `GET /api/sections` memory usage: the papers fetch-joined in the sections are now loaded partially too (identifier, `paperid`, `rvid`, `status`), without `RECORD` and `DOCUMENT` (230 → 62 MiB for the 109 public sections, 276 → 70 MiB for a journal's 13 sections as secretary; same responses).
+- Fixed possible out of memory errors on the Doctrine collections requested without pagination (`?pagination=false`): they are now capped to the global maximum number of items per page (1000), and a truncated response holds the `X-Truncated-Max-Items` header (exposed through CORS). With a to-many join (journals, sections, users), the limit applies to the root entities, so the nested collections stay complete.
+- Fixed possible out of memory errors on `GET /api/volumes?pagination=false`: the volumes are capped like the Doctrine collections (1000, `X-Truncated-Max-Items` header when truncated).
+- The Solr collections requested without pagination (`/api/search/`, `/api/browse/authors/`, `/api/browse/authors-search/{author_fullname}`, `/api/statistics/`, `/api/statistics/evaluation`) now also hold the `X-Truncated-Max-Items` header when capped.
+- Fixed `GET /api/browse/authors-search/{author_fullname}` returning at most 10 papers (Solr default `rows`): up to 1000 are now requested, like the other Solr collections. When paginated, only the requested page is now fetched from Solr (`start`, `rows`) — so results beyond 1000 are reachable too — and `hydra:totalItems` is the Solr `numFound` (the page default size is 30 like the other collections).
+- The OpenAPI documentation (`/api/docs`) describes the cap of the collections requested without pagination on the `pagination` parameter, and the `X-Truncated-Max-Items` response header.
+- Fixed the JSON-LD collections requested without pagination (`?pagination=false`): they were serialized as a plain list whose items had the collection URI as `@id` and lacked their nested data (e.g. journal settings, volume papers). They are now Hydra collections (`hydra:member`, `hydra:totalItems`…) with the same items as the paginated responses. Breaking change for the clients reading a plain list.
+- Fixed the paginated search (`/api/search/`): only the first 1000 Solr results were fetched then paginated in PHP, so `hydra:totalItems` was at most 1000 and the next results were unreachable. Only the requested page is now fetched from Solr (`start`, `rows`), and `hydra:totalItems` is the Solr `numFound`.
+- The paginated search (`/api/search/`) without `itemsPerPage` now returns pages of the default size (30), like the other collections, instead of the maximum (1000). Without pagination, at most 1000 results are still returned.
+- The paginated authors browsing (`/api/browse/authors/`) without `itemsPerPage` now returns pages of the default size (30) instead of 1000.
+- Fixed the paginated authors browsing (`/api/browse/authors/`): only the first 1000 authors (Solr facet limit) were fetched then paginated in PHP, so the next authors were unreachable. Only the requested page is now fetched from Solr (JSON Facet API: `offset`, `limit`), and `hydra:totalItems` is the real number of authors (`numBuckets`). With the `search` filter, the matching authors are all fetched then paginated.
 
 ### Security
+- The `startAfterDate` filter is now validated (`Y-m-d`) before being concatenated into the delay statistics SQL query.
 - Upgraded `symfony/expression-language` from 7.4.18 to 7.4.21 (CVE-2026-109449: unbounded nesting in the expression parser lets untrusted expressions crash the process).
 
 ## v1.3.1 2026-09-22

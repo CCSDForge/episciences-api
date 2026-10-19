@@ -154,7 +154,11 @@ class Stats
         $optionsToRates = [
             'year' => $years,
             'rvid' => $rvId,
-            'startAfterDate' => $startAfterDate
+            'startAfterDate' => $startAfterDate,
+            // Already computed above: avoids recounting them for each rate
+            'acceptedTotal' => $totalAccepted,
+            'refusedTotal' => $totalRefused,
+            'publishedTotal' => $totalPublished,
         ];
 
         $values['rates'] = [
@@ -478,7 +482,29 @@ class Stats
         $startAfterDate = $filters['is']['startAfterDate'] ?? null;
         $repositories = $papersRepository->getAvailableRepositories($filters);
 
-        foreach ($papersRepository->getSubmissionYearRange($filters) as $year) { // pour le dashboard
+        $years = $papersRepository->getSubmissionYearRange($filters);
+
+        if ($years === []) {
+            return;
+        }
+
+        // Values independent of the year, and PAPER_LOG counters for all the years: computed once, outside the loop
+        try {
+            $imported = $papersRepository->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])
+                ->getQuery()->getSingleScalarResult();
+        } catch (NoResultException|NonUniqueResultException $e) {
+            $imported = 0;
+            $this->logger->error($e->getMessage());
+        }
+
+        $nbAcceptedSubmittedSameYear = $this->getNbPapersByStatus($rvId);
+
+        $acceptedByYear = $paperLogRepository->getAcceptedByYear($rvId, $years, $startAfterDate);
+        $refusedByYear = $paperLogRepository->getRefusedByYear($rvId, $years, $startAfterDate);
+        $publishedByYear = $paperLogRepository->getPublishedByYear($rvId, $years, $startAfterDate);
+        $acceptedNotYetPublishedByYear = $paperLogRepository->getAllAcceptedNotYetPublishedByYear($rvId, $years, $startAfterDate);
+
+        foreach ($years as $year) { // pour le dashboard
 
             try {
 
@@ -489,9 +515,6 @@ class Stats
 
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $submissions;
 
-                $imported = $papersRepository->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])
-                    ->getQuery()->getSingleScalarResult();
-
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $imported;
 
                 //Il est possible que certaines versions soient importées tandis que d'autres ne le soient pas.
@@ -499,17 +522,15 @@ class Stats
 
                 $submissionsWithoutImported = $papersRepository->getSubmissionsWithoutImported($rvId, $startAfterDate, $year);
 
-                $accepted = $paperLogRepository->getAccepted($rvId, [$year], $startAfterDate);
-                $refused = $paperLogRepository->getRefused($rvId, [$year], $startAfterDate);
-                $published = $paperLogRepository->getPublished($rvId, [$year], $startAfterDate);
+                $accepted = $acceptedByYear[(int)$year] ?? 0;
+                $refused = $refusedByYear[(int)$year] ?? 0;
+                $published = $publishedByYear[(int)$year] ?? 0;
 
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['published'] = $published;
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['acceptedNotYetPublished'] = $paperLogRepository->getAllAcceptedNotYetPublished($rvId, [$year], $startAfterDate);
+                $details[self::SUBMISSIONS_BY_YEAR][$year]['acceptedNotYetPublished'] = $acceptedNotYetPublishedByYear[(int)$year] ?? 0;
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['refused'] = $refused;
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['accepted'] = $accepted;
                 $details[self::SUBMISSIONS_BY_YEAR][$year]['others'] = max(0, $submissionsWithoutImported - ($accepted + $refused));
-
-                $nbAcceptedSubmittedSameYear = $this->getNbPapersByStatus($rvId);
 
                 $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] =
                     isset($nbAcceptedSubmittedSameYear[$rvId][$year]) ?
