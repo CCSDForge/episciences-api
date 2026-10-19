@@ -534,6 +534,49 @@ class PapersRepository extends ServiceEntityRepository
 
     }
 
+    /**
+     * Same count as submissionsQuery(), grouped by year of submission: one query for all the years
+     *
+     * @return array<int, int> number of submissions indexed by year
+     */
+    public function countSubmissionsByYear(array $filters = []): array
+    {
+        $totals = [];
+
+        foreach ($this->submissionsByYearQuery($filters)->getQuery()->getArrayResult() as $row) {
+            $totals[(int)$row['year']] = (int)$row['total'];
+        }
+
+        return $totals;
+    }
+
+    /**
+     * Same count as submissionsQuery(), grouped by year of submission and by repository: one query for all the years
+     *
+     * @return array<int, array<int, int>> number of submissions indexed by year, then by repository identifier
+     */
+    public function countSubmissionsByYearAndRepository(array $filters = []): array
+    {
+        $qb = $this->submissionsByYearQuery($filters)
+            ->addSelect(sprintf('%s.repoid AS repoid', self::PAPERS_ALIAS))
+            ->addGroupBy('repoid');
+
+        $totals = [];
+
+        foreach ($qb->getQuery()->getArrayResult() as $row) {
+            $totals[(int)$row['year']][(int)$row['repoid']] = (int)$row['total'];
+        }
+
+        return $totals;
+    }
+
+    private function submissionsByYearQuery(array $filters): QueryBuilder
+    {
+        return $this->submissionsQuery($filters)
+            ->select(sprintf('COUNT(DISTINCT %1$s.paperid) AS total, YEAR(%1$s.submissionDate) AS year', self::PAPERS_ALIAS))
+            ->groupBy('year');
+    }
+
     public function getSubmissionsWithoutImported(?int $rvId = null, ?string $startAfterDate = null, array|string|null $years = null): int
     {
 

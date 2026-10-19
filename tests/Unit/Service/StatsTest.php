@@ -538,10 +538,15 @@ class StatsTest extends TestCase
         $this->papersRepo->method('getAvailableRepositories')->willReturn([1]);
         $this->metadataSources->method('getLabel')->with(1)->willReturn('HAL');
 
-        // Mocking various repository calls inside the loop
         $this->papersRepo->method('submissionsQuery')->willReturn($this->makeScalarQb(10));
-        $this->papersRepo->method('getSubmissionsWithoutImported')->willReturn(8);
-        
+
+        // Submission counters are fetched once for all the years (not once per year)
+        $this->papersRepo->expects($this->exactly(2))->method('countSubmissionsByYear')->willReturnCallback(
+            // without imported papers: 8 submissions; all papers: 10 submissions
+            static fn(array $filters): array => isset($filters['is']['flag']) ? [2023 => 8] : [2023 => 10]
+        );
+        $this->papersRepo->expects($this->once())->method('countSubmissionsByYearAndRepository')->willReturn([2023 => [1 => 7]]);
+
         // PAPER_LOG counters are fetched once for all the years (not once per year)
         $this->paperLogRepo->expects($this->once())->method('getAcceptedByYear')->with($rvId, [2023])->willReturn([2023 => 5]);
         $this->paperLogRepo->expects($this->once())->method('getRefusedByYear')->willReturn([2023 => 2]);
@@ -564,6 +569,6 @@ class StatsTest extends TestCase
         $this->assertArrayHasKey('submissionsByRepo', $details);
         $this->assertArrayHasKey(2023, $details['submissionsByRepo']);
         $this->assertArrayHasKey('HAL', $details['submissionsByRepo'][2023]);
-        $this->assertEquals(10, $details['submissionsByRepo'][2023]['HAL']['submissions']);
+        $this->assertEquals(7, $details['submissionsByRepo'][2023]['HAL']['submissions']);
     }
 }
