@@ -3,12 +3,14 @@
 namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
-use ApiPlatform\State\Pagination\ArrayPaginator;
+use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\Pagination\Pagination;
 use ApiPlatform\State\ProviderInterface;
+use App\AppConstants;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\Search;
 use App\Resource\SolrDoc;
+use App\Service\Solr\SolrConstants;
 use App\Service\Solarium\Client;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -33,9 +35,7 @@ class SearchStateProvider extends AbstractStateDataProvider implements ProviderI
         $journal = $context[self::CONTEXT_JOURNAL_KEY] ?? null;
 
         $isPaginationEnabled = $context['filters']['pagination'];
-        $page = $context['filters']['page'];
-
-        $firstResult = 0;
+        $page = $isPaginationEnabled ? $context['filters']['page'] : 1;
 
         $filters = $context['filters'] ?? [];
 
@@ -46,19 +46,23 @@ class SearchStateProvider extends AbstractStateDataProvider implements ProviderI
         }
 
 
-        $maxResults = $filters['itemsPerPage'] ?? $operation->getPaginationMaximumItemsPerPage();
+        // Without itemsPerPage: the default page size, or the maximum without pagination
+        $defaultMaxResults = $isPaginationEnabled
+            ? $operation->getPaginationItemsPerPage() ?? AppConstants::DEFAULT_ITEM_PER_PAGE
+            : $operation->getPaginationMaximumItemsPerPage() ?? SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
 
-
-        if ($isPaginationEnabled) {
-            $maxResults = $context['filters']['itemsPerPage'] ?? $maxResults;
-            $firstResult = ($page - 1) * $maxResults;
-        }
+        // Only the requested page is fetched from Solr
+        $maxResults = max(1, min(
+            (int)($filters['itemsPerPage'] ?? $defaultMaxResults),
+            SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS
+        ));
+        $firstResult = ($page - 1) * $maxResults;
 
         $result = $this->client
             ->setJournal($journal)
             ->setLogger($this->logger)
             ->setSearchPrams($filters)
-            ->search($terms);
+            ->search($terms, $firstResult, $maxResults);
 
         $response = $result->getData()['response'] ?? [];
         $docs = $response['docs'] ?? [];
@@ -68,7 +72,14 @@ class SearchStateProvider extends AbstractStateDataProvider implements ProviderI
             $oDocs[] = new SolrDoc($values);
         }
 
-        $paginator = new ArrayPaginator($oDocs, $firstResult, $maxResults);
+        $totalItems = (int)($response['numFound'] ?? count($oDocs));
+
+        if (!$isPaginationEnabled) {
+            $this->flagIfTruncated($context, $totalItems, count($oDocs));
+            $totalItems = count($oDocs); // like the other collections requested without pagination
+        }
+
+        $paginator = new TraversablePaginator(new \ArrayIterator($oDocs), $page, $maxResults, $totalItems);
         $this->checkSeekPosition($paginator);
         return $paginator;
     }

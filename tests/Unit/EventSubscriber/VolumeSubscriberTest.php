@@ -60,9 +60,9 @@ class VolumeSubscriberTest extends TestCase
         $publicCollection  = new ArrayCollection([$paper2]);
 
         $this->volumeRepo
-            ->method('fetchSortedPapers')
-            ->with(1)
-            ->willReturn(['privateCollection' => $privateCollection, 'publicCollection' => $publicCollection]);
+            ->method('fetchSortedPapersByVolumes')
+            ->with([1])
+            ->willReturn([1 => ['privateCollection' => $privateCollection, 'publicCollection' => $publicCollection]]);
 
         $this->authChecker->method('isGranted')->willReturn(true);
 
@@ -85,8 +85,8 @@ class VolumeSubscriberTest extends TestCase
         $publicCollection = new ArrayCollection([$paper2]);
 
         $this->volumeRepo
-            ->method('fetchSortedPapers')
-            ->willReturn(['privateCollection' => new ArrayCollection(), 'publicCollection' => $publicCollection]);
+            ->method('fetchSortedPapersByVolumes')
+            ->willReturn([1 => ['privateCollection' => new ArrayCollection(), 'publicCollection' => $publicCollection]]);
 
         $this->authChecker->method('isGranted')->willReturn(false);
 
@@ -101,11 +101,11 @@ class VolumeSubscriberTest extends TestCase
         $this->subscriber->processVolumePapersCollection($this->makeEvent($volume));
     }
 
-    // ------------------------------------------------------------------ empty fetchSortedPapers result falls back to empty collections
+    // ------------------------------------------------------------------ empty fetchSortedPapersByVolumes result falls back to empty collections
 
-    public function testEmptyFetchSortedPapersUsesEmptyCollections(): void
+    public function testEmptyFetchSortedPapersByVolumesUsesEmptyCollections(): void
     {
-        $this->volumeRepo->method('fetchSortedPapers')->willReturn([]);
+        $this->volumeRepo->method('fetchSortedPapersByVolumes')->willReturn([]);
         $this->authChecker->method('isGranted')->willReturn(false);
 
         $volume = $this->createMock(Volume::class);
@@ -123,7 +123,7 @@ class VolumeSubscriberTest extends TestCase
 
     public function testArrayOfVolumesIsProcessed(): void
     {
-        $this->volumeRepo->method('fetchSortedPapers')->willReturn([]);
+        $this->volumeRepo->method('fetchSortedPapersByVolumes')->willReturn([]);
         $this->authChecker->method('isGranted')->willReturn(false);
 
         $volume = $this->createMock(Volume::class);
@@ -139,7 +139,7 @@ class VolumeSubscriberTest extends TestCase
     public function testArrayWithNonVolumeItemsSkipsNonVolumes(): void
     {
         // No volumeRepo call expected since no Volume in array
-        $this->volumeRepo->expects($this->never())->method('fetchSortedPapers');
+        $this->volumeRepo->expects($this->never())->method('fetchSortedPapersByVolumes');
 
         $this->subscriber->processVolumePapersCollection($this->makeEvent([new \stdClass()]));
     }
@@ -148,19 +148,20 @@ class VolumeSubscriberTest extends TestCase
 
     public function testUnrelatedResultIsIgnored(): void
     {
-        $this->volumeRepo->expects($this->never())->method('fetchSortedPapers');
+        $this->volumeRepo->expects($this->never())->method('fetchSortedPapersByVolumes');
 
         $this->subscriber->processVolumePapersCollection($this->makeEvent(new \stdClass()));
     }
 
-    // ------------------------------------------------------------------ fetchSortedPapers exception in array branch is silently skipped
-    // (array branch has no try/catch — exception propagates; covered by Paginator test instead)
-
-    // ------------------------------------------------------------------ multiple volumes in array — each processed independently
+    // ------------------------------------------------------------------ multiple volumes in array — fetched in a single query, each processed independently
 
     public function testMultipleVolumesInArrayAreEachProcessed(): void
     {
-        $this->volumeRepo->method('fetchSortedPapers')->willReturn([]);
+        $this->volumeRepo
+            ->expects($this->once())
+            ->method('fetchSortedPapersByVolumes')
+            ->with([1, 2])
+            ->willReturn([]);
         $this->authChecker->method('isGranted')->willReturn(false);
 
         $volume1 = $this->createMock(Volume::class);

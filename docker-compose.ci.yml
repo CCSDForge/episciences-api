@@ -28,6 +28,8 @@ services:
     environment:
       - APP_ENV=${APP_ENV:-test}
       - DATABASE_URL=mysql://episciences:episciences@mysql:3306/episciences
+      # Enables the tests that need a database (tests/Functional), skipped otherwise
+      - TEST_DATABASE_URL=mysql://episciences:episciences@mysql:3306/episciences
     depends_on:
       mysql:
         condition: service_healthy

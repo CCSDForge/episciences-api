@@ -124,6 +124,62 @@ class SolrAuthorServiceTest extends TestCase
         $this->authorService->getSolrAuthorsByFullName('O\'Brien, Patrick');
     }
 
+    public function testGetSolrAuthorsByFullNameRequestsTheMaximumNumberOfDocumentsByDefault(): void
+    {
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getContent')->willReturn(json_encode(['response' => ['numFound' => 0, 'docs' => []]]));
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->callback(static function ($url): bool {
+                $url = (string) $url;
+                return str_contains($url, 'rows=' . SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS)
+                    && str_contains($url, 'start=0');
+            }))
+            ->willReturn($response);
+
+        $this->authorService->getSolrAuthorsByFullName('Dupont, Jean');
+    }
+
+    public function testGetSolrAuthorsByFullNamePagesTheQuery(): void
+    {
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getContent')->willReturn(json_encode(['response' => ['numFound' => 250, 'docs' => []]]));
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->callback(static function ($url): bool {
+                $url = (string) $url;
+                return str_contains($url, 'start=60')
+                    && str_contains($url, 'rows=30');
+            }))
+            ->willReturn($response);
+
+        $result = $this->authorService->getSolrAuthorsByFullName('Dupont, Jean', 60, 30);
+
+        $this->assertEquals(250, $result['response']['numFound']);
+    }
+
+    public function testGetSolrAuthorsByFullNameClampsRowsToTheMaximum(): void
+    {
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getContent')->willReturn(json_encode(['response' => ['numFound' => 0, 'docs' => []]]));
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->callback(static function ($url): bool {
+                $url = (string) $url;
+                return str_contains($url, 'rows=' . SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS);
+            }))
+            ->willReturn($response);
+
+        $this->authorService->getSolrAuthorsByFullName('Dupont, Jean', 0, 100000);
+    }
+
+
     public function testGetCountArticlesByAuthorsFirstLetter(): void
     {
         $facetResult = [
