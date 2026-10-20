@@ -15,6 +15,8 @@ use Symfony\Component\HttpFoundation\Request;
 
 class PapersControllerTest extends TestCase
 {
+    private const string UUID = '510815e4-f0d3-4ca1-be08-f846e3238444';
+
     private PapersController $controller;
     private \PHPUnit\Framework\MockObject\MockObject $entityManager;
     private \PHPUnit\Framework\MockObject\MockObject $userRepository;
@@ -71,7 +73,7 @@ class PapersControllerTest extends TestCase
 
     public function testInvokeReturnsTheAnswerAsJsonResponse(): void
     {
-        $request = Request::create('/api/users/0/is-allowed-to-edit-citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
+        $request = Request::create('/api/users/' . self::UUID . '/is-allowed-to-edit-citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
 
         $response = $this->controller->__invoke($this->entityManager, $request);
 
@@ -91,12 +93,11 @@ class PapersControllerTest extends TestCase
         $this->controller->isAllowed($this->entityManager, $request);
     }
 
-    // ─── userId = 0 ────────────────────────────────────────────────────────────
+    // ─── Missing or invalid uuid ───────────────────────────────────────────────
 
-    public function testReturnsFalseWhenUserIdIsZeroInAttributes(): void
+    public function testReturnsFalseWhenUuidIsMissingInAttributes(): void
     {
         $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
-        // uid not set in route attributes → (int)null = 0 → skip user lookup
 
         $this->entityManager->expects($this->never())->method('getRepository');
 
@@ -106,14 +107,11 @@ class PapersControllerTest extends TestCase
     }
 
     /**
-     * Security: uid must come from route attributes (set by the JWT auth layer),
-     * not from a user-supplied query string. After fixing $request->get('uid') →
-     * $request->attributes->get('uid'), passing uid via query string must be ignored.
+     * The user must come from the route, not from a user-supplied query string.
      */
-    public function testUidFromQueryStringIsNotUsed(): void
+    public function testUuidFromQueryStringIsNotUsed(): void
     {
-        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42, 'uid' => 99]);
-        // No attributes->set('uid') → secure path: uid is 0 → no DB lookup
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42, 'uuid' => self::UUID]);
 
         $this->entityManager->expects($this->never())->method('getRepository');
 
@@ -122,18 +120,61 @@ class PapersControllerTest extends TestCase
         $this->assertFalse($result);
     }
 
-    // ─── Entity not found ──────────────────────────────────────────────────────
-
-    public function testReturnsFalseWhenUserNotFound(): void
+    /**
+     * A numeric UID, or a value only starting like a UUID, must not be resolved to a user.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidUuidDataProvider')]
+    public function testReturnsFalseWithoutLookupWhenUuidIsInvalid(string $uuid): void
     {
         $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
-        $request->attributes->set('uid', 99);
+        $request->attributes->set('uuid', $uuid);
+
+        $this->entityManager->expects($this->never())->method('getRepository');
+
+        $result = $this->controller->isAllowed($this->entityManager, $request);
+
+        $this->assertFalse($result);
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function invalidUuidDataProvider(): array
+    {
+        return [
+            'numeric uid'   => ['652246'],
+            'truncated'     => ['510815e4-f0d3-4ca1-be08'],
+            'trailing data' => [self::UUID . '-1'],
+            'not hex'       => ['510815e4-f0d3-4ca1-be08-f846e323844z'],
+        ];
+    }
+
+    public function testUuidIsLookedUpInLowerCase(): void
+    {
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
+        $request->attributes->set('uuid', strtoupper(self::UUID));
 
         $this->entityManager->method('getRepository')->willReturnMap([
             [User::class, $this->userRepository],
             [Paper::class, $this->paperRepository],
         ]);
-        $this->userRepository->method('findOneBy')->with(['uid' => 99])->willReturn(null);
+        $this->userRepository->expects($this->once())->method('findOneBy')->with(['uuid' => self::UUID])->willReturn(null);
+
+        $this->assertFalse($this->controller->isAllowed($this->entityManager, $request));
+    }
+
+    // ─── Entity not found ──────────────────────────────────────────────────────
+
+    public function testReturnsFalseWhenUserNotFound(): void
+    {
+        $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
+        $request->attributes->set('uuid', self::UUID);
+
+        $this->entityManager->method('getRepository')->willReturnMap([
+            [User::class, $this->userRepository],
+            [Paper::class, $this->paperRepository],
+        ]);
+        $this->userRepository->method('findOneBy')->with(['uuid' => self::UUID])->willReturn(null);
 
         $result = $this->controller->isAllowed($this->entityManager, $request);
 
@@ -143,7 +184,7 @@ class PapersControllerTest extends TestCase
     public function testReturnsFalseWhenPaperNotFound(): void
     {
         $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
-        $request->attributes->set('uid', 99);
+        $request->attributes->set('uuid', self::UUID);
 
         $user = $this->createMock(User::class);
 
@@ -151,7 +192,7 @@ class PapersControllerTest extends TestCase
             [User::class, $this->userRepository],
             [Paper::class, $this->paperRepository],
         ]);
-        $this->userRepository->method('findOneBy')->with(['uid' => 99])->willReturn($user);
+        $this->userRepository->method('findOneBy')->with(['uuid' => self::UUID])->willReturn($user);
         $this->paperRepository->method('findOneBy')->with(['docid' => 42])->willReturn(null);
 
         $result = $this->controller->isAllowed($this->entityManager, $request);
@@ -168,7 +209,7 @@ class PapersControllerTest extends TestCase
     public function testReturnsTrueWhenUserHasAllowedRole(string $role): void
     {
         $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
-        $request->attributes->set('uid', 99);
+        $request->attributes->set('uuid', self::UUID);
 
         $rvId = 5;
         $user = $this->createMock(User::class);
@@ -206,7 +247,7 @@ class PapersControllerTest extends TestCase
     public function testReturnsTrueWhenUserIsTheOwnerOfPaper(): void
     {
         $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
-        $request->attributes->set('uid', 99);
+        $request->attributes->set('uuid', self::UUID);
 
         $user = $this->createMock(User::class);
         $user->method('getUid')->willReturn(99);
@@ -230,7 +271,7 @@ class PapersControllerTest extends TestCase
     public function testReturnsTrueWhenUserIsCoAuthorOfPaper(): void
     {
         $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
-        $request->attributes->set('uid', 99);
+        $request->attributes->set('uuid', self::UUID);
 
         $user = $this->createMock(User::class);
         $user->method('getUid')->willReturn(99);
@@ -253,7 +294,7 @@ class PapersControllerTest extends TestCase
     public function testReturnsTrueWhenUserIsEditorOfPaper(): void
     {
         $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
-        $request->attributes->set('uid', 99);
+        $request->attributes->set('uuid', self::UUID);
 
         $user = $this->createMock(User::class);
         $user->method('getUid')->willReturn(99);
@@ -276,7 +317,7 @@ class PapersControllerTest extends TestCase
     public function testReturnsTrueWhenUserIsCopyEditorOfPaper(): void
     {
         $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
-        $request->attributes->set('uid', 99);
+        $request->attributes->set('uuid', self::UUID);
 
         $user = $this->createMock(User::class);
         $user->method('getUid')->willReturn(99);
@@ -299,7 +340,7 @@ class PapersControllerTest extends TestCase
     public function testReturnsFalseWhenUserHasNoRoleAndNotInAnyEditorList(): void
     {
         $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
-        $request->attributes->set('uid', 99);
+        $request->attributes->set('uuid', self::UUID);
 
         $user = $this->createMock(User::class);
         $user->method('getUid')->willReturn(99);
@@ -325,7 +366,7 @@ class PapersControllerTest extends TestCase
     public function testDocumentIdIsReadFromQueryStringAndCastToInt(): void
     {
         $request = Request::create('/api/papers/citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 7]);
-        $request->attributes->set('uid', 10);
+        $request->attributes->set('uuid', self::UUID);
 
         $user = $this->createMock(User::class);
         $user->method('getUid')->willReturn(10);

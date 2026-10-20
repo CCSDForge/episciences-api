@@ -14,6 +14,10 @@ use Symfony\Component\HttpFoundation\Request;
 
 class PapersController
 {
+    /**
+     * The user is identified by its UUID: unlike the sequential UID, it cannot be guessed.
+     */
+    public const string UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
 
     /**
      * Returns a response: a scalar controller result is rejected by the API Platform view listeners.
@@ -38,10 +42,10 @@ class PapersController
 
             $documentId = (int)$request->query->get('documentId');
 
-            $userId = (int)$request->attributes->get('uid');
+            $uuid = $request->attributes->get('uuid');
 
-            if ($userId !== 0) {
-                $user = $entityManager->getRepository(User::class)->findOneBy(['uid' => $userId]);
+            if (is_string($uuid) && preg_match(self::UUID_PATTERN, $uuid) === 1) {
+                $user = $entityManager->getRepository(User::class)->findOneBy(['uuid' => strtolower($uuid)]);
                 /** @var Paper $currentPaper */
                 $currentPaper = $entityManager->getRepository(Paper::class)->findOneBy(['docid' => $documentId]);
 

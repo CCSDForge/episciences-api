@@ -9,6 +9,7 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Link;
 use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use ApiPlatform\OpenApi\Model\MediaType;
@@ -91,7 +92,8 @@ use App\OpenApi\OpenApiSchemas;
         ),
 
         new Get(
-            uriTemplate: '/users/{uid}/is-allowed-to-edit-citations',
+            uriTemplate: '/users/{uuid}/is-allowed-to-edit-citations',
+            uriVariables: ['uuid' => new Link(fromClass: User::class, identifiers: ['uuid'])],
             // The controller always returns a JsonResponse: the other formats are rejected (406)
             formats: ['json'],
             controller: PapersController::class,
@@ -112,8 +114,18 @@ use App\OpenApi\OpenApiSchemas;
 
                 ],
                 summary: "is allowed to edit document's citations",
-                description: "Check if the given user is allowed to edit the document's citations",
+                description: "Check if the given user is allowed to edit the document's citations. The user is identified by its UUID; an unknown or invalid UUID returns `false`.",
                 parameters: [
+                    new Parameter(
+                        name: 'uuid',
+                        in: 'path',
+                        description: 'User UUID',
+                        required: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'uuid',
+                        ],
+                    ),
                     new Parameter(
                         name: 'documentId',
                         in: 'query',
@@ -161,7 +173,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     /**
      * @var array
      */
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
     // Boards: one list of roles per board member
     #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => ['string', 'array'], 'items' => ['type' => 'string']]])]
     private array $roles = [];
@@ -172,8 +184,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-            'read:Boards'
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0]
         ])]
     #[ApiProperty(identifier: true)]
     private int $uid;
@@ -182,8 +193,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-            'read:Boards'
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0]
         ])]
     private ?string $uuid = null;
 
@@ -192,7 +202,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-        'read:Me', 'read:Boards'
+        'read:Me'
     ])]
     private string $langueid = 'fr';
     #[ORM\Column(name: "SCREEN_NAME", type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: false)]
@@ -202,7 +212,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
-            'read:Me', 'read:Boards', 'read:News', 'read:News:Collection',
+            'read:Me', 'read:News', 'read:News:Collection',
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
 
@@ -224,7 +234,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-        'read:Me', 'read:Boards'
+        'read:Me'
     ])]
     private string $email;
 
@@ -233,21 +243,21 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-        'read:Me', 'read:Boards'
+        'read:Me'
     ])]
     private ?string $civ = null;
 
     #[ORM\Column(name: "LASTNAME", type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: false)]
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
     private string $lastname;
 
 
     #[ORM\Column(name: "FIRSTNAME", type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: true)]
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
     private ?string $firstname = null;
 
     #[ORM\Column(name: "MIDDLENAME", type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: true)]
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
     private ?string $middlename = null;
 
 
@@ -268,11 +278,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
 
 
     #[ORM\Column(name: "ORCID", type: \Doctrine\DBAL\Types\Types::STRING, length: 19, nullable: true)]
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
     private ?string $orcid = null;
 
     #[ORM\Column(name: 'ADDITIONAL_PROFILE_INFORMATION', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
     #[ApiProperty(schema: [
         'type' => ['object', 'array', 'null'],
         'maxItems' => 0,
@@ -319,7 +329,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups(['read:User', 'read:Me'])]
     private Collection $papers;
 
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
     private ?string $picture = null;
 
     /**

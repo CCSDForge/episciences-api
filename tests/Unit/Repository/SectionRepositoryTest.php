@@ -83,7 +83,9 @@ class SectionRepositoryTest extends TestCase
         $this->assertIsString($result);
         $this->assertStringContainsString('RVID = 123', $result);
         $this->assertStringContainsString('ua.ITEMID = 456', $result);
-        $this->assertStringContainsString('SELECT uuid, CIV', $result);
+        // The committee is public: no account identifier
+        $this->assertStringContainsString('SELECT CIV', $result);
+        $this->assertStringNotContainsString('uuid', $result);
         $this->assertStringContainsString('SCREEN_NAME', $result);
         $this->assertStringContainsString('ORCID', $result);
         $this->assertStringContainsString('USER_ASSIGNMENT', $result);
@@ -103,6 +105,6 @@ class SectionRepositoryTest extends TestCase
         $this->assertIsString($result);
         $this->assertStringContainsString('RVID = 999', $result);
         $this->assertStringContainsString('ua.ITEMID = 777', $result);
-        $this->assertStringContainsString('SELECT uuid, CIV', $result);
+        $this->assertStringContainsString('SELECT CIV', $result);
     }
 }

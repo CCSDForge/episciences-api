@@ -13,6 +13,7 @@ use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use App\AppConstants;
 use App\Controller\BoardsController;
 use App\Controller\FeedController;
+use App\Resource\BoardMember;
 use App\Resource\DashboardOutput;
 use App\Resource\SubmissionAcceptanceDelayOutput;
 use App\Resource\SubmissionOutput;
@@ -56,8 +57,8 @@ use App\Entity\IndexingDatabase;
     // The html format renders Swagger UI, which is not supported by operations served by a custom controller
     formats: ['jsonld', 'json', 'xml'],
     controller: BoardsController::class,
-    // The controller returns the board members as users
-    output: User::class
+    // The controller returns a public view of the board members
+    output: BoardMember::class
 
 )]
 #[ApiResource(

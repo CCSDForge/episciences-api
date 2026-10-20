@@ -8,6 +8,7 @@ use App\Entity\Review;
 use App\Entity\Section;
 use App\Entity\User;
 use App\Entity\UserRoles;
+use App\Resource\BoardMember;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\ReviewRepository;
 use App\Repository\SectionRepository;
@@ -19,6 +20,10 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
+use Symfony\Component\Serializer\Mapping\Loader\AttributeLoader;
+use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
+use Symfony\Component\Serializer\Serializer;
 
 class BoardsControllerTest extends TestCase
 {
@@ -194,7 +199,18 @@ class BoardsControllerTest extends TestCase
         $this->assertInstanceOf(ArrayPaginator::class, $result);
         $this->assertCount(1, $result);
         $members = iterator_to_array($result);
-        $this->assertInstanceOf(User::class, $members[0]);
+        $this->assertInstanceOf(BoardMember::class, $members[0]);
+        $this->assertSame('jdoe', $members[0]->screenName);
+        $this->assertSame('Doe', $members[0]->lastname);
+        $this->assertSame([[$boardTag]], $members[0]->roles);
+
+        // Public response: no account identifier nor email address
+        $serializer = new Serializer([new ObjectNormalizer(new ClassMetadataFactory(new AttributeLoader()))]);
+        $data = $serializer->normalize($members[0], null, ['groups' => ['read:Boards']]);
+        $this->assertSame(
+            ['roles', 'langueid', 'screenName', 'civ', 'lastname', 'firstname', 'middlename', 'orcid', 'additionalProfileInformation', 'picture', 'assignedSections'],
+            array_keys($data)
+        );
     }
 
     public function testSkipsUserWithNullUserDataAndLogsInfo(): void
