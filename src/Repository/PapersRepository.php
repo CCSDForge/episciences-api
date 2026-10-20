@@ -536,6 +536,7 @@ class PapersRepository extends ServiceEntityRepository
 
     /**
      * Number of imported submissions by year of submission
+     * @param array<string, mixed> $filters see submissionsQuery()
      * @return array<int, int> year => number of imported submissions
      */
     public function getImportedByYear(array $filters = []): array
@@ -552,6 +553,7 @@ class PapersRepository extends ServiceEntityRepository
     /**
      * Same count as submissionsQuery(), grouped by year of submission: one query for all the years
      *
+     * @param array<string, mixed> $filters see submissionsQuery()
      * @return array<int, int> number of submissions indexed by year
      */
     public function countSubmissionsByYear(array $filters = []): array
@@ -568,6 +570,7 @@ class PapersRepository extends ServiceEntityRepository
     /**
      * Same count as submissionsQuery(), grouped by year of submission and by repository: one query for all the years
      *
+     * @param array<string, mixed> $filters see submissionsQuery()
      * @return array<int, array<int, int>> number of submissions indexed by year, then by repository identifier
      */
     public function countSubmissionsByYearAndRepository(array $filters = []): array
@@ -585,6 +588,9 @@ class PapersRepository extends ServiceEntityRepository
         return $totals;
     }
 
+    /**
+     * @param array<string, mixed> $filters see submissionsQuery()
+     */
     private function submissionsByYearQuery(array $filters): QueryBuilder
     {
         return $this->submissionsQuery($filters)
