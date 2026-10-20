@@ -200,6 +200,7 @@ class BoardsControllerTest extends TestCase
         $this->assertCount(1, $result);
         $members = iterator_to_array($result);
         $this->assertInstanceOf(BoardMember::class, $members[0]);
+        $this->assertSame(1, $members[0]->id);
         $this->assertSame('jdoe', $members[0]->screenName);
         $this->assertSame('Doe', $members[0]->lastname);
         $this->assertSame([[$boardTag]], $members[0]->roles);
@@ -208,9 +209,50 @@ class BoardsControllerTest extends TestCase
         $serializer = new Serializer([new ObjectNormalizer(new ClassMetadataFactory(new AttributeLoader()))]);
         $data = $serializer->normalize($members[0], null, ['groups' => ['read:Boards']]);
         $this->assertSame(
-            ['roles', 'langueid', 'screenName', 'civ', 'lastname', 'firstname', 'middlename', 'orcid', 'additionalProfileInformation', 'picture', 'assignedSections'],
+            ['id', 'roles', 'langueid', 'screenName', 'civ', 'lastname', 'firstname', 'middlename', 'orcid', 'additionalProfileInformation', 'picture', 'assignedSections'],
             array_keys($data)
         );
+    }
+
+    public function testBoardMembersAreNumberedByPosition(): void
+    {
+        $request = Request::create('/api/boards/myjournal', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
+        $request->attributes->set('code', 'myjournal');
+
+        $this->journal->method('getRvid')->willReturn(3);
+
+        $boardTag = UserRoles::EDITORIAL_BOARD;
+        $boardTagRows = [];
+        $joinRows = [];
+
+        foreach ([300 => 'Adams', 100 => 'Brown'] as $uid => $lastname) {
+            $boardTagRows[] = ['uid' => $uid, 'roleid' => $boardTag];
+            $joinRows[] = [
+                'uid' => $uid,
+                'roleid' => $boardTag,
+                'user' => [
+                    'uid' => $uid, 'uuid' => 'u' . $uid, 'langueid' => 'en', 'screenName' => $lastname,
+                    'email' => $uid . '@example.com', 'civ' => null, 'orcid' => null,
+                    'additionalProfileInformation' => null, 'lastname' => $lastname, 'firstname' => 'X',
+                ],
+            ];
+        }
+
+        $this->entityManager->method('getRepository')->willReturnMap([
+            [Review::class, $this->reviewRepository],
+            [UserRoles::class, $this->userRolesRepository],
+            [Section::class, $this->sectionRepository],
+        ]);
+        $this->reviewRepository->method('getJournalByIdentifier')->willReturn($this->journal);
+        $this->userRolesRepository->method('boardsUsersQuery')->willReturn($this->stubQueryBuilder($boardTagRows));
+        $this->userRolesRepository->method('joinUserRolesQuery')->willReturn($this->stubQueryBuilder($joinRows));
+        $this->sectionRepository->method('getAssignedSection')->willReturn([]);
+
+        $members = iterator_to_array($this->controller->__invoke($request));
+
+        // The id follows the order of the list, not the account identifier
+        $this->assertSame([1, 2], array_map(static fn(BoardMember $member): int => $member->id, $members));
+        $this->assertSame(['Adams', 'Brown'], array_map(static fn(BoardMember $member): ?string => $member->lastname, $members));
     }
 
     public function testSkipsUserWithNullUserDataAndLogsInfo(): void

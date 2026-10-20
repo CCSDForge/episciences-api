@@ -14,11 +14,15 @@ use Symfony\Component\Serializer\Attribute\Groups;
 final readonly class BoardMember
 {
     /**
+     * @param int                               $id    Position of the member in the response (from 1)
      * @param array<int, array<int, string>>    $roles
      * @param array<string, mixed>|null         $additionalProfileInformation
      * @param array<int, array<string, mixed>>|null $assignedSections
      */
     public function __construct(
+        #[Groups(['read:Boards'])]
+        #[ApiProperty(description: 'Position of the member in the response; display key only, not an identifier', schema: ['type' => 'integer', 'minimum' => 1])]
+        public int $id = 1,
         #[Groups(['read:Boards'])]
         #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'array', 'items' => ['type' => 'string']]])]
         public array $roles = [],
@@ -76,9 +80,10 @@ final readonly class BoardMember
     ) {
     }
 
-    public static function fromUser(User $user): self
+    public static function fromUser(User $user, int $id): self
     {
         return new self(
+            id: $id,
             roles: $user->getRoles(),
             langueid: $user->getLangueid() ?? 'fr',
             screenName: $user->getScreenName(),

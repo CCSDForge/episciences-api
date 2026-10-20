@@ -127,6 +127,9 @@ class UserRolesRepository extends ServiceEntityRepository
         $qb->join("ur.user", 'u', Join::WITH, "ur.uid = u.uid");
 
         $qb->addOrderBy('u.lastname', \SortDirection::Ascending);
+        // Deterministic order for homonyms: the board members are numbered by position
+        $qb->addOrderBy('u.firstname', \SortDirection::Ascending);
+        $qb->addOrderBy('u.uid', \SortDirection::Ascending);
 
         if ($rvId) {
             $qb->andWhere("ur.rvid = :rvId")->setParameter('rvId', $rvId);

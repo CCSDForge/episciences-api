@@ -147,8 +147,9 @@ class BoardsController extends AbstractController
                             'assignedSections' => $assignedSections[$uid] ?? null
                         ];
 
-                        // The picture is resolved from the UUID, which is not exposed
-                        $boards[] = BoardMember::fromUser((new User($options))->processPicturePath($this->picturePath));
+                        // The picture is resolved from the UUID, which is not exposed;
+                        // the id is the position in the whole list (unique across pages)
+                        $boards[] = BoardMember::fromUser((new User($options))->processPicturePath($this->picturePath), count($boards) + 1);
                     }
                 }
 
