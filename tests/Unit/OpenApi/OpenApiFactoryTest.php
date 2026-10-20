@@ -101,8 +101,27 @@ class OpenApiFactoryTest extends TestCase
         $byJournal = $this->createAuthOpenApi()->getPaths()->getPath('/api/volumes')?->getGet()?->getResponses();
         $withoutJournal = $this->createAuthOpenApi()->getPaths()->getPath('/api/news')?->getGet()?->getResponses();
 
-        $this->assertSame([200, 404], array_keys($byJournal));
+        // 401: /api/volumes accepts an optional JWT
+        $this->assertSame([200, 404, 401], array_keys($byJournal));
         $this->assertSame([200], array_keys($withoutJournal));
+    }
+
+    public function testOptionalJwtIsDocumentedOnDoubleModeOperations(): void
+    {
+        $operation = $this->createAuthOpenApi()->getPaths()->getPath('/api/volumes')?->getGet();
+
+        // Anonymous ({}) or bearer
+        $this->assertSame('[{},{"bearerAuth":[]}]', json_encode($operation?->getSecurity()));
+        $this->assertArrayHasKey(401, $operation?->getResponses() ?? []);
+        $this->assertStringContainsString('JWT', (string)$operation?->getDescription());
+    }
+
+    public function testPublicOperationWithoutJwtIsUnchanged(): void
+    {
+        $operation = $this->createAuthOpenApi()->getPaths()->getPath('/api/news')?->getGet();
+
+        $this->assertNull($operation?->getSecurity());
+        $this->assertSame([200], array_keys($operation?->getResponses() ?? []));
     }
 
     public function testBearerSecuritySchemeIsDeclared(): void

@@ -232,8 +232,9 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
      * payload/scope changes when a JWT is provided: anonymous calls return only published
      * items, authenticated calls return a richer scope depending on the role.
      *
-     * The opening security (`bearerAuth`) is voluntarily not enforced (the operation stays
-     * public): the JWT is optional. This method only documents that behaviour.
+     * The JWT is optional: the operation declares both an anonymous and a `bearerAuth`
+     * requirement, and the 401 returned when a provided token is invalid or expired.
+     * This method only documents that behaviour.
      */
     private function documentOptionalAuthMode(OpenApi $openApi): OpenApi
     {
@@ -252,6 +253,14 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             $note = 'JWT optionnel : l\'accès est public par défaut, mais la fourniture d\'un token étend ou restreint le périmètre renvoyé selon le rôle (mode connecté).';
 
             $get = $get->withDescription($description !== '' ? $description . ' ' . $note : $note);
+
+            // Optional JWT: anonymous ({}) or bearer; Swagger UI then sends the token once authorized
+            $get = $get->withSecurity([new \ArrayObject(), [self::BEARER_AUTH => []]]);
+
+            // A provided JWT is checked even on a public operation
+            $responses = $get->getResponses() ?? [];
+            $responses[Response::HTTP_UNAUTHORIZED] ??= new OpenApiResponse('Invalid or expired JWT token');
+            $get = $get->withResponses($responses);
 
             $openApi->getPaths()->addPath($pathKey, $path->withGet($get));
         }
