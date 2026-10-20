@@ -37,7 +37,11 @@ final readonly class OpenApiNormalizer implements NormalizerInterface
         'totalPublishedArticles' => ['type' => 'integer'],
     ];
 
-    /** Added to the collections of volumes and sections by App\Serializer\Normalizer\ApiCollectionNormalizer */
+    /**
+     * Added to the collections of volumes and sections by App\Serializer\Normalizer\ApiCollectionNormalizer.
+     * The "hydra:" prefix (here and in collectionMemberRef()) requires api_platform.serializer.hydra_prefix: true,
+     * as the normalizers of App\Serializer\Normalizer do (see ApiPlatformConfigTest).
+     */
     private const array VOLUME_SECTION_JSONLD_COLLECTION_PROPERTIES = [
         'hydra:totalPublishedArticles' => ['type' => ['integer', 'null']],
     ];
@@ -87,8 +91,9 @@ final readonly class OpenApiNormalizer implements NormalizerInterface
                     continue;
                 }
 
+                // From the current path item: several methods of the same path may be updated
                 $openApi['paths'][$path] = $this->updateIn(
-                    $pathItem,
+                    $openApi['paths'][$path],
                     [$method, 'responses', '200', 'content', self::JSONLD, 'schema'],
                     fn(array|\ArrayObject $schema): array|\ArrayObject => $this->addProperties($schema, self::VOLUME_SECTION_JSONLD_COLLECTION_PROPERTIES)
                 );

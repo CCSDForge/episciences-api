@@ -99,6 +99,42 @@ class OpenApiNormalizerTest extends TestCase
         $this->assertArrayNotHasKey('hydra:totalPublishedArticles', $newsSchema['allOf'][1]['properties']);
     }
 
+    /**
+     * Each method of a path is updated from the current path item: the previous updates are kept.
+     */
+    public function testJsonLdCollectionPropertiesAreAddedToEveryMethodOfAPath(): void
+    {
+        $operation = static fn(): array => [
+            'responses' => [
+                '200' => ['content' => ['application/ld+json' => ['schema' => [
+                    'type' => 'object',
+                    'allOf' => [
+                        ['$ref' => '#/components/schemas/HydraCollectionBaseSchema'],
+                        ['type' => 'object', 'properties' => ['hydra:member' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/Volume.jsonld-read.Volumes']]]],
+                    ],
+                ]]]],
+            ],
+        ];
+
+        $decorated = $this->createStub(NormalizerInterface::class);
+        $decorated->method('normalize')->willReturn([
+            'paths' => ['/api/volumes' => ['get' => $operation(), 'post' => $operation()]],
+            'components' => [
+                'schemas' => new \ArrayObject([
+                    'HydraCollectionBaseSchema' => ['type' => 'object'],
+                    'Volume.jsonld-read.Volumes' => ['type' => 'object', 'properties' => ['vid' => ['type' => 'integer']]],
+                ]),
+            ],
+        ]);
+
+        $openApi = (new OpenApiNormalizer($decorated))->normalize(new \stdClass());
+
+        foreach (['get', 'post'] as $method) {
+            $schema = $openApi['paths']['/api/volumes'][$method]['responses']['200']['content']['application/ld+json']['schema'];
+            $this->assertArrayHasKey('hydra:totalPublishedArticles', $schema['allOf'][1]['properties'], $method);
+        }
+    }
+
     public function testDocumentWithoutSchemasIsUnchanged(): void
     {
         $document = ['paths' => [], 'components' => []];
