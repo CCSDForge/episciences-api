@@ -18,6 +18,7 @@ use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\Paths;
 use ApiPlatform\OpenApi\Model\Response;
+use ApiPlatform\OpenApi\Model\Schema;
 use ApiPlatform\OpenApi\OpenApi;
 use App\AppConstants;
 use App\Controller\BoardsController;
@@ -112,6 +113,60 @@ class OpenApiFactoryTest extends TestCase
         $this->assertSame('bearer', $schemes[OpenApiFactory::BEARER_AUTH]['scheme']);
     }
 
+    public function testConfidentialityNoteIsAddedToTheJsonSchemas(): void
+    {
+        $schemas = $this->createSchemasOpenApi([
+            'Paper-read.Paper' => [
+                'type' => 'object',
+                'properties' => new \ArrayObject([
+                    'editors' => new \ArrayObject(['type' => 'array', 'description' => 'Assigned editors. ']),
+                    'docid' => new \ArrayObject(['type' => 'integer']),
+                ]),
+            ],
+        ])->getComponents()->getSchemas();
+
+        $properties = $schemas['Paper-read.Paper']['properties'];
+        $this->assertSame('Assigned editors. ' . OpenApiFactory::NOTE_PAPERS_MANAGE, $properties['editors']['description']);
+        $this->assertArrayNotHasKey('description', $properties['docid']);
+    }
+
+    public function testConfidentialityNoteIsAddedToTheJsonLdSchemasAndKeepsTheEmptyObjects(): void
+    {
+        $schemas = $this->createSchemasOpenApi([
+            'Paper.jsonld-read.Paper' => [
+                'allOf' => [
+                    new \ArrayObject(['$ref' => '#/components/schemas/HydraItemBaseSchema']),
+                    new \ArrayObject([
+                        'type' => 'object',
+                        'properties' => new \ArrayObject([
+                            'editors' => new \ArrayObject(['type' => 'array', 'items' => new \ArrayObject()]),
+                        ]),
+                    ]),
+                ],
+            ],
+        ])->getComponents()->getSchemas();
+
+        $editors = $schemas['Paper.jsonld-read.Paper']['allOf'][1]['properties']['editors'];
+        $this->assertSame(OpenApiFactory::NOTE_PAPERS_MANAGE, $editors['description']);
+        $this->assertSame('{}', json_encode($editors['items']));
+    }
+
+    public function testConfidentialityNoteDoesNotAlterSharedDefinitions(): void
+    {
+        $shared = new \ArrayObject(['type' => 'string']);
+
+        $schemas = $this->createSchemasOpenApi([
+            'User-read.User' => ['properties' => new \ArrayObject(['username' => $shared])],
+            'User.jsonld-read.User' => ['properties' => new \ArrayObject(['username' => $shared])],
+            'PaperLog-read.PaperLog' => ['properties' => new \ArrayObject(['user' => $shared])],
+        ])->getComponents()->getSchemas();
+
+        $this->assertSame(OpenApiFactory::NOTE_ROLE_MEMBER, $schemas['User-read.User']['properties']['username']['description']);
+        $this->assertSame(OpenApiFactory::NOTE_ROLE_MEMBER, $schemas['User.jsonld-read.User']['properties']['username']['description']);
+        $this->assertArrayNotHasKey('description', $schemas['PaperLog-read.PaperLog']['properties']['user']);
+        $this->assertArrayNotHasKey('description', $shared);
+    }
+
     private function createOpenApi(): OpenApi
     {
         $paths = new Paths();
@@ -164,6 +219,31 @@ class OpenApiFactoryTest extends TestCase
         $decorated = $this->createStub(OpenApiFactoryInterface::class);
         $decorated->method('__invoke')->willReturn(
             new OpenApi(new Info('Episciences API', '1.0'), [], $paths, new Components(schemas: new \ArrayObject(), securitySchemes: new \ArrayObject()))
+        );
+
+        $resourceNameCollectionFactory = $this->createStub(ResourceNameCollectionFactoryInterface::class);
+        $resourceNameCollectionFactory->method('create')->willReturn(new ResourceNameCollection([]));
+
+        return new OpenApiFactory($decorated, $resourceNameCollectionFactory, $this->createStub(ResourceMetadataCollectionFactoryInterface::class))();
+    }
+
+    /**
+     * Spec with the given component schemas only (field confidentiality tests).
+     *
+     * @param array<string, array<string, mixed>> $definitions Schema name -> schema definition
+     */
+    private function createSchemasOpenApi(array $definitions): OpenApi
+    {
+        $schemas = [];
+        foreach ($definitions as $name => $definition) {
+            $schema = new Schema();
+            $schema->exchangeArray($definition);
+            $schemas[$name] = $schema;
+        }
+
+        $decorated = $this->createStub(OpenApiFactoryInterface::class);
+        $decorated->method('__invoke')->willReturn(
+            new OpenApi(new Info('Episciences API', '1.0'), [], new Paths(), new Components(schemas: new \ArrayObject($schemas), securitySchemes: new \ArrayObject()))
         );
 
         $resourceNameCollectionFactory = $this->createStub(ResourceNameCollectionFactoryInterface::class);

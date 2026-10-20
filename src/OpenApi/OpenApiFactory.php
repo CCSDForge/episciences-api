@@ -290,22 +290,15 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         $schemas = $components->getSchemas();
 
         foreach ($schemas as $name => $schema) {
-            $prefix = explode('.', (string)$name)[0];
+            // Owning resource: "Paper.jsonld-read.Paper" (JSON-LD, HTML, XML) or "Paper-read.Paper" (JSON).
+            $prefix = substr((string)$name, 0, strcspn((string)$name, '.-'));
             $sensitive = self::SENSITIVE_FIELDS[$prefix] ?? null;
-            if ($sensitive === null) {
+            if ($sensitive === null || !self::isSchemaNode($schema)) {
                 continue;
             }
 
-            // Schemas are stored as (possibly nested) \ArrayObject; work on a plain array.
-            $schemaArray = json_decode((string)json_encode($schema), true);
-            if (!\is_array($schemaArray)) {
-                continue;
-            }
-
-            $updated = $this->annotateSensitiveProperties($schemaArray, $sensitive);
-            if ($updated !== $schemaArray) {
-                $schemas[$name] = new \ArrayObject($updated);
-            }
+            // Work on the original structure: a JSON round trip would turn the empty objects ({}) into arrays ([]).
+            $schemas[$name] = $this->annotateSensitiveProperties($schema, $sensitive);
         }
 
         return $openApi->withComponents($components->withSchemas($schemas));
@@ -314,44 +307,72 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     /**
      * Recursively annotates sensitive properties declared in a schema (handles
      * both top-level `properties` and collections of `allOf`/`oneOf`/`anyOf`).
+     * Returns a copy: the \ArrayObject instances may be shared between schemas.
      *
-     * @param  array<array-key, mixed> $schema
-     * @param  array<string, string>   $sensitive Property name -> note
-     * @return array<array-key, mixed>
+     * @param  \ArrayObject<array-key, mixed>|array<array-key, mixed> $schema
+     * @param  array<string, string> $sensitive Property name -> note
+     * @return \ArrayObject<array-key, mixed>|array<array-key, mixed>
      */
-    private function annotateSensitiveProperties(array $schema, array $sensitive): array
+    private function annotateSensitiveProperties(\ArrayObject|array $schema, array $sensitive): \ArrayObject|array
     {
-        if (isset($schema['properties']) && \is_array($schema['properties'])) {
-            foreach ($schema['properties'] as $property => $definition) {
-                if (!\is_array($definition)) {
+        $schema = self::copyNode($schema);
+
+        $properties = $schema['properties'] ?? null;
+        if (self::isSchemaNode($properties)) {
+            $properties = self::copyNode($properties);
+
+            foreach ($sensitive as $property => $note) {
+                $definition = $properties[$property] ?? null;
+                if (!self::isSchemaNode($definition)) {
                     continue;
                 }
 
-                $note = $sensitive[$property] ?? null;
-                if ($note === null) {
-                    continue;
-                }
-
+                $definition = self::copyNode($definition);
                 $current = isset($definition['description']) && \is_string($definition['description'])
                     ? rtrim($definition['description'], ' ')
                     : '';
 
                 $definition['description'] = $current !== '' ? $current . ' ' . $note : $note;
-                $schema['properties'][$property] = $definition;
+                $properties[$property] = $definition;
             }
+
+            $schema['properties'] = $properties;
         }
 
         foreach (['allOf', 'oneOf', 'anyOf'] as $combinator) {
-            if (isset($schema[$combinator]) && \is_array($schema[$combinator])) {
-                foreach ($schema[$combinator] as $index => $subSchema) {
-                    if (\is_array($subSchema)) {
-                        $schema[$combinator][$index] = $this->annotateSensitiveProperties($subSchema, $sensitive);
-                    }
+            $subSchemas = $schema[$combinator] ?? null;
+            if (!self::isSchemaNode($subSchemas)) {
+                continue;
+            }
+
+            $subSchemas = self::copyNode($subSchemas);
+            foreach ($subSchemas as $index => $subSchema) {
+                if (self::isSchemaNode($subSchema)) {
+                    $subSchemas[$index] = $this->annotateSensitiveProperties($subSchema, $sensitive);
                 }
             }
+
+            $schema[$combinator] = $subSchemas;
         }
 
         return $schema;
+    }
+
+    /**
+     * @phpstan-assert-if-true \ArrayObject<array-key, mixed>|array<array-key, mixed> $node
+     */
+    private static function isSchemaNode(mixed $node): bool
+    {
+        return $node instanceof \ArrayObject || \is_array($node);
+    }
+
+    /**
+     * @param  \ArrayObject<array-key, mixed>|array<array-key, mixed> $node
+     * @return \ArrayObject<array-key, mixed>|array<array-key, mixed>
+     */
+    private static function copyNode(\ArrayObject|array $node): \ArrayObject|array
+    {
+        return $node instanceof \ArrayObject ? clone $node : $node;
     }
 
     // -----------------------------------
