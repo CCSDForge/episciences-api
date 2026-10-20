@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 ### Added
+- `make openapi-lint` exports the OpenAPI specification and lints it with Redocly (`redocly.yaml`); it runs in CI.
 - Added covering indexes on `PAPER_LOG` (migration `Version20261016120000`) to speed up the statistics endpoints (`GET /api/statistics/` from about 6 s to under 1 s on a full dataset).
 - Added `is_public` stored generated column to `Pages` and `News` entities to optimize query filtering.
 - Added regression tests for the `is_public` generated column filter.

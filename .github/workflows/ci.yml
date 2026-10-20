@@ -68,6 +68,9 @@ jobs:
       
     - name: Validate Doctrine mapping
       run: APP_ENV=test make docker-validate
+
+    - name: Lint the OpenAPI specification
+      run: make openapi-lint
       
     - name: Run tests with coverage
       run: make docker-test-coverage
