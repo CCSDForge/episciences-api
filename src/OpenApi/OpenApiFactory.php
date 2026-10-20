@@ -42,10 +42,10 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     /** Parameters holding a journal code: an unknown journal returns a 404 */
     private const array JOURNAL_CODE_PARAMETERS = ['code', 'rvcode'];
 
-    public const string NOTE_PAPERS_MANAGE = 'Champ confidentiel : visible uniquement par les utilisateurs autorisés à gérer l\'article (voter `papers_manage`).';
-    public const string NOTE_ROLE_SECRETARY = 'Champ confidentiel : visible uniquement par les secrétaires de rédaction (ROLE_SECRETARY).';
-    public const string NOTE_ROLE_MEMBER = 'Champ confidentiel : visible uniquement par les membres authentifiés (ROLE_MEMBER).';
-    public const string NOTE_ROLE_EPIADMIN = 'Champ confidentiel : visible uniquement par les administrateurs EPI (ROLE_EPIADMIN).';
+    public const string NOTE_PAPERS_MANAGE = 'Confidential field: only returned to the users allowed to manage the paper (`papers_manage` voter).';
+    public const string NOTE_ROLE_SECRETARY = 'Confidential field: only returned to the editorial secretaries (ROLE_SECRETARY).';
+    public const string NOTE_ROLE_MEMBER = 'Confidential field: only returned to the authenticated members (ROLE_MEMBER).';
+    public const string NOTE_ROLE_EPIADMIN = 'Confidential field: only returned to the EPI administrators (ROLE_EPIADMIN).';
 
     /**
      * Role-conditioned serialized properties, scoped by owning resource (schema name prefix).
@@ -250,7 +250,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             }
 
             $description = trim((string)$get->getDescription());
-            $note = 'JWT optionnel : l\'accès est public par défaut, mais la fourniture d\'un token étend ou restreint le périmètre renvoyé selon le rôle (mode connecté).';
+            $note = 'Optional JWT: the access is public by default, but providing a token enlarges or restricts the returned scope according to the role (authenticated mode).';
 
             $get = $get->withDescription($description !== '' ? $description . ' ' . $note : $note);
 

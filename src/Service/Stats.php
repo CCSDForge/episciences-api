@@ -534,7 +534,7 @@ class Stats
                 'rvid' => $rvId,
                 'year' => [$year],
                 'startAfterDate' => $startAfterDate,
-                'acceptedTotal' => $accepted, // Pour éviter une autre requête
+                'acceptedTotal' => $accepted, // Avoids another query
                 'refusedTotal' => $refused    // idem
             ]);
 

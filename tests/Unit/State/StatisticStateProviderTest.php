@@ -85,6 +85,21 @@ class StatisticStateProviderTest extends TestCase
         $this->assertCount(count(Statistic::EVAL_INDICATORS), iterator_to_array($result));
     }
 
+    #[DataProvider('validUnitProvider')]
+    public function testValidOrEmptyUnitIsAccepted(string $unit): void
+    {
+        $result = $this->provideEvaluation(filters: ['unit' => $unit]);
+
+        $this->assertCount(count(Statistic::EVAL_INDICATORS), iterator_to_array($result));
+    }
+
+    public static function validUnitProvider(): iterable
+    {
+        yield 'empty (default unit)' => [''];
+        yield 'day' => ['day'];
+        yield 'upper case' => ['MONTH'];
+    }
+
     #[DataProvider('invalidFilterProvider')]
     public function testInvalidFilterIsRejected(array $filters): void
     {

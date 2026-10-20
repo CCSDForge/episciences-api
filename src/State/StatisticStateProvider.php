@@ -44,7 +44,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
         $filters = $context['filters'] ?? [];
         $code = $filters['rvcode'] ?? null;
-        $unit = $this->processUnit($filters['unit'] ?? 'week');
+        // An empty unit (?unit=) falls back to the default one
+        $unit = $this->processUnit(($filters['unit'] ?? '') ?: 'week');
         $rvId = null;
 
         if ($code) {

@@ -135,6 +135,14 @@ The responses of 9 requests (journals `dev`, `hrj`, `epijinfo`, `dmtcs`; with an
 `year[]` and `startAfterDate`) are identical before and after the change (JSON compared without the generated `@id`).
 `tests/Unit/Service/StatsTest.php` checks that the submission counters are fetched once for all the years.
 
+A later fix intentionally changed one value: `submissionsByYear[*].imported` repeated the number of imported
+submissions of all the years; it is now counted per year (`PapersRepository::getImportedByYear()`). For a journal
+with imported submissions in more than one year, the responses with `withDetails` therefore differ from the ones
+compared above on this value only.
+
+`tests/Functional/Repository/PapersRepositoryDatabaseTest.php` checks, on a MySQL database (`TEST_DATABASE_URL`),
+that the grouped counters give the same numbers as the per-year query.
+
 ## Deployment notes
 
 - `PAPER_LOG` belongs to the database shared with Episciences: the migration must be run on every environment
