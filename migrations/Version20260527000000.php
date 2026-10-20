@@ -40,6 +40,15 @@ final class Version20260527000000 extends AbstractMigration
     }
 
     /**
+     * MySQL commits the DDL statements implicitly: a transaction would already be closed
+     * when Doctrine tries to commit it.
+     */
+    public function isTransactional(): bool
+    {
+        return false;
+    }
+
+    /**
      * Every step is guarded so the migration can run on databases whose schema
      * differs from the expected one (e.g. `news` without the `rvcode` index) and
      * can be re-run after a partial failure (MySQL DDL is not transactional).

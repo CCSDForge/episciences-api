@@ -19,7 +19,8 @@ final class InvalidPaginationSubscriber implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            KernelEvents::EXCEPTION => 'onKernelException',
+            // Before the ErrorListener logging (priority 0): the error is logged as a client error
+            KernelEvents::EXCEPTION => ['onKernelException', 10],
         ];
     }
 

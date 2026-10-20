@@ -46,6 +46,15 @@ final class Version20261016120000 extends AbstractMigration
         return 'Add covering indexes on PAPER_LOG for the statistics queries.';
     }
 
+    /**
+     * MySQL commits the DDL statements implicitly: a transaction would already be closed
+     * when Doctrine tries to commit it.
+     */
+    public function isTransactional(): bool
+    {
+        return false;
+    }
+
     public function up(Schema $schema): void
     {
         $clauses = [];
