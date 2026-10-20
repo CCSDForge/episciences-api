@@ -132,9 +132,43 @@ class AbstractDataProviderTest extends TestCase
     }
 
     /**
-     * An invalid startAfterDate is ignored (as documented), it must not reach the query.
+     * An invalid startAfterDate is rejected, as for /api/statistics/*: it must not reach the query.
      */
-    public function testInvalidStartAfterDateIsIgnoredForSubmissions(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidStartAfterDateProvider')]
+    public function testInvalidStartAfterDateIsRejected(mixed $startAfterDate): void
+    {
+        $journal = $this->createMock(Review::class);
+        $journal->method('getRvid')->willReturn(42);
+
+        $this->statsService->method('getJournal')->willReturn($journal);
+        $this->statsService->expects($this->never())->method('getSubmissionsStat');
+
+        $operation = new Get(name: AppConstants::STATS_NB_SUBMISSIONS_ITEM);
+        $context = [
+            'uri_variables' => ['code' => 'myjournal'],
+            'filters' => [AppConstants::START_AFTER_DATE => $startAfterDate],
+        ];
+
+        $this->expectException(ResourceNotFoundException::class);
+
+        $this->dataProvider->exposeGetCollection($operation, $context);
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function invalidStartAfterDateProvider(): iterable
+    {
+        yield 'not a date' => ['abc'];
+        yield 'impossible date' => ['2023-02-30'];
+        yield 'incomplete date' => ['2023-1-1'];
+        yield 'date sent as array' => [['2023-01-01']];
+    }
+
+    /**
+     * An empty startAfterDate is ignored.
+     */
+    public function testEmptyStartAfterDateIsIgnored(): void
     {
         $journal = $this->createMock(Review::class);
         $journal->method('getRvid')->willReturn(42);
@@ -144,7 +178,7 @@ class AbstractDataProviderTest extends TestCase
         $operation = new Get(name: AppConstants::STATS_NB_SUBMISSIONS_ITEM);
         $context = [
             'uri_variables' => ['code' => 'myjournal'],
-            'filters' => [AppConstants::START_AFTER_DATE => 'abc'],
+            'filters' => [AppConstants::START_AFTER_DATE => ''],
         ];
 
         $this->statsService->expects($this->once())

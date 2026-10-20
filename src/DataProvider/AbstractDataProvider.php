@@ -69,19 +69,21 @@ abstract class AbstractDataProvider
     }
 
 
+    /**
+     * @throws ResourceNotFoundException an invalid startAfterDate, as for /api/statistics/*
+     */
     private function addFilters(array &$availableFilters, string $operationName, array &$contextFilters = []): void
     {
+        $startDate = $contextFilters[AppConstants::START_AFTER_DATE] ?? '';
 
+        if ($startDate !== '') {
+            $startDate = is_string($startDate) ? urldecode($startDate) : null;
 
-        if (isset($contextFilters[AppConstants::START_AFTER_DATE])) {
-            $startDate = urldecode($contextFilters[AppConstants::START_AFTER_DATE]);
-
-
-            if (
-                self::isValidDate($startDate)) {
-                $availableFilters[AppConstants::START_AFTER_DATE] = $startDate;
+            if ($startDate === null || !self::isValidDate($startDate)) {
+                throw new ResourceNotFoundException(sprintf('Oops! invalid %s: the expected format is YYYY-MM-DD', AppConstants::START_AFTER_DATE));
             }
 
+            $availableFilters[AppConstants::START_AFTER_DATE] = $startDate;
         }
 
         if (isset($contextFilters[AppConstants::WITH_DETAILS])) {
@@ -99,7 +101,7 @@ abstract class AbstractDataProvider
 
                 if (
                     !isset($availableFilters[$filter]) &&
-                    $filter !== AppConstants::START_AFTER_DATE && // already checked above: ignored if invalid
+                    $filter !== AppConstants::START_AFTER_DATE && // already checked above
                     in_array($filter, Stats::AVAILABLE_PAPERS_FILTERS, true)
                 ) {
                     $availableFilters[$filter] = $value;

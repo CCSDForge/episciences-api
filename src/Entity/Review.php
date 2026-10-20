@@ -174,7 +174,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -229,7 +229,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -284,7 +284,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -339,7 +339,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
