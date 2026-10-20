@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DoctrineMigrations;
 
+use App\Doctrine\Migration\SchemaGuardTrait;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
@@ -31,6 +32,8 @@ use Doctrine\Migrations\AbstractMigration;
  */
 final class Version20260527000000 extends AbstractMigration
 {
+    use SchemaGuardTrait;
+
     public function getDescription(): string
     {
         return 'Add indexed is_public generated column to pages and news; fix UniqueConstraints on pages and news.';
@@ -64,19 +67,24 @@ final class Version20260527000000 extends AbstractMigration
         $this->addIsPublicColumn('news', 'idx_news_is_public');
     }
 
+    /**
+     * Removes the `is_public` columns and their indexes.
+     *
+     * The unique constraints fixed by up() are kept: the former UNIQUE(code) constraints
+     * (one news / one page per journal) and UNIQUE(page_code) were wrong, and restoring
+     * them fails as soon as a journal has two news or two pages.
+     */
     public function down(Schema $schema): void
     {
-        // ------------------------------------------------------------------- news
-        $this->addSql("DROP INDEX idx_news_is_public ON news");
-        $this->addSql("ALTER TABLE news DROP COLUMN is_public");
-        $this->addSql("ALTER TABLE news ADD CONSTRAINT rvcode UNIQUE (code)");
+        foreach (['news' => 'idx_news_is_public', 'pages' => 'idx_pages_is_public'] as $table => $indexName) {
+            $this->dropIndexIfExists($table, $indexName);
 
-        // ------------------------------------------------------------------ pages
-        $this->addSql("DROP INDEX idx_pages_is_public ON pages");
-        $this->addSql("ALTER TABLE pages DROP COLUMN is_public");
-        $this->addSql("ALTER TABLE pages DROP INDEX rvcode_page_code");
-        $this->addSql("ALTER TABLE pages ADD CONSTRAINT rvcode UNIQUE (code)");
-        $this->addSql("ALTER TABLE pages ADD CONSTRAINT page_code UNIQUE (page_code)");
+            if ($this->columnExists($table, 'is_public')) {
+                $this->addSql("ALTER TABLE $table DROP COLUMN is_public");
+            }
+        }
+
+        $this->write('The unique constraints fixed on pages and news are kept.');
     }
 
     private function addIsPublicColumn(string $table, string $indexName): void
@@ -91,28 +99,5 @@ final class Version20260527000000 extends AbstractMigration
         if (!$this->indexExists($table, $indexName)) {
             $this->addSql("CREATE INDEX $indexName ON $table (is_public)");
         }
-    }
-
-    private function dropIndexIfExists(string $table, string $indexName): void
-    {
-        if ($this->indexExists($table, $indexName)) {
-            $this->addSql("ALTER TABLE $table DROP INDEX $indexName");
-        }
-    }
-
-    private function indexExists(string $table, string $indexName): bool
-    {
-        return (bool) $this->connection->fetchOne(
-            'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?',
-            [$table, $indexName]
-        );
-    }
-
-    private function columnExists(string $table, string $column): bool
-    {
-        return (bool) $this->connection->fetchOne(
-            'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
-            [$table, $column]
-        );
     }
 }

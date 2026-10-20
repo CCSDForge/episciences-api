@@ -8,10 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!--
 ## Unreleased
 ### Fixed
-- Fixed the Doctrine mappings that made the schema tools fail (`doctrine:schema:create`, schema comparison): string `unsigned` option of `UserInvitationAnswer`, MySQL `ENUM` columns mapped as strings of length 0 (now the DBAL `enum` type), unused `LegacyNews` entity clashing with the `news` table, `ReviewSetting` primary key and `VALUE` type, index typos (`UserAssignment`), nonexistent indexes (`Paper.RECORD`, unique `news.uid`), join column order to `VolumePaperPosition`. No database change; same API responses.
 ### Added
 ### Changed
-- Journal dashboard statistics (`withDetails`): the submissions are counted by year and by repository in grouped queries instead of one query per year and per repository (92 queries down to 29 for a journal with 11 years of activity).
 ### Deprecated
 ### Removed
 ### Security
@@ -31,9 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced non-indexed `JSON_EXTRACT` visibility filter with the new `is_public` column in Doctrine queries.
 - Migrated codebase to PHP 8.4: applied Rector transformations (explicit nullable parameter types, typed properties, Doctrine `Types::*` constants, PHP 8.4 `RoundingMode`/`#[\Deprecated]` features) to fix PHP 8.4 deprecations.
 - Migrated to API Platform 4.3: updated `api-platform/core` to `^4.3`, removed legacy config keys (`keep_legacy_inflector`, `item_Operations`, `collection_Operations`), switched `UrlGeneratorInterface` to the `ApiPlatform\Metadata` namespace, moved `ApiPlatform\Exception\RuntimeException` to `ApiPlatform\Metadata\Exception\RuntimeException`, and converted OpenAPI operation `output`/`responses` from arrays to proper `ApiPlatform\OpenApi\Model` objects.
+- Journal dashboard statistics (`withDetails`): the submissions are counted by year and by repository in grouped queries instead of one query per year and per repository (92 queries down to 29 for a journal with 11 years of activity).
 - Migrated to Doctrine ORM 3.7: updated `doctrine/orm` constraint from `^2.14` to `^3.7` and aligned unit test mocks (mocked `Doctrine\DBAL\Exception` and `Doctrine\ORM\Query` instances) with the new ORM/DBAL APIs.
 
 ### Fixed
+- Fixed the Doctrine mappings that made the schema tools fail (`doctrine:schema:create`, schema comparison): string `unsigned` option of `UserInvitationAnswer`, MySQL `ENUM` columns mapped as strings of length 0 (now the DBAL `enum` type), unused `LegacyNews` entity clashing with the `news` table, `ReviewSetting` primary key and `VALUE` type, index typos (`UserAssignment`), nonexistent indexes (`Paper.RECORD`, unique `news.uid`), join column order to `VolumePaperPosition`. No database change; same API responses.
+- The migrations `Version20260527000000` and `Version20261016120000` can be re-run after a partial failure: each step checks the existing schema. `Version20261016120000` caps the lock wait on `PAPER_LOG` (10 s), and the down migration of `Version20260527000000` no longer restores the erroneous unique constraints of `pages` and `news`.
+- `PaperLog` now declares the existing `PAPER_LOG` indexes, so the schema tools no longer propose to drop them.
 - `/api/statistics/*`: the `indicator[]` form (documented) is accepted again (a single indicator), and an invalid `startAfterDate` (expected format: `YYYY-MM-DD`) or `unit` is now rejected with a clear message instead of a server error or an ignored value.
 - `GET /api/journals/stats/nb-submissions/{code}?withDetails`: `submissionsByYear[*].imported` now counts the imported submissions of each year (it repeated the total of all the years).
 - An invalid pagination parameter (`page` lower than 1, negative `itemsPerPage`) now returns a `400` error instead of a server error.
