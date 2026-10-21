@@ -534,6 +534,21 @@ class PapersRepository extends ServiceEntityRepository
 
     }
 
+    /**
+     * Number of imported submissions by year of submission
+     * @return array<int, int> year => number of imported submissions
+     */
+    public function getImportedByYear(array $filters = []): array
+    {
+        $rows = $this->submissionsQuery($filters, false, 'submissionDate', false, self::AVAILABLE_FLAG_VALUES['imported'])
+            ->select(sprintf('YEAR(%s.submissionDate) AS year, COUNT(DISTINCT %s.paperid) AS nb', self::PAPERS_ALIAS, self::PAPERS_ALIAS))
+            ->groupBy('year')
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_combine(array_map(intval(...), array_column($rows, 'year')), array_map(intval(...), array_column($rows, 'nb')));
+    }
+
     public function getSubmissionsWithoutImported(int $rvId = null, string $startAfterDate = null, array|string $years = null): int
     {
 
