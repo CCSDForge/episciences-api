@@ -82,7 +82,7 @@ jobs:
     - name: Upload PHP coverage
       uses: codecov/codecov-action@v5
       with:
-        file: ./coverage-php.xml
+        files: ./coverage-php.xml
         flags: php
         name: php-coverage
       env:
