@@ -478,7 +478,12 @@ class Stats
         $startAfterDate = $filters['is']['startAfterDate'] ?? null;
         $repositories = $papersRepository->getAvailableRepositories($filters);
 
-        $importedByYear = $papersRepository->getImportedByYear($filters);
+        // Fetched once for all the years (a single query instead of one per year).
+        // The single-year "submissionDate" filter is removed so every year keeps its own count,
+        // in line with the per-year "submissions" values computed in the loop below.
+        $importedByYearFilters = $filters;
+        unset($importedByYearFilters['is']['submissionDate']);
+        $importedByYear = $papersRepository->getImportedByYear($importedByYearFilters);
 
         foreach ($papersRepository->getSubmissionYearRange($filters) as $year) { // pour le dashboard
 
