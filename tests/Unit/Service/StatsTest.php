@@ -561,4 +561,47 @@ class StatsTest extends TestCase
         $this->assertArrayHasKey('HAL', $details['submissionsByRepo'][2023]);
         $this->assertEquals(10, $details['submissionsByRepo'][2023]['HAL']['submissions']);
     }
+
+    public function testGetSubmissionByYearStatsCountsImportedSubmissionsByYear(): void
+    {
+        $filters = ['is' => ['rvid' => 8]];
+        $details = [];
+
+        $this->papersRepo->method('getSubmissionYearRange')->willReturn([2022, 2023]);
+        $this->papersRepo->method('getAvailableRepositories')->willReturn([]);
+        $this->papersRepo->method('submissionsQuery')->willReturn($this->makeScalarQb(10));
+        $this->papersRepo->method('getSubmissionsWithoutImported')->willReturn(8);
+        // Fetched once for all the years
+        $this->papersRepo->expects($this->once())->method('getImportedByYear')->with($filters)->willReturn([2022 => 3]);
+        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn(null);
+
+        $this->stats->getSubmissionByYearStats($filters, 8, $details);
+
+        $this->assertSame(3, $details[Stats::SUBMISSIONS_BY_YEAR][2022]['imported']);
+        $this->assertSame(0, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['imported']);
+    }
+
+    public function testGetSubmissionByYearStatsCountsImportedByYearEvenWithSingleYearFilter(): void
+    {
+        // withDetails combined with a specific year: the "imported" map must be built without the
+        // single-year restriction so every year keeps its own count (not 0 outside the requested year).
+        $filters = ['is' => ['rvid' => 8, AppConstants::SUBMISSION_DATE => 2023]];
+        $details = [];
+
+        $this->papersRepo->method('getSubmissionYearRange')->willReturn([2022, 2023]);
+        $this->papersRepo->method('getAvailableRepositories')->willReturn([]);
+        $this->papersRepo->method('submissionsQuery')->willReturn($this->makeScalarQb(10));
+        $this->papersRepo->method('getSubmissionsWithoutImported')->willReturn(8);
+        // getImportedByYear must receive the filters without the single-year submissionDate filter
+        $this->papersRepo->expects($this->once())
+            ->method('getImportedByYear')
+            ->with(['is' => ['rvid' => 8]]) // submissionDate removed by the service
+            ->willReturn([2022 => 3, 2023 => 5]);
+        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn(null);
+
+        $this->stats->getSubmissionByYearStats($filters, 8, $details);
+
+        $this->assertSame(3, $details[Stats::SUBMISSIONS_BY_YEAR][2022]['imported']);
+        $this->assertSame(5, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['imported']);
+    }
 }
