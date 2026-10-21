@@ -17,8 +17,7 @@ use App\State\BrowseStateProvider;
             uriTemplate: '/browse/authors/',
             formats: ['jsonld', 'json'],
             openapi: new OpenApiOperation(
-                operationId: 'test' ,
-
+                operationId: 'api_browse_authors_get_collection',
                 tags: [OpenApiFactory::OAF_TAGS['browse_search']],
                 summary: 'Browse by authors',
                 description: 'Browse by authors',
@@ -64,6 +63,7 @@ use App\State\BrowseStateProvider;
             normalizationContext: [
                 'groups' => ['read:Browse:Authors']
             ],
+            output: Facet::class,
         ),
         new GetCollection(
             uriTemplate: '/browse/authors-search/{author_fullname}',

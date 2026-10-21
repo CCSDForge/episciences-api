@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\OpenApi\OpenApiSchemas;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
@@ -18,7 +19,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
 
 #[ORM\Table(name: self::TABLE)]
-#[ORM\UniqueConstraint(name: 'uid', columns: ['uid'])]
+#[ORM\Index(columns: ['uid'], name: 'uid')]
 #[ORM\Entity(repositoryClass: NewsRepository::class)]
 
 #[ApiResource(
@@ -124,25 +125,28 @@ class News
     )]
     private ?string $rvcode = null;
 
-    #[ORM\Column(name: 'uid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false)]
+    #[ORM\Column(name: 'uid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     private ?int $uid = null;
 
     #[ORM\Column(name: 'title', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false, options: ['comment' => 'Page title'])]
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
+    #[ApiProperty(schema: OpenApiSchemas::TRANSLATED_TEXT)]
     private array $title = [];
 
     #[ORM\Column(name: 'content', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $content = null;
 
     #[ORM\Column(nullable: true)]
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $link = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]

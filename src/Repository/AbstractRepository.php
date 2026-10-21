@@ -10,7 +10,6 @@ use Doctrine\Persistence\ManagerRegistry;
 
 abstract class AbstractRepository extends ServiceEntityRepository
 {
-    public const DEFAULT_MAX_RESULT = 100; // used without pagination
     public function __construct(ManagerRegistry $registry, string $entityClass)
     {
         parent::__construct($registry, $entityClass);

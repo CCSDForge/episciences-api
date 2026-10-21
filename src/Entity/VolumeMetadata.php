@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use App\OpenApi\OpenApiSchemas;
+use ApiPlatform\Metadata\ApiProperty;
 use App\AppConstants;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -43,6 +45,7 @@ class VolumeMetadata
 
     )]
     #[ORM\Column(name: 'titles', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
+    #[ApiProperty(schema: OpenApiSchemas::TRANSLATED_TEXT)]
     private array $titles;
 
     #[ORM\Column(name: 'CONTENT', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
@@ -53,6 +56,7 @@ class VolumeMetadata
         ]
 
     )]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $content = null;
 
     #[ORM\Column(name: 'FILE', type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: true)]

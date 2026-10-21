@@ -2,12 +2,15 @@
 
 namespace App\Resource;
 
+use App\OpenApi\OpenApiSchemas;
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
+use App\OpenApi\OpenApiFactory;
 use App\State\StatisticStateProvider;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -17,7 +20,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new GetCollection(
             uriTemplate: '/statistics/',
             openapi: new OpenApiOperation(
-                tags: ['Statistics | UX'],
+                tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Retrieve all available statistical indicators",
                 description: "",
                 parameters: [
@@ -89,10 +92,14 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                 ]
             ),
@@ -101,7 +108,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new Get(
             uriTemplate: '/statistics/nb-submissions',
             openapi: new OpenApiOperation(
-                tags: ['Statistics | UX'],
+                tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Total number of submissions",
                 description: "",
                 parameters: [
@@ -191,10 +198,14 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                 ]
             ),
@@ -203,7 +214,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new Get(
             uriTemplate: '/statistics/median-submission-publication',
             openapi: new OpenApiOperation(
-                tags: ['Statistics | UX'],
+                tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Median Time submission-publication",
                 description: self::INDICATOR_DESCRIPTION,
                 parameters: [
@@ -251,10 +262,14 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: 'unit',
@@ -277,7 +292,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new Get(
             uriTemplate: '/statistics/median-submission-acceptance',
             openapi: new OpenApiOperation(
-                tags: ['Statistics | UX'],
+                tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Median Time submission-acceptance",
                 description: self::INDICATOR_DESCRIPTION,
                 parameters: [
@@ -325,10 +340,14 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: 'unit',
@@ -352,7 +371,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new Get(
             uriTemplate: '/statistics/acceptance-rate',
             openapi: new OpenApiOperation(
-                tags: ['Statistics | UX'],
+                tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Acceptance rate",
                 description: self::INDICATOR_DESCRIPTION,
                 parameters: [
@@ -400,10 +419,14 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: this parameter is ignored if the format is wrong',
+                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                 ]
             ),
@@ -412,7 +435,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new GetCollection(
             uriTemplate: '/statistics/evaluation',
             openapi: new OpenApiOperation(
-                tags: ['Statistics | UX'],
+                tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Evaluation",
                 description: 'Evaluation',
                 parameters: [
@@ -514,6 +537,10 @@ class Statistic
     #[groups(['read:Statistic'])]
     private string $name;
     #[groups(['read:Statistic'])]
+    #[ApiProperty(schema: [
+        'description' => 'A number, or an object detailing the indicator for "nb-submissions-details" and "evaluation"',
+        'example' => 43.72,
+    ] + OpenApiSchemas::STAT_VALUE)]
     private array|float|null $value = null;
     #[groups(['read:Statistic'])]
     private string|null $unit = null;

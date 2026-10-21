@@ -38,6 +38,11 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
     {
 
         $data = $this->decorated->normalize($object, $format, $context);
+
+        if (!isset($context['resource_class']) || isset($context['api_sub_level'])) { // array nested in a resource, not a collection
+            return $data;
+        }
+
         /** @var HttpOperation $operation */
         $operation = $context['operation'] ?? $context['root_operation'] ?? null;
 
@@ -123,12 +128,16 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 
     public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool
     {
-        return $this->decorated->supportsNormalization($data, $format);
+        return $this->decorated->supportsNormalization($data, $format, $context);
     }
 
+    /**
+     * Same types as the decorated Hydra collection normalizer: the paginators and the PHP arrays
+     * (collections requested without pagination), otherwise serialized as a plain list.
+     */
     public function getSupportedTypes(?string $format): array
     {
-        return ['object' => self::FORMAT];
+        return $this->decorated->getSupportedTypes($format);
     }
 
     private function addHydraContext(array &$data, string $operationClass, Review|null $journal, array $identifiers = [], array $filters = []): void

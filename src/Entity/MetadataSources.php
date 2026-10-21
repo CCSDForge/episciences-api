@@ -31,7 +31,7 @@ class MetadataSources
     /**
      * @var string
      */
-    #[ORM\Column(name: 'type', type: \Doctrine\DBAL\Types\Types::STRING, length: 0, nullable: false)]
+    #[ORM\Column(name: 'type', type: \Doctrine\DBAL\Types\Types::ENUM, nullable: false, options: ['values' => ['repository', 'metadataRepository', 'dataverse', 'dspace', 'user']])]
     private string $type;
 
     /**

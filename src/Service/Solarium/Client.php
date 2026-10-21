@@ -164,10 +164,10 @@ class Client extends \Solarium\Client
         return $this;
     }
 
-    public function search(string $q = Search::DEFAULT_TERMS, int $start = 0): Result|ResultInterface
+    public function search(string $q = Search::DEFAULT_TERMS, int $start = 0, int $rows = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS): Result|ResultInterface
     {
 
-        $query = $this->buildSearchQuery($q, $start)->addFilters()->getQuery();
+        $query = $this->buildSearchQuery($q, $start, $rows)->addFilters()->getQuery();
 
         try {
             $result = $this->select($query);

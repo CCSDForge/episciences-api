@@ -1,21 +1,7 @@
 # CLAUDE.md
 
-## Framework & Structure
-- Symfony 7.4 (PHP 8.4) + API Platform 4.4
-- JWT auth (lexik + gesdinet)
-- MySQL 8.4 (Doctrine ORM 3), database shared with Episciences
-- Apache Solr (Solarium)
-- Webpack Encore (yarn v4)
-
-## Key Directories
-- `src/Entity/` - API Platform resources
-- `src/State/` - Custom state providers
-- `src/Controller/` - Symfony controllers
-- `src/Doctrine/` - Query extensions
-- `src/Serializer/Normalizer/` - Normalizers
-- `src/Service/Solr/` - Solr clients
-- `migrations/` - Doctrine migrations
-- `tests/` - PHPUnit tests
+## Database
+- MySQL database shared with Episciences
 
 ## Commands
 - Locally use `php8.4` and `./composer`
@@ -42,10 +28,3 @@
 - when asked to write a plan, write it in the ./tmp/ directory of the project
 - when creating new code files, chmod 644
 - never use `git add -A` or `git add .`: list the files to commit explicitly
-
-# Directories to ignore
-- `vendor/`
-- `node_modules/`
-- `var/`
-- `public/build/`
-- `tmp/`

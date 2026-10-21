@@ -68,6 +68,9 @@ jobs:
       
     - name: Validate Doctrine mapping
       run: APP_ENV=test make docker-validate
+
+    - name: Lint the OpenAPI specification
+      run: make openapi-lint
       
     - name: Run tests with coverage
       run: make docker-test-coverage
@@ -79,7 +82,7 @@ jobs:
     - name: Upload PHP coverage
       uses: codecov/codecov-action@v5
       with:
-        file: ./coverage-php.xml
+        files: ./coverage-php.xml
         flags: php
         name: php-coverage
       env:

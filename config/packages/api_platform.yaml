@@ -32,6 +32,15 @@ api_platform:
         html: ['text/html']
         xml: ['application/xml']
 
+    # API Platform 4 defaults omit `json`, which broke /api/docs.json (404).
+    # The `json` docs format is served as OpenAPI, as with API Platform 3.
+    docs_formats:
+        jsonld: ['application/ld+json']
+        jsonopenapi: ['application/vnd.openapi+json']
+        yamlopenapi: ['application/vnd.openapi+yaml']
+        json: ['application/json']
+        html: ['text/html']
+
     # Set this to false if you want Webby to disappear.
     show_webby: false
     #Since api-platform/core 3.3: Setting the value of "use_symfony_listeners" will be mandatory in 4.0 as it will default to "false".
@@ -69,3 +78,4 @@ api_platform:
     exception_to_status:
         # Custom mapping
         App\Exception\ResourceNotFoundException : 404
+        App\Exception\MissingRequestParameterException : 400

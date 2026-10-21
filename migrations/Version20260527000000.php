@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DoctrineMigrations;
 
+use App\Doctrine\Migration\SchemaGuardTrait;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
@@ -31,55 +32,81 @@ use Doctrine\Migrations\AbstractMigration;
  */
 final class Version20260527000000 extends AbstractMigration
 {
+    use SchemaGuardTrait;
+
     public function getDescription(): string
     {
         return 'Add indexed is_public generated column to pages and news; fix UniqueConstraints on pages and news.';
     }
 
+    /**
+     * MySQL commits the DDL statements implicitly: a transaction would already be closed
+     * when Doctrine tries to commit it.
+     */
+    public function isTransactional(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Every step is guarded so the migration can run on databases whose schema
+     * differs from the expected one (e.g. `news` without the `rvcode` index) and
+     * can be re-run after a partial failure (MySQL DDL is not transactional).
+     */
     public function up(Schema $schema): void
     {
         // ------------------------------------------------------------------ pages
         // Drop the two incorrect single-column unique constraints
-        $this->addSql("ALTER TABLE pages DROP INDEX rvcode");
-        $this->addSql("ALTER TABLE pages DROP INDEX page_code");
+        $this->dropIndexIfExists('pages', 'rvcode');
+        $this->dropIndexIfExists('pages', 'page_code');
 
         // Add the correct composite unique constraint
-        $this->addSql("ALTER TABLE pages ADD CONSTRAINT rvcode_page_code UNIQUE (code, page_code)");
+        if (!$this->indexExists('pages', 'rvcode_page_code')) {
+            $this->addSql("ALTER TABLE pages ADD CONSTRAINT rvcode_page_code UNIQUE (code, page_code)");
+        }
 
-        // Add stored generated column for indexed visibility filtering
-        $this->addSql(
-            "ALTER TABLE pages ADD COLUMN is_public TINYINT(1) " .
-            "GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(visibility, '\$[0]')) = 'public') STORED"
-        );
-
-        // Index the generated column so WHERE is_public = 1 uses an index scan
-        $this->addSql("CREATE INDEX idx_pages_is_public ON pages (is_public)");
+        // Add stored generated column for indexed visibility filtering,
+        // then index it so WHERE is_public = 1 uses an index scan
+        $this->addIsPublicColumn('pages', 'idx_pages_is_public');
 
         // ------------------------------------------------------------------- news
         // Drop the incorrect single-column unique constraint
-        $this->addSql("ALTER TABLE news DROP INDEX rvcode");
+        $this->dropIndexIfExists('news', 'rvcode');
 
-        // Add stored generated column for indexed visibility filtering
-        $this->addSql(
-            "ALTER TABLE news ADD COLUMN is_public TINYINT(1) " .
-            "GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(visibility, '\$[0]')) = 'public') STORED"
-        );
-
-        $this->addSql("CREATE INDEX idx_news_is_public ON news (is_public)");
+        $this->addIsPublicColumn('news', 'idx_news_is_public');
     }
 
+    /**
+     * Removes the `is_public` columns and their indexes.
+     *
+     * The unique constraints fixed by up() are kept: the former UNIQUE(code) constraints
+     * (one news / one page per journal) and UNIQUE(page_code) were wrong, and restoring
+     * them fails as soon as a journal has two news or two pages.
+     */
     public function down(Schema $schema): void
     {
-        // ------------------------------------------------------------------- news
-        $this->addSql("DROP INDEX idx_news_is_public ON news");
-        $this->addSql("ALTER TABLE news DROP COLUMN is_public");
-        $this->addSql("ALTER TABLE news ADD CONSTRAINT rvcode UNIQUE (code)");
+        foreach (['news' => 'idx_news_is_public', 'pages' => 'idx_pages_is_public'] as $table => $indexName) {
+            $this->dropIndexIfExists($table, $indexName);
 
-        // ------------------------------------------------------------------ pages
-        $this->addSql("DROP INDEX idx_pages_is_public ON pages");
-        $this->addSql("ALTER TABLE pages DROP COLUMN is_public");
-        $this->addSql("ALTER TABLE pages DROP INDEX rvcode_page_code");
-        $this->addSql("ALTER TABLE pages ADD CONSTRAINT rvcode UNIQUE (code)");
-        $this->addSql("ALTER TABLE pages ADD CONSTRAINT page_code UNIQUE (page_code)");
+            if ($this->columnExists($table, 'is_public')) {
+                $this->addSql("ALTER TABLE $table DROP COLUMN is_public");
+            }
+        }
+
+        $this->write('The unique constraints fixed on pages and news are kept.');
+    }
+
+    private function addIsPublicColumn(string $table, string $indexName): void
+    {
+        if (!$this->columnExists($table, 'is_public')) {
+            $this->addSql(
+                "ALTER TABLE $table ADD COLUMN is_public TINYINT(1) " .
+                "GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(visibility, '\$[0]')) = 'public') STORED"
+            );
+        }
+
+        if (!$this->indexExists($table, $indexName)) {
+            $this->addSql("CREATE INDEX $indexName ON $table (is_public)");
+        }
     }
 }

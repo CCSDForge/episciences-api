@@ -1,0 +1,6 @@
+extends:
+  - recommended
+
+rules:
+  # Collection routes are exposed with a trailing slash (e.g. /api/papers/); the spec must match them.
+  no-path-trailing-slash: off

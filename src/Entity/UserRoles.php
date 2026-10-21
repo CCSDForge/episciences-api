@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use App\OpenApi\OpenApiSchemas;
+use ApiPlatform\Metadata\ApiProperty;
 use App\AppConstants;
 use App\Repository\UserRolesRepository;
 use Doctrine\ORM\Mapping as ORM;
@@ -34,6 +36,7 @@ class UserRoles
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
             'read:Me',
         ])]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_IRI)]
     private ?User $user = null;
 
     public function __construct(

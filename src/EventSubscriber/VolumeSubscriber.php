@@ -32,40 +32,19 @@ readonly class VolumeSubscriber implements EventSubscriberInterface
     {
         $object = $event->getControllerResult();
 
-        if (
-            $object instanceof Volume ||
-            $object instanceof Paginator ||
-            is_array($object)) {
+        if ($object instanceof Volume) { // applied to Item
+            $this->processVolumes([$object]);
 
-            if ($object instanceof Volume) { // applied to Item
-                $this->processVolume($object);
+        } elseif ($object instanceof Paginator) { // applied to paginated Collection
 
-
-            } elseif ($object instanceof Paginator) { // applied to paginated Collection
-
-                try {
-                    foreach ($object->getIterator() as $currentObject) {
-
-                        if ($currentObject instanceof Volume) {
-                            $this->processVolume($currentObject);
-                        }
-
-                    }
-                } catch (\Exception $e) {
-                    $this->logger->error($e->getMessage());
-
-                }
-
-            } else { // applied to Collection without pagination
-
-                foreach ($object as $currentObject) {
-
-                    if ($currentObject instanceof Volume) {
-                        $this->processVolume($currentObject);
-                    }
-
-                }
+            try {
+                $this->processVolumes(iterator_to_array($object->getIterator(), false));
+            } catch (\Exception $e) {
+                $this->logger->error($e->getMessage());
             }
+
+        } elseif (is_array($object)) { // applied to Collection without pagination
+            $this->processVolumes($object);
         }
     }
 
@@ -75,10 +54,32 @@ readonly class VolumeSubscriber implements EventSubscriberInterface
             KernelEvents::VIEW => ['processVolumePapersCollection', EventPriorities::PRE_SERIALIZE],];
     }
 
-    private function processVolume(Volume $volume): void
+    /**
+     * Fetches the papers of all the volumes in a single query (avoids one query per volume).
+     */
+    private function processVolumes(array $objects): void
     {
-        $sortedPapers = $this->volumeRepository->fetchSortedPapers($volume->getVid());
+        /** @var Volume[] $volumes */
+        $volumes = array_values(array_filter(
+            $objects,
+            static fn($object): bool => $object instanceof Volume && $object->getVid() !== null
+        ));
 
+        if ($volumes === []) {
+            return;
+        }
+
+        $sortedPapers = $this->volumeRepository->fetchSortedPapersByVolumes(
+            array_map(static fn(Volume $volume): int => $volume->getVid(), $volumes)
+        );
+
+        foreach ($volumes as $volume) {
+            $this->processVolume($volume, $sortedPapers[$volume->getVid()] ?? []);
+        }
+    }
+
+    private function processVolume(Volume $volume, array $sortedPapers): void
+    {
         $privateCollection = $sortedPapers['privateCollection'] ?? new ArrayCollection();
         $publicCollection = $sortedPapers['publicCollection'] ?? new ArrayCollection();
 
