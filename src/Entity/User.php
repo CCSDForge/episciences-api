@@ -92,6 +92,8 @@ use App\OpenApi\OpenApiSchemas;
 
         new Get(
             uriTemplate: '/users/{uid}/is-allowed-to-edit-citations',
+            // The controller always returns a JsonResponse: the other formats are rejected (406)
+            formats: ['json'],
             controller: PapersController::class,
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['user']],
