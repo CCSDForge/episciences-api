@@ -358,4 +358,52 @@ class SolrFacetServiceTest extends TestCase
         $this->assertSame($this->facetService, $result);
         $this->assertSame($mockJournal, $this->facetService->getJournal());
     }
+
+    /**
+     * The "others" values (Others_FacetSep_...) also start with "O": they are excluded from the letter O.
+     */
+    public function testGetSolrFacetPageWithLetterOExcludesOthers(): void
+    {
+        $facetData = ['facet_counts' => ['facet_fields' => ['list' => ['Ochem, Pascal', 2, 'Oger, Bérénice', 1, 'Ota, Takahiro', 1]]]];
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getContent')->willReturn(json_encode($facetData));
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->callback(static function (string $url): bool {
+                parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
+
+                return ($query['facet_prefix'] ?? null) === 'O'
+                    && ($query['facet_matches'] ?? null) === '^(?!Others_FacetSep_).*'
+                    && ($query['facet_limit'] ?? null) === '-1';
+            }))
+            ->willReturn($response);
+
+        $page = $this->facetService->getSolrFacetPage([
+            'facetFieldName' => 'authorLastNameFirstNamePrefixed_fs',
+            'letter' => 'o',
+        ], 1, 1);
+
+        $this->assertSame(['Oger, Bérénice' => 1], $page['values']);
+        $this->assertSame(3, $page['total']);
+    }
+
+    public function testGetSolrFacetWithOthersLetterKeepsOthersPrefix(): void
+    {
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getContent')->willReturn(json_encode(['facet_counts' => ['facet_fields' => ['list' => []]]]));
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->logicalAnd($this->stringContains('facet.prefix=Others_FacetSep_'), $this->logicalNot($this->stringContains('facet.matches'))))
+            ->willReturn($response);
+
+        $this->facetService->getSolrFacet([
+            'facetFieldName' => 'authorLastNameFirstNamePrefixed_fs',
+            'letter' => 'others',
+        ]);
+    }
 }

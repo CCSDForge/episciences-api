@@ -62,9 +62,21 @@ class PapersControllerTest extends TestCase
 
     public function testReturnsFalseWhenRequestIsNull(): void
     {
-        $result = $this->controller->__invoke($this->entityManager, null);
+        $result = $this->controller->isAllowed($this->entityManager, null);
 
         $this->assertFalse($result);
+    }
+
+    // ─── HTTP response ─────────────────────────────────────────────────────────
+
+    public function testInvokeReturnsTheAnswerAsJsonResponse(): void
+    {
+        $request = Request::create('/api/users/0/is-allowed-to-edit-citations', \Symfony\Component\HttpFoundation\Request::METHOD_GET, ['documentId' => 42]);
+
+        $response = $this->controller->__invoke($this->entityManager, $request);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('false', $response->getContent());
     }
 
     // ─── Missing documentId ────────────────────────────────────────────────────
@@ -76,7 +88,7 @@ class PapersControllerTest extends TestCase
         $this->expectException(MissingRequestParameterException::class);
         $this->expectExceptionMessage('Required "documentId" parameter in "Request query" is not present.');
 
-        $this->controller->__invoke($this->entityManager, $request);
+        $this->controller->isAllowed($this->entityManager, $request);
     }
 
     // ─── userId = 0 ────────────────────────────────────────────────────────────
@@ -88,7 +100,7 @@ class PapersControllerTest extends TestCase
 
         $this->entityManager->expects($this->never())->method('getRepository');
 
-        $result = $this->controller->__invoke($this->entityManager, $request);
+        $result = $this->controller->isAllowed($this->entityManager, $request);
 
         $this->assertFalse($result);
     }
@@ -105,7 +117,7 @@ class PapersControllerTest extends TestCase
 
         $this->entityManager->expects($this->never())->method('getRepository');
 
-        $result = $this->controller->__invoke($this->entityManager, $request);
+        $result = $this->controller->isAllowed($this->entityManager, $request);
 
         $this->assertFalse($result);
     }
@@ -123,7 +135,7 @@ class PapersControllerTest extends TestCase
         ]);
         $this->userRepository->method('findOneBy')->with(['uid' => 99])->willReturn(null);
 
-        $result = $this->controller->__invoke($this->entityManager, $request);
+        $result = $this->controller->isAllowed($this->entityManager, $request);
 
         $this->assertFalse($result);
     }
@@ -142,7 +154,7 @@ class PapersControllerTest extends TestCase
         $this->userRepository->method('findOneBy')->with(['uid' => 99])->willReturn($user);
         $this->paperRepository->method('findOneBy')->with(['docid' => 42])->willReturn(null);
 
-        $result = $this->controller->__invoke($this->entityManager, $request);
+        $result = $this->controller->isAllowed($this->entityManager, $request);
 
         $this->assertFalse($result);
     }
@@ -174,7 +186,7 @@ class PapersControllerTest extends TestCase
         $this->userRepository->method('findOneBy')->willReturn($user);
         $this->paperRepository->method('findOneBy')->willReturn($paper);
 
-        $result = $this->controller->__invoke($this->entityManager, $request);
+        $result = $this->controller->isAllowed($this->entityManager, $request);
 
         $this->assertTrue($result);
     }
@@ -210,7 +222,7 @@ class PapersControllerTest extends TestCase
         $this->userRepository->method('findOneBy')->willReturn($user);
         $this->paperRepository->method('findOneBy')->willReturn($paper);
 
-        $result = $this->controller->__invoke($this->entityManager, $request);
+        $result = $this->controller->isAllowed($this->entityManager, $request);
 
         $this->assertTrue($result);
     }
@@ -233,7 +245,7 @@ class PapersControllerTest extends TestCase
         $this->userRepository->method('findOneBy')->willReturn($user);
         $this->paperRepository->method('findOneBy')->willReturn($paper);
 
-        $result = $this->controller->__invoke($this->entityManager, $request);
+        $result = $this->controller->isAllowed($this->entityManager, $request);
 
         $this->assertTrue($result);
     }
@@ -256,7 +268,7 @@ class PapersControllerTest extends TestCase
         $this->userRepository->method('findOneBy')->willReturn($user);
         $this->paperRepository->method('findOneBy')->willReturn($paper);
 
-        $result = $this->controller->__invoke($this->entityManager, $request);
+        $result = $this->controller->isAllowed($this->entityManager, $request);
 
         $this->assertTrue($result);
     }
@@ -279,7 +291,7 @@ class PapersControllerTest extends TestCase
         $this->userRepository->method('findOneBy')->willReturn($user);
         $this->paperRepository->method('findOneBy')->willReturn($paper);
 
-        $result = $this->controller->__invoke($this->entityManager, $request);
+        $result = $this->controller->isAllowed($this->entityManager, $request);
 
         $this->assertTrue($result);
     }
@@ -303,7 +315,7 @@ class PapersControllerTest extends TestCase
         $this->userRepository->method('findOneBy')->willReturn($user);
         $this->paperRepository->method('findOneBy')->willReturn($paper);
 
-        $result = $this->controller->__invoke($this->entityManager, $request);
+        $result = $this->controller->isAllowed($this->entityManager, $request);
 
         $this->assertFalse($result);
     }
@@ -331,6 +343,6 @@ class PapersControllerTest extends TestCase
             ->with(['docid' => 7])
             ->willReturn($paper);
 
-        $this->controller->__invoke($this->entityManager, $request);
+        $this->controller->isAllowed($this->entityManager, $request);
     }
 }

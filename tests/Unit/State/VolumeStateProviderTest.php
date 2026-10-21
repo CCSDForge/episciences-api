@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\State;
 
+use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\State\Pagination\Pagination;
 use App\Doctrine\UnpaginatedCollectionLimitExtension;
@@ -14,14 +15,18 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 /**
  * The volumes requested without pagination are capped like the Doctrine collections.
+ * A single volume is only returned for the requested journal.
+ * A page lower than 1 is rejected.
  */
 class VolumeStateProviderTest extends TestCase
 {
@@ -50,6 +55,66 @@ class VolumeStateProviderTest extends TestCase
 
         $this->assertSame($volumes, $this->provide($volumes));
         $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+    }
+
+    public function testVolumeIsSearchedInTheRequestedJournal(): void
+    {
+        $this->assertCriteria(['rvid' => 8], ['vid' => 1083, 'rvid' => 8]);
+    }
+
+    public function testVolumeIsSearchedInAllJournalsWithoutJournal(): void
+    {
+        $this->assertCriteria([], ['vid' => 1083]);
+    }
+
+    #[TestWith(['0'])]
+    #[TestWith(['-1'])]
+    #[TestWith(['abc'])]
+    public function testPageLowerThanOneIsRejected(string $page): void
+    {
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturn($this->createStub(VolumeRepository::class));
+
+        $pagination = new Pagination();
+
+        $provider = new VolumeStateProvider(
+            $entityManager,
+            $this->createStub(LoggerInterface::class),
+            $pagination,
+            $this->createStub(Security::class),
+            new UnpaginatedCollectionLimitExtension($pagination, $this->createStub(ManagerRegistry::class), new RequestStack())
+        );
+
+        $operation = new GetCollection(class: Volume::class);
+
+        $this->expectException(BadRequestHttpException::class);
+
+        $provider->provide($operation, [], ['operation' => $operation, 'filters' => ['page' => $page]]);
+    }
+
+    private function assertCriteria(array $filters, array $expectedCriteria): void
+    {
+        $volume = new Volume();
+
+        $volumeRepository = $this->createMock(VolumeRepository::class);
+        $volumeRepository->expects($this->once())->method('findOneByWithContext')->with($expectedCriteria)->willReturn($volume);
+
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturn($volumeRepository);
+
+        $pagination = new Pagination();
+
+        $provider = new VolumeStateProvider(
+            $entityManager,
+            $this->createStub(LoggerInterface::class),
+            $pagination,
+            $this->createStub(Security::class),
+            new UnpaginatedCollectionLimitExtension($pagination, $this->createStub(ManagerRegistry::class), new RequestStack())
+        );
+
+        $operation = new Get(class: Volume::class);
+
+        $this->assertSame($volume, $provider->provide($operation, ['vid' => 1083], ['operation' => $operation, 'filters' => $filters]));
     }
 
     /**

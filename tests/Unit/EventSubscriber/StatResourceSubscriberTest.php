@@ -2,9 +2,11 @@
 
 namespace App\Tests\Unit\EventSubscriber;
 
+use App\AppConstants;
 use App\EventSubscriber\StatResourceSubscriber;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\AbstractStatResource;
+use App\Service\Stats;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -87,6 +89,21 @@ class StatResourceSubscriberTest extends TestCase
         $event = $this->makeEvent($resource);
 
         $this->subscriber->checkStatResourceAvailability($event);
+        $this->addToAssertionCount(1);
+    }
+
+    /**
+     * startAfterDate is documented for GET /api/journals/stats/nb-submissions/{code}
+     */
+    public function testSubmissionsStatAcceptsStartAfterDate(): void
+    {
+        $resource = $this->makeStatResource(
+            Stats::AVAILABLE_PAPERS_FILTERS,
+            [AppConstants::START_AFTER_DATE => '2023-01-01', AppConstants::WITH_DETAILS => true],
+            564
+        );
+
+        $this->subscriber->checkStatResourceAvailability($this->makeEvent($resource));
         $this->addToAssertionCount(1);
     }
 

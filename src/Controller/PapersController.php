@@ -9,18 +9,25 @@ use App\Entity\Paper;
 use App\Entity\User;
 use App\Exception\MissingRequestParameterException;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 
 class PapersController
 {
 
     /**
-     * @param EntityManagerInterface $entityManager
-     * @param Request|null $request
-     * @return bool
+     * Returns a response: a scalar controller result is rejected by the API Platform view listeners.
      * @throws MissingRequestParameterException
      */
-    public function __invoke(EntityManagerInterface $entityManager, ?Request $request = null): bool
+    public function __invoke(EntityManagerInterface $entityManager, ?Request $request = null): JsonResponse
+    {
+        return new JsonResponse($this->isAllowed($entityManager, $request));
+    }
+
+    /**
+     * @throws MissingRequestParameterException
+     */
+    public function isAllowed(EntityManagerInterface $entityManager, ?Request $request = null): bool
     {
 
         if ($request instanceof \Symfony\Component\HttpFoundation\Request) {

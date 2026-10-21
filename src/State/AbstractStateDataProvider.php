@@ -17,6 +17,7 @@ use App\Traits\ToolsTrait;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 abstract class AbstractStateDataProvider
 {
@@ -66,6 +67,7 @@ abstract class AbstractStateDataProvider
 
     /**
      * @throws ResourceNotFoundException
+     * @throws BadRequestHttpException
      */
     public function checkAndProcessFilters(array &$context = []): void
     {
@@ -73,7 +75,11 @@ abstract class AbstractStateDataProvider
         $operation = $context['operation'] ?? null;
         $context[self::CONTEXT_JOURNAL_KEY] = null;
 
-        $context['filters']['page'] = (isset($context['filters']['page']) && (int)$context['filters']['page']) > 0 ? (int)$context['filters']['page'] : 1;
+        if (isset($context['filters']['page']) && (int)$context['filters']['page'] < 1) {
+            throw new BadRequestHttpException('Page should not be less than 1');
+        }
+
+        $context['filters']['page'] = isset($context['filters']['page']) ? (int)$context['filters']['page'] : 1;
         $context['filters']['pagination'] = !isset($context['filters']['pagination']) || filter_var($context['filters']['pagination'], FILTER_VALIDATE_BOOLEAN);
 
         if (isset($context['filters']['code'])) {

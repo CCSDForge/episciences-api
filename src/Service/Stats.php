@@ -37,7 +37,7 @@ class Stats
     public const TOTAL_REFUSED_SUBMITTED_SAME_YEAR = 'refusedSubmittedSameYear';
     public const ACCEPTANCE_RATE = 'acceptanceRate'; // TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR / submissions by year
     public const REF_YEAR = 2013; // statistics since this year
-    public const AVAILABLE_PAPERS_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::PAPER_FLAG, AppConstants::PAPER_STATUS, AppConstants::PAPER_STATUS, AppConstants::YEAR_PARAM];
+    public const AVAILABLE_PAPERS_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::PAPER_FLAG, AppConstants::PAPER_STATUS, AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE];
     public const AVAILABLE_USER_ROLES_FILTERS = ['rvid', 'uid', 'role'];
     public const AVAILABLE_USERS_FILTERS = [AppConstants::WITH_DETAILS];
     public const DEFAULT_METHOD = 'average';
@@ -489,13 +489,7 @@ class Stats
         }
 
         // Values independent of the year, and PAPER_LOG counters for all the years: computed once, outside the loop
-        try {
-            $imported = $papersRepository->submissionsQuery($filters, false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])
-                ->getQuery()->getSingleScalarResult();
-        } catch (NoResultException|NonUniqueResultException $e) {
-            $imported = 0;
-            $this->logger->error($e->getMessage());
-        }
+        $importedByYear = $papersRepository->getImportedByYear($filters);
 
         $nbAcceptedSubmittedSameYear = $this->getNbPapersByStatus($rvId);
 
@@ -504,56 +498,48 @@ class Stats
         $publishedByYear = $paperLogRepository->getPublishedByYear($rvId, $years, $startAfterDate);
         $acceptedNotYetPublishedByYear = $paperLogRepository->getAllAcceptedNotYetPublishedByYear($rvId, $years, $startAfterDate);
 
+        $submissionsByYear = $papersRepository->countSubmissionsByYear(['is' => ['rvid' => $rvId]]);
+        // Some versions of a paper may have been imported while others have not: counted apart rather than by difference
+        $submissionsWithoutImportedByYear = $papersRepository->countSubmissionsByYear([
+            'is' => ['rvid' => $rvId, AppConstants::START_AFTER_DATE => $startAfterDate, AppConstants::PAPER_FLAG => PapersRepository::AVAILABLE_FLAG_VALUES['submitted']],
+        ]);
+        $submissionsByYearAndRepo = $papersRepository->countSubmissionsByYearAndRepository([
+            'is' => ['rvid' => $rvId, AppConstants::START_AFTER_DATE => $startAfterDate],
+        ]);
+
         foreach ($years as $year) { // pour le dashboard
 
-            try {
+            $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $submissionsByYear[(int)$year] ?? 0;
 
-                $submissions = $papersRepository->
-                submissionsQuery(['is' => ['rvid' => $rvId, 'submissionDate' => $year]])->
-                getQuery()->
-                getSingleScalarResult();
+            $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $importedByYear[(int)$year] ?? 0;
 
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $submissions;
+            $submissionsWithoutImported = $submissionsWithoutImportedByYear[(int)$year] ?? 0;
 
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $imported;
+            $accepted = $acceptedByYear[(int)$year] ?? 0;
+            $refused = $refusedByYear[(int)$year] ?? 0;
+            $published = $publishedByYear[(int)$year] ?? 0;
 
-                //Il est possible que certaines versions soient importées tandis que d'autres ne le soient pas.
-                // D'où la nécessité d'une nouvelle requête plutôt que de faire la différence
+            $details[self::SUBMISSIONS_BY_YEAR][$year]['published'] = $published;
+            $details[self::SUBMISSIONS_BY_YEAR][$year]['acceptedNotYetPublished'] = $acceptedNotYetPublishedByYear[(int)$year] ?? 0;
+            $details[self::SUBMISSIONS_BY_YEAR][$year]['refused'] = $refused;
+            $details[self::SUBMISSIONS_BY_YEAR][$year]['accepted'] = $accepted;
+            $details[self::SUBMISSIONS_BY_YEAR][$year]['others'] = max(0, $submissionsWithoutImported - ($accepted + $refused));
 
-                $submissionsWithoutImported = $papersRepository->getSubmissionsWithoutImported($rvId, $startAfterDate, $year);
+            $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] =
+                isset($nbAcceptedSubmittedSameYear[$rvId][$year]) ?
+                    $nbAcceptedSubmittedSameYear[$rvId][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] :
+                    0;
 
-                $accepted = $acceptedByYear[(int)$year] ?? 0;
-                $refused = $refusedByYear[(int)$year] ?? 0;
-                $published = $publishedByYear[(int)$year] ?? 0;
+            $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE] = $paperLogRepository->getAcceptanceRate([
+                'rvid' => $rvId,
+                'year' => [$year],
+                'startAfterDate' => $startAfterDate,
+                'acceptedTotal' => $accepted, // Avoids another query
+                'refusedTotal' => $refused    // idem
+            ]);
 
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['published'] = $published;
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['acceptedNotYetPublished'] = $acceptedNotYetPublishedByYear[(int)$year] ?? 0;
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['refused'] = $refused;
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['accepted'] = $accepted;
-                $details[self::SUBMISSIONS_BY_YEAR][$year]['others'] = max(0, $submissionsWithoutImported - ($accepted + $refused));
-
-                $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] =
-                    isset($nbAcceptedSubmittedSameYear[$rvId][$year]) ?
-                        $nbAcceptedSubmittedSameYear[$rvId][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] :
-                        0;
-
-
-                $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE] = $paperLogRepository->getAcceptanceRate([
-                    'rvid' => $rvId,
-                    'year' => [$year],
-                    'startAfterDate' => $startAfterDate,
-                    'acceptedTotal' => $accepted, // Pour éviter une autre requête
-                    'refusedTotal' => $refused    // idem
-                ]);
-
-                foreach ($repositories as $repoId) {
-                    $details['submissionsByRepo'][$year][$this->metadataSources->getLabel($repoId)]['submissions'] = $papersRepository->
-                    submissionsQuery(
-                        ['is' => ['rvid' => $rvId, AppConstants::SUBMISSION_DATE => $year, 'repoid' => $repoId, AppConstants::START_AFTER_DATE => $startAfterDate]
-                        ])->getQuery()->getSingleScalarResult();
-                }
-            } catch (NoResultException|NonUniqueResultException $e) {
-                $this->logger->error($e->getMessage());
+            foreach ($repositories as $repoId) {
+                $details['submissionsByRepo'][$year][$this->metadataSources->getLabel($repoId)]['submissions'] = $submissionsByYearAndRepo[(int)$year][(int)$repoId] ?? 0;
             }
         }
 

@@ -12,11 +12,15 @@ NC=\033[0m # No Color
 # Docker Compose command detection
 DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; elif docker compose version >/dev/null 2>&1; then echo "docker compose"; else echo ""; fi)
 
+# OpenAPI lint (make openapi-lint)
+OPENAPI_SPEC ?= var/openapi.json
+REDOCLY_CLI ?= @redocly/cli@2.66.0
+
 # Default target
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install test test-unit test-coverage cov test-file validate clean phpstan rector local-rector check docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer docker-composer-update docker-validate setup-help deploy deploy-branch deploy-tag
+.PHONY: help check-prereqs install test test-unit test-coverage cov test-file validate clean phpstan rector local-rector check docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer docker-composer-update docker-validate openapi-lint setup-help deploy deploy-branch deploy-tag
 
 # Help target - displays all available commands
 help:
@@ -39,6 +43,7 @@ help:
 	@echo ""
 	@echo "$(BLUE)Utility Commands:$(NC)"
 	@echo "  $(BOLD)validate$(NC)          Check PHP syntax of test files"
+	@echo "  $(BOLD)openapi-lint$(NC)      Export the OpenAPI spec in container and lint it with Redocly (needs npx)"
 	@echo "  $(BOLD)clean$(NC)             Clean cache and temporary files"
 	@echo ""
 	@echo "$(BLUE)Docker Development Commands:$(NC)"
@@ -384,6 +389,14 @@ docker-validate:
 	# subsequent non-root steps (e.g. docker-test-coverage) can still write to it.
 	$(DOCKER_COMPOSE) exec -u root php sh -c 'bin/console doctrine:schema:validate --skip-sync; rc=$$?; chown -R "$$(id -u):$$(id -g)" /var/cache /var/log 2>/dev/null || true; exit $$rc'
 	@echo "$(GREEN)✓ Doctrine mapping validated$(NC)"
+
+# Export the OpenAPI specification in container, then lint it on the host with Redocly (redocly.yaml)
+# The cache and logs go to var/ so that the export does not depend on the owner of /var/cache
+openapi-lint:
+	@echo "$(BOLD)Linting the OpenAPI specification...$(NC)"
+	$(DOCKER_COMPOSE) exec -T -e CACHE_PATH=var/cache/ -e LOG_PATH=var/log/ php bin/console api:openapi:export --output=$(OPENAPI_SPEC)
+	npx --yes $(REDOCLY_CLI) lint $(OPENAPI_SPEC) --config redocly.yaml
+	@echo "$(GREEN)✓ OpenAPI specification is valid$(NC)"
 
 # Install dependencies in container
 docker-install:

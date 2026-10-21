@@ -5,7 +5,7 @@
 services:
   # Add standalone MySQL for CI environment
   mysql:
-    image: mysql:8.0
+    image: mysql:8.4
     container_name: episciences-api_mysql_ci
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -28,6 +28,7 @@ services:
     environment:
       - APP_ENV=${APP_ENV:-test}
       - DATABASE_URL=mysql://episciences:episciences@mysql:3306/episciences
+      - DATABASE_SERVER_VERSION=8.4
       # Enables the tests that need a database (tests/Functional), skipped otherwise
       - TEST_DATABASE_URL=mysql://episciences:episciences@mysql:3306/episciences
     depends_on:

@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\OpenApi\OpenApiSchemas;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
@@ -44,7 +45,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         explode: false,
                     )
                 ],
-                security: [['bearerAuth' => []],]
 
             ),
 
@@ -131,8 +131,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     ),
                 ],
 
-                security: [['bearerAuth' => []],]
-
             ),
             order: ['position' => AppConstants::ORDER_ASC, 'rvid' => AppConstants::ORDER_DESC, 'vid' => AppConstants::ORDER_DESC],
             normalizationContext: [
@@ -211,10 +209,10 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     )]
 
     #[ApiProperty(
-        openapiContext: [
-            'type' => 'string',
-            'enum' => ['special_issue', 'proceeding'],
-            'example' => 'special_issue'
+        schema: [
+            'type' => ['array', 'null'],
+            'items' => ['type' => 'string', 'enum' => ['special_issue', 'proceedings']],
+            'example' => ['special_issue'],
         ]
     )]
     #[ORM\Column(type: \Doctrine\DBAL\Types\Types::SIMPLE_ARRAY, nullable: true)]
@@ -249,6 +247,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $titles = null;
     #[ORM\Column(name: 'descriptions', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[Groups(
@@ -258,6 +257,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $descriptions = null;
 
     #[ORM\OneToMany(mappedBy: 'volume', targetEntity: Paper::class)]
@@ -269,7 +269,19 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-
+    #[ApiProperty(
+        schema: [
+            'description' => 'Papers of the volume, sorted by position',
+            'type' => 'array',
+            'items' => [
+                'type' => 'object',
+                'properties' => [
+                    'paperid' => ['type' => 'integer'],
+                    'paperPosition' => ['type' => ['integer', 'null']],
+                ],
+            ],
+        ]
+    )]
     private Collection $papers;
 
     #[Groups(

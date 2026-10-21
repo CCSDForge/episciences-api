@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\OpenApi\OpenApiSchemas;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
@@ -30,7 +31,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Consult a particular Section',
-                security: [['bearerAuth' => []],]
 
             ),
 
@@ -58,7 +58,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
                         explode: false,
                     ),
                 ],
-                security: [['bearerAuth' => []],]
 
             ),
             order: ['rvid' => AppConstants::ORDER_DESC, 'position' => AppConstants::ORDER_ASC, 'sid' => AppConstants::ORDER_ASC],
@@ -126,6 +125,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $titles = null;
 
     #[ORM\Column(name: 'descriptions', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
@@ -136,6 +136,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $descriptions = null;
 
     #[ORM\OneToMany(mappedBy: 'section', targetEntity: Paper::class)]
