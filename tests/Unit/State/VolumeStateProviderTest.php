@@ -15,15 +15,18 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 /**
  * The volumes requested without pagination are capped like the Doctrine collections.
  * A single volume is only returned for the requested journal.
+ * A page lower than 1 is rejected.
  */
 class VolumeStateProviderTest extends TestCase
 {
@@ -62,6 +65,31 @@ class VolumeStateProviderTest extends TestCase
     public function testVolumeIsSearchedInAllJournalsWithoutJournal(): void
     {
         $this->assertCriteria([], ['vid' => 1083]);
+    }
+
+    #[TestWith(['0'])]
+    #[TestWith(['-1'])]
+    #[TestWith(['abc'])]
+    public function testPageLowerThanOneIsRejected(string $page): void
+    {
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturn($this->createStub(VolumeRepository::class));
+
+        $pagination = new Pagination();
+
+        $provider = new VolumeStateProvider(
+            $entityManager,
+            $this->createStub(LoggerInterface::class),
+            $pagination,
+            $this->createStub(Security::class),
+            new UnpaginatedCollectionLimitExtension($pagination, $this->createStub(ManagerRegistry::class), new RequestStack())
+        );
+
+        $operation = new GetCollection(class: Volume::class);
+
+        $this->expectException(BadRequestHttpException::class);
+
+        $provider->provide($operation, [], ['operation' => $operation, 'filters' => ['page' => $page]]);
     }
 
     private function assertCriteria(array $filters, array $expectedCriteria): void
