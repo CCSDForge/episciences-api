@@ -238,10 +238,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
      */
     private function documentOptionalAuthMode(OpenApi $openApi): OpenApi
     {
-        /** @var array<string, string> $paths URI path -> human label */
-        $paths = $this->getOptionalAuthPaths();
-
-        foreach ($paths as $pathKey => $label) {
+        foreach (array_keys($this->getOptionalAuthPaths()) as $pathKey) {
             $path = $openApi->getPaths()->getPath($pathKey);
             $get = $path?->getGet();
 
