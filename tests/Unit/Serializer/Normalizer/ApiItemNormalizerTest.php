@@ -34,4 +34,14 @@ class ApiItemNormalizerTest extends TestCase
 
         $this->assertSame($expectedIri, $data['@id']);
     }
+
+    public function testGeneratedIriIsRemoved(): void
+    {
+        $decorated = $this->createStub(NormalizerInterface::class);
+        $decorated->method('normalize')->willReturn(['@id' => '/api/.well-known/genid/0d0108f11563968581ce', '@type' => 'Solr', 'values' => []]);
+
+        $normalizer = new ApiItemNormalizer($decorated, $this->createStub(EntityManagerInterface::class), $this->createStub(PaperConflictsRepository::class));
+
+        $this->assertSame(['@type' => 'Solr', 'values' => []], $normalizer->normalize(new \stdClass(), 'jsonld'));
+    }
 }

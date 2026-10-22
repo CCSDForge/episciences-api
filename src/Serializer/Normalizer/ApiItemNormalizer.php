@@ -2,6 +2,7 @@
 
 namespace App\Serializer\Normalizer;
 
+use ApiPlatform\Symfony\Routing\SkolemIriConverter;
 use App\Entity\AbstractVolumeSection;
 use App\Entity\EntityIdentifierInterface;
 use App\Entity\Paper;
@@ -68,6 +69,11 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
 
         if ($object instanceof Statistic && is_array($data) && isset($data['@id'])) {
             $data['@id'] = $this->getStatisticIri($object->getName(), $data['@id']);
+        }
+
+        // Generated IRIs (/.well-known/genid/...) cannot be dereferenced and change on every request: blank nodes instead
+        if (is_array($data) && isset($data['@id']) && is_string($data['@id']) && str_contains($data['@id'], strstr(SkolemIriConverter::$skolemUriTemplate, '{id}', true))) {
+            unset($data['@id']);
         }
 
         return $data;
