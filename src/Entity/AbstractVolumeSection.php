@@ -10,7 +10,7 @@ abstract class AbstractVolumeSection
 
     use ToolsTrait;
     protected array $committee;
-    protected int $totalPublishedArticles;
+    protected ?int $totalPublishedArticles = null;
 
     public function __construct(array $options = [])
     {
@@ -36,9 +36,9 @@ abstract class AbstractVolumeSection
     }
 
     /**
-     * @return int
+     * @return int|null null until computed or set
      */
-    public function getTotalPublishedArticles(): int
+    public function getTotalPublishedArticles(): ?int
     {
         return $this->totalPublishedArticles;
     }
@@ -46,15 +46,19 @@ abstract class AbstractVolumeSection
     abstract public function getPapers(): Collection;
 
     /**
+     * Without a value, counts the published papers of the collection (which must then be loaded).
+     *
      * @return AbstractVolumeSection
      */
-    public function setTotalPublishedArticles(): self
+    public function setTotalPublishedArticles(?int $totalPublishedArticles = null): self
     {
-        $totalPublishedArticles = 0;
+        if ($totalPublishedArticles === null) {
+            $totalPublishedArticles = 0;
 
-        foreach ($this->getPapers() as $paper) {
-            if($paper->isPublished()) {
-                ++$totalPublishedArticles;
+            foreach ($this->getPapers() as $paper) {
+                if ($paper->isPublished()) {
+                    ++$totalPublishedArticles;
+                }
             }
         }
 

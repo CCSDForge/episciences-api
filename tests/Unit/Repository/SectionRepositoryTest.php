@@ -4,6 +4,11 @@ namespace App\Tests\Unit\Repository;
 
 use App\Entity\Section;
 use App\Repository\SectionRepository;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Result;
+use Doctrine\DBAL\Statement;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\Persistence\ManagerRegistry;
 use PHPUnit\Framework\TestCase;
 
@@ -33,6 +38,47 @@ class SectionRepositoryTest extends TestCase
         $this->assertStringContainsString('section', $result);
         $this->assertStringContainsString('editor', $result);
         $this->assertStringContainsString('active', $result);
+    }
+
+    /**
+     * Regression: the assigned sections are built from raw rows, without their papers,
+     * so their number of published articles has to be counted by the query.
+     */
+    public function testAssignedSectionsQueryCountsThePublishedArticles(): void
+    {
+        $result = $this->repository->assignedSectionsQuery(123, 456);
+
+        $this->assertStringContainsString('SELECT COUNT(*) FROM PAPERS AS p WHERE p.RVID = sc.RVID AND p.SID = sc.SID AND p.STATUS = 16', $result);
+        $this->assertStringContainsString('AS totalPublishedArticles', $result);
+    }
+
+    public function testGetAssignedSectionSetsTheCountedPublishedArticles(): void
+    {
+        $result = $this->createStub(Result::class);
+        $result->method('fetchAllAssociative')->willReturn([
+            ['UID' => 7, 'RVID' => 3, 'SID' => 4, 'titles' => '{"en":"Section A"}', 'descriptions' => null, 'POSITION' => 2, 'totalPublishedArticles' => '12'],
+            ['UID' => 7, 'RVID' => 3, 'SID' => null, 'titles' => null, 'descriptions' => null, 'POSITION' => null, 'totalPublishedArticles' => '0'],
+        ]);
+
+        $statement = $this->createStub(Statement::class);
+        $statement->method('executeQuery')->willReturn($result);
+
+        $connection = $this->createStub(Connection::class);
+        $connection->method('prepare')->willReturn($statement);
+
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getConnection')->willReturn($connection);
+        $entityManager->method('getClassMetadata')->willReturn(new ClassMetadata(Section::class));
+
+        $registry = $this->createStub(ManagerRegistry::class);
+        $registry->method('getManagerForClass')->willReturn($entityManager);
+
+        $sections = (new SectionRepository($registry))->getAssignedSection(3, [7]);
+
+        $this->assertCount(1, $sections[7]);
+        $this->assertSame(4, $sections[7][0]->getSid());
+        $this->assertSame(['en' => 'Section A'], $sections[7][0]->getTitles());
+        $this->assertSame(12, $sections[7][0]->getTotalPublishedArticles());
     }
 
     public function testAssignedSectionsQueryWithArrayUid(): void
