@@ -9,7 +9,6 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
-use ApiPlatform\Metadata\Link;
 use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use ApiPlatform\OpenApi\Model\MediaType;
@@ -92,8 +91,7 @@ use App\OpenApi\OpenApiSchemas;
         ),
 
         new Get(
-            uriTemplate: '/users/{uuid}/is-allowed-to-edit-citations',
-            uriVariables: ['uuid' => new Link(fromClass: User::class, identifiers: ['uuid'])],
+            uriTemplate: '/users/{uid}/is-allowed-to-edit-citations',
             // The controller always returns a JsonResponse: the other formats are rejected (406)
             formats: ['json'],
             controller: PapersController::class,
@@ -114,18 +112,8 @@ use App\OpenApi\OpenApiSchemas;
 
                 ],
                 summary: "is allowed to edit document's citations",
-                description: "Check if the given user is allowed to edit the document's citations. The user is identified by its UUID; an unknown or invalid UUID returns `false`.",
+                description: "Check if the given user is allowed to edit the document's citations",
                 parameters: [
-                    new Parameter(
-                        name: 'uuid',
-                        in: 'path',
-                        description: 'User UUID',
-                        required: true,
-                        schema: [
-                            'type' => 'string',
-                            'format' => 'uuid',
-                        ],
-                    ),
                     new Parameter(
                         name: 'documentId',
                         in: 'query',
