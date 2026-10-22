@@ -72,6 +72,10 @@ trait ToolsTrait
 
     public static function isValidDate($date, $format = 'Y-m-d'): bool
     {
+        if (!is_string($date)) { // e.g. no start date (null)
+            return false;
+        }
+
         $tDate = \DateTime::createFromFormat($format, $date);
         return $tDate && $tDate->format($format) === $date;
     }
