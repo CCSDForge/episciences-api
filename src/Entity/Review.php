@@ -29,6 +29,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use App\Repository\ReviewRepository;
 use App\OpenApi\OpenApiFactory;
+use App\Resource\Statistic;
 use App\Controller\IndexingDatabaseController;
 use App\Entity\IndexingDatabase;
 
@@ -159,12 +160,12 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Dashboard",
-                description: self::DASHBOARD_DESCRIPTION,
+                description: 'Dashboard of a journal: submissions, decisions, rates, delays and users (by year with `withDetails`). ' . Statistic::SEE_STATISTICS_SECTION,
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: self::DASHBOARD_YEAR_DESCRIPTION,
+                        description: Statistic::YEAR_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -214,12 +215,12 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Total number of submissions",
-                description: "",
+                description: Statistic::SEE_STATISTICS_SECTION,
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The year of submission of the articles',
+                        description: Statistic::YEAR_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -269,12 +270,12 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Average time in days between submission and acceptance",
-                description: "Average time in days between submission and acceptance",
+                description: "Average time in days between submission and acceptance. " . Statistic::SEE_STATISTICS_SECTION,
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The year of acceptance of the articles',
+                        description: Statistic::YEAR_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -324,12 +325,12 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Average time in days between submission and publication",
-                description: "Average time in days between submission and publication",
+                description: "Average time in days between submission and publication. " . Statistic::SEE_STATISTICS_SECTION,
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The year of publication of the articles',
+                        description: Statistic::YEAR_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -444,23 +445,6 @@ class Review
     public const STATUS_DISABLED = 0;
     public const STATUS_ENABLED = 1;
     public const URI_TEMPLATE = '/journals/';
-    public const DASHBOARD_DESCRIPTION = 'Dashboard of a journal: submissions, decisions, rates, delays and users (by year with `withDetails`).'
-        . "\n\n### Which date does `year` filter on?\n\n"
-        . '`year` does not filter every figure on the same date:'
-        . "\n\n| Figure | `year` is the year of |\n|---|---|\n"
-        . "| `nbSubmissions`, `nbImported` | the submission |\n"
-        . "| `nbPublished`, `nbImportedPublished` | the publication |\n"
-        . "| `nbAccepted`, `nbAcceptedNotYetPublished` | the acceptance |\n"
-        . "| `nbRefused` | the refusal |\n"
-        . "| `rates` | the acceptances, refusals and publications |\n"
-        . "| `submissionAcceptanceTime`, `submissionAcceptanceTimeMedian` | the acceptance |\n"
-        . "| `submissionPublicationTime`, `submissionPublicationTimeMedian` | the publication |\n"
-        . "| `totalAcceptedSubmittedSameYear`, `totalPublishedSubmittedSameYear`, `totalRefusedSubmittedSameYear` | both the submission and the decision |\n"
-        . "| `nbOtherStatus` | the submission, minus the acceptances and refusals of the year |\n"
-        . "| `totalOtherSubmittedSameYear` | the submission, minus the articles accepted or refused the same year |\n"
-        . "| `nbUsers` | not available by year (not returned with `year`) |\n\n"
-        . 'For example, with `year=2024`, `nbSubmissions` is the number of articles **submitted** in 2024 and `submissionPublicationTimeMedian` the median delay of the articles **published** in 2024.';
-    public const DASHBOARD_YEAR_DESCRIPTION = 'Year. It does not filter every figure on the same date: see "Which date does `year` filter on?" in the description of the operation.';
 
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]

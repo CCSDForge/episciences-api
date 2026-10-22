@@ -14,9 +14,11 @@ use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
+use ApiPlatform\OpenApi\Model\Tag;
 use ApiPlatform\OpenApi\OpenApi;
 use App\AppConstants;
 use App\EventSubscriber\TruncatedCollectionSubscriber;
+use App\Resource\Statistic;
 use Symfony\Component\HttpFoundation\Response;
 
 final readonly class OpenApiFactory implements OpenApiFactoryInterface
@@ -119,7 +121,26 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
 
         $openApi = $this->documentFieldConfidentiality($openApi);
 
+        $openApi = $this->documentStatistics($openApi);
+
         return $openApi;
+    }
+
+    // -----------------------------------
+    // STATISTICS
+    // -----------------------------------
+    /**
+     * A single description common to all the statistics operations (date filtered by "year", definitions),
+     * shown once by Swagger UI at the top of the Statistics section: the operations refer to it.
+     */
+    private function documentStatistics(OpenApi $openApi): OpenApi
+    {
+        $tags = array_map(
+            static fn(Tag $tag): Tag => $tag->getName() === self::OAF_TAGS['stats'] ? $tag->withDescription(Statistic::STATISTICS_DESCRIPTION) : $tag,
+            $openApi->getTags()
+        );
+
+        return $openApi->withTags($tags);
     }
 
     // -----------------------------------

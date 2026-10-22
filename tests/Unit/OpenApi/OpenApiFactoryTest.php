@@ -19,12 +19,14 @@ use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\Paths;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\Model\Schema;
+use ApiPlatform\OpenApi\Model\Tag;
 use ApiPlatform\OpenApi\OpenApi;
 use App\AppConstants;
 use App\Controller\BoardsController;
 use App\Entity\Review;
 use App\EventSubscriber\TruncatedCollectionSubscriber;
 use App\OpenApi\OpenApiFactory;
+use App\Resource\Statistic;
 use PHPUnit\Framework\TestCase;
 
 class OpenApiFactoryTest extends TestCase
@@ -222,6 +224,31 @@ class OpenApiFactoryTest extends TestCase
     /**
      * Paths of the authentication and error responses tests (no API Platform resource).
      */
+    /**
+     * A single description common to all the statistics operations, on the Statistics tag; the other tags are unchanged.
+     */
+    public function testStatisticsDescriptionIsCommonToTheStatisticsTag(): void
+    {
+        $decorated = $this->createStub(OpenApiFactoryInterface::class);
+        $decorated->method('__invoke')->willReturn(new OpenApi(
+            new Info('Episciences API', '1.0'),
+            [],
+            new Paths(),
+            new Components(schemas: new \ArrayObject(), securitySchemes: new \ArrayObject()),
+            [],
+            [new Tag(OpenApiFactory::OAF_TAGS['stats'], 'Generated'), new Tag(OpenApiFactory::OAF_TAGS['paper'], 'Generated')]
+        ));
+
+        $resourceNameCollectionFactory = $this->createStub(ResourceNameCollectionFactoryInterface::class);
+        $resourceNameCollectionFactory->method('create')->willReturn(new ResourceNameCollection([]));
+
+        $tags = new OpenApiFactory($decorated, $resourceNameCollectionFactory, $this->createStub(ResourceMetadataCollectionFactoryInterface::class))()->getTags();
+
+        $this->assertSame(Statistic::STATISTICS_DESCRIPTION, $tags[0]->getDescription());
+        $this->assertStringContainsString('Which date does `year` filter on?', $tags[0]->getDescription());
+        $this->assertSame('Generated', $tags[1]->getDescription());
+    }
+
     private function createAuthOpenApi(): OpenApi
     {
         $paths = new Paths();

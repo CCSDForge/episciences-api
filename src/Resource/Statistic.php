@@ -24,7 +24,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Retrieve all available statistical indicators",
-                description: self::COLLECTION_DESCRIPTION,
+                description: 'Statistics of all the journals, or of one journal with `rvcode`. ' . self::SEE_STATISTICS_SECTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -63,7 +63,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: self::YEAR_COLLECTION_DESCRIPTION,
+                        description: self::YEAR_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -141,7 +141,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Total number of submissions",
-                description: "",
+                description: self::SEE_STATISTICS_SECTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -155,7 +155,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The year of submission of the articles',
+                        description: self::YEAR_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -246,7 +246,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Median Time submission-publication",
-                description: self::INDICATOR_DESCRIPTION . "\n\n" . self::MEDIAN_DELAY_DESCRIPTION,
+                description: self::INDICATOR_DESCRIPTION . ' ' . self::SEE_STATISTICS_SECTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -260,7 +260,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The year of publication of the articles',
+                        description: self::YEAR_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -323,7 +323,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Median Time submission-acceptance",
-                description: self::INDICATOR_DESCRIPTION . "\n\n" . self::MEDIAN_DELAY_DESCRIPTION,
+                description: self::INDICATOR_DESCRIPTION . ' ' . self::SEE_STATISTICS_SECTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -337,7 +337,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The year of acceptance of the articles',
+                        description: self::YEAR_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -401,7 +401,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Acceptance rate",
-                description: self::INDICATOR_DESCRIPTION,
+                description: self::INDICATOR_DESCRIPTION . ' ' . self::SEE_STATISTICS_SECTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -415,7 +415,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The year of the decision (acceptance or refusal)',
+                        description: self::YEAR_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -464,7 +464,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Evaluation",
-                description: 'Evaluation',
+                description: 'Reviews of the articles. ' . self::SEE_STATISTICS_SECTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -503,7 +503,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The year the invitations were sent (reviews-requested) or the reports were created (reviews-received, median-reviews-number)',
+                        description: self::YEAR_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -546,27 +546,31 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 class Statistic
 {
     public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles.";
-    public const MEDIAN_DELAY_DEFINITION = 'The delay of an article runs from its first submission to its latest publication (or acceptance) recorded in its history, and is truncated to the unit: 13 days count as 1 week. `count` is the number of articles the median is computed from.';
-    public const MEDIAN_DELAY_DESCRIPTION = self::MEDIAN_DELAY_DEFINITION . "\n\n" . '`year` filters on the year of this publication (or acceptance), whatever the year of submission.';
-    public const COLLECTION_DESCRIPTION = 'Statistics of all the journals, or of one journal with `rvcode`.'
-        . "\n\n### Which date does `year` filter on?\n\n"
-        . '`year` (`year[]` for several years) does not filter every indicator on the same date:'
-        . "\n\n| Indicator | `year` is the year of |\n|---|---|\n"
-        . "| `nb-submissions` | the submission |\n"
-        . "| `acceptance-rate` | the decision (acceptance or refusal) |\n"
-        . "| `median-submission-publication` | the publication |\n"
-        . "| `median-submission-acceptance` | the acceptance |\n"
-        . "| `nb-submissions-details`: `nb-submitted-versions`, `nb-imported-versions`, `being-to-publish.other-status` | the submission |\n"
-        . "| `nb-submissions-details`: `published` | the publication |\n"
-        . "| `nb-submissions-details`: `accepted`, `being-to-publish.accepted` | the acceptance |\n"
-        . "| `nb-submissions-details`: `refused` | the refusal |\n"
-        . "| `evaluation`: `reviews-requested` | the sending of the invitation |\n"
-        . "| `evaluation`: `reviews-received`, `median-reviews-number` | the creation of the report |\n\n"
-        . 'For example, with `year=2024`, `median-submission-publication` is the median delay of the articles **published** in 2024, and `nb-submissions` the number of articles **submitted** in 2024.'
-        . "\n\n" . '`startAfterDate` keeps only the articles submitted after this date (not applied to `evaluation`).'
-        . "\n\n### Median delays\n\n" . self::MEDIAN_DELAY_DEFINITION . ' Imported articles are excluded, as for `acceptance-rate`. With `groupBy=journal`, the median is returned for each journal having at least one article (one item by journal, its code in `journal`).'
-        . "\n\n### Articles awaiting a decision\n\n" . '`being-to-publish.other-status` counts the submitted articles (not imported) still awaiting an editorial decision: neither published, accepted nor refused (decisions read from their history, as for `accepted` and `refused`), deleted nor removed. An abandoned article, only paused, is counted.';
-    public const YEAR_COLLECTION_DESCRIPTION = 'Year. It does not filter every indicator on the same date: see "Which date does `year` filter on?" in the description of the operation.';
+    public const SEE_STATISTICS_SECTION = 'See the description of the Statistics section for the date filtered by `year` and the definitions.';
+    public const YEAR_DESCRIPTION = 'Year. It does not filter every statistic on the same date: see "Which date does `year` filter on?" in the description of the Statistics section.';
+    /** Common to all the statistics operations: description of the Statistics tag (see OpenApiFactory) */
+    public const STATISTICS_DESCRIPTION = 'Statistics of the journals: `/api/statistics/*` (all the journals, or one journal with `rvcode`) and `/api/journals/stats/*` (one journal).'
+        . "\n\n#### Which date does `year` filter on?\n\n"
+        . '`year` (`year[]` for several years) does not filter every statistic on the same date:'
+        . "\n\n| Statistic | `year` is the year of |\n|---|---|\n"
+        . "| Submissions: `nb-submissions`, `nb-submitted-versions`, `nb-imported-versions`, `nbSubmissions`, `nbImported` | the submission |\n"
+        . "| Articles awaiting a decision: `being-to-publish.other-status` | the submission |\n"
+        . "| Published articles: `published`, `nbPublished`, `nbImportedPublished` | the publication |\n"
+        . "| Accepted articles: `accepted`, `being-to-publish.accepted`, `nbAccepted`, `nbAcceptedNotYetPublished` | the acceptance |\n"
+        . "| Refused articles: `refused`, `nbRefused` | the refusal |\n"
+        . "| Rates: `acceptance-rate`, `rates` | the acceptances, refusals and publications |\n"
+        . "| Submission-acceptance delays: `median-submission-acceptance`, `delay-submission-acceptance`, `submissionAcceptanceTime`, `submissionAcceptanceTimeMedian` | the acceptance |\n"
+        . "| Submission-publication delays: `median-submission-publication`, `delay-submission-publication`, `submissionPublicationTime`, `submissionPublicationTimeMedian` | the publication |\n"
+        . "| Submitted and decided the same year: `totalAcceptedSubmittedSameYear`, `totalPublishedSubmittedSameYear`, `totalRefusedSubmittedSameYear` | both the submission and the decision |\n"
+        . "| Dashboard `nbOtherStatus` | the submission, minus the acceptances and refusals of the year |\n"
+        . "| Dashboard `totalOtherSubmittedSameYear` | the submission, minus the articles accepted or refused the same year |\n"
+        . "| Reviews requested: `reviews-requested` | the sending of the invitation |\n"
+        . "| Reviews received: `reviews-received`, `median-reviews-number` | the creation of the report |\n"
+        . "| Users: `nb-users`, `nbUsers` | not available by year |\n\n"
+        . 'For example, with `year=2024`, `nb-submissions` is the number of articles **submitted** in 2024, and `median-submission-publication` the median delay of the articles **published** in 2024, whatever their year of submission.'
+        . "\n\n" . '`startAfterDate` keeps only the articles submitted after this date (not applied to the reviews).'
+        . "\n\n#### Delays\n\n" . 'The delay of an article runs from its first submission to its latest publication (or acceptance) recorded in its history, and is truncated to the unit: 13 days count as 1 week. Imported articles are excluded, as for the rates. In `/api/statistics/*`, `count` is the number of articles a median is computed from, and `groupBy=journal` returns the median of each journal having at least one article.'
+        . "\n\n#### Articles awaiting a decision\n\n" . '`being-to-publish.other-status` counts the submitted articles (not imported) still awaiting an editorial decision: neither published, accepted nor refused (decisions read from their history, as for `accepted` and `refused`), deleted nor removed. An abandoned article, only paused, is counted.';
     /** Values of the "indicator" parameter (lists for the OpenAPI enums) */
     public const PUBLICATION_INDICATOR_VALUES = [
         self::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'],
