@@ -63,7 +63,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: self::YEAR_COLLECTION_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -76,7 +76,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: self::YEAR_COLLECTION_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -156,7 +156,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'The year of submission of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -169,7 +169,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'The year of submission of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -419,7 +419,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'The year of the decision (acceptance or refusal)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -432,7 +432,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'The year of the decision (acceptance or refusal)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -507,7 +507,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'The year the invitations were sent (reviews-requested) or the reports were created (reviews-received, median-reviews-number)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -520,7 +520,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'The year the invitations were sent (reviews-requested) or the reports were created (reviews-received, median-reviews-number)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -552,6 +552,7 @@ class Statistic
     public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles";
     public const MEDIAN_DELAY_DESCRIPTION = 'The delay of an article runs from its first submission to its latest publication (or acceptance for "median-submission-acceptance") recorded in its history, and is truncated to the unit (e.g. 13 days count as 1 week). "year" filters on the year of this publication (or acceptance). "count" is the number of articles the median is computed from.';
     public const COLLECTION_DESCRIPTION = 'The median delays exclude imported articles: ' . self::MEDIAN_DELAY_DESCRIPTION . ' With "groupBy=journal", a median delay is returned for each journal having at least one article.';
+    public const YEAR_COLLECTION_DESCRIPTION = 'The year, whose meaning depends on the indicator: year of submission (nb-submissions, submitted and imported versions of nb-submissions-details), year of the decision (acceptance-rate, published, accepted and refused articles of nb-submissions-details), year of publication or acceptance (median delays), year the invitations were sent or the reports were created (evaluation)';
     public const GROUP_BY_PARAM = 'groupBy';
     public const GROUP_BY_JOURNAL = 'journal';
     public const STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER = '/api/statistics/';
