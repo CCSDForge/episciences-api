@@ -436,7 +436,7 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
     /**
-     * Accepted papers that have been neither published, refused nor abandoned.
+     * Accepted papers that have been neither published nor refused (an abandoned paper is only paused: it is still counted).
      * One NOT EXISTS per status: with an OR on the status, MySQL materializes the subquery with a full scan of PAPER_LOG.
      */
     private function acceptedNotYetPublishedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
@@ -446,7 +446,6 @@ class PaperLogRepository extends ServiceEntityRepository
         $excludedStatuses = [
             'pStatus' => Paper::STATUS_PUBLISHED, // accepted and published
             'rStatus' => Paper::STATUS_REFUSED, // accepted and refused
-            'aStatus' => Paper::STATUS_ABANDONED, // accepted and abandoned
         ];
 
         foreach ($excludedStatuses as $parameter => $status) {

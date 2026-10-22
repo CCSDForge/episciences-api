@@ -6,6 +6,7 @@ namespace App\Tests\Functional\Repository;
 
 use App\Entity\Paper;
 use App\Entity\PaperLog;
+use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Tools\DsnParser;
@@ -20,8 +21,9 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
 /**
- * Runs PapersRepository::getSubmissionsAwaitingDecision() ("other-status" of the statistics) against a real
- * MySQL database: the decisions are read from the history, as the accepted and refused counts.
+ * Runs PapersRepository::getSubmissionsAwaitingDecision() ("other-status" of the statistics) and
+ * PaperLogRepository::getAllAcceptedNotYetPublished() ("being-to-publish.accepted") against a real MySQL database:
+ * the decisions are read from the history, and an abandoned article, only paused, is still counted.
  *
  * Requires TEST_DATABASE_URL (set in CI, see docker-compose.ci.yml); skipped otherwise.
  * The test creates and drops the PAPERS and PAPER_LOG tables: it is skipped if one of them already exists,
@@ -34,6 +36,7 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
 
     private EntityManagerInterface $entityManager;
     private PapersRepository $repository;
+    private PaperLogRepository $paperLogRepository;
 
     /** @var list<ClassMetadata<object>> */
     private array $metadata = [];
@@ -70,6 +73,7 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
         $registry = $this->createStub(ManagerRegistry::class);
         $registry->method('getManagerForClass')->willReturn($this->entityManager);
         $this->repository = new PapersRepository($registry, new NullLogger());
+        $this->paperLogRepository = new PaperLogRepository($registry, new NullLogger());
 
         $this->insertData();
     }
@@ -112,6 +116,14 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
         $this->assertSame(4, $this->repository->getSubmissionsAwaitingDecision());
     }
 
+    /**
+     * Paper 3 (accepted, being copy edited) and paper 11 (accepted, then abandoned: only paused).
+     */
+    public function testAcceptedNotYetPublishedIncludesTheAbandonedArticles(): void
+    {
+        $this->assertSame(2, $this->paperLogRepository->getAllAcceptedNotYetPublished(self::RVID));
+    }
+
     private function insertData(): void
     {
         $papers = [
@@ -127,6 +139,7 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
             [9, 8, self::RVID, Paper::STATUS_SUBMITTED, 'imported', '2023-05-10'],
             [10, 9, self::RVID, Paper::STATUS_WAITING_FOR_MINOR_REVISION, 'submitted', '2021-06-10'], // refused, then reopened
             [11, 10, self::OTHER_RVID, Paper::STATUS_SUBMITTED, 'submitted', '2023-06-10'],
+            [12, 11, self::RVID, Paper::STATUS_ABANDONED, 'submitted', '2023-07-10'],             // accepted, then paused
         ];
 
         $logs = [
@@ -135,6 +148,8 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
             [4, 5, Paper::STATUS_REFUSED],
             [9, 10, Paper::STATUS_REFUSED],
             [9, 10, Paper::STATUS_BEING_REVIEWED],
+            [11, 12, Paper::STATUS_STRICTLY_ACCEPTED],
+            [11, 12, Paper::STATUS_ABANDONED],
         ];
 
         $connection = $this->entityManager->getConnection();
