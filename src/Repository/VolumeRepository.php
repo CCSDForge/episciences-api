@@ -88,7 +88,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
     public function getCommitteeQuery(int $rvId, int $vid): string
     {
-        $sql = "SELECT uuid, CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid`
+        $sql = "SELECT CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid`
                 FROM ( SELECT UID, VID, `WHEN`
                        FROM ( SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua`
                            INNER JOIN(
@@ -102,7 +102,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
                            INNER JOIN VOLUME AS v ON v.RVID = r2.RVID AND v.VID = r2.ITEMID
                        ) AS `result`
                     INNER JOIN USER AS `u` ON result.UID = u.UID
-                GROUP BY VID,uuid, CIV, SCREEN_NAME, ORCID, u.LASTNAME
+                GROUP BY VID, u.UID, CIV, SCREEN_NAME, ORCID, u.LASTNAME
                 ORDER BY u.LASTNAME ASC;";
         return $sql;
 
