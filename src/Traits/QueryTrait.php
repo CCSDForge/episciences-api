@@ -107,8 +107,13 @@ trait QueryTrait
 
         if (isset($filters['year'])) {
             $years = $this->processYears($filters['year']);
-            $this->processOrExpression($qb, $alias, $years, $resourceClass);
 
+            if ($resourceClass === Volume::class) {
+                // same filter as VolumeRepository::listQuery(): a volume year can be a range (e.g. "2024-2025")
+                $this->andOrLikeExp($qb, sprintf('%s.vol_year', $alias), $years);
+            } else {
+                $this->processOrExpression($qb, $alias, $years, $resourceClass);
+            }
         }
 
         if (isset($filters['type'])) {
