@@ -76,7 +76,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: self::YEAR_COLLECTION_DESCRIPTION,
+                        description: self::YEARS_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -169,7 +169,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The year of submission of the articles',
+                        description: self::YEARS_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -275,7 +275,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The year of publication of the articles',
+                        description: self::YEARS_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -353,7 +353,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The year of acceptance of the articles',
+                        description: self::YEARS_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -432,7 +432,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The year of the decision (acceptance or refusal)',
+                        description: self::YEARS_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -520,7 +520,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The year the invitations were sent (reviews-requested) or the reports were created (reviews-received, median-reviews-number)',
+                        description: self::YEARS_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -553,6 +553,7 @@ class Statistic
     public const MEDIAN_DELAY_DESCRIPTION = 'The delay of an article runs from its first submission to its latest publication (or acceptance for "median-submission-acceptance") recorded in its history, and is truncated to the unit (e.g. 13 days count as 1 week). "year" filters on the year of this publication (or acceptance). "count" is the number of articles the median is computed from.';
     public const COLLECTION_DESCRIPTION = 'The median delays exclude imported articles: ' . self::MEDIAN_DELAY_DESCRIPTION . ' With "groupBy=journal", a median delay is returned for each journal having at least one article. In "nb-submissions-details", "being-to-publish.other-status" counts the submitted articles (not imported) still awaiting an editorial decision: neither published, accepted nor refused (decisions read from the history, as "accepted" and "refused"), deleted nor removed (an abandoned article, only paused, is counted); "year" and "startAfterDate" apply to their submission date.';
     public const YEAR_COLLECTION_DESCRIPTION = 'The year, whose meaning depends on the indicator. Year of submission: nb-submissions; in nb-submissions-details, nb-submitted-versions, nb-imported-versions and being-to-publish.other-status. Year of the decision: acceptance-rate (acceptances and refusals of the year); in nb-submissions-details, published (year of publication), accepted and being-to-publish.accepted (year of acceptance), refused (year of refusal). Year of publication or acceptance: median delays. Year the invitations were sent (reviews-requested) or the reports were created (reviews-received, median-reviews-number): evaluation.';
+    public const YEARS_DESCRIPTION = 'Several years, with the same meaning as "year"';
     public const GROUP_BY_PARAM = 'groupBy';
     public const GROUP_BY_JOURNAL = 'journal';
     public const STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER = '/api/statistics/';
