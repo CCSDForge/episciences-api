@@ -62,7 +62,10 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
             $currentRepo = $this->entityManager->getRepository($object::class);
             $committee = $currentRepo->getCommittee($object->getRvid(), $object->getIdentifier());
             $object->setCommittee($committee);
-            $object->setTotalPublishedArticles();
+            // already set when the papers are not loaded (e.g. the sections assigned to the board members)
+            if ($object->getTotalPublishedArticles() === null) {
+                $object->setTotalPublishedArticles();
+            }
             $data['committee'] = $object->getCommittee();
             $data[PapersRepository::TOTAL_ARTICLE] = $object->getTotalPublishedArticles();
         }

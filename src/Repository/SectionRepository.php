@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Paper;
 use App\Entity\Section;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -50,12 +51,15 @@ class SectionRepository extends ServiceEntityRepository
             $section = new Section();
             $titles = $values['titles'] ? json_decode((string) $values['titles'], true, 512, JSON_THROW_ON_ERROR) : null;
             $descriptions = $values['descriptions'] ? json_decode((string) $values['descriptions'], true, 512, JSON_THROW_ON_ERROR) : null;
-            $sections[$values['UID']][] = $section
+            $section
                 ->setSid($values['SID'])
                 ->setRvid($values['RVID'])
                 ->setPosition($values['POSITION'])
                 ->setTitles($titles)
                 ->setDescriptions($descriptions);
+            // the papers of the section are not loaded: their number is counted by the query
+            $section->setTotalPublishedArticles((int) $values[PapersRepository::TOTAL_ARTICLE]);
+            $sections[$values['UID']][] = $section;
         }
         return $sections;
     }
@@ -73,7 +77,8 @@ class SectionRepository extends ServiceEntityRepository
         $implodedUids = implode(',', $uid);
 
         return "
-        SELECT DISTINCT(ua.UID), ua.RVID, sc.SID,sc.titles, sc.descriptions, sc.POSITION
+        SELECT DISTINCT(ua.UID), ua.RVID, sc.SID,sc.titles, sc.descriptions, sc.POSITION,
+        (SELECT COUNT(*) FROM " . Paper::TABLE . " AS p WHERE p.RVID = sc.RVID AND p.SID = sc.SID AND p.STATUS = " . Paper::STATUS_PUBLISHED . ") AS " . PapersRepository::TOTAL_ARTICLE . "
         FROM USER_ASSIGNMENT AS ua
         JOIN(
         SELECT ITEMID, MAX(`WHEN`) AS max_when

@@ -2,8 +2,10 @@
 
 namespace App\Tests\Unit\Serializer\Normalizer;
 
+use App\Entity\Section;
 use App\Repository\PaperConflictsRepository;
 use App\Resource\Statistic;
+use App\Repository\SectionRepository;
 use App\Serializer\Normalizer\ApiItemNormalizer;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -43,5 +45,38 @@ class ApiItemNormalizerTest extends TestCase
         $normalizer = new ApiItemNormalizer($decorated, $this->createStub(EntityManagerInterface::class), $this->createStub(PaperConflictsRepository::class));
 
         $this->assertSame(['@type' => 'Solr', 'values' => []], $normalizer->normalize(new \stdClass(), 'jsonld'));
+    }
+
+    public function testTotalPublishedArticlesIsCountedFromThePapers(): void
+    {
+        $this->assertSame(0, $this->normalizeSection(new Section()->setRvid(3)->setSid(9))['totalPublishedArticles']);
+    }
+
+    /**
+     * The sections assigned to the board members are built without their papers, with the number
+     * of published articles counted by the query: it must not be recounted from the empty collection.
+     */
+    public function testTotalPublishedArticlesAlreadySetIsKept(): void
+    {
+        $section = new Section()->setRvid(3)->setSid(9);
+        $section->setTotalPublishedArticles(12);
+
+        $this->assertSame(12, $this->normalizeSection($section)['totalPublishedArticles']);
+    }
+
+    private function normalizeSection(Section $section): array
+    {
+        $decorated = $this->createStub(NormalizerInterface::class);
+        $decorated->method('normalize')->willReturn(['sid' => 9]);
+
+        $sectionRepository = $this->createStub(SectionRepository::class);
+        $sectionRepository->method('getCommittee')->willReturn([]);
+
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturn($sectionRepository);
+
+        $normalizer = new ApiItemNormalizer($decorated, $entityManager, $this->createStub(PaperConflictsRepository::class));
+
+        return $normalizer->normalize($section, 'jsonld', []);
     }
 }

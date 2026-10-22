@@ -15,6 +15,7 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\AbstractQuery;
 use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\NoResultException;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
@@ -316,7 +317,13 @@ class PapersRepository extends ServiceEntityRepository
                 $identifiers = (array)$identifiers;
             }
 
-            $this->andOrExp($qb, sprintf("%s.%s", self::PAPERS_ALIAS, $tableId), $identifiers);
+            if ($resourceClass === Volume::class) { // Include papers published in secondary volumes
+                $qb->leftJoin(VolumePaper::class, 'vp', Join::ON, sprintf('%s.docid = vp.docid', self::PAPERS_ALIAS));
+                $qb->andWhere(sprintf('%1$s.%2$s IN (:identifiers) OR vp.%2$s IN (:identifiers)', self::PAPERS_ALIAS, $tableId))
+                    ->setParameter('identifiers', array_map('intval', $identifiers), ArrayParameterType::INTEGER);
+            } else {
+                $this->andOrExp($qb, sprintf("%s.%s", self::PAPERS_ALIAS, $tableId), $identifiers);
+            }
 
         } elseif ($resourceClass === Volume::class) { // Include papers published in secondary volumes
             $qb->leftJoin(VolumePaper::class, 'vp', Join::ON, sprintf('%s.docid = vp.docid', self::PAPERS_ALIAS));
@@ -325,7 +332,8 @@ class PapersRepository extends ServiceEntityRepository
             $qb->andWhere(sprintf('%s.%s > 0', self::PAPERS_ALIAS, $tableId));
         }
 
-        if (!$rvId) {
+        // only for the grouped select: with identifiers, a single total is counted (even without a journal)
+        if ($withoutIdentifier && !$rvId) {
             $qb->addGroupBy(sprintf('%s.rvid', self::PAPERS_ALIAS));
             $qb->addGroupBy(sprintf('%s.%s', self::PAPERS_ALIAS, $tableId));
             $qb->addOrderBy(sprintf('%s.rvid', self::PAPERS_ALIAS), \SortDirection::Descending);
