@@ -29,7 +29,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use App\Repository\ReviewRepository;
 use App\OpenApi\OpenApiFactory;
-use App\Resource\Statistic;
 use App\Controller\IndexingDatabaseController;
 use App\Entity\IndexingDatabase;
 
@@ -160,12 +159,12 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Dashboard",
-                description: 'Dashboard of a journal: submissions, decisions, rates, delays and users (by year with `withDetails`). ' . Statistic::SEE_STATISTICS_SECTION,
+                description: 'Dashboard of a journal: submissions, decisions, rates, delays and users (by year with `withDetails`).',
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: Statistic::YEAR_DESCRIPTION,
+                        description: self::DASHBOARD_YEAR_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -215,12 +214,12 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Total number of submissions",
-                description: Statistic::SEE_STATISTICS_SECTION,
+                description: "",
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: Statistic::YEAR_DESCRIPTION,
+                        description: 'Year of submission of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -270,12 +269,12 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Average time in days between submission and acceptance",
-                description: "Average time in days between submission and acceptance. " . Statistic::SEE_STATISTICS_SECTION,
+                description: "Average time in days between submission and acceptance",
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: Statistic::YEAR_DESCRIPTION,
+                        description: 'Year of acceptance of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -325,12 +324,12 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Average time in days between submission and publication",
-                description: "Average time in days between submission and publication. " . Statistic::SEE_STATISTICS_SECTION,
+                description: "Average time in days between submission and publication",
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: Statistic::YEAR_DESCRIPTION,
+                        description: 'Year of publication of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -445,6 +444,7 @@ class Review
     public const STATUS_DISABLED = 0;
     public const STATUS_ENABLED = 1;
     public const URI_TEMPLATE = '/journals/';
+    public const DASHBOARD_YEAR_DESCRIPTION = 'Year of: submission for `nbSubmissions` and `nbImported`; decision (publication, acceptance, refusal) for `nbPublished`, `nbImportedPublished`, `nbAccepted`, `nbAcceptedNotYetPublished`, `nbRefused` and `rates`; publication or acceptance for the delays; both submission and decision for `total*SubmittedSameYear`. The users are not counted by year';
 
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]

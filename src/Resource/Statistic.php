@@ -24,7 +24,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Retrieve all available statistical indicators",
-                description: 'Statistics of all the journals, or of one journal with `rvcode`. ' . self::SEE_STATISTICS_SECTION,
+                description: 'Statistics of all the journals, or of one journal with `rvcode`. ' . self::OTHER_STATUS_DESCRIPTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -63,7 +63,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: self::YEAR_DESCRIPTION,
+                        description: self::YEAR_COLLECTION_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -76,7 +76,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: self::YEARS_DESCRIPTION,
+                        description: 'Several years, with the same meaning as `year`',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -141,7 +141,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Total number of submissions",
-                description: self::SEE_STATISTICS_SECTION,
+                description: "",
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -155,7 +155,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: self::YEAR_DESCRIPTION,
+                        description: 'Year of submission of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -168,7 +168,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: self::YEARS_DESCRIPTION,
+                        description: 'Several years of submission',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -246,7 +246,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Median Time submission-publication",
-                description: self::INDICATOR_DESCRIPTION . ' ' . self::SEE_STATISTICS_SECTION,
+                description: self::INDICATOR_DESCRIPTION . ' ' . self::MEDIAN_DELAY_DESCRIPTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -260,7 +260,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: self::YEAR_DESCRIPTION,
+                        description: 'Year of publication of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -273,7 +273,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: self::YEARS_DESCRIPTION,
+                        description: 'Several years of publication',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -323,7 +323,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Median Time submission-acceptance",
-                description: self::INDICATOR_DESCRIPTION . ' ' . self::SEE_STATISTICS_SECTION,
+                description: self::INDICATOR_DESCRIPTION . ' ' . self::MEDIAN_DELAY_DESCRIPTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -337,7 +337,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: self::YEAR_DESCRIPTION,
+                        description: 'Year of acceptance of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -350,7 +350,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: self::YEARS_DESCRIPTION,
+                        description: 'Several years of acceptance',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -401,7 +401,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Acceptance rate",
-                description: self::INDICATOR_DESCRIPTION . ' ' . self::SEE_STATISTICS_SECTION,
+                description: self::INDICATOR_DESCRIPTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -415,7 +415,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: self::YEAR_DESCRIPTION,
+                        description: 'Year of the decision (acceptance or refusal)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -428,7 +428,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: self::YEARS_DESCRIPTION,
+                        description: 'Several years of decision',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -464,7 +464,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Evaluation",
-                description: 'Reviews of the articles. ' . self::SEE_STATISTICS_SECTION,
+                description: 'Evaluation',
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -503,7 +503,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: self::YEAR_DESCRIPTION,
+                        description: 'Year of the invitation (reviews-requested) or of the report (reviews-received, median-reviews-number)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -516,7 +516,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: self::YEARS_DESCRIPTION,
+                        description: 'Several years, with the same meaning as `year`',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -546,31 +546,9 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 class Statistic
 {
     public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles.";
-    public const SEE_STATISTICS_SECTION = 'See "Statistics" in the API description, at the top of the page, for the date filtered by `year` and the definitions.';
-    public const YEAR_DESCRIPTION = 'Year. It does not filter every statistic on the same date: see "Which date does `year` filter on?" in the API description, at the top of the page.';
-    /** Common to all the statistics operations: added to the API description (see OpenApiFactory) */
-    public const STATISTICS_DESCRIPTION = 'Statistics of the journals: `/api/statistics/*` (all the journals, or one journal with `rvcode`) and `/api/journals/stats/*` (one journal).'
-        . "\n\n### Which date does `year` filter on?\n\n"
-        . '`year` (`year[]` for several years) does not filter every statistic on the same date:'
-        . "\n\n| Statistic | `year` is the year of |\n|---|---|\n"
-        . "| Submissions: `nb-submissions`, `nb-submitted-versions`, `nb-imported-versions`, `nbSubmissions`, `nbImported` | the submission |\n"
-        . "| Articles awaiting a decision: `being-to-publish.other-status` | the submission |\n"
-        . "| Published articles: `published`, `nbPublished`, `nbImportedPublished` | the publication |\n"
-        . "| Accepted articles: `accepted`, `being-to-publish.accepted`, `nbAccepted`, `nbAcceptedNotYetPublished` | the acceptance |\n"
-        . "| Refused articles: `refused`, `nbRefused` | the refusal |\n"
-        . "| Rates: `acceptance-rate`, `rates` | the acceptances, refusals and publications |\n"
-        . "| Submission-acceptance delays: `median-submission-acceptance`, `delay-submission-acceptance`, `submissionAcceptanceTime`, `submissionAcceptanceTimeMedian` | the acceptance |\n"
-        . "| Submission-publication delays: `median-submission-publication`, `delay-submission-publication`, `submissionPublicationTime`, `submissionPublicationTimeMedian` | the publication |\n"
-        . "| Submitted and decided the same year: `totalAcceptedSubmittedSameYear`, `totalPublishedSubmittedSameYear`, `totalRefusedSubmittedSameYear` | both the submission and the decision |\n"
-        . "| Dashboard `nbOtherStatus` | the submission, minus the acceptances and refusals of the year |\n"
-        . "| Dashboard `totalOtherSubmittedSameYear` | the submission, minus the articles accepted or refused the same year |\n"
-        . "| Reviews requested: `reviews-requested` | the sending of the invitation |\n"
-        . "| Reviews received: `reviews-received`, `median-reviews-number` | the creation of the report |\n"
-        . "| Users: `nb-users`, `nbUsers` | not available by year |\n\n"
-        . 'For example, with `year=2024`, `nb-submissions` is the number of articles **submitted** in 2024, and `median-submission-publication` the median delay of the articles **published** in 2024, whatever their year of submission.'
-        . "\n\n" . '`startAfterDate` keeps only the articles submitted after this date (not applied to the reviews).'
-        . "\n\n### Delays\n\n" . 'The delay of an article runs from its first submission to its latest publication (or acceptance) recorded in its history, and is truncated to the unit: 13 days count as 1 week. Imported articles are excluded, as for the rates. In `/api/statistics/*`, `count` is the number of articles a median is computed from, and `groupBy=journal` returns the median of each journal having at least one article.'
-        . "\n\n### Articles awaiting a decision\n\n" . '`being-to-publish.other-status` counts the submitted articles (not imported) still awaiting an editorial decision: neither published, accepted nor refused (decisions read from their history, as for `accepted` and `refused`), deleted nor removed. An abandoned article, only paused, is counted.';
+    public const MEDIAN_DELAY_DESCRIPTION = 'The delay runs from the first submission of the article to its latest publication (or acceptance), truncated to the unit (13 days = 1 week). `count` is the number of articles.';
+    public const OTHER_STATUS_DESCRIPTION = 'In `nb-submissions-details`, `being-to-publish.other-status` is the number of articles awaiting an editorial decision (neither published, accepted, refused, deleted nor removed; an abandoned article is only paused).';
+    public const YEAR_COLLECTION_DESCRIPTION = 'Year of: submission for `nb-submissions` (and the submitted, imported and awaiting-decision articles of `nb-submissions-details`); decision for `acceptance-rate` (and the published, accepted and refused articles); publication or acceptance for the median delays; invitation or report for `evaluation`';
     /** Values of the "indicator" parameter (lists for the OpenAPI enums) */
     public const PUBLICATION_INDICATOR_VALUES = [
         self::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'],
@@ -584,7 +562,6 @@ class Statistic
         self::EVAL_INDICATORS['reviews-received_get'],
         self::EVAL_INDICATORS['median-reviews-number_get'],
     ];
-    public const YEARS_DESCRIPTION = 'Several years, with the same meaning as `year`.';
     public const GROUP_BY_PARAM = 'groupBy';
     public const GROUP_BY_JOURNAL = 'journal';
     public const STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER = '/api/statistics/';

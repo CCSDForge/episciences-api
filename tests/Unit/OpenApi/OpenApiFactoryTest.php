@@ -19,14 +19,12 @@ use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\Paths;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\Model\Schema;
-use ApiPlatform\OpenApi\Model\Tag;
 use ApiPlatform\OpenApi\OpenApi;
 use App\AppConstants;
 use App\Controller\BoardsController;
 use App\Entity\Review;
 use App\EventSubscriber\TruncatedCollectionSubscriber;
 use App\OpenApi\OpenApiFactory;
-use App\Resource\Statistic;
 use PHPUnit\Framework\TestCase;
 
 class OpenApiFactoryTest extends TestCase
@@ -224,33 +222,6 @@ class OpenApiFactoryTest extends TestCase
     /**
      * Paths of the authentication and error responses tests (no API Platform resource).
      */
-    /**
-     * A single description common to all the statistics operations, in the API description;
-     * the Statistics tag refers to it and the other tags are unchanged.
-     */
-    public function testStatisticsDescriptionIsAddedToTheApiDescription(): void
-    {
-        $decorated = $this->createStub(OpenApiFactoryInterface::class);
-        $decorated->method('__invoke')->willReturn(new OpenApi(
-            new Info('Episciences API', '1.0', 'Episciences overlay journals API'),
-            [],
-            new Paths(),
-            new Components(schemas: new \ArrayObject(), securitySchemes: new \ArrayObject()),
-            [],
-            [new Tag(OpenApiFactory::OAF_TAGS['stats'], 'Generated'), new Tag(OpenApiFactory::OAF_TAGS['paper'], 'Generated')]
-        ));
-
-        $resourceNameCollectionFactory = $this->createStub(ResourceNameCollectionFactoryInterface::class);
-        $resourceNameCollectionFactory->method('create')->willReturn(new ResourceNameCollection([]));
-
-        $openApi = new OpenApiFactory($decorated, $resourceNameCollectionFactory, $this->createStub(ResourceMetadataCollectionFactoryInterface::class))();
-
-        $this->assertSame("Episciences overlay journals API\n\n## Statistics\n\n" . Statistic::STATISTICS_DESCRIPTION, $openApi->getInfo()->getDescription());
-        $this->assertStringContainsString('Which date does `year` filter on?', $openApi->getInfo()->getDescription());
-        $this->assertSame(Statistic::SEE_STATISTICS_SECTION, $openApi->getTags()[0]->getDescription());
-        $this->assertSame('Generated', $openApi->getTags()[1]->getDescription());
-    }
-
     private function createAuthOpenApi(): OpenApi
     {
         $paths = new Paths();
