@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Entity;
 
+use ApiPlatform\Metadata\ApiProperty;
 use App\Entity\News;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
@@ -40,5 +41,16 @@ class NewsTest extends TestCase
         $property->setValue($this->entity, false);
 
         $this->assertFalse($this->entity->isPublic());
+    }
+
+    /**
+     * The creator is public: it must be embedded without its IRI, which contains the account identifier.
+     */
+    public function testCreatorIsEmbeddedWithoutIri(): void
+    {
+        $attributes = new ReflectionProperty(News::class, 'creator')->getAttributes(ApiProperty::class);
+
+        $this->assertCount(1, $attributes);
+        $this->assertFalse($attributes[0]->newInstance()->getGenId());
     }
 }
