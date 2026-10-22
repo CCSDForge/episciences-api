@@ -47,6 +47,26 @@ class PapersRepositoryTotalArticlesQueryTest extends TestCase
         $this->assertStringContainsString('COUNT(DISTINCT', $sql);
     }
 
+    /**
+     * Regression: without a journal, the single total was grouped by journal and volume,
+     * so that getSingleScalarResult() failed and hydra:totalPublishedArticles was null.
+     */
+    public function testIdentifiersWithoutJournalGiveASingleTotal(): void
+    {
+        foreach ([Volume::class, Section::class] as $resourceClass) {
+            $sql = $this->repository->getTotalArticlesBySectionOrVolumeQuery($resourceClass, 16, [10, 11])->getQuery()->getSQL();
+
+            $this->assertStringNotContainsString('GROUP BY', $sql, $resourceClass);
+        }
+    }
+
+    public function testWithoutIdentifierNorJournalTheTotalsAreGrouped(): void
+    {
+        $sql = $this->repository->getTotalArticlesBySectionOrVolumeQuery(Volume::class)->getQuery()->getSQL();
+
+        $this->assertMatchesRegularExpression('/GROUP BY \w+\.RVID, \w+\.VID/', $sql);
+    }
+
     public function testSectionIdentifiersOnlyUseThePaperSection(): void
     {
         $sql = $this->repository->getTotalArticlesBySectionOrVolumeQuery(Section::class, 16, [5], 3)->getQuery()->getSQL();

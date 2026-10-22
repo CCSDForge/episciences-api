@@ -332,7 +332,8 @@ class PapersRepository extends ServiceEntityRepository
             $qb->andWhere(sprintf('%s.%s > 0', self::PAPERS_ALIAS, $tableId));
         }
 
-        if (!$rvId) {
+        // only for the grouped select: with identifiers, a single total is counted (even without a journal)
+        if ($withoutIdentifier && !$rvId) {
             $qb->addGroupBy(sprintf('%s.rvid', self::PAPERS_ALIAS));
             $qb->addGroupBy(sprintf('%s.%s', self::PAPERS_ALIAS, $tableId));
             $qb->addOrderBy(sprintf('%s.rvid', self::PAPERS_ALIAS), \SortDirection::Descending);
