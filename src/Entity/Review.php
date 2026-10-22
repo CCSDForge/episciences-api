@@ -164,7 +164,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: self::DASHBOARD_YEAR_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -219,7 +219,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'The year of submission of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -274,7 +274,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'The year of acceptance of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -329,7 +329,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'The year of publication of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -444,6 +444,7 @@ class Review
     public const STATUS_DISABLED = 0;
     public const STATUS_ENABLED = 1;
     public const URI_TEMPLATE = '/journals/';
+    public const DASHBOARD_YEAR_DESCRIPTION = 'The year, whose meaning depends on the figure. Year of submission: nbSubmissions, nbImported. Year of publication: nbImportedPublished. Year of the decision: nbPublished (year of publication), nbAccepted and nbAcceptedNotYetPublished (year of acceptance), nbRefused (year of refusal) and the rates. Year of publication or acceptance: the average and median delays. Submitted and decided the same year: totalAcceptedSubmittedSameYear, totalPublishedSubmittedSameYear, totalRefusedSubmittedSameYear. nbOtherStatus is the submissions of the year minus the acceptances and refusals of the year. The users are not counted by year (not returned with "year").';
 
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
