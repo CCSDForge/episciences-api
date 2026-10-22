@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI runs the tests against MySQL 8.4 (was 8.0), with `DATABASE_SERVER_VERSION` set accordingly.
 
 ### Fixed
+- Statistics: each item of the statistics collections (`GET /api/statistics/`, `GET /api/statistics/evaluation`) now has the IRI of its own indicator instead of `/api/statistics/nb-submissions` for all of them.
 - Fixed the Doctrine mappings that made the schema tools fail (`doctrine:schema:create`, schema comparison): string `unsigned` option of `UserInvitationAnswer`, MySQL `ENUM` columns mapped as strings of length 0 (now the DBAL `enum` type), unused `LegacyNews` entity clashing with the `news` table, `ReviewSetting` primary key and `VALUE` type, index typos (`UserAssignment`), nonexistent indexes (`Paper.RECORD`, unique `news.uid`), join column order to `VolumePaperPosition`. No database change; same API responses.
 - The migrations `Version20260527000000` and `Version20261016120000` can be re-run after a partial failure: each step checks the existing schema. `Version20261016120000` caps the lock wait on `PAPER_LOG` (10 s), and the down migration of `Version20260527000000` no longer restores the erroneous unique constraints of `pages` and `news`.
 - `PaperLog` now declares the existing `PAPER_LOG` indexes, so the schema tools no longer propose to drop them.
