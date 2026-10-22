@@ -115,6 +115,8 @@ class News
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
+    // Public: no IRI, it would expose the account identifier
+    #[ApiProperty(genId: false)]
     private ?User $creator = null;
 
     #[ORM\Column(nullable: true)]
