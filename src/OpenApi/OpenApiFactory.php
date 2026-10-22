@@ -130,17 +130,25 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     // STATISTICS
     // -----------------------------------
     /**
-     * A single description common to all the statistics operations (date filtered by "year", definitions),
-     * shown once by Swagger UI at the top of the Statistics section: the operations refer to it.
+     * A single description common to all the statistics operations (date filtered by "year", definitions), added to
+     * the API description: Swagger UI shows it in full width at the top of the page, whereas a long tag description
+     * is squeezed next to the tag name and looks like a part of the previous section. The Statistics tag and the
+     * operations refer to it.
      */
     private function documentStatistics(OpenApi $openApi): OpenApi
     {
+        $info = $openApi->getInfo();
+        $description = trim($info->getDescription());
+        $statistics = "## Statistics\n\n" . Statistic::STATISTICS_DESCRIPTION;
+
         $tags = array_map(
-            static fn(Tag $tag): Tag => $tag->getName() === self::OAF_TAGS['stats'] ? $tag->withDescription(Statistic::STATISTICS_DESCRIPTION) : $tag,
+            static fn(Tag $tag): Tag => $tag->getName() === self::OAF_TAGS['stats'] ? $tag->withDescription(Statistic::SEE_STATISTICS_SECTION) : $tag,
             $openApi->getTags()
         );
 
-        return $openApi->withTags($tags);
+        return $openApi
+            ->withInfo($info->withDescription($description !== '' ? $description . "\n\n" . $statistics : $statistics))
+            ->withTags($tags);
     }
 
     // -----------------------------------

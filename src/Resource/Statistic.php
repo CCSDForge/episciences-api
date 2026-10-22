@@ -546,11 +546,11 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 class Statistic
 {
     public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles.";
-    public const SEE_STATISTICS_SECTION = 'See the description of the Statistics section for the date filtered by `year` and the definitions.';
-    public const YEAR_DESCRIPTION = 'Year. It does not filter every statistic on the same date: see "Which date does `year` filter on?" in the description of the Statistics section.';
-    /** Common to all the statistics operations: description of the Statistics tag (see OpenApiFactory) */
+    public const SEE_STATISTICS_SECTION = 'See "Statistics" in the API description, at the top of the page, for the date filtered by `year` and the definitions.';
+    public const YEAR_DESCRIPTION = 'Year. It does not filter every statistic on the same date: see "Which date does `year` filter on?" in the API description, at the top of the page.';
+    /** Common to all the statistics operations: added to the API description (see OpenApiFactory) */
     public const STATISTICS_DESCRIPTION = 'Statistics of the journals: `/api/statistics/*` (all the journals, or one journal with `rvcode`) and `/api/journals/stats/*` (one journal).'
-        . "\n\n#### Which date does `year` filter on?\n\n"
+        . "\n\n### Which date does `year` filter on?\n\n"
         . '`year` (`year[]` for several years) does not filter every statistic on the same date:'
         . "\n\n| Statistic | `year` is the year of |\n|---|---|\n"
         . "| Submissions: `nb-submissions`, `nb-submitted-versions`, `nb-imported-versions`, `nbSubmissions`, `nbImported` | the submission |\n"
@@ -569,8 +569,8 @@ class Statistic
         . "| Users: `nb-users`, `nbUsers` | not available by year |\n\n"
         . 'For example, with `year=2024`, `nb-submissions` is the number of articles **submitted** in 2024, and `median-submission-publication` the median delay of the articles **published** in 2024, whatever their year of submission.'
         . "\n\n" . '`startAfterDate` keeps only the articles submitted after this date (not applied to the reviews).'
-        . "\n\n#### Delays\n\n" . 'The delay of an article runs from its first submission to its latest publication (or acceptance) recorded in its history, and is truncated to the unit: 13 days count as 1 week. Imported articles are excluded, as for the rates. In `/api/statistics/*`, `count` is the number of articles a median is computed from, and `groupBy=journal` returns the median of each journal having at least one article.'
-        . "\n\n#### Articles awaiting a decision\n\n" . '`being-to-publish.other-status` counts the submitted articles (not imported) still awaiting an editorial decision: neither published, accepted nor refused (decisions read from their history, as for `accepted` and `refused`), deleted nor removed. An abandoned article, only paused, is counted.';
+        . "\n\n### Delays\n\n" . 'The delay of an article runs from its first submission to its latest publication (or acceptance) recorded in its history, and is truncated to the unit: 13 days count as 1 week. Imported articles are excluded, as for the rates. In `/api/statistics/*`, `count` is the number of articles a median is computed from, and `groupBy=journal` returns the median of each journal having at least one article.'
+        . "\n\n### Articles awaiting a decision\n\n" . '`being-to-publish.other-status` counts the submitted articles (not imported) still awaiting an editorial decision: neither published, accepted nor refused (decisions read from their history, as for `accepted` and `refused`), deleted nor removed. An abandoned article, only paused, is counted.';
     /** Values of the "indicator" parameter (lists for the OpenAPI enums) */
     public const PUBLICATION_INDICATOR_VALUES = [
         self::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'],
