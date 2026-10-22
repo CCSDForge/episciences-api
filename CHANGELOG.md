@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 ### Added
+- Statistics: the median delays (`median-submission-publication`, `median-submission-acceptance`) now return `count`, the number of articles the median is computed from. `GET /api/statistics/` accepts `groupBy=journal` with one of these indicators (and without `rvcode`) to return the median of each journal in a single call, with its code in `journal`. The OpenAPI documentation describes how the delay is computed and that `year` filters on the year of publication (or acceptance) for these indicators; `unit` is now documented on `GET /api/statistics/`.
 - `make openapi-lint` exports the OpenAPI specification and lints it with Redocly (`redocly.yaml`); it runs in CI.
 - Added covering indexes on `PAPER_LOG` (migration `Version20261016120000`) to speed up the statistics endpoints (`GET /api/statistics/` from about 6 s to under 1 s on a full dataset).
 - Added `is_public` stored generated column to `Pages` and `News` entities to optimize query filtering.

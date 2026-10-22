@@ -214,6 +214,41 @@ class PaperLogRepository extends ServiceEntityRepository
 
     public function getSubmissionMedianTimeByStatusQuery(?int $rvId = null, ?array $years = null, ?string $startAfterDate = null, string $operationName = 'median-submission-publication', string $unit = 'week'): float|int|null
     {
+        return $this->getSubmissionMedianTimeDetails($rvId, $years, $startAfterDate, $operationName, $unit)['median'];
+    }
+
+    /**
+     * Median delay and number of articles it is computed from.
+     *
+     * @return array{median: float|int|null, count: int}
+     */
+    public function getSubmissionMedianTimeDetails(?int $rvId = null, ?array $years = null, ?string $startAfterDate = null, string $operationName = 'median-submission-publication', string $unit = 'week'): array
+    {
+        return $this->medianDetails(array_column($this->getSubmissionDelays($rvId, $years, $startAfterDate, $operationName, $unit), self::DELAY));
+    }
+
+    /**
+     * Median delay and number of articles of each journal (one query for all the journals);
+     * the journals without any article are not returned.
+     *
+     * @return array<int, array{median: float|int|null, count: int}> indexed by journal identifier (rvid)
+     */
+    public function getSubmissionMedianTimeDetailsByJournal(?array $years = null, ?string $startAfterDate = null, string $operationName = 'median-submission-publication', string $unit = 'week'): array
+    {
+        $delaysByJournal = [];
+
+        foreach ($this->getSubmissionDelays(null, $years, $startAfterDate, $operationName, $unit) as $row) {
+            $delaysByJournal[(int)$row['rvid']][] = $row[self::DELAY];
+        }
+
+        return array_map($this->medianDetails(...), $delaysByJournal);
+    }
+
+    /**
+     * Delay of each article between its first submission and its latest publication (or acceptance), imported articles excluded.
+     */
+    private function getSubmissionDelays(?int $rvId, ?array $years, ?string $startAfterDate, string $operationName, string $unit): array
+    {
         $unit = strtoupper($unit);
 
         if (!in_array($unit, ['SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR'])) {
@@ -222,11 +257,15 @@ class PaperLogRepository extends ServiceEntityRepository
 
         $status = $operationName !== 'median-submission-publication' ? Paper::STATUS_STRICTLY_ACCEPTED : Paper::STATUS_PUBLISHED;
 
-        $result = $this->delayBetweenSubmissionAndLatestStatus($unit, $status, $startAfterDate, $years, 'median', $rvId) ?? [];
+        return $this->delayBetweenSubmissionAndLatestStatus($unit, $status, $startAfterDate, $years, 'median', $rvId) ?? [];
+    }
 
-        $delay = array_column($result, self::DELAY);
-
-        $validValues = array_filter($delay, is_numeric(...));
+    /**
+     * @return array{median: float|int|null, count: int}
+     */
+    private function medianDetails(array $delays): array
+    {
+        $validValues = array_filter($delays, is_numeric(...));
 
         try {
             $median = $this->getMedian($validValues);
@@ -236,8 +275,7 @@ class PaperLogRepository extends ServiceEntityRepository
             $median = null;
         }
 
-        return $median;
-
+        return ['median' => $median, 'count' => count($validValues)];
     }
 
     private function commonQuery(?int $rvId = null, array $years = [], ?string $startAfterDate = null, int|array $status = [Paper::STATUS_STRICTLY_ACCEPTED], bool $ignoreImportedArticles = false): QueryBuilder

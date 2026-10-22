@@ -8,10 +8,14 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\State\Pagination\Pagination;
 use App\Doctrine\UnpaginatedCollectionLimitExtension;
 use App\Entity\Paper;
+use App\Entity\PaperLog;
+use App\Entity\Review;
 use App\Entity\ReviewerReport;
 use App\Entity\UserInvitation;
 use App\Exception\ResourceNotFoundException;
+use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
+use App\Repository\ReviewRepository;
 use App\Repository\ReviewerReportRepository;
 use App\Repository\UserInvitationRepository;
 use App\Resource\Statistic;
@@ -33,6 +37,7 @@ use Symfony\Component\HttpFoundation\Request;
 class StatisticStateProviderTest extends TestCase
 {
     private const string EVALUATION_OPERATION = '_api_/statistics/evaluation_get_collection';
+    private const string COLLECTION_OPERATION = '_api_/statistics/_get_collection';
 
     private Request $request;
 
@@ -117,6 +122,90 @@ class StatisticStateProviderTest extends TestCase
         yield 'unknown unit' => [['unit' => 'foo']];
         yield 'unit sent as array' => [['unit' => ['day']]];
         yield 'unknown indicator' => [['indicator' => 'foo']];
+    }
+
+    public function testMedianDelayIsReturnedWithTheNumberOfArticles(): void
+    {
+        $statistics = iterator_to_array($this->provideCollection(['indicator' => 'median-submission-publication', 'unit' => 'day']));
+
+        $this->assertCount(1, $statistics);
+        $this->assertSame(317.0, $statistics[0]->getValue());
+        $this->assertSame(1843, $statistics[0]->getCount());
+        $this->assertNull($statistics[0]->getJournal());
+    }
+
+    /**
+     * One item by journal, sorted by code; the logs of a journal that no longer exists are ignored.
+     */
+    public function testMedianDelayIsGroupedByJournal(): void
+    {
+        $statistics = iterator_to_array($this->provideCollection(['indicator' => 'median-submission-publication', 'unit' => 'day', 'groupBy' => 'journal']));
+
+        $this->assertSame(['dmtcs', 'jdmdh'], array_map(static fn(Statistic $statistic): ?string => $statistic->getJournal(), $statistics));
+        $this->assertSame([335.0, 233.0], array_map(static fn(Statistic $statistic): float|array|null => $statistic->getValue(), $statistics));
+        $this->assertSame([412, 57], array_map(static fn(Statistic $statistic): ?int => $statistic->getCount(), $statistics));
+        $this->assertSame('day', $statistics[0]->getUnit());
+    }
+
+    #[DataProvider('invalidGroupByProvider')]
+    public function testInvalidGroupByIsRejected(array $filters): void
+    {
+        $this->expectException(ResourceNotFoundException::class);
+
+        $this->provideCollection($filters);
+    }
+
+    public static function invalidGroupByProvider(): iterable
+    {
+        yield 'unknown value' => [['indicator' => 'median-submission-publication', 'groupBy' => 'year']];
+        yield 'without indicator' => [['groupBy' => 'journal']];
+        yield 'not a median' => [['indicator' => 'acceptance-rate', 'groupBy' => 'journal']];
+        yield 'sent as array' => [['indicator' => 'median-submission-publication', 'groupBy' => ['journal']]];
+    }
+
+    public function testGroupByIsRejectedForTheEvaluation(): void
+    {
+        $this->expectException(ResourceNotFoundException::class);
+
+        $this->provideEvaluation(filters: ['groupBy' => 'journal']);
+    }
+
+    private function provideCollection(array $filters): iterable
+    {
+        $papersRepository = $this->createStub(PapersRepository::class);
+        $papersRepository->method('getYearRange')->willReturn([]);
+
+        $paperLogRepository = $this->createStub(PaperLogRepository::class);
+        $paperLogRepository->method('getSubmissionMedianTimeDetails')->willReturn(['median' => 317.0, 'count' => 1843]);
+        $paperLogRepository->method('getSubmissionMedianTimeDetailsByJournal')->willReturn([
+            3 => ['median' => 233, 'count' => 57],
+            1 => ['median' => 335, 'count' => 412],
+            99 => ['median' => 10, 'count' => 1],
+        ]);
+
+        $reviewRepository = $this->createStub(ReviewRepository::class);
+        $reviewRepository->method('findBy')->willReturn([
+            $this->createConfiguredStub(Review::class, ['getRvid' => 3, 'getCode' => 'jdmdh']),
+            $this->createConfiguredStub(Review::class, ['getRvid' => 1, 'getCode' => 'dmtcs']),
+        ]);
+
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturnMap([
+            [Paper::class, $papersRepository],
+            [PaperLog::class, $paperLogRepository],
+            [Review::class, $reviewRepository],
+        ]);
+
+        $provider = new StatisticStateProvider(
+            $entityManager,
+            $this->createStub(LoggerInterface::class),
+            new Pagination(['client_enabled' => true]),
+            $this->createStub(Stats::class)
+        );
+
+        $operation = new GetCollection(class: Statistic::class, name: self::COLLECTION_OPERATION, paginationMaximumItemsPerPage: 30);
+
+        return $provider->provide($operation, [], ['operation' => $operation, 'filters' => ['pagination' => 'true'] + $filters, 'request' => $this->request]);
     }
 
     private function provideEvaluation(string $pagination = 'true', int $maxItemsPerPage = 30, array $filters = []): iterable
