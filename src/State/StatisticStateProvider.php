@@ -184,7 +184,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                                 'accepted' => $nbAccepted, // include published
                                 'being-to-publish' => [
                                     'accepted' => $paperLogRepo->getAllAcceptedNotYetPublished($rvId, $years, $startAfterDate),
-                                    'other-status' => max(0, $nbSubmissionsWithoutImported - ($nbAccepted + $nbRefused))
+                                    'other-status' => $paperRepo->getSubmissionsAwaitingDecision($rvId, $startAfterDate, $years)
                                 ]
                             ]);
 

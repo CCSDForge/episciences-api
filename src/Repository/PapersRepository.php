@@ -5,6 +5,7 @@ namespace App\Repository;
 
 use App\AppConstants;
 use App\Entity\Paper;
+use App\Entity\PaperLog;
 use App\Entity\Section;
 use App\Entity\Volume;
 use App\Entity\VolumePaper;
@@ -675,6 +676,38 @@ class PapersRepository extends ServiceEntityRepository
 
     }
 
+
+    /**
+     * Submissions still awaiting an editorial decision: neither published, accepted nor refused (decisions read from the history,
+     * as PaperLogRepository::acceptedQuery and refusedQuery, so that an article is not counted twice), deleted nor removed;
+     * an abandoned article is only paused, so it is still awaiting a decision. Counted by article (PAPERID, common to all its versions), imported articles excluded.
+     * The year and the start date apply to the submission date.
+     */
+    public function getSubmissionsAwaitingDecision(?int $rvId = null, ?string $startAfterDate = null, array|string|null $years = null): int
+    {
+        $filters = ['rvid' => $rvId, 'startAfterDate' => $startAfterDate, 'flag' => self::AVAILABLE_FLAG_VALUES['submitted'], 'year' => $years];
+
+        // deleted and removed papers are already excluded
+        $qb = $this->submissionsQuery(['is' => $filters], withoutObsolete: true)
+            ->andWhere('p.status NOT IN (:decidedStatuses)')
+            ->setParameter('decidedStatuses', [Paper::STATUS_PUBLISHED, Paper::STATUS_REFUSED]);
+
+        $decision = $this->getEntityManager()->createQueryBuilder()
+            ->select('decisionLog.logid')
+            ->from(PaperLog::class, 'decisionLog')
+            ->where('decisionLog.paperid = p.paperid')
+            ->andWhere('decisionLog.status IN (:decisionStatuses)');
+
+        $qb->andWhere($qb->expr()->not($qb->expr()->exists($decision->getDQL())))
+            ->setParameter('decisionStatuses', [...PaperLogRepository::ACCEPTED_STATUSES, PaperLogRepository::REFUSED_STATUS]);
+
+        try {
+            return (int)$qb->getQuery()->getSingleScalarResult();
+        } catch (NoResultException|NonUniqueResultException $e) {
+            $this->logger->critical($e->getMessage());
+            return 0;
+        }
+    }
 
     public function partialQuery(array $cols = ['rvid', 'docid', 'paperid', 'vid', 'sid', 'status', 'version', 'flag'], string $alias = self::PAPERS_ALIAS): QueryBuilder
     {

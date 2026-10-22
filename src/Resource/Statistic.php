@@ -551,7 +551,7 @@ class Statistic
 {
     public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles";
     public const MEDIAN_DELAY_DESCRIPTION = 'The delay of an article runs from its first submission to its latest publication (or acceptance for "median-submission-acceptance") recorded in its history, and is truncated to the unit (e.g. 13 days count as 1 week). "year" filters on the year of this publication (or acceptance). "count" is the number of articles the median is computed from.';
-    public const COLLECTION_DESCRIPTION = 'The median delays exclude imported articles: ' . self::MEDIAN_DELAY_DESCRIPTION . ' With "groupBy=journal", a median delay is returned for each journal having at least one article.';
+    public const COLLECTION_DESCRIPTION = 'The median delays exclude imported articles: ' . self::MEDIAN_DELAY_DESCRIPTION . ' With "groupBy=journal", a median delay is returned for each journal having at least one article. In "nb-submissions-details", "being-to-publish.other-status" counts the submitted articles (not imported) still awaiting an editorial decision: neither published, accepted nor refused (decisions read from the history, as "accepted" and "refused"), deleted nor removed (an abandoned article, only paused, is counted); "year" and "startAfterDate" apply to their submission date.';
     public const GROUP_BY_PARAM = 'groupBy';
     public const GROUP_BY_JOURNAL = 'journal';
     public const STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER = '/api/statistics/';

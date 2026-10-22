@@ -30,6 +30,11 @@ use Psr\Log\LogLevel;
  */
 class PaperLogRepository extends ServiceEntityRepository
 {
+    /** Statuses of an accepted article in its history (see acceptedQuery) */
+    public const array ACCEPTED_STATUSES = [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED];
+    /** Status of a refused article in its history (see refusedQuery) */
+    public const int REFUSED_STATUS = Paper::STATUS_REFUSED;
+
     use QueryTrait;
     use ToolsTrait;
 
@@ -348,12 +353,12 @@ class PaperLogRepository extends ServiceEntityRepository
 
     private function acceptedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
     {
-        return $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
+        return $this->commonQuery($rvId, $years, $startAfterDate, self::ACCEPTED_STATUSES, $ignoreImportedArticles);
     }
 
     private function refusedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
     {
-        return $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_REFUSED, $ignoreImportedArticles);
+        return $this->commonQuery($rvId, $years, $startAfterDate, self::REFUSED_STATUS, $ignoreImportedArticles);
     }
 
     private function publishedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder

@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI runs the tests against MySQL 8.4 (was 8.0), with `DATABASE_SERVER_VERSION` set accordingly.
 
 ### Fixed
+- Statistics (`nb-submissions-details`): `being-to-publish.other-status` is now the number of submitted articles still awaiting an editorial decision (neither published, accepted nor refused, deleted nor removed; abandoned articles, only paused, are counted; imported articles ignored), counted by submission date. It was the difference between the submissions of the period and the decisions of the period, which mixed two populations when filtered by year (e.g. 20 instead of 91 for one journal and the current year).
 - Statistics: each item of the statistics collections (`GET /api/statistics/`, `GET /api/statistics/evaluation`) now has the IRI of its own indicator instead of `/api/statistics/nb-submissions` for all of them.
 - `GET /api/volumes` filtered by journal: `hydra:totalPublishedArticles` did not count the papers only published in secondary volumes.
 - `GET /api/volumes` and `GET /api/sections` without journal filter: `hydra:totalPublishedArticles` was `null`.
