@@ -606,6 +606,62 @@ class PapersRepository extends ServiceEntityRepository
             ->groupBy('year');
     }
 
+    /**
+     * Numbers of submissions, imported and submitted papers in a single query (GET /api/statistics/).
+     *
+     * Same results as the three former queries: the journal, year and date filters apply to the three
+     * numbers; the "status" filter to the total and the imported papers; the "flag" filter to the total
+     * only (the submitted papers ignore both, see getSubmissionsWithoutImported()).
+     *
+     * @param array<string, mixed> $filters filters of submissionsQuery() (without the "is" level)
+     *
+     * @return array{total: int, imported: int, submitted: int}
+     */
+    public function countSubmissionsByFlag(array $filters = []): array
+    {
+        $result = $this->countSubmissionsByFlagQuery($filters)->getQuery()->getSingleResult();
+
+        return ['total' => (int)$result['total'], 'imported' => (int)$result['imported'], 'submitted' => (int)$result['submitted']];
+    }
+
+    /**
+     * @param array<string, mixed> $filters see countSubmissionsByFlag()
+     */
+    public function countSubmissionsByFlagQuery(array $filters = []): QueryBuilder
+    {
+        $alias = self::PAPERS_ALIAS;
+        $common = array_intersect_key($filters, array_flip(['rvid', AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE]));
+        $qb = $this->submissionsQuery(['is' => $common]);
+
+        $totalConditions = [];
+        $importedConditions = [sprintf('%s.flag = :importedFlag', $alias)];
+        $qb->setParameter('importedFlag', self::AVAILABLE_FLAG_VALUES['imported']);
+
+        if (!empty($filters['status'])) {
+            $statusCondition = sprintf('%s.status IN (:statusFilter)', $alias);
+            $totalConditions[] = $statusCondition;
+            $importedConditions[] = $statusCondition;
+            $qb->setParameter('statusFilter', (array)$filters['status']);
+        }
+
+        if (!empty($filters['flag'])) {
+            $totalConditions[] = sprintf('%s.flag = :flagFilter', $alias);
+            $qb->setParameter('flagFilter', $filters['flag']);
+        }
+
+        $countIf = static fn(array $conditions): string => $conditions === []
+            ? sprintf('COUNT(DISTINCT %s.paperid)', $alias)
+            : sprintf('COUNT(DISTINCT CASE WHEN %s THEN %s.paperid ELSE NULL END)', implode(' AND ', $conditions), $alias);
+
+        $qb
+            ->select(sprintf('%s AS total', $countIf($totalConditions)))
+            ->addSelect(sprintf('%s AS imported', $countIf($importedConditions)))
+            ->addSelect(sprintf('COUNT(DISTINCT CASE WHEN %1$s.flag = :submittedFlag THEN %1$s.paperid ELSE NULL END) AS submitted', $alias))
+            ->setParameter('submittedFlag', self::AVAILABLE_FLAG_VALUES['submitted']);
+
+        return $qb;
+    }
+
     public function getSubmissionsWithoutImported(?int $rvId = null, ?string $startAfterDate = null, array|string|null $years = null): int
     {
 

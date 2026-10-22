@@ -14,7 +14,6 @@ use App\Entity\ReviewerReport;
 use App\Entity\UserInvitation;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\PaperLogRepository;
-use App\Repository\PapersRepository;
 use App\Resource\Statistic;
 use App\Service\Stats;
 use Doctrine\ORM\EntityManagerInterface;
@@ -148,15 +147,11 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                     $paperRepo = $this->entityManager->getRepository(Paper::class);
                     $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
 
-                    $imported = $paperRepo->submissionsQuery(['is' => $currentFilters], false, 'submissionDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])
-                        ->getQuery()
-                        ->getSingleScalarResult();
-
-
-                    $nbSubmissionStatsQuery = $paperRepo->submissionsQuery(['is' => $currentFilters])->getQuery();
-                    $nbSubmission = $nbSubmissionStatsQuery->getSingleScalarResult();
-
-                    $nbSubmissionsWithoutImported = $paperRepo->getSubmissionsWithoutImported($rvId, $startAfterDate, $years);
+                    // submissions, imported and submitted papers: a single query
+                    $submissions = $paperRepo->countSubmissionsByFlag($currentFilters);
+                    $nbSubmission = $submissions['total'];
+                    $imported = $submissions['imported'];
+                    $nbSubmissionsWithoutImported = $submissions['submitted'];
 
                     // stats from papers logs
                     $nbPublished = $paperLogRepo->getPublished($rvId, $years, $startAfterDate);
