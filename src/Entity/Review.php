@@ -159,7 +159,7 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Dashboard",
-                description: "",
+                description: self::DASHBOARD_DESCRIPTION,
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
@@ -444,7 +444,23 @@ class Review
     public const STATUS_DISABLED = 0;
     public const STATUS_ENABLED = 1;
     public const URI_TEMPLATE = '/journals/';
-    public const DASHBOARD_YEAR_DESCRIPTION = 'The year, whose meaning depends on the figure. Year of submission: nbSubmissions, nbImported. Year of publication: nbImportedPublished. Year of the decision: nbPublished (year of publication), nbAccepted and nbAcceptedNotYetPublished (year of acceptance), nbRefused (year of refusal) and the rates. Year of publication or acceptance: the average and median delays. Submitted and decided the same year: totalAcceptedSubmittedSameYear, totalPublishedSubmittedSameYear, totalRefusedSubmittedSameYear. nbOtherStatus is the submissions of the year minus the acceptances and refusals of the year. The users are not counted by year (not returned with "year").';
+    public const DASHBOARD_DESCRIPTION = 'Dashboard of a journal: submissions, decisions, rates, delays and users (by year with `withDetails`).'
+        . "\n\n### Which date does `year` filter on?\n\n"
+        . '`year` does not filter every figure on the same date:'
+        . "\n\n| Figure | `year` is the year of |\n|---|---|\n"
+        . "| `nbSubmissions`, `nbImported` | the submission |\n"
+        . "| `nbPublished`, `nbImportedPublished` | the publication |\n"
+        . "| `nbAccepted`, `nbAcceptedNotYetPublished` | the acceptance |\n"
+        . "| `nbRefused` | the refusal |\n"
+        . "| `rates` | the acceptances, refusals and publications |\n"
+        . "| `submissionAcceptanceTime`, `submissionAcceptanceTimeMedian` | the acceptance |\n"
+        . "| `submissionPublicationTime`, `submissionPublicationTimeMedian` | the publication |\n"
+        . "| `totalAcceptedSubmittedSameYear`, `totalPublishedSubmittedSameYear`, `totalRefusedSubmittedSameYear` | both the submission and the decision |\n"
+        . "| `nbOtherStatus` | the submission, minus the acceptances and refusals of the year |\n"
+        . "| `totalOtherSubmittedSameYear` | the submission, minus the articles accepted or refused the same year |\n"
+        . "| `nbUsers` | not available by year (not returned with `year`) |\n\n"
+        . 'For example, with `year=2024`, `nbSubmissions` is the number of articles **submitted** in 2024 and `submissionPublicationTimeMedian` the median delay of the articles **published** in 2024.';
+    public const DASHBOARD_YEAR_DESCRIPTION = 'Year. It does not filter every figure on the same date: see "Which date does `year` filter on?" in the description of the operation.';
 
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]

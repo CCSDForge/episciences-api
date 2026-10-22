@@ -32,29 +32,29 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         description: 'Journal code (exp. epijinfo)',
                         required: false,
                         schema: [
-                            "type" => 'string',
-                            "default" => ''
+                            "type" => 'string'
                         ]
                     ),
                     new Parameter(
                         name: 'indicator',
                         in: 'query',
-                        description: "Statistic's identifier (exp. nb-submissions)",
+                        description: 'A single indicator; all of them when omitted',
                         required: false,
                         schema: [
                             "type" => 'string',
-                            "default" => ''
+                            'enum' => self::PUBLICATION_INDICATOR_VALUES,
                         ]
                     ),
                     new Parameter(
                         name: 'indicator[]',
                         in: 'query',
-                        description: "Statistic's identifier (exp. nb-submissions)",
+                        description: 'Same as `indicator`, sent as an array: a single value',
                         required: false,
                         schema: [
                             "type" => 'array',
                             'items' => [
                                 'type' => 'string',
+                                'enum' => self::PUBLICATION_INDICATOR_VALUES,
                             ]
                         ],
                         explode: true,
@@ -121,7 +121,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: self::GROUP_BY_PARAM,
                         in: 'query',
-                        description: 'Returns the indicator of each journal (one item by journal, with its code in "journal"); only with "indicator=median-submission-publication" or "indicator=median-submission-acceptance", and without "rvcode"',
+                        description: 'Returns the median of each journal (one item by journal, its code in `journal`). Only with `indicator=median-submission-publication` or `indicator=median-submission-acceptance`, and without `rvcode`.',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -149,8 +149,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         description: 'Journal code (exp. epijinfo)',
                         required: false,
                         schema: [
-                            "type" => 'string',
-                            "default" => ''
+                            "type" => 'string'
                         ]
                     ),
                     new Parameter(
@@ -247,7 +246,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Median Time submission-publication",
-                description: self::INDICATOR_DESCRIPTION . ' ' . self::MEDIAN_DELAY_DESCRIPTION,
+                description: self::INDICATOR_DESCRIPTION . "\n\n" . self::MEDIAN_DELAY_DESCRIPTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -255,8 +254,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         description: 'Journal code (exp. epijinfo)',
                         required: false,
                         schema: [
-                            "type" => 'string',
-                            "default" => ''
+                            "type" => 'string'
                         ]
                     ),
                     new Parameter(
@@ -325,7 +323,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Median Time submission-acceptance",
-                description: self::INDICATOR_DESCRIPTION . ' ' . self::MEDIAN_DELAY_DESCRIPTION,
+                description: self::INDICATOR_DESCRIPTION . "\n\n" . self::MEDIAN_DELAY_DESCRIPTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -333,8 +331,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         description: 'Journal code (exp. epijinfo)',
                         required: false,
                         schema: [
-                            "type" => 'string',
-                            "default" => ''
+                            "type" => 'string'
                         ]
                     ),
                     new Parameter(
@@ -412,8 +409,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         description: 'Journal code (exp. epijinfo)',
                         required: false,
                         schema: [
-                            "type" => 'string',
-                            "default" => ''
+                            "type" => 'string'
                         ]
                     ),
                     new Parameter(
@@ -476,29 +472,29 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         description: 'Journal code (exp. epijinfo)',
                         required: false,
                         schema: [
-                            "type" => 'string',
-                            "default" => ''
+                            "type" => 'string'
                         ]
                     ),
                     new Parameter(
                         name: 'indicator',
                         in: 'query',
-                        description: "Statistic's identifier (exp. nb-submissions)",
+                        description: 'A single indicator; all of them when omitted',
                         required: false,
                         schema: [
                             "type" => 'string',
-                            "default" => ''
+                            'enum' => self::EVAL_INDICATOR_VALUES,
                         ]
                     ),
                     new Parameter(
                         name: 'indicator[]',
                         in: 'query',
-                        description: "Statistic's identifier (exp. nb-submissions)",
+                        description: 'Same as `indicator`, sent as an array: a single value',
                         required: false,
                         schema: [
                             "type" => 'array',
                             'items' => [
                                 'type' => 'string',
+                                'enum' => self::EVAL_INDICATOR_VALUES,
                             ]
                         ],
                         explode: true,
@@ -549,11 +545,42 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 )]
 class Statistic
 {
-    public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles";
-    public const MEDIAN_DELAY_DESCRIPTION = 'The delay of an article runs from its first submission to its latest publication (or acceptance for "median-submission-acceptance") recorded in its history, and is truncated to the unit (e.g. 13 days count as 1 week). "year" filters on the year of this publication (or acceptance). "count" is the number of articles the median is computed from.';
-    public const COLLECTION_DESCRIPTION = 'The median delays exclude imported articles: ' . self::MEDIAN_DELAY_DESCRIPTION . ' With "groupBy=journal", a median delay is returned for each journal having at least one article. In "nb-submissions-details", "being-to-publish.other-status" counts the submitted articles (not imported) still awaiting an editorial decision: neither published, accepted nor refused (decisions read from the history, as "accepted" and "refused"), deleted nor removed (an abandoned article, only paused, is counted); "year" and "startAfterDate" apply to their submission date.';
-    public const YEAR_COLLECTION_DESCRIPTION = 'The year, whose meaning depends on the indicator. Year of submission: nb-submissions; in nb-submissions-details, nb-submitted-versions, nb-imported-versions and being-to-publish.other-status. Year of the decision: acceptance-rate (acceptances and refusals of the year); in nb-submissions-details, published (year of publication), accepted and being-to-publish.accepted (year of acceptance), refused (year of refusal). Year of publication or acceptance: median delays. Year the invitations were sent (reviews-requested) or the reports were created (reviews-received, median-reviews-number): evaluation.';
-    public const YEARS_DESCRIPTION = 'Several years, with the same meaning as "year"';
+    public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles.";
+    public const MEDIAN_DELAY_DEFINITION = 'The delay of an article runs from its first submission to its latest publication (or acceptance) recorded in its history, and is truncated to the unit: 13 days count as 1 week. `count` is the number of articles the median is computed from.';
+    public const MEDIAN_DELAY_DESCRIPTION = self::MEDIAN_DELAY_DEFINITION . "\n\n" . '`year` filters on the year of this publication (or acceptance), whatever the year of submission.';
+    public const COLLECTION_DESCRIPTION = 'Statistics of all the journals, or of one journal with `rvcode`.'
+        . "\n\n### Which date does `year` filter on?\n\n"
+        . '`year` (`year[]` for several years) does not filter every indicator on the same date:'
+        . "\n\n| Indicator | `year` is the year of |\n|---|---|\n"
+        . "| `nb-submissions` | the submission |\n"
+        . "| `acceptance-rate` | the decision (acceptance or refusal) |\n"
+        . "| `median-submission-publication` | the publication |\n"
+        . "| `median-submission-acceptance` | the acceptance |\n"
+        . "| `nb-submissions-details`: `nb-submitted-versions`, `nb-imported-versions`, `being-to-publish.other-status` | the submission |\n"
+        . "| `nb-submissions-details`: `published` | the publication |\n"
+        . "| `nb-submissions-details`: `accepted`, `being-to-publish.accepted` | the acceptance |\n"
+        . "| `nb-submissions-details`: `refused` | the refusal |\n"
+        . "| `evaluation`: `reviews-requested` | the sending of the invitation |\n"
+        . "| `evaluation`: `reviews-received`, `median-reviews-number` | the creation of the report |\n\n"
+        . 'For example, with `year=2024`, `median-submission-publication` is the median delay of the articles **published** in 2024, and `nb-submissions` the number of articles **submitted** in 2024.'
+        . "\n\n" . '`startAfterDate` keeps only the articles submitted after this date (not applied to `evaluation`).'
+        . "\n\n### Median delays\n\n" . self::MEDIAN_DELAY_DEFINITION . ' Imported articles are excluded, as for `acceptance-rate`. With `groupBy=journal`, the median is returned for each journal having at least one article (one item by journal, its code in `journal`).'
+        . "\n\n### Articles awaiting a decision\n\n" . '`being-to-publish.other-status` counts the submitted articles (not imported) still awaiting an editorial decision: neither published, accepted nor refused (decisions read from their history, as for `accepted` and `refused`), deleted nor removed. An abandoned article, only paused, is counted.';
+    public const YEAR_COLLECTION_DESCRIPTION = 'Year. It does not filter every indicator on the same date: see "Which date does `year` filter on?" in the description of the operation.';
+    /** Values of the "indicator" parameter (lists for the OpenAPI enums) */
+    public const PUBLICATION_INDICATOR_VALUES = [
+        self::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'],
+        self::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get'],
+        self::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'],
+        self::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get'],
+        self::AVAILABLE_PUBLICATION_INDICATORS['evaluation_get_collection'],
+    ];
+    public const EVAL_INDICATOR_VALUES = [
+        self::EVAL_INDICATORS['reviews-requested_get'],
+        self::EVAL_INDICATORS['reviews-received_get'],
+        self::EVAL_INDICATORS['median-reviews-number_get'],
+    ];
+    public const YEARS_DESCRIPTION = 'Several years, with the same meaning as `year`.';
     public const GROUP_BY_PARAM = 'groupBy';
     public const GROUP_BY_JOURNAL = 'journal';
     public const STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER = '/api/statistics/';
@@ -583,7 +610,7 @@ class Statistic
     private string|null $unit = null;
     #[groups(['read:Statistic'])]
     #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
-    #[ApiProperty(description: 'Code of the journal, with "groupBy=journal"', schema: ['type' => 'string', 'example' => 'epijinfo'])]
+    #[ApiProperty(description: 'Code of the journal, with `groupBy=journal`', schema: ['type' => 'string', 'example' => 'epijinfo'])]
     private ?string $journal = null;
     #[groups(['read:Statistic'])]
     #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
