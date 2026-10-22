@@ -81,6 +81,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $page = $context['filters']['page'];
         $firstResult = 0;
         $indicator = $this->processIndicator($filters['indicator'] ?? null);
+        $groupBy = $this->processGroupBy($filters[Statistic::GROUP_BY_PARAM] ?? null, $operationName, $indicator, $code);
 
         $dictionaryKeys = array_keys($dictionary);
         $statusValues = array_values($status);
@@ -133,11 +134,10 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                             ->setUnit('%');
 
 
+                    } elseif ($groupBy === Statistic::GROUP_BY_JOURNAL) {
+                        $response = $this->getMedianDelayByJournal($indicator, $years, $startAfterDate, $unit);
                     } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'] || $indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get']) {
-                        $response[] = new Statistic()
-                            ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS[sprintf('%s_get', $indicator)])
-                            ->setValue($this->entityManager->getRepository(PaperLog::class)->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, $indicator, $unit))
-                            ->setUnit(strtolower($unit));
+                        $response[] = $this->getMedianDelay($indicator, $rvId, $years, $startAfterDate, $unit);
                     } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['evaluation_get_collection']) {
                         $response = $this->getEvalCollection($currentFilters);
                     }
@@ -169,14 +169,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                         ->setUnit('%');
 
 
-                    $response[] = new Statistic()
-                        ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'])
-                        ->setValue($paperLogRepo->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'], $unit))
-                        ->setUnit(strtolower($unit));
-                    $response[] = new Statistic()
-                        ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get'])
-                        ->setValue($paperLogRepo->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get'], $unit))
-                        ->setUnit(strtolower($unit));
+                    $response[] = $this->getMedianDelay(Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'], $rvId, $years, $startAfterDate, $unit);
+                    $response[] = $this->getMedianDelay(Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get'], $rvId, $years, $startAfterDate, $unit);
 
 
                     $response[] = new Statistic()
@@ -245,9 +239,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         if ($operationName === 'nb-submissions_get') {
             $statsQuery = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => $currentFilters])->getQuery();
         } elseif ($operationName === 'median-submission-publication_get' || $operationName === 'median-submission-acceptance_get') {
-            return $oStats
-                ->setValue($this->entityManager->getRepository(PaperLog::class)->getSubmissionMedianTimeByStatusQuery($currentFilters['rvid'] ?? null, $years, $startAfterDate, Statistic::AVAILABLE_PUBLICATION_INDICATORS[$operationName], $unit))
-                ->setUnit(strtolower($unit));
+            return $this->getMedianDelay(Statistic::AVAILABLE_PUBLICATION_INDICATORS[$operationName], $rvId, $years, $startAfterDate, $unit);
         } elseif ($operationName === 'acceptance-rate_get') {
             return $oStats->setValue($this->getAcceptanceRate($currentFilters))->setUnit('%');
         }
@@ -284,6 +276,81 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         }
 
         return $indicator;
+    }
+
+    /**
+     * "groupBy=journal" is only available for the median delays of all the journals.
+     * @throws ResourceNotFoundException
+     */
+    private function processGroupBy(mixed $groupBy, string $operationName, ?string $indicator, ?string $code): ?string
+    {
+        if ($groupBy === null || $groupBy === '') {
+            return null;
+        }
+
+        if ($groupBy !== Statistic::GROUP_BY_JOURNAL) {
+            throw new ResourceNotFoundException(sprintf('Oops! invalid %s because the available value is: %s', Statistic::GROUP_BY_PARAM, Statistic::GROUP_BY_JOURNAL));
+        }
+
+        $medianIndicators = [Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'], Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get']];
+
+        if ($operationName !== '_get_collection' || !in_array($indicator, $medianIndicators, true)) {
+            throw new ResourceNotFoundException(sprintf('Oops! %s=%s requires indicator=%s', Statistic::GROUP_BY_PARAM, Statistic::GROUP_BY_JOURNAL, implode(' or indicator=', $medianIndicators)));
+        }
+
+        if ($code) {
+            throw new ResourceNotFoundException(sprintf('Oops! %s=%s cannot be combined with rvcode', Statistic::GROUP_BY_PARAM, Statistic::GROUP_BY_JOURNAL));
+        }
+
+        return $groupBy;
+    }
+
+    private function getMedianDelay(string $indicator, ?int $rvId, array $years, ?string $startAfterDate, string $unit): Statistic
+    {
+        $details = $this->entityManager->getRepository(PaperLog::class)->getSubmissionMedianTimeDetails($rvId, $years, $startAfterDate, $indicator, $unit);
+
+        return new Statistic()
+            ->setName($indicator)
+            ->setValue($details['median'])
+            ->setUnit(strtolower($unit))
+            ->setCount($details['count']);
+    }
+
+    /**
+     * @return Statistic[] one median delay by journal having at least one article, sorted by journal code
+     */
+    private function getMedianDelayByJournal(string $indicator, array $years, ?string $startAfterDate, string $unit): array
+    {
+        $detailsByJournal = $this->entityManager->getRepository(PaperLog::class)->getSubmissionMedianTimeDetailsByJournal($years, $startAfterDate, $indicator, $unit);
+
+        if ($detailsByJournal === []) {
+            return [];
+        }
+
+        $codes = [];
+
+        foreach ($this->entityManager->getRepository(Review::class)->findBy(['rvid' => array_keys($detailsByJournal)]) as $journal) {
+            $codes[$journal->getRvid()] = $journal->getCode();
+        }
+
+        $response = [];
+
+        foreach ($detailsByJournal as $rvId => $details) {
+            if (!isset($codes[$rvId])) { // log of a journal that no longer exists
+                continue;
+            }
+
+            $response[] = new Statistic()
+                ->setName($indicator)
+                ->setJournal($codes[$rvId])
+                ->setValue($details['median'])
+                ->setUnit(strtolower($unit))
+                ->setCount($details['count']);
+        }
+
+        usort($response, static fn(Statistic $a, Statistic $b): int => strcmp((string)$a->getJournal(), (string)$b->getJournal()));
+
+        return $response;
     }
 
     /**

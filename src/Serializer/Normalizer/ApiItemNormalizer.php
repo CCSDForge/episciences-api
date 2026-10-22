@@ -71,7 +71,7 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
         }
 
         if ($object instanceof Statistic && is_array($data) && isset($data['@id'])) {
-            $data['@id'] = $this->getStatisticIri($object->getName(), $data['@id']);
+            $data['@id'] = $this->getStatisticIri($object->getName(), $data['@id'], $object->getJournal());
         }
 
         // Generated IRIs (/.well-known/genid/...) cannot be dereferenced and change on every request: blank nodes instead
@@ -84,14 +84,14 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
 
     /**
      * Without an identifier, every statistic gets the IRI of the first item operation (nb-submissions):
-     * the IRI is rebuilt from the indicator name.
+     * the IRI is rebuilt from the indicator name (and the journal, for the statistics grouped by journal).
      */
-    private function getStatisticIri(string $name, string $defaultIri): string
+    private function getStatisticIri(string $name, string $defaultIri, ?string $journal = null): string
     {
         $base = dirname($defaultIri); // e.g. /api/statistics
 
         if (in_array($name, Statistic::AVAILABLE_PUBLICATION_INDICATORS, true)) { // one operation by indicator
-            return sprintf('%s/%s', $base, $name);
+            return $journal === null ? sprintf('%s/%s', $base, $name) : sprintf('%s/%s?rvcode=%s', $base, $name, rawurlencode($journal));
         }
 
         if (in_array($name, Statistic::EVAL_INDICATORS, true)) {

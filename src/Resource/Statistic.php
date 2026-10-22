@@ -12,7 +12,9 @@ use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\OpenApi\OpenApiFactory;
 use App\State\StatisticStateProvider;
+use Symfony\Component\Serializer\Attribute\Context;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 
 #[ApiResource(
     operations: [
@@ -22,7 +24,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Retrieve all available statistical indicators",
-                description: "",
+                description: self::COLLECTION_DESCRIPTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -100,6 +102,35 @@ use Symfony\Component\Serializer\Attribute\Groups;
                             'type' => 'string',
                             'format' => 'date',
                         ],
+                    ),
+                    new Parameter(
+                        name: 'unit',
+                        in: 'query',
+                        description: 'The unit of the median delays (difference of two timestamps in MySQL)',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                            'enum' => StatisticStateProvider::AVAILABLE_UNITS,
+                            'default' => 'week'
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    ),
+                    new Parameter(
+                        name: self::GROUP_BY_PARAM,
+                        in: 'query',
+                        description: 'Returns the indicator of each journal (one item by journal, with its code in "journal"); only with "indicator=median-submission-publication" or "indicator=median-submission-acceptance", and without "rvcode"',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                            'enum' => [self::GROUP_BY_JOURNAL],
+                        ],
+                        explode: false,
+                        allowReserved: false
                     ),
                 ]
             ),
@@ -216,7 +247,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Median Time submission-publication",
-                description: self::INDICATOR_DESCRIPTION,
+                description: self::INDICATOR_DESCRIPTION . ' ' . self::MEDIAN_DELAY_DESCRIPTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -231,7 +262,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'The year of publication of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -244,7 +275,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'The year of publication of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -294,7 +325,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Median Time submission-acceptance",
-                description: self::INDICATOR_DESCRIPTION,
+                description: self::INDICATOR_DESCRIPTION . ' ' . self::MEDIAN_DELAY_DESCRIPTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -309,7 +340,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'The year of acceptance of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -322,7 +353,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'The year of acceptance of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -519,6 +550,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
 class Statistic
 {
     public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles";
+    public const MEDIAN_DELAY_DESCRIPTION = 'The delay of an article runs from its first submission to its latest publication (or acceptance for "median-submission-acceptance") recorded in its history, and is truncated to the unit (e.g. 13 days count as 1 week). "year" filters on the year of this publication (or acceptance). "count" is the number of articles the median is computed from.';
+    public const COLLECTION_DESCRIPTION = 'The median delays exclude imported articles: ' . self::MEDIAN_DELAY_DESCRIPTION . ' With "groupBy=journal", a median delay is returned for each journal having at least one article.';
+    public const GROUP_BY_PARAM = 'groupBy';
+    public const GROUP_BY_JOURNAL = 'journal';
     public const STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER = '/api/statistics/';
     public const EVALUATION_GET_COLLECTION_OPERATION_IDENTIFIER = '/api/statistics/evaluation';
 
@@ -544,6 +579,14 @@ class Statistic
     private array|float|null $value = null;
     #[groups(['read:Statistic'])]
     private string|null $unit = null;
+    #[groups(['read:Statistic'])]
+    #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
+    #[ApiProperty(description: 'Code of the journal, with "groupBy=journal"', schema: ['type' => 'string', 'example' => 'epijinfo'])]
+    private ?string $journal = null;
+    #[groups(['read:Statistic'])]
+    #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
+    #[ApiProperty(description: 'Number of articles the median delay is computed from (median delays only)', schema: ['type' => 'integer', 'minimum' => 0, 'example' => 412])]
+    private ?int $count = null;
 
     public function getName(): string
     {
@@ -575,6 +618,28 @@ class Statistic
     public function setUnit(?string $unit): self
     {
         $this->unit = $unit;
+        return $this;
+    }
+
+    public function getJournal(): ?string
+    {
+        return $this->journal;
+    }
+
+    public function setJournal(?string $journal): self
+    {
+        $this->journal = $journal;
+        return $this;
+    }
+
+    public function getCount(): ?int
+    {
+        return $this->count;
+    }
+
+    public function setCount(?int $count): self
+    {
+        $this->count = $count;
         return $this;
     }
 
