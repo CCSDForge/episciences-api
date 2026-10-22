@@ -76,11 +76,28 @@ class StatisticStateProviderTest extends TestCase
         $this->assertSame('reviews-requested', $statistics[0]->getName());
     }
 
-    public function testSeveralIndicatorsAreRejected(): void
+    public function testSeveralEvaluationIndicatorsAreReturnedInTheRequestedOrder(): void
+    {
+        $statistics = iterator_to_array($this->provideEvaluation(filters: ['indicator' => ['reviews-received', 'reviews-requested', 'reviews-received']]));
+
+        $this->assertSame(['reviews-received', 'reviews-requested'], array_map(static fn(Statistic $statistic): string => $statistic->getName(), $statistics));
+    }
+
+    public function testSeveralIndicatorsAreReturnedInTheRequestedOrder(): void
+    {
+        $statistics = iterator_to_array($this->provideCollection(['indicator' => ['median-submission-publication', 'evaluation'], 'unit' => 'day']));
+
+        $this->assertSame(
+            ['median-submission-publication', 'reviews-requested', 'reviews-received', 'median-reviews-number'],
+            array_map(static fn(Statistic $statistic): string => $statistic->getName(), $statistics)
+        );
+    }
+
+    public function testAnInvalidIndicatorAmongSeveralIsRejected(): void
     {
         $this->expectException(ResourceNotFoundException::class);
 
-        $this->provideEvaluation(filters: ['indicator' => ['reviews-requested', 'reviews-received']]);
+        $this->provideCollection(['indicator' => ['median-submission-publication', 'foo']]);
     }
 
     public function testValidStartAfterDateIsAccepted(): void
@@ -161,6 +178,7 @@ class StatisticStateProviderTest extends TestCase
         yield 'without indicator' => [['groupBy' => 'journal']];
         yield 'not a median' => [['indicator' => 'acceptance-rate', 'groupBy' => 'journal']];
         yield 'sent as array' => [['indicator' => 'median-submission-publication', 'groupBy' => ['journal']]];
+        yield 'several indicators' => [['indicator' => ['median-submission-publication', 'median-submission-acceptance'], 'groupBy' => 'journal']];
     }
 
     public function testGroupByIsRejectedForTheEvaluation(): void
@@ -190,10 +208,18 @@ class StatisticStateProviderTest extends TestCase
         ]);
 
         $entityManager = $this->createStub(EntityManagerInterface::class);
+        $reviewerReportRepository = $this->createStub(ReviewerReportRepository::class);
+        $reviewerReportRepository->method('getReceivedReports')->willReturn($this->createQueryBuilder());
+
+        $userInvitationRepository = $this->createStub(UserInvitationRepository::class);
+        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder());
+
         $entityManager->method('getRepository')->willReturnMap([
             [Paper::class, $papersRepository],
             [PaperLog::class, $paperLogRepository],
             [Review::class, $reviewRepository],
+            [ReviewerReport::class, $reviewerReportRepository],
+            [UserInvitation::class, $userInvitationRepository],
         ]);
 
         $provider = new StatisticStateProvider(

@@ -38,7 +38,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'indicator',
                         in: 'query',
-                        description: 'A single indicator; all of them when omitted',
+                        description: 'Indicator; all of them when omitted',
                         required: false,
                         schema: [
                             "type" => 'string',
@@ -48,7 +48,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'indicator[]',
                         in: 'query',
-                        description: 'Same as `indicator`, sent as an array: a single value',
+                        description: 'Several indicators, returned in this order',
                         required: false,
                         schema: [
                             "type" => 'array',
@@ -121,7 +121,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: self::GROUP_BY_PARAM,
                         in: 'query',
-                        description: 'Returns the median of each journal (one item by journal, its code in `journal`). Only with `indicator=median-submission-publication` or `indicator=median-submission-acceptance`, and without `rvcode`.',
+                        description: 'Returns the median of each journal (one item by journal, its code in `journal`). Only with a single indicator, `median-submission-publication` or `median-submission-acceptance`, and without `rvcode`.',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -478,7 +478,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'indicator',
                         in: 'query',
-                        description: 'A single indicator; all of them when omitted',
+                        description: 'Indicator; all of them when omitted',
                         required: false,
                         schema: [
                             "type" => 'string',
@@ -488,7 +488,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'indicator[]',
                         in: 'query',
-                        description: 'Same as `indicator`, sent as an array: a single value',
+                        description: 'Several indicators, returned in this order',
                         required: false,
                         schema: [
                             "type" => 'array',

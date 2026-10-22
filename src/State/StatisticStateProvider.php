@@ -80,8 +80,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $isPaginationEnabled = $context['filters']['pagination'];
         $page = $context['filters']['page'];
         $firstResult = 0;
-        $indicator = $this->processIndicator($filters['indicator'] ?? null);
-        $groupBy = $this->processGroupBy($filters[Statistic::GROUP_BY_PARAM] ?? null, $operationName, $indicator, $code);
+        $indicators = $this->processIndicators($filters['indicator'] ?? null);
+        $groupBy = $this->processGroupBy($filters[Statistic::GROUP_BY_PARAM] ?? null, $operationName, $indicators, $code);
 
         $dictionaryKeys = array_keys($dictionary);
         $statusValues = array_values($status);
@@ -113,33 +113,34 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             $response = [];
 
             if ($operationName === '_get_collection') {
-                if ($indicator) {
+                if ($indicators !== []) { // in the requested order
 
-                    if (!in_array($indicator, Statistic::AVAILABLE_PUBLICATION_INDICATORS, true)) {
-                        throw new ResourceNotFoundException(sprintf('Oops! invalid indicator "%s" because the available values are: %s', $indicator, implode(', ', Statistic::AVAILABLE_PUBLICATION_INDICATORS)));
+                    foreach ($indicators as $indicator) {
+                        if (!in_array($indicator, Statistic::AVAILABLE_PUBLICATION_INDICATORS, true)) {
+                            throw new ResourceNotFoundException(sprintf('Oops! invalid indicator "%s" because the available values are: %s', $indicator, implode(', ', Statistic::AVAILABLE_PUBLICATION_INDICATORS)));
+                        }
                     }
 
-                    if ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get']) {
-                        $nbSubmissionStatsQuery = $this->entityManager->getRepository(Paper::class)
-                            ->submissionsQuery(['is' => $currentFilters])
-                            ->getQuery();
-                        $response[] = new Statistic()
-                            ->setName($indicator)
-                            ->setValue($nbSubmissionStatsQuery->getSingleScalarResult());
-                    } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get']) {
-
-                        $response[] = new Statistic()
-                            ->setName($indicator)
-                            ->setValue($this->getAcceptanceRate($currentFilters))
-                            ->setUnit('%');
-
-
-                    } elseif ($groupBy === Statistic::GROUP_BY_JOURNAL) {
-                        $response = $this->getMedianDelayByJournal($indicator, $years, $startAfterDate, $unit);
-                    } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'] || $indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get']) {
-                        $response[] = $this->getMedianDelay($indicator, $rvId, $years, $startAfterDate, $unit);
-                    } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['evaluation_get_collection']) {
-                        $response = $this->getEvalCollection($currentFilters);
+                    foreach ($indicators as $indicator) {
+                        if ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get']) {
+                            $nbSubmissionStatsQuery = $this->entityManager->getRepository(Paper::class)
+                                ->submissionsQuery(['is' => $currentFilters])
+                                ->getQuery();
+                            $response[] = new Statistic()
+                                ->setName($indicator)
+                                ->setValue($nbSubmissionStatsQuery->getSingleScalarResult());
+                        } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get']) {
+                            $response[] = new Statistic()
+                                ->setName($indicator)
+                                ->setValue($this->getAcceptanceRate($currentFilters))
+                                ->setUnit('%');
+                        } elseif ($groupBy === Statistic::GROUP_BY_JOURNAL) {
+                            $response = $this->getMedianDelayByJournal($indicator, $years, $startAfterDate, $unit);
+                        } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'] || $indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get']) {
+                            $response[] = $this->getMedianDelay($indicator, $rvId, $years, $startAfterDate, $unit);
+                        } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['evaluation_get_collection']) {
+                            array_push($response, ...$this->getEvalCollection($currentFilters));
+                        }
                     }
 
                 } else { // all submissions indicators
@@ -191,22 +192,16 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                     $response[] = new Statistic()->setName('evaluation')->setValue($this->getEvaluationStats($currentFilters));
                 }
 
-            } elseif ($indicator) {// evaluations With indicators
+            } elseif ($indicators !== []) { // evaluations with indicators, in the requested order
 
-                if (!in_array($indicator, Statistic::EVAL_INDICATORS, true)) {
-                    throw new ResourceNotFoundException(sprintf('Oops! invalid indicator "%s" because the available values are: %s', $indicator, implode(', ', Statistic::EVAL_INDICATORS)));
+                foreach ($indicators as $indicator) {
+                    if (!in_array($indicator, Statistic::EVAL_INDICATORS, true)) {
+                        throw new ResourceNotFoundException(sprintf('Oops! invalid indicator "%s" because the available values are: %s', $indicator, implode(', ', Statistic::EVAL_INDICATORS)));
+                    }
                 }
 
-                $eval = $this->getEvaluationStats($currentFilters, $indicator);
-
-                if ($indicator === Statistic::EVAL_INDICATORS['median-reviews-number_get']) {
-                    $response[] = new Statistic()->setName(Statistic::EVAL_INDICATORS['median-reviews-number_get'])->setValue($eval);
-
-                } elseif ($indicator === Statistic::EVAL_INDICATORS['reviews-requested_get']) {
-                    $response[] = new Statistic()->setName(Statistic::EVAL_INDICATORS['reviews-requested_get'])->setValue($eval);
-
-                } elseif ($indicator === Statistic::EVAL_INDICATORS['reviews-received_get']) {
-                    $response[] = new Statistic()->setName(Statistic::EVAL_INDICATORS['reviews-received_get'])->setValue($eval);
+                foreach ($indicators as $indicator) {
+                    $response[] = new Statistic()->setName($indicator)->setValue($this->getEvaluationStats($currentFilters, $indicator));
                 }
 
             } else {
@@ -252,37 +247,30 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
 
     /**
-     * Accepts a single indicator, sent as "indicator" or "indicator[]".
+     * One or several indicators, sent as "indicator" or "indicator[]" (duplicates and empty values ignored).
+     *
+     * @return list<string>
      * @throws ResourceNotFoundException
      */
-    private function processIndicator(mixed $indicator): ?string
+    private function processIndicators(mixed $indicator): array
     {
-        if (is_array($indicator)) {
-            $indicator = array_values(array_unique(array_filter($indicator, static fn($value) => $value !== '' && $value !== null)));
+        $indicators = is_array($indicator) ? $indicator : [$indicator];
+        $indicators = array_values(array_unique(array_filter($indicators, static fn($value) => $value !== '' && $value !== null)));
 
-            if (count($indicator) > 1) {
-                throw new ResourceNotFoundException('Oops! only one indicator can be requested at a time');
+        foreach ($indicators as $value) {
+            if (!is_string($value)) {
+                throw new ResourceNotFoundException('Oops! invalid indicator');
             }
-
-            $indicator = $indicator[0] ?? null;
         }
 
-        if ($indicator === null || $indicator === '') {
-            return null;
-        }
-
-        if (!is_string($indicator)) {
-            throw new ResourceNotFoundException('Oops! invalid indicator');
-        }
-
-        return $indicator;
+        return $indicators;
     }
 
     /**
      * "groupBy=journal" is only available for the median delays of all the journals.
      * @throws ResourceNotFoundException
      */
-    private function processGroupBy(mixed $groupBy, string $operationName, ?string $indicator, ?string $code): ?string
+    private function processGroupBy(mixed $groupBy, string $operationName, array $indicators, ?string $code): ?string
     {
         if ($groupBy === null || $groupBy === '') {
             return null;
@@ -294,7 +282,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
         $medianIndicators = [Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'], Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get']];
 
-        if ($operationName !== '_get_collection' || !in_array($indicator, $medianIndicators, true)) {
+        // a single median delay: the items are the journals
+        if ($operationName !== '_get_collection' || count($indicators) !== 1 || !in_array($indicators[0], $medianIndicators, true)) {
             throw new ResourceNotFoundException(sprintf('Oops! %s=%s requires indicator=%s', Statistic::GROUP_BY_PARAM, Statistic::GROUP_BY_JOURNAL, implode(' or indicator=', $medianIndicators)));
         }
 
