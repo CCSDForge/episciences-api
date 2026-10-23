@@ -46,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI runs the tests against MySQL 8.4 (was 8.0), with `DATABASE_SERVER_VERSION` set accordingly.
 
 ### Fixed
+- Statistics and journal dashboard: the submission date of a paper is the one of its first version (the oldest of its versions): a paper whose versions were submitted in different years is counted once, in the year of its first submission (`year`, `startAfterDate`, counts by year, lists of `withPapers`), so that the years add up to the total. The submissions by repository (`withDetails`) ignore the temporary versions (local repository) and count a paper in the repository of its first other version.
 - Journal dashboard (`/api/journals/stats/dashboard/{code}`): `nbOtherStatus` and the `others` of each year (`withDetails`) are now the number of articles awaiting an editorial decision, counted directly by submission date, as `being-to-publish.other-status` of the statistics. They were the submissions minus the acceptances and refusals of the period.
 - Statistics without start date: removed a PHP deprecation (`DateTime::createFromFormat()` called with `null`).
 - Statistics and journal dashboard: the accepted articles not yet published (`being-to-publish.accepted`, `nbAcceptedNotYetPublished`) now include the abandoned ones, an abandoned article being only paused.

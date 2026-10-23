@@ -184,19 +184,21 @@ class PaperLogRepository extends ServiceEntityRepository
         $papers = 'PAPERS';
         $paperLog = 'PAPER_LOG';
 
-        $year = $isSubmittedSameYear ? "pl.DATE" : "$papers.SUBMISSION_DATE";
-
+        // the submission date of a paper is the one of its first version (the oldest of its versions)
+        $year = $isSubmittedSameYear ? "pl.DATE" : "firstSubmission.SUBMISSION_DATE";
 
         $sql = "SELECT $papers.RVID AS rvid, YEAR($year) AS `year`, COUNT(DISTINCT($papers.PAPERID)) AS $as";
-        $sql .= " FROM $paperLog pl JOIN $papers ON $papers.DOCID = pl.DOCID AND YEAR($papers.SUBMISSION_DATE) = YEAR(pl.DATE)";
+        $sql .= " FROM $paperLog pl JOIN $papers ON $papers.DOCID = pl.DOCID";
+        $sql .= " JOIN (SELECT PAPERID, MIN(SUBMISSION_DATE) AS SUBMISSION_DATE FROM $papers GROUP BY PAPERID) firstSubmission";
+        $sql .= " ON firstSubmission.PAPERID = $papers.PAPERID AND YEAR(firstSubmission.SUBMISSION_DATE) = YEAR(pl.DATE)";
         $sql .= " WHERE pl.status IS NOT NULL AND pl.status = $status";
 
         if ($withoutImported) {
             $sql .= " AND $papers.FLAG = 'submitted'";
         }
 
-        $sql .= "GROUP BY rvid, `year`";
-        $sql .= "ORDER BY rvid, `year` DESC";
+        $sql .= " GROUP BY rvid, `year`";
+        $sql .= " ORDER BY rvid, `year` DESC";
 
 
         return $sql;
@@ -317,7 +319,9 @@ class PaperLogRepository extends ServiceEntityRepository
         }
 
         if (self::isValidDate($startAfterDate)) {
-            $qb->andWhere('p.submissionDate > :date')->setParameter('date', $startAfterDate);
+            // first submission of the paper (the oldest submission date of its versions), as for the submissions
+            $qb->andWhere(sprintf('p.paperid IN (SELECT firstSubmission.paperid FROM %s firstSubmission GROUP BY firstSubmission.paperid HAVING MIN(firstSubmission.submissionDate) > :date)', Paper::class))
+                ->setParameter('date', $startAfterDate);
         }
 
         if ($rvId) {
