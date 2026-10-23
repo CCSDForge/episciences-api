@@ -740,6 +740,37 @@ class PapersRepository extends ServiceEntityRepository
         return $totals;
     }
 
+    /**
+     * Identifiers (PAPERID) of the papers counted by submissionsQuery()
+     *
+     * @param array<string, mixed> $filters see submissionsQuery()
+     * @return list<int> sorted
+     */
+    public function getSubmissionPaperIds(array $filters = [], ?string $flag = null): array
+    {
+        return $this->paperIds($this->submissionsQuery($filters, false, 'submissionDate', false, $flag));
+    }
+
+    /**
+     * Identifiers (PAPERID) of the papers counted by getSubmissionsAwaitingDecision()
+     *
+     * @return list<int> sorted
+     */
+    public function getSubmissionsAwaitingDecisionPaperIds(?int $rvId = null, ?string $startAfterDate = null, array|string|null $years = null): array
+    {
+        return $this->paperIds($this->awaitingDecisionQuery($rvId, $startAfterDate, $years));
+    }
+
+    /**
+     * @return list<int> sorted
+     */
+    private function paperIds(QueryBuilder $qb): array
+    {
+        $qb->select(sprintf('DISTINCT %s.paperid AS paperid', self::PAPERS_ALIAS))->orderBy('paperid');
+
+        return array_map('intval', array_column($qb->getQuery()->getScalarResult(), 'paperid'));
+    }
+
     private function awaitingDecisionQuery(?int $rvId, ?string $startAfterDate, array|string|null $years = null): QueryBuilder
     {
         $filters = ['rvid' => $rvId, 'startAfterDate' => $startAfterDate, 'flag' => self::AVAILABLE_FLAG_VALUES['submitted'], 'year' => $years];

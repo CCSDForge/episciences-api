@@ -8,23 +8,28 @@ use ApiPlatform\State\Pagination\Pagination;
 use ApiPlatform\State\ProviderInterface;
 use App\AppConstants;
 use App\Entity\Paper;
+use App\Entity\PaperConflicts;
 use App\Entity\PaperLog;
 use App\Entity\Review;
 use App\Entity\ReviewerReport;
+use App\Entity\User;
 use App\Entity\UserInvitation;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\PaperLogRepository;
+use App\Repository\PapersRepository;
 use App\Resource\Statistic;
 use App\Service\Stats;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 class StatisticStateProvider extends AbstractStateDataProvider implements ProviderInterface
 {
     /** Units accepted by the delay indicators (MySQL TIMESTAMPDIFF units) */
     public const array AVAILABLE_UNITS = ['second', 'minute', 'hour', 'day', 'week', 'month', 'quarter', 'year'];
 
-    public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger, protected Pagination $pagination, protected Stats $statsService)
+    public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger, protected Pagination $pagination, protected Stats $statsService, private readonly Security $security)
     {
         parent::__construct($entityManager, $logger, $pagination);
     }
@@ -82,6 +87,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $firstResult = 0;
         $indicators = $this->processIndicators($filters['indicator'] ?? null);
         $groupBy = $this->processGroupBy($filters[Statistic::GROUP_BY_PARAM] ?? null, $operationName, $code);
+        // papers hidden from the lists because of a conflict of interest (PAPERID => true); null: no list
+        $conflictedPapers = $this->processWithPapers($filters[Statistic::WITH_PAPERS_PARAM] ?? null, $operationName, $journal ?? null, $groupBy);
 
         $dictionaryKeys = array_keys($dictionary);
         $statusValues = array_values($status);
@@ -173,7 +180,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
 
                     $response[] = new Statistic()
-                        ->setName('nb-submissions-details')
+                        ->setName(Statistic::NB_SUBMISSIONS_DETAILS)
                         ->setValue(
                             [
                                 'nb-submitted-versions' => $nbSubmissionsWithoutImported,
@@ -203,6 +210,10 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
             } else {
                 $response = $this->getEvalCollection($currentFilters);
+            }
+
+            if ($conflictedPapers !== null) {
+                $this->addPapers($response, $currentFilters, (int)$rvId, $years, $startAfterDate, $unit, $conflictedPapers);
             }
 
             $maxResults = $operation->getPaginationMaximumItemsPerPage() ?: 30;
@@ -286,6 +297,121 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         }
 
         return $groupBy;
+    }
+
+    /**
+     * "withPapers": the lists of the papers counted, for the administrators of the journal only (JWT).
+     * The papers for which a journal administrator has declared a conflict of interest are not listed;
+     * the platform administrators (ROLE_EPIADMIN) are not subject to the conflicts, as in PapersVoter.
+     *
+     * @return array<int, true>|null the papers not to list (PAPERID => true), null without lists
+     * @throws ResourceNotFoundException
+     */
+    private function processWithPapers(mixed $withPapers, string $operationName, ?Review $journal, ?string $groupBy): ?array
+    {
+        if ($withPapers === null || $withPapers === '' || filter_var($withPapers, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) === false) {
+            return null;
+        }
+
+        if (!is_scalar($withPapers) || filter_var($withPapers, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) === null) {
+            throw new ResourceNotFoundException(sprintf('Oops! invalid %s: a boolean is expected', Statistic::WITH_PAPERS_PARAM));
+        }
+
+        if ($operationName !== '_get_collection' || !$journal instanceof Review || $groupBy !== null) {
+            throw new ResourceNotFoundException(sprintf('Oops! %s is only available on %s, with rvcode and without %s', Statistic::WITH_PAPERS_PARAM, Statistic::STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::GROUP_BY_PARAM));
+        }
+
+        if ($this->security->isGranted('ROLE_EPIADMIN')) {
+            return [];
+        }
+
+        $user = $this->security->getUser();
+
+        // the journal of the JWT (roles of this journal) must be the requested one
+        if (!$user instanceof User || !$this->security->isGranted('ROLE_ADMINISTRATOR') || $user->getCurrentJournalID() !== $journal->getRvid()) {
+            throw new AccessDeniedException(sprintf('The lists of papers (%s) are reserved for the administrators of the journal', Statistic::WITH_PAPERS_PARAM));
+        }
+
+        if (!$journal->getSetting('isCoiEnabled')) {
+            return [];
+        }
+
+        $conflicted = [];
+
+        foreach ($this->entityManager->getRepository(PaperConflicts::class)->findBy(['by' => $user->getUid(), 'answer' => PaperConflicts::AVAILABLE_ANSWER['yes']]) as $conflict) {
+            $conflicted[$conflict->getPaperId()] = true;
+        }
+
+        return $conflicted;
+    }
+
+    /**
+     * Adds to each statistic the papers it counts, computed with the same queries as the figures (not for the evaluation).
+     *
+     * @param Statistic[] $statistics
+     * @param array<int, true> $conflictedPapers papers not to list
+     */
+    private function addPapers(array $statistics, array $filters, int $rvId, array $years, ?string $startAfterDate, string $unit, array $conflictedPapers): void
+    {
+        /** @var \App\Repository\PapersRepository $paperRepo */
+        $paperRepo = $this->entityManager->getRepository(Paper::class);
+        /** @var PaperLogRepository $paperLogRepo */
+        $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
+        $common = array_intersect_key($filters, array_flip(['rvid', AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE]));
+        $figures = PaperLogRepository::PAPER_IDS_FIGURES;
+
+        foreach ($statistics as $statistic) {
+            $papers = match ($statistic->getName()) {
+                Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'] => $paperRepo->getSubmissionPaperIds(['is' => $filters]),
+                Statistic::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get'] => [
+                    'accepted' => $paperLogRepo->getPaperIds($figures['accepted'], $rvId, $years, $startAfterDate),
+                    'refused' => $paperLogRepo->getPaperIds($figures['refused'], $rvId, $years, $startAfterDate),
+                ],
+                Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'],
+                Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get'] => $paperLogRepo->getSubmissionDelayPaperIds($rvId, $years, $startAfterDate, $statistic->getName(), $unit),
+                Statistic::NB_SUBMISSIONS_DETAILS => [
+                    'nb-submitted-versions' => $paperRepo->getSubmissionPaperIds(['is' => $common], PapersRepository::AVAILABLE_FLAG_VALUES['submitted']),
+                    'nb-imported-versions' => $paperRepo->getSubmissionPaperIds(['is' => $common + array_intersect_key($filters, ['status' => true])], PapersRepository::AVAILABLE_FLAG_VALUES['imported']),
+                    Paper::STATUS_DICTIONARY[Paper::STATUS_PUBLISHED] => $paperLogRepo->getPaperIds($figures['published'], $rvId, $years, $startAfterDate),
+                    Paper::STATUS_DICTIONARY[Paper::STATUS_REFUSED] => $paperLogRepo->getPaperIds($figures['refused'], $rvId, $years, $startAfterDate),
+                    'accepted' => $paperLogRepo->getPaperIds($figures['accepted'], $rvId, $years, $startAfterDate),
+                    'being-to-publish.accepted' => $paperLogRepo->getPaperIds($figures['accepted-not-yet-published'], $rvId, $years, $startAfterDate),
+                    'being-to-publish.other-status' => $paperRepo->getSubmissionsAwaitingDecisionPaperIds($rvId, $startAfterDate, $years),
+                ],
+                default => null, // evaluation: reviews, not papers
+            };
+
+            if ($papers === null) {
+                continue;
+            }
+
+            if (array_is_list($papers)) {
+                [$visible, $hidden] = $this->withoutConflicts($papers, $conflictedPapers);
+                $statistic->setPapers($visible)->setHiddenPapers($hidden);
+                continue;
+            }
+
+            $visibleByFigure = [];
+            $hiddenByFigure = [];
+
+            foreach ($papers as $figure => $ids) {
+                [$visibleByFigure[$figure], $hiddenByFigure[$figure]] = $this->withoutConflicts($ids, $conflictedPapers);
+            }
+
+            $statistic->setPapers($visibleByFigure)->setHiddenPapers($hiddenByFigure);
+        }
+    }
+
+    /**
+     * @param list<int> $ids
+     * @param array<int, true> $conflictedPapers
+     * @return array{0: list<int>, 1: int} the papers to list, the number of papers not listed
+     */
+    private function withoutConflicts(array $ids, array $conflictedPapers): array
+    {
+        $visible = array_values(array_filter($ids, static fn(int $id): bool => !isset($conflictedPapers[$id])));
+
+        return [$visible, count($ids) - count($visible)];
     }
 
     /**

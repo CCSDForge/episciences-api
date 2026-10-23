@@ -278,6 +278,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             '/api/volumes/{vid}' => 'Volume',
             '/api/sections' => 'Sections',
             '/api/sections/{sid}' => 'Section',
+            '/api/statistics/' => 'Statistics', // withPapers: administrators of the journal
         ];
     }
 

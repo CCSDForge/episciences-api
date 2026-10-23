@@ -119,6 +119,19 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         allowReserved: false
                     ),
                     new Parameter(
+                        name: self::WITH_PAPERS_PARAM,
+                        in: 'query',
+                        description: self::WITH_PAPERS_DESCRIPTION,
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    ),
+                    new Parameter(
                         name: self::GROUP_BY_PARAM,
                         in: 'query',
                         description: self::GROUP_BY_DESCRIPTION,
@@ -577,6 +590,9 @@ class Statistic
         self::EVAL_INDICATORS['median-reviews-number_get'],
     ];
     public const GROUP_BY_DESCRIPTION = 'Returns the statistics of each active journal: one item by journal and by indicator, with the journal code in `journal`, sorted by code. Only the journals having data are returned. Not with `rvcode`';
+    public const NB_SUBMISSIONS_DETAILS = 'nb-submissions-details';
+    public const WITH_PAPERS_PARAM = 'withPapers';
+    public const WITH_PAPERS_DESCRIPTION = 'Adds `papers`, the identifiers (PAPERID) of the papers counted by each statistic (not for `evaluation`), to understand the figures. Only with `rvcode`, without `groupBy`, for the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number is in `hiddenPapers`';
     public const GROUP_BY_PARAM = 'groupBy';
     public const GROUP_BY_JOURNAL = 'journal';
     public const STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER = '/api/statistics/';
@@ -612,6 +628,14 @@ class Statistic
     #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
     #[ApiProperty(description: 'Number of articles the median delay is computed from (median delays only)', schema: ['type' => 'integer', 'minimum' => 0, 'example' => 412])]
     private ?int $count = null;
+    #[groups(['read:Statistic'])]
+    #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
+    #[ApiProperty(description: 'With `withPapers`: the identifiers (PAPERID) of the papers counted, or, for a statistic made of several figures, the identifiers of each figure', schema: ['type' => ['array', 'object'], 'items' => ['type' => 'integer'], 'example' => [18910, 18947]])]
+    private ?array $papers = null;
+    #[groups(['read:Statistic'])]
+    #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
+    #[ApiProperty(description: 'With `withPapers`: the number of papers not listed in `papers` because of a conflict of interest (by figure for a statistic made of several figures)', schema: ['type' => ['integer', 'object'], 'example' => 0])]
+    private int|array|null $hiddenPapers = null;
 
     public function getName(): string
     {
@@ -660,6 +684,28 @@ class Statistic
     public function getCount(): ?int
     {
         return $this->count;
+    }
+
+    public function getPapers(): ?array
+    {
+        return $this->papers;
+    }
+
+    public function setPapers(?array $papers): self
+    {
+        $this->papers = $papers;
+        return $this;
+    }
+
+    public function getHiddenPapers(): int|array|null
+    {
+        return $this->hiddenPapers;
+    }
+
+    public function setHiddenPapers(int|array|null $hiddenPapers): self
+    {
+        $this->hiddenPapers = $hiddenPapers;
+        return $this;
     }
 
     public function setCount(?int $count): self

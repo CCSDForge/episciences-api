@@ -177,6 +177,32 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
         $this->assertSame([self::RVID => 2], $this->paperLogRepository->getRefusedByJournal([2024]));
     }
 
+    /**
+     * withPapers: each list of papers has as many identifiers as its figure (same queries).
+     */
+    public function testPaperListsExplainTheFigures(): void
+    {
+        $this->assertSame(
+            (int)$this->repository->submissionsQuery(['is' => ['rvid' => self::RVID]])->getQuery()->getSingleScalarResult(),
+            count($this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::RVID]]))
+        );
+        // paper 5 deleted, paper 8 imported
+        $this->assertSame([1, 2, 3, 4, 6, 7, 9, 11], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::RVID]], 'submitted'));
+        $this->assertSame([8], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::RVID]], 'imported'));
+
+        foreach ([[], [2024], [2023, 2024]] as $years) {
+            $this->assertSame($this->repository->getSubmissionsAwaitingDecision(self::RVID, null, $years), count($this->repository->getSubmissionsAwaitingDecisionPaperIds(self::RVID, null, $years)));
+            $this->assertSame($this->paperLogRepository->getAccepted(self::RVID, $years), count($this->paperLogRepository->getPaperIds('accepted', self::RVID, $years)));
+            $this->assertSame($this->paperLogRepository->getRefused(self::RVID, $years), count($this->paperLogRepository->getPaperIds('refused', self::RVID, $years)));
+            $this->assertSame($this->paperLogRepository->getPublished(self::RVID, $years), count($this->paperLogRepository->getPaperIds('published', self::RVID, $years)));
+            $this->assertSame($this->paperLogRepository->getAllAcceptedNotYetPublished(self::RVID, $years), count($this->paperLogRepository->getPaperIds('accepted-not-yet-published', self::RVID, $years)));
+        }
+
+        $this->assertSame([1, 6, 7], $this->repository->getSubmissionsAwaitingDecisionPaperIds(self::RVID));
+        $this->assertSame([3, 11], $this->paperLogRepository->getPaperIds('accepted', self::RVID));
+        $this->assertSame([4, 9], $this->paperLogRepository->getPaperIds('refused', self::RVID));
+    }
+
     private function insertData(): void
     {
         $papers = [

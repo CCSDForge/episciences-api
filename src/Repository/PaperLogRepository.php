@@ -32,6 +32,8 @@ class PaperLogRepository extends ServiceEntityRepository
 {
     /** Statuses of an accepted article in its history (see acceptedQuery) */
     public const array ACCEPTED_STATUSES = [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED];
+    /** Figures whose papers can be listed (see getPaperIds()) */
+    public const array PAPER_IDS_FIGURES = ['accepted' => 'accepted', 'refused' => 'refused', 'published' => 'published', 'accepted-not-yet-published' => 'accepted-not-yet-published'];
     /** Status of a refused article in its history (see refusedQuery) */
     public const int REFUSED_STATUS = Paper::STATUS_REFUSED;
 
@@ -402,6 +404,52 @@ class PaperLogRepository extends ServiceEntityRepository
         }
 
         return array_sum($this->processResultByYear($qb, $years));
+    }
+
+    /**
+     * Identifiers (PAPERID) of the papers counted by getAccepted(), getRefused(), getPublished() and getAllAcceptedNotYetPublished()
+     *
+     * @param string $figure one of the PAPER_IDS_FIGURES
+     * @return list<int> sorted; with several years, a paper decided in several of them is listed once
+     */
+    public function getPaperIds(string $figure, int $rvId, array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
+    {
+        $qb = match ($figure) {
+            self::PAPER_IDS_FIGURES['accepted'] => $this->acceptedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles),
+            self::PAPER_IDS_FIGURES['refused'] => $this->refusedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles),
+            self::PAPER_IDS_FIGURES['published'] => $this->publishedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles),
+            self::PAPER_IDS_FIGURES['accepted-not-yet-published'] => $this->acceptedNotYetPublishedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles),
+            default => throw new \InvalidArgumentException(sprintf('Unknown figure "%s"', $figure)),
+        };
+
+        $qb->select('DISTINCT pl.paperid AS paperid')->orderBy('paperid');
+
+        if ($years !== []) {
+            $this->andOrExp($qb, 'YEAR(pl.date)', $years);
+        }
+
+        return array_map('intval', array_column($qb->getQuery()->getScalarResult(), 'paperid'));
+    }
+
+    /**
+     * Identifiers (PAPERID) of the papers a median delay is computed from (see getSubmissionMedianTimeDetails())
+     *
+     * @return list<int> sorted
+     */
+    public function getSubmissionDelayPaperIds(int $rvId, ?array $years = null, ?string $startAfterDate = null, string $operationName = 'median-submission-publication', string $unit = 'week'): array
+    {
+        $ids = [];
+
+        foreach ($this->getSubmissionDelays($rvId, $years, $startAfterDate, $operationName, $unit) as $row) {
+            if (is_numeric($row[self::DELAY])) {
+                $ids[] = (int)$row['PAPERID'];
+            }
+        }
+
+        $ids = array_values(array_unique($ids));
+        sort($ids);
+
+        return $ids;
     }
 
     /**
