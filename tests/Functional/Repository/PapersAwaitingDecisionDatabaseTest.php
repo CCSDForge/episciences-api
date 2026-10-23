@@ -203,6 +203,17 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
         $this->assertSame([4, 9], $this->paperLogRepository->getPaperIds('refused', self::RVID));
     }
 
+    /**
+     * withPapers lists one DOCID by paper: the one of its latest version (paper 1 has the versions 1 and 2).
+     */
+    public function testLatestVersionOfEachPaper(): void
+    {
+        $docIds = $this->repository->getLatestDocIds([1, 2, 1, 999]);
+        ksort($docIds);
+
+        $this->assertSame([1 => 2, 2 => 3], $docIds);
+    }
+
     private function insertData(): void
     {
         $papers = [

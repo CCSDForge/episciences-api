@@ -8,28 +8,25 @@ use ApiPlatform\State\Pagination\Pagination;
 use ApiPlatform\State\ProviderInterface;
 use App\AppConstants;
 use App\Entity\Paper;
-use App\Entity\PaperConflicts;
 use App\Entity\PaperLog;
 use App\Entity\Review;
 use App\Entity\ReviewerReport;
-use App\Entity\User;
 use App\Entity\UserInvitation;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
 use App\Resource\Statistic;
+use App\Service\StatisticPapers;
 use App\Service\Stats;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Bundle\SecurityBundle\Security;
-use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 class StatisticStateProvider extends AbstractStateDataProvider implements ProviderInterface
 {
     /** Units accepted by the delay indicators (MySQL TIMESTAMPDIFF units) */
     public const array AVAILABLE_UNITS = ['second', 'minute', 'hour', 'day', 'week', 'month', 'quarter', 'year'];
 
-    public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger, protected Pagination $pagination, protected Stats $statsService, private readonly Security $security)
+    public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger, protected Pagination $pagination, protected Stats $statsService, private readonly StatisticPapers $statisticPapers)
     {
         parent::__construct($entityManager, $logger, $pagination);
     }
@@ -300,53 +297,27 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     }
 
     /**
-     * "withPapers": the lists of the papers counted, for the administrators of the journal only (JWT).
-     * The papers for which a journal administrator has declared a conflict of interest are not listed;
-     * the platform administrators (ROLE_EPIADMIN) are not subject to the conflicts, as in PapersVoter.
+     * "withPapers": the lists of the papers counted, on the collection of a journal (see StatisticPapers).
      *
      * @return array<int, true>|null the papers not to list (PAPERID => true), null without lists
      * @throws ResourceNotFoundException
      */
     private function processWithPapers(mixed $withPapers, string $operationName, ?Review $journal, ?string $groupBy): ?array
     {
-        if ($withPapers === null || $withPapers === '' || filter_var($withPapers, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) === false) {
+        if (!StatisticPapers::isRequested($withPapers)) {
             return null;
-        }
-
-        if (!is_scalar($withPapers) || filter_var($withPapers, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) === null) {
-            throw new ResourceNotFoundException(sprintf('Oops! invalid %s: a boolean is expected', Statistic::WITH_PAPERS_PARAM));
         }
 
         if ($operationName !== '_get_collection' || !$journal instanceof Review || $groupBy !== null) {
             throw new ResourceNotFoundException(sprintf('Oops! %s is only available on %s, with rvcode and without %s', Statistic::WITH_PAPERS_PARAM, Statistic::STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::GROUP_BY_PARAM));
         }
 
-        if ($this->security->isGranted('ROLE_EPIADMIN')) {
-            return [];
-        }
-
-        $user = $this->security->getUser();
-
-        // the journal of the JWT (roles of this journal) must be the requested one
-        if (!$user instanceof User || !$this->security->isGranted('ROLE_ADMINISTRATOR') || $user->getCurrentJournalID() !== $journal->getRvid()) {
-            throw new AccessDeniedException(sprintf('The lists of papers (%s) are reserved for the administrators of the journal', Statistic::WITH_PAPERS_PARAM));
-        }
-
-        if (!$journal->getSetting('isCoiEnabled')) {
-            return [];
-        }
-
-        $conflicted = [];
-
-        foreach ($this->entityManager->getRepository(PaperConflicts::class)->findBy(['by' => $user->getUid(), 'answer' => PaperConflicts::AVAILABLE_ANSWER['yes']]) as $conflict) {
-            $conflicted[$conflict->getPaperId()] = true;
-        }
-
-        return $conflicted;
+        return $this->statisticPapers->getConflictedPapers($journal);
     }
 
     /**
-     * Adds to each statistic the papers it counts, computed with the same queries as the figures (not for the evaluation).
+     * Adds to each statistic the papers it counts (one DOCID by paper, its latest version), computed with the same queries
+     * as the figures (not for the evaluation).
      *
      * @param Statistic[] $statistics
      * @param array<int, true> $conflictedPapers papers not to list
@@ -386,32 +357,14 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             }
 
             if (array_is_list($papers)) {
-                [$visible, $hidden] = $this->withoutConflicts($papers, $conflictedPapers);
-                $statistic->setPapers($visible)->setHiddenPapers($hidden);
+                [$docIds, $hidden] = $this->statisticPapers->toDocIds(['papers' => $papers], $conflictedPapers);
+                $statistic->setPapers($docIds['papers'])->setHiddenPapers($hidden['papers']);
                 continue;
             }
 
-            $visibleByFigure = [];
-            $hiddenByFigure = [];
-
-            foreach ($papers as $figure => $ids) {
-                [$visibleByFigure[$figure], $hiddenByFigure[$figure]] = $this->withoutConflicts($ids, $conflictedPapers);
-            }
-
-            $statistic->setPapers($visibleByFigure)->setHiddenPapers($hiddenByFigure);
+            [$docIds, $hidden] = $this->statisticPapers->toDocIds($papers, $conflictedPapers);
+            $statistic->setPapers($docIds)->setHiddenPapers($hidden);
         }
-    }
-
-    /**
-     * @param list<int> $ids
-     * @param array<int, true> $conflictedPapers
-     * @return array{0: list<int>, 1: int} the papers to list, the number of papers not listed
-     */
-    private function withoutConflicts(array $ids, array $conflictedPapers): array
-    {
-        $visible = array_values(array_filter($ids, static fn(int $id): bool => !isset($conflictedPapers[$id])));
-
-        return [$visible, count($ids) - count($visible)];
     }
 
     /**

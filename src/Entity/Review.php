@@ -29,6 +29,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use App\Repository\ReviewRepository;
 use App\OpenApi\OpenApiFactory;
+use App\Resource\Statistic;
 use App\Controller\IndexingDatabaseController;
 use App\Entity\IndexingDatabase;
 
@@ -191,6 +192,17 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
+                    ),
+                    new Parameter(
+                        name: Statistic::WITH_PAPERS_PARAM,
+                        in: 'query',
+                        description: self::DASHBOARD_WITH_PAPERS_DESCRIPTION,
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
                         schema: [
                             'type' => 'boolean',
                         ],
@@ -444,6 +456,7 @@ class Review
     public const STATUS_DISABLED = 0;
     public const STATUS_ENABLED = 1;
     public const URI_TEMPLATE = '/journals/';
+    public const DASHBOARD_WITH_PAPERS_DESCRIPTION = 'Adds `papers` to the value, the papers counted by each figure (one DOCID by paper, its latest version; the delays: the papers of the average and median delays), computed with the same queries as the figures. For the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number by figure is in `hiddenPapers`';
     public const DASHBOARD_YEAR_DESCRIPTION = 'Year of: submission for `nbSubmissions` and `nbImported`; decision (publication, acceptance, refusal) for `nbPublished`, `nbImportedPublished`, `nbAccepted`, `nbAcceptedNotYetPublished`, `nbRefused` and `rates`; publication or acceptance for the delays; both submission and decision for `total*SubmittedSameYear`. The users are not counted by year';
 
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]

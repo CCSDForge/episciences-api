@@ -746,9 +746,36 @@ class PapersRepository extends ServiceEntityRepository
      * @param array<string, mixed> $filters see submissionsQuery()
      * @return list<int> sorted
      */
-    public function getSubmissionPaperIds(array $filters = [], ?string $flag = null): array
+    public function getSubmissionPaperIds(array $filters = [], ?string $flag = null, string $fieldDateToBeUsed = 'submissionDate'): array
     {
-        return $this->paperIds($this->submissionsQuery($filters, false, 'submissionDate', false, $flag));
+        return $this->paperIds($this->submissionsQuery($filters, false, $fieldDateToBeUsed, false, $flag));
+    }
+
+    /**
+     * The DOCID of the latest version of each paper
+     *
+     * @param int[] $paperIds
+     * @return array<int, int> DOCID indexed by PAPERID
+     */
+    public function getLatestDocIds(array $paperIds): array
+    {
+        $docIds = [];
+
+        foreach (array_chunk(array_values(array_unique($paperIds)), 1000) as $chunk) {
+            $rows = $this->createQueryBuilder(self::PAPERS_ALIAS)
+                ->select(sprintf('%1$s.paperid AS paperid, MAX(%1$s.docid) AS docid', self::PAPERS_ALIAS))
+                ->where(sprintf('%s.paperid IN (:paperIds)', self::PAPERS_ALIAS))
+                ->setParameter('paperIds', $chunk)
+                ->groupBy('paperid')
+                ->getQuery()
+                ->getScalarResult();
+
+            foreach ($rows as $row) {
+                $docIds[(int)$row['paperid']] = (int)$row['docid'];
+            }
+        }
+
+        return $docIds;
     }
 
     /**

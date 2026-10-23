@@ -7,6 +7,8 @@ use App\AppConstants;
 use App\Entity\Paper;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\AbstractStatResource;
+use App\Resource\Statistic;
+use App\Service\StatisticPapers;
 use App\Service\Stats;
 use App\Traits\CheckExistingResourceTrait;
 use App\Traits\ToolsTrait;
@@ -17,7 +19,7 @@ abstract class AbstractDataProvider
     use CheckExistingResourceTrait;
     use ToolsTrait;
 
-    public function __construct(private readonly EntityManagerInterface $entityManagerInterface, private readonly Stats $statsService)
+    public function __construct(private readonly EntityManagerInterface $entityManagerInterface, private readonly Stats $statsService, private readonly StatisticPapers $statisticPapers)
     {
 
     }
@@ -46,6 +48,16 @@ abstract class AbstractDataProvider
 
             $this->addFilters($filters['is'], $operation->getName(), $cFilters);
 
+            $isDashboard = $operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][0];
+            $withPapers = StatisticPapers::isRequested($cFilters[Statistic::WITH_PAPERS_PARAM] ?? null);
+
+            if ($withPapers && !$isDashboard) {
+                throw new ResourceNotFoundException(sprintf('Oops! %s is only available on the dashboard', Statistic::WITH_PAPERS_PARAM));
+            }
+
+            // before any computation: reserved for the administrators of the journal
+            $conflictedPapers = $withPapers ? $this->statisticPapers->getConflictedPapers($journal) : null;
+
             if ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][1]) {
                 $result = $this->statsService->getSubmissionsStat($filters);
 
@@ -53,8 +65,13 @@ abstract class AbstractDataProvider
                 $result = $this->statsService->getDelayBetweenSubmissionAndLatestStatus($filters);
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][3]) {
                 $result = $this->statsService->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED);
-            } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][0]) {
+            } elseif ($isDashboard) {
                 $result = $this->statsService->getDashboard($context, $filters);
+
+                if ($conflictedPapers !== null && is_array($result->getValue())) {
+                    [$papers, $hiddenPapers] = $this->statisticPapers->toDocIds($this->statsService->getDashboardPaperIds($filters), $conflictedPapers);
+                    $result->setValue(array_merge($result->getValue(), ['papers' => $papers, 'hiddenPapers' => $hiddenPapers]));
+                }
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][4]) {
                 $result = $this->statsService->getUserStats($filters['is']);
             }

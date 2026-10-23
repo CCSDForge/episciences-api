@@ -201,6 +201,45 @@ class Stats
 
 
     /**
+     * "withPapers" of the dashboard: the papers (PAPERID) counted by each figure, computed with the same queries as the figures.
+     * The papers of the delays are those of the average and of the median delays.
+     *
+     * @return array<string, list<int>> indexed by figure of the dashboard
+     */
+    public function getDashboardPaperIds(array $filters): array
+    {
+        $years = isset($filters['is']['submissionDate']) ? (array)$filters['is']['submissionDate'] : [];
+        $rvId = (int)$filters['is']['rvid'];
+        $startAfterDate = $filters['is']['startAfterDate'] ?? null;
+
+        /** @var PaperLogRepository $paperLogRepo */
+        $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
+        /** @var PapersRepository $paperRepo */
+        $paperRepo = $this->entityManager->getRepository(Paper::class);
+        $figures = PaperLogRepository::PAPER_IDS_FIGURES;
+
+        $papers = [
+            'nbSubmissions' => $paperRepo->getSubmissionPaperIds($filters),
+            'nbImported' => $paperRepo->getSubmissionPaperIds($filters, PapersRepository::AVAILABLE_FLAG_VALUES['imported']),
+        ];
+
+        if (!($startAfterDate && !$years)) { // as getDashboard()
+            $publishedFilters['is'] = array_merge($filters['is'], ['status' => Paper::STATUS_PUBLISHED]);
+            $papers['nbImportedPublished'] = $paperRepo->getSubmissionPaperIds($publishedFilters, PapersRepository::AVAILABLE_FLAG_VALUES['imported'], 'publicationDate');
+        }
+
+        return $papers + [
+            'nbPublished' => $paperLogRepo->getPaperIds($figures['published'], $rvId, $years, $startAfterDate),
+            'nbAccepted' => $paperLogRepo->getPaperIds($figures['accepted'], $rvId, $years, $startAfterDate),
+            'nbRefused' => $paperLogRepo->getPaperIds($figures['refused'], $rvId, $years, $startAfterDate),
+            'nbAcceptedNotYetPublished' => $paperLogRepo->getPaperIds($figures['accepted-not-yet-published'], $rvId, $years, $startAfterDate),
+            'nbOtherStatus' => $paperRepo->getSubmissionsAwaitingDecisionPaperIds($rvId, $startAfterDate, $years),
+            'submissionAcceptanceTime' => $paperLogRepo->getSubmissionDelayPaperIds($rvId, $years, $startAfterDate, 'median-submission-acceptance', 'day'),
+            'submissionPublicationTime' => $paperLogRepo->getSubmissionDelayPaperIds($rvId, $years, $startAfterDate, 'median-submission-publication', 'day'),
+        ];
+    }
+
+    /**
      * Par annee, par revue, delai moyen, ou la valeur médiane en nombre d'$unité entre dépôt et acceptation|publication
      * @param array $filters
      * @param int $latestStatus

@@ -592,7 +592,7 @@ class Statistic
     public const GROUP_BY_DESCRIPTION = 'Returns the statistics of each active journal: one item by journal and by indicator, with the journal code in `journal`, sorted by code. Only the journals having data are returned. Not with `rvcode`';
     public const NB_SUBMISSIONS_DETAILS = 'nb-submissions-details';
     public const WITH_PAPERS_PARAM = 'withPapers';
-    public const WITH_PAPERS_DESCRIPTION = 'Adds `papers`, the identifiers (PAPERID) of the papers counted by each statistic (not for `evaluation`), to understand the figures. Only with `rvcode`, without `groupBy`, for the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number is in `hiddenPapers`';
+    public const WITH_PAPERS_DESCRIPTION = 'Adds `papers`, the papers counted by each statistic (not for `evaluation`): one DOCID by paper, its latest version, computed with the same queries as the figures. Only with `rvcode`, without `groupBy`, for the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number is in `hiddenPapers`';
     public const GROUP_BY_PARAM = 'groupBy';
     public const GROUP_BY_JOURNAL = 'journal';
     public const STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER = '/api/statistics/';
@@ -630,7 +630,7 @@ class Statistic
     private ?int $count = null;
     #[groups(['read:Statistic'])]
     #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
-    #[ApiProperty(description: 'With `withPapers`: the identifiers (PAPERID) of the papers counted, or, for a statistic made of several figures, the identifiers of each figure', schema: ['type' => ['array', 'object'], 'items' => ['type' => 'integer'], 'example' => [18910, 18947]])]
+    #[ApiProperty(description: 'With `withPapers`: the papers counted (one DOCID by paper, its latest version), or, for a statistic made of several figures, the papers of each figure', schema: ['type' => ['array', 'object'], 'items' => ['type' => 'integer'], 'example' => [18910, 18947]])]
     private ?array $papers = null;
     #[groups(['read:Statistic'])]
     #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]

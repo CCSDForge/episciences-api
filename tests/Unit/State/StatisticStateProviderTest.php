@@ -22,6 +22,7 @@ use App\Repository\ReviewRepository;
 use App\Repository\ReviewerReportRepository;
 use App\Repository\UserInvitationRepository;
 use App\Resource\Statistic;
+use App\Service\StatisticPapers;
 use App\Service\Stats;
 use App\State\StatisticStateProvider;
 use Doctrine\ORM\EntityManagerInterface;
@@ -180,7 +181,7 @@ class StatisticStateProviderTest extends TestCase
         $entityManager = $this->createStub(EntityManagerInterface::class);
         $entityManager->method('getRepository')->willReturnMap([[Review::class, $reviewRepository]]);
 
-        $provider = new StatisticStateProvider($entityManager, $this->createStub(LoggerInterface::class), new Pagination(['client_enabled' => true]), $this->createStub(Stats::class), $this->createStub(Security::class));
+        $provider = new StatisticStateProvider($entityManager, $this->createStub(LoggerInterface::class), new Pagination(['client_enabled' => true]), $this->createStub(Stats::class), new StatisticPapers($entityManager, $this->createStub(Security::class)));
         $operation = new GetCollection(class: Statistic::class, name: self::COLLECTION_OPERATION, paginationMaximumItemsPerPage: 30);
 
         $this->expectException(ResourceNotFoundException::class);
@@ -195,11 +196,12 @@ class StatisticStateProviderTest extends TestCase
     {
         $statistics = $this->provideWithPapers(['indicator' => ['nb-submissions', 'acceptance-rate', 'median-submission-publication']], $this->administrator(1));
 
-        $this->assertSame([1, 2, 3, 4], $statistics[0]->getPapers());
+        // one DOCID by paper, its latest version
+        $this->assertSame([101, 102, 103, 104], $statistics[0]->getPapers());
         $this->assertSame(0, $statistics[0]->getHiddenPapers());
-        $this->assertSame(['accepted' => [2, 3], 'refused' => [4]], $statistics[1]->getPapers());
+        $this->assertSame(['accepted' => [102, 103], 'refused' => [104]], $statistics[1]->getPapers());
         $this->assertSame(['accepted' => 0, 'refused' => 0], $statistics[1]->getHiddenPapers());
-        $this->assertSame([2, 3], $statistics[2]->getPapers());
+        $this->assertSame([102, 103], $statistics[2]->getPapers());
     }
 
     /**
@@ -209,9 +211,9 @@ class StatisticStateProviderTest extends TestCase
     {
         $statistics = $this->provideWithPapers(['indicator' => ['nb-submissions', 'acceptance-rate']], $this->administrator(1), coiEnabled: true, conflicts: [3]);
 
-        $this->assertSame([1, 2, 4], $statistics[0]->getPapers());
+        $this->assertSame([101, 102, 104], $statistics[0]->getPapers());
         $this->assertSame(1, $statistics[0]->getHiddenPapers());
-        $this->assertSame(['accepted' => [2], 'refused' => [4]], $statistics[1]->getPapers());
+        $this->assertSame(['accepted' => [102], 'refused' => [104]], $statistics[1]->getPapers());
         $this->assertSame(['accepted' => 1, 'refused' => 0], $statistics[1]->getHiddenPapers());
     }
 
@@ -219,7 +221,7 @@ class StatisticStateProviderTest extends TestCase
     {
         $statistics = $this->provideWithPapers(['indicator' => 'nb-submissions'], $this->administrator(1), coiEnabled: false, conflicts: [3]);
 
-        $this->assertSame([1, 2, 3, 4], $statistics[0]->getPapers());
+        $this->assertSame([101, 102, 103, 104], $statistics[0]->getPapers());
     }
 
     /**
@@ -229,7 +231,7 @@ class StatisticStateProviderTest extends TestCase
     {
         $statistics = $this->provideWithPapers(['indicator' => 'nb-submissions'], null, epiAdmin: true, coiEnabled: true, conflicts: [3]);
 
-        $this->assertSame([1, 2, 3, 4], $statistics[0]->getPapers());
+        $this->assertSame([101, 102, 103, 104], $statistics[0]->getPapers());
         $this->assertSame(0, $statistics[0]->getHiddenPapers());
     }
 
@@ -292,6 +294,8 @@ class StatisticStateProviderTest extends TestCase
         $papersRepository = $this->createStub(PapersRepository::class);
         $papersRepository->method('getYearRange')->willReturn([]);
         $papersRepository->method('getSubmissionPaperIds')->willReturn([1, 2, 3, 4]);
+        // DOCID of the latest version of paper N: 100 + N
+        $papersRepository->method('getLatestDocIds')->willReturnCallback(static fn(array $paperIds): array => array_combine($paperIds, array_map(static fn(int $id): int => 100 + $id, $paperIds)));
         $papersRepository->method('submissionsQuery')->willReturn($this->createQueryBuilder([], 4));
 
         $paperLogRepository = $this->createStub(PaperLogRepository::class);
@@ -321,7 +325,7 @@ class StatisticStateProviderTest extends TestCase
             default => false,
         });
 
-        $provider = new StatisticStateProvider($entityManager, $this->createStub(LoggerInterface::class), new Pagination(['client_enabled' => true]), $this->createStub(Stats::class), $security);
+        $provider = new StatisticStateProvider($entityManager, $this->createStub(LoggerInterface::class), new Pagination(['client_enabled' => true]), $this->createStub(Stats::class), new StatisticPapers($entityManager, $security));
         $operation = new GetCollection(class: Statistic::class, name: self::COLLECTION_OPERATION, paginationMaximumItemsPerPage: 30);
         // the given filters override the defaults; a null filter is removed (e.g. no rvcode)
         $filters = array_filter(array_merge(['pagination' => 'true', 'rvcode' => 'dmtcs', 'withPapers' => 'true', 'unit' => 'day'], $filters), static fn($value): bool => $value !== null);
@@ -450,7 +454,7 @@ class StatisticStateProviderTest extends TestCase
             $this->createStub(LoggerInterface::class),
             new Pagination(['client_enabled' => true]),
             $this->createStub(Stats::class),
-            $this->createStub(Security::class)
+            new StatisticPapers($entityManager, $this->createStub(Security::class))
         );
 
         $operation = new GetCollection(class: Statistic::class, name: $operationName, paginationMaximumItemsPerPage: 30);
@@ -481,7 +485,7 @@ class StatisticStateProviderTest extends TestCase
             $this->createStub(LoggerInterface::class),
             new Pagination(['client_enabled' => true]),
             $this->createStub(Stats::class),
-            $this->createStub(Security::class)
+            new StatisticPapers($entityManager, $this->createStub(Security::class))
         );
 
         $operation = new GetCollection(class: Statistic::class, name: self::EVALUATION_OPERATION, paginationMaximumItemsPerPage: $maxItemsPerPage);

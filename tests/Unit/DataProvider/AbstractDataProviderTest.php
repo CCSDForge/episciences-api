@@ -13,10 +13,15 @@ use App\Resource\SubmissionOutput;
 use App\Resource\UsersStatsOutput;
 use App\Resource\SubmissionAcceptanceDelayOutput;
 use App\Resource\SubmissionPublicationDelayOutput;
+use App\Entity\User;
+use App\Repository\PapersRepository;
+use App\Service\StatisticPapers;
 use App\Service\Stats;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 class TestableDataProvider extends AbstractDataProvider
 {
@@ -36,12 +41,72 @@ class AbstractDataProviderTest extends TestCase
     private TestableDataProvider $dataProvider;
     private MockObject $entityManager;
     private MockObject $statsService;
+    private MockObject $security;
 
     protected function setUp(): void
     {
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
         $this->statsService = $this->createMock(Stats::class);
-        $this->dataProvider = new TestableDataProvider($this->entityManager, $this->statsService);
+        $this->security = $this->createMock(Security::class);
+        $this->dataProvider = new TestableDataProvider($this->entityManager, $this->statsService, new StatisticPapers($this->entityManager, $this->security));
+    }
+
+    /**
+     * withPapers: the papers of each figure (DOCID of the latest version) are added to the value of the dashboard.
+     */
+    public function testDashboardWithPapersAddsThePapersOfEachFigure(): void
+    {
+        $journal = $this->createStub(Review::class);
+        $journal->method('getRvid')->willReturn(42);
+        $this->statsService->method('getJournal')->willReturn($journal);
+        $this->statsService->method('getDashboard')->willReturn(new DashboardOutput()->setValue(['nbSubmissions' => 3]));
+        $this->statsService->method('getDashboardPaperIds')->willReturn(['nbSubmissions' => [1, 2, 3], 'nbOtherStatus' => [3]]);
+
+        $papersRepository = $this->createStub(PapersRepository::class);
+        $papersRepository->method('getLatestDocIds')->willReturnCallback(static fn(array $paperIds): array => array_combine($paperIds, array_map(static fn(int $id): int => 100 + $id, $paperIds)));
+        $this->entityManager->method('getRepository')->willReturn($papersRepository);
+
+        $this->security->method('isGranted')->willReturnCallback(static fn(string $role): bool => $role === 'ROLE_EPIADMIN');
+
+        $operation = new Get(name: AppConstants::APP_CONST['custom_operations']['items']['review'][0]);
+        $result = $this->dataProvider->exposeGetCollection($operation, ['uri_variables' => ['code' => 'myjournal'], 'filters' => ['withPapers' => 'true']]);
+
+        $this->assertSame([
+            'nbSubmissions' => 3,
+            'papers' => ['nbSubmissions' => [101, 102, 103], 'nbOtherStatus' => [103]],
+            'hiddenPapers' => ['nbSubmissions' => 0, 'nbOtherStatus' => 0],
+        ], $result->getValue());
+    }
+
+    /**
+     * Checked before any computation: the dashboard is not computed for a user who cannot get the papers.
+     */
+    public function testDashboardWithPapersIsDeniedToAnAdministratorOfAnotherJournal(): void
+    {
+        $journal = $this->createStub(Review::class);
+        $journal->method('getRvid')->willReturn(42);
+        $this->statsService->method('getJournal')->willReturn($journal);
+        $this->statsService->expects($this->never())->method('getDashboard');
+
+        $this->security->method('getUser')->willReturn(new User()->setUid(7)->setCurrentJournalID(43));
+        $this->security->method('isGranted')->willReturnCallback(static fn(string $role): bool => $role === 'ROLE_ADMINISTRATOR');
+
+        $this->expectException(AccessDeniedException::class);
+
+        $operation = new Get(name: AppConstants::APP_CONST['custom_operations']['items']['review'][0]);
+        $this->dataProvider->exposeGetCollection($operation, ['uri_variables' => ['code' => 'myjournal'], 'filters' => ['withPapers' => 'true']]);
+    }
+
+    public function testWithPapersIsOnlyAvailableOnTheDashboard(): void
+    {
+        $journal = $this->createStub(Review::class);
+        $journal->method('getRvid')->willReturn(42);
+        $this->statsService->method('getJournal')->willReturn($journal);
+
+        $this->expectException(ResourceNotFoundException::class);
+
+        $operation = new Get(name: AppConstants::APP_CONST['custom_operations']['items']['review'][1]);
+        $this->dataProvider->exposeGetCollection($operation, ['uri_variables' => ['code' => 'myjournal'], 'filters' => ['withPapers' => 'true']]);
     }
 
     public function testThrowsResourceNotFoundExceptionWhenJournalNotFound(): void

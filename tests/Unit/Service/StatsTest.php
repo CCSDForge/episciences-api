@@ -130,6 +130,61 @@ class StatsTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // getDashboardPaperIds()
+    // -------------------------------------------------------------------------
+
+    /**
+     * withPapers: the papers of each figure of the dashboard, with the filters of the figures (year: submissionDate).
+     */
+    public function testDashboardPaperIdsAreComputedForEachFigure(): void
+    {
+        $filters = ['is' => ['rvid' => '8', 'submissionDate' => '2025']];
+
+        $this->papersRepo->method('getSubmissionPaperIds')->willReturnCallback(
+            static fn(array $f, ?string $flag = null, string $date = 'submissionDate'): array => match (true) {
+                $flag === null => [1, 2, 3],
+                $date === 'publicationDate' => [9],
+                default => [8, 9],
+            }
+        );
+        $this->papersRepo->expects($this->once())->method('getSubmissionsAwaitingDecisionPaperIds')->with(8, null, ['2025'])->willReturn([3]);
+        $this->paperLogRepo->method('getPaperIds')->willReturnCallback(static fn(string $figure, int $rvId, array $years): array => match ($figure) {
+            'published' => [1],
+            'accepted' => [1, 2],
+            'refused' => [4],
+            default => [2],
+        });
+        $this->paperLogRepo->method('getSubmissionDelayPaperIds')->willReturnCallback(
+            static fn(int $rvId, ?array $years, ?string $start, string $operation): array => $operation === 'median-submission-publication' ? [1] : [1, 2]
+        );
+
+        $this->assertSame([
+            'nbSubmissions' => [1, 2, 3],
+            'nbImported' => [8, 9],
+            'nbImportedPublished' => [9],
+            'nbPublished' => [1],
+            'nbAccepted' => [1, 2],
+            'nbRefused' => [4],
+            'nbAcceptedNotYetPublished' => [2],
+            'nbOtherStatus' => [3],
+            'submissionAcceptanceTime' => [1, 2],
+            'submissionPublicationTime' => [1],
+        ], $this->stats->getDashboardPaperIds($filters));
+    }
+
+    public function testDashboardPaperIdsWithoutImportedPublishedWithAStartDateOnly(): void
+    {
+        $this->papersRepo->method('getSubmissionPaperIds')->willReturn([]);
+        $this->papersRepo->method('getSubmissionsAwaitingDecisionPaperIds')->willReturn([]);
+        $this->paperLogRepo->method('getPaperIds')->willReturn([]);
+        $this->paperLogRepo->method('getSubmissionDelayPaperIds')->willReturn([]);
+
+        $papers = $this->stats->getDashboardPaperIds(['is' => ['rvid' => '8', 'startAfterDate' => '2025-01-01']]);
+
+        $this->assertArrayNotHasKey('nbImportedPublished', $papers); // as in getDashboard()
+    }
+
+    // -------------------------------------------------------------------------
     // getNbPapersByStatus()
     // -------------------------------------------------------------------------
 
