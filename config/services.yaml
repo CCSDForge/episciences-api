@@ -6,6 +6,10 @@
 parameters:
     app.solr.host: '%env(APP_SOLR_HOST)%'
     app.user.picture.path: '%env(USER_PICTURE_PATH)%'
+    # Secret shared with Episciences to sign the delegated token requests (POST /api/token/delegated), 32 characters at least.
+    # Empty (default, DELEGATION_SECRET not set): the token exchange is disabled.
+    app.delegation_secret_default: ''
+    app.delegation_secret: '%env(default:app.delegation_secret_default:DELEGATION_SECRET)%'
 
 services:
     # default configuration for services in *this* file
