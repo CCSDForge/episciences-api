@@ -48,6 +48,17 @@ class ApiItemNormalizerTest extends TestCase
         $this->assertSame('/api/statistics/median-submission-publication?rvcode=dmtcs', $data['@id']);
     }
 
+    public function testEvaluationStatisticOfAJournalHasTheIriOfItsJournal(): void
+    {
+        $decorated = $this->createStub(NormalizerInterface::class);
+        $decorated->method('normalize')->willReturn(['@id' => '/api/statistics/nb-submissions']);
+
+        $normalizer = new ApiItemNormalizer($decorated, $this->createStub(EntityManagerInterface::class), $this->createStub(PaperConflictsRepository::class));
+        $data = $normalizer->normalize(new Statistic()->setName('reviews-received')->setJournal('dmtcs'), 'jsonld');
+
+        $this->assertSame('/api/statistics/evaluation?indicator=reviews-received&rvcode=dmtcs', $data['@id']);
+    }
+
     public function testGeneratedIriIsRemoved(): void
     {
         $decorated = $this->createStub(NormalizerInterface::class);

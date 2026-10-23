@@ -175,25 +175,78 @@ class StatisticStateProviderTest extends TestCase
     public static function invalidGroupByProvider(): iterable
     {
         yield 'unknown value' => [['indicator' => 'median-submission-publication', 'groupBy' => 'year']];
-        yield 'without indicator' => [['groupBy' => 'journal']];
-        yield 'not a median' => [['indicator' => 'acceptance-rate', 'groupBy' => 'journal']];
         yield 'sent as array' => [['indicator' => 'median-submission-publication', 'groupBy' => ['journal']]];
-        yield 'several indicators' => [['indicator' => ['median-submission-publication', 'median-submission-acceptance'], 'groupBy' => 'journal']];
+        yield 'unknown indicator' => [['indicator' => ['nb-submissions', 'foo'], 'groupBy' => 'journal']];
     }
 
-    public function testGroupByIsRejectedForTheEvaluation(): void
+    /**
+     * Without indicator, all of them for each active journal, in the order of the indicators ("evaluation" stands for
+     * its three indicators); a missing count is 0, a missing rate or median is null.
+     */
+    public function testAllTheIndicatorsAreGroupedByJournal(): void
+    {
+        $statistics = iterator_to_array($this->provideCollection(['groupBy' => 'journal', 'unit' => 'day']));
+
+        $rows = array_map(static fn(Statistic $statistic): array => [$statistic->getJournal(), $statistic->getName(), $statistic->getValue(), $statistic->getCount()], $statistics);
+
+        $this->assertSame([
+            ['dmtcs', 'nb-submissions', 10.0, null],
+            ['dmtcs', 'acceptance-rate', 75.0, null],
+            ['dmtcs', 'median-submission-publication', 335.0, 412],
+            ['dmtcs', 'median-submission-acceptance', 335.0, 412],
+            ['dmtcs', 'reviews-requested', 2.0, null],
+            ['dmtcs', 'reviews-received', 3.0, null],
+            ['dmtcs', 'median-reviews-number', 2.0, null],
+            ['jdmdh', 'nb-submissions', 4.0, null],
+            ['jdmdh', 'acceptance-rate', 0.0, null],
+            ['jdmdh', 'median-submission-publication', 233.0, 57],
+            ['jdmdh', 'median-submission-acceptance', 233.0, 57],
+            ['jdmdh', 'reviews-requested', 1.0, null],
+            ['jdmdh', 'reviews-received', 0.0, null],
+            ['jdmdh', 'median-reviews-number', null, null],
+        ], $rows);
+    }
+
+    public function testRequestedIndicatorsAreGroupedByJournalInTheirOrder(): void
+    {
+        $statistics = iterator_to_array($this->provideCollection(['groupBy' => 'journal', 'indicator' => ['acceptance-rate', 'nb-submissions']]));
+
+        $this->assertSame(
+            [['dmtcs', 'acceptance-rate'], ['dmtcs', 'nb-submissions'], ['jdmdh', 'acceptance-rate'], ['jdmdh', 'nb-submissions']],
+            array_map(static fn(Statistic $statistic): array => [$statistic->getJournal(), $statistic->getName()], $statistics)
+        );
+        $this->assertSame('%', $statistics[0]->getUnit());
+    }
+
+    public function testEvaluationIsGroupedByJournal(): void
+    {
+        $statistics = iterator_to_array($this->provideCollection(['groupBy' => 'journal', 'indicator' => 'reviews-received'], self::EVALUATION_OPERATION));
+
+        $this->assertSame(
+            [['dmtcs', 'reviews-received', 3.0], ['jdmdh', 'reviews-received', 0.0]],
+            array_map(static fn(Statistic $statistic): array => [$statistic->getJournal(), $statistic->getName(), $statistic->getValue()], $statistics)
+        );
+    }
+
+    public function testGroupByIsRejectedWithAPublicationIndicatorOnTheEvaluation(): void
     {
         $this->expectException(ResourceNotFoundException::class);
 
-        $this->provideEvaluation(filters: ['groupBy' => 'journal']);
+        $this->provideCollection(['groupBy' => 'journal', 'indicator' => 'nb-submissions'], self::EVALUATION_OPERATION);
     }
 
-    private function provideCollection(array $filters): iterable
+    private function provideCollection(array $filters, string $operationName = self::COLLECTION_OPERATION): iterable
     {
         $papersRepository = $this->createStub(PapersRepository::class);
         $papersRepository->method('getYearRange')->willReturn([]);
+        $papersRepository->method('countSubmissionsByJournal')->willReturn([1 => 10, 3 => 4]);
 
         $paperLogRepository = $this->createStub(PaperLogRepository::class);
+        $paperLogRepository->method('getAcceptedByJournal')->willReturn([1 => 3]);
+        $paperLogRepository->method('getRefusedByJournal')->willReturn([1 => 1, 3 => 2]);
+        $paperLogRepository->method('getAcceptanceRate')->willReturnCallback(
+            static fn(array $options): float => $options['acceptedTotal'] / ($options['acceptedTotal'] + $options['refusedTotal']) * 100
+        );
         $paperLogRepository->method('getSubmissionMedianTimeDetails')->willReturn(['median' => 317.0, 'count' => 1843]);
         $paperLogRepository->method('getSubmissionMedianTimeDetailsByJournal')->willReturn([
             3 => ['median' => 233, 'count' => 57],
@@ -208,11 +261,16 @@ class StatisticStateProviderTest extends TestCase
         ]);
 
         $entityManager = $this->createStub(EntityManagerInterface::class);
+        // completed reports by paper (docid) and reviewer; invitations sent to the reviewers
         $reviewerReportRepository = $this->createStub(ReviewerReportRepository::class);
-        $reviewerReportRepository->method('getReceivedReports')->willReturn($this->createQueryBuilder());
+        $reviewerReportRepository->method('getReceivedReports')->willReturn($this->createQueryBuilder([
+            ['rvid' => 1, 'docid' => 10, 'count' => 2],
+            ['rvid' => 1, 'docid' => 10, 'count' => 1],
+            ['rvid' => 1, 'docid' => 11, 'count' => 1],
+        ]));
 
         $userInvitationRepository = $this->createStub(UserInvitationRepository::class);
-        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder());
+        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder([['rvid' => 1], ['rvid' => 1], ['rvid' => 3]]));
 
         $entityManager->method('getRepository')->willReturnMap([
             [Paper::class, $papersRepository],
@@ -229,7 +287,7 @@ class StatisticStateProviderTest extends TestCase
             $this->createStub(Stats::class)
         );
 
-        $operation = new GetCollection(class: Statistic::class, name: self::COLLECTION_OPERATION, paginationMaximumItemsPerPage: 30);
+        $operation = new GetCollection(class: Statistic::class, name: $operationName, paginationMaximumItemsPerPage: 30);
 
         return $provider->provide($operation, [], ['operation' => $operation, 'filters' => ['pagination' => 'true'] + $filters, 'request' => $this->request]);
     }
@@ -264,14 +322,15 @@ class StatisticStateProviderTest extends TestCase
         return $provider->provide($operation, [], ['operation' => $operation, 'filters' => ['pagination' => $pagination] + $filters, 'request' => $this->request]);
     }
 
-    private function createQueryBuilder(): QueryBuilder
+    private function createQueryBuilder(array $rows = []): QueryBuilder
     {
         $query = $this->createStub(Query::class);
-        $query->method('getResult')->willReturn([]);
-        $query->method('getArrayResult')->willReturn([]);
+        $query->method('getResult')->willReturn($rows);
+        $query->method('getArrayResult')->willReturn($rows);
 
         $queryBuilder = $this->createStub(QueryBuilder::class);
         $queryBuilder->method('getQuery')->willReturn($query);
+        $queryBuilder->method('addSelect')->willReturnSelf();
 
         return $queryBuilder;
     }

@@ -344,6 +344,26 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
     /**
+     * Same count as getAccepted(), for each journal (one query for all the journals)
+     *
+     * @return array<int, int> indexed by journal identifier (rvid); the journals without accepted paper are not returned
+     */
+    public function getAcceptedByJournal(array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
+    {
+        return $this->processResultByJournal($this->acceptedQuery(null, $years, $startAfterDate, $ignoreImportedArticles), $years);
+    }
+
+    /**
+     * Same count as getRefused(), for each journal (one query for all the journals)
+     *
+     * @return array<int, int> indexed by journal identifier (rvid); the journals without refused paper are not returned
+     */
+    public function getRefusedByJournal(array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
+    {
+        return $this->processResultByJournal($this->refusedQuery(null, $years, $startAfterDate, $ignoreImportedArticles), $years);
+    }
+
+    /**
      * @return array<int, int> number of refused papers indexed by year (one query for all the years)
      */
     public function getRefusedByYear(?int $rvId, array $years, ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
@@ -378,6 +398,29 @@ class PaperLogRepository extends ServiceEntityRepository
         }
 
         return array_sum($this->processResultByYear($qb, $years));
+    }
+
+    /**
+     * Totals of each journal, computed as processResult(): with years, the totals of each year are added up.
+     *
+     * @return array<int, int> indexed by journal identifier (rvid)
+     */
+    private function processResultByJournal(QueryBuilder $qb, array $years): array
+    {
+        $qb->addSelect('p.rvid AS rvid')->addGroupBy('rvid');
+
+        if ($years !== []) {
+            $this->andOrExp($qb, 'YEAR(pl.date)', $years);
+            $qb->addGroupBy('year');
+        }
+
+        $totals = [];
+
+        foreach ($qb->getQuery()->getResult() as $values) {
+            $totals[(int)$values['rvid']] = ($totals[(int)$values['rvid']] ?? 0) + (int)$values['total'];
+        }
+
+        return $totals;
     }
 
     /**

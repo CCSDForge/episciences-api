@@ -81,7 +81,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $page = $context['filters']['page'];
         $firstResult = 0;
         $indicators = $this->processIndicators($filters['indicator'] ?? null);
-        $groupBy = $this->processGroupBy($filters[Statistic::GROUP_BY_PARAM] ?? null, $operationName, $indicators, $code);
+        $groupBy = $this->processGroupBy($filters[Statistic::GROUP_BY_PARAM] ?? null, $operationName, $code);
 
         $dictionaryKeys = array_keys($dictionary);
         $statusValues = array_values($status);
@@ -112,14 +112,14 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         if ($operationName === '_get_collection' || $operationName === 'evaluation_get_collection') {
             $response = [];
 
-            if ($operationName === '_get_collection') {
+            if ($operationName === '_get_collection' && $groupBy === Statistic::GROUP_BY_JOURNAL) {
+                $this->checkIndicators($indicators, Statistic::AVAILABLE_PUBLICATION_INDICATORS);
+                $response = $this->getStatisticsByJournal($indicators ?: Statistic::PUBLICATION_INDICATOR_VALUES, $currentFilters, $years, $startAfterDate, $unit);
+
+            } elseif ($operationName === '_get_collection') {
                 if ($indicators !== []) { // in the requested order
 
-                    foreach ($indicators as $indicator) {
-                        if (!in_array($indicator, Statistic::AVAILABLE_PUBLICATION_INDICATORS, true)) {
-                            throw new ResourceNotFoundException(sprintf('Oops! invalid indicator "%s" because the available values are: %s', $indicator, implode(', ', Statistic::AVAILABLE_PUBLICATION_INDICATORS)));
-                        }
-                    }
+                    $this->checkIndicators($indicators, Statistic::AVAILABLE_PUBLICATION_INDICATORS);
 
                     foreach ($indicators as $indicator) {
                         if ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get']) {
@@ -134,8 +134,6 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                                 ->setName($indicator)
                                 ->setValue($this->getAcceptanceRate($currentFilters))
                                 ->setUnit('%');
-                        } elseif ($groupBy === Statistic::GROUP_BY_JOURNAL) {
-                            $response = $this->getMedianDelayByJournal($indicator, $years, $startAfterDate, $unit);
                         } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'] || $indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get']) {
                             $response[] = $this->getMedianDelay($indicator, $rvId, $years, $startAfterDate, $unit);
                         } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['evaluation_get_collection']) {
@@ -192,13 +190,12 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                     $response[] = new Statistic()->setName('evaluation')->setValue($this->getEvaluationStats($currentFilters));
                 }
 
-            } elseif ($indicators !== []) { // evaluations with indicators, in the requested order
+            } elseif ($groupBy === Statistic::GROUP_BY_JOURNAL) { // evaluations by journal
+                $this->checkIndicators($indicators, Statistic::EVAL_INDICATORS);
+                $response = $this->getStatisticsByJournal($indicators ?: Statistic::EVAL_INDICATOR_VALUES, $currentFilters, $years, $startAfterDate, $unit);
 
-                foreach ($indicators as $indicator) {
-                    if (!in_array($indicator, Statistic::EVAL_INDICATORS, true)) {
-                        throw new ResourceNotFoundException(sprintf('Oops! invalid indicator "%s" because the available values are: %s', $indicator, implode(', ', Statistic::EVAL_INDICATORS)));
-                    }
-                }
+            } elseif ($indicators !== []) { // evaluations with indicators, in the requested order
+                $this->checkIndicators($indicators, Statistic::EVAL_INDICATORS);
 
                 foreach ($indicators as $indicator) {
                     $response[] = new Statistic()->setName($indicator)->setValue($this->getEvaluationStats($currentFilters, $indicator));
@@ -267,10 +264,10 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     }
 
     /**
-     * "groupBy=journal" is only available for the median delays of all the journals.
+     * "groupBy=journal" returns the statistics of each journal: not with a journal code.
      * @throws ResourceNotFoundException
      */
-    private function processGroupBy(mixed $groupBy, string $operationName, array $indicators, ?string $code): ?string
+    private function processGroupBy(mixed $groupBy, string $operationName, ?string $code): ?string
     {
         if ($groupBy === null || $groupBy === '') {
             return null;
@@ -280,11 +277,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             throw new ResourceNotFoundException(sprintf('Oops! invalid %s because the available value is: %s', Statistic::GROUP_BY_PARAM, Statistic::GROUP_BY_JOURNAL));
         }
 
-        $medianIndicators = [Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'], Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get']];
-
-        // a single median delay: the items are the journals
-        if ($operationName !== '_get_collection' || count($indicators) !== 1 || !in_array($indicators[0], $medianIndicators, true)) {
-            throw new ResourceNotFoundException(sprintf('Oops! %s=%s requires indicator=%s', Statistic::GROUP_BY_PARAM, Statistic::GROUP_BY_JOURNAL, implode(' or indicator=', $medianIndicators)));
+        if ($operationName !== '_get_collection' && $operationName !== 'evaluation_get_collection') {
+            throw new ResourceNotFoundException(sprintf('Oops! %s=%s is only available on %s and %s', Statistic::GROUP_BY_PARAM, Statistic::GROUP_BY_JOURNAL, Statistic::STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::EVALUATION_GET_COLLECTION_OPERATION_IDENTIFIER));
         }
 
         if ($code) {
@@ -292,6 +286,19 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         }
 
         return $groupBy;
+    }
+
+    /**
+     * @param string[] $available
+     * @throws ResourceNotFoundException
+     */
+    private function checkIndicators(array $indicators, array $available): void
+    {
+        foreach ($indicators as $indicator) {
+            if (!in_array($indicator, $available, true)) {
+                throw new ResourceNotFoundException(sprintf('Oops! invalid indicator "%s" because the available values are: %s', $indicator, implode(', ', $available)));
+            }
+        }
     }
 
     private function getMedianDelay(string $indicator, ?int $rvId, array $years, ?string $startAfterDate, string $unit): Statistic
@@ -306,40 +313,131 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     }
 
     /**
-     * @return Statistic[] one median delay by journal having at least one article, sorted by journal code
+     * The statistics of each journal, computed as for a single journal (one query by indicator for all the journals):
+     * one item by journal and by indicator, sorted by journal code, then in the order of the indicators.
+     * Only the active journals having data for at least one of the indicators are returned; a missing count is 0, a missing rate or median is null.
+     *
+     * @param string[] $indicators "evaluation" stands for its three indicators
+     * @return Statistic[]
      */
-    private function getMedianDelayByJournal(string $indicator, array $years, ?string $startAfterDate, string $unit): array
+    private function getStatisticsByJournal(array $indicators, array $filters, array $years, ?string $startAfterDate, string $unit): array
     {
-        $detailsByJournal = $this->entityManager->getRepository(PaperLog::class)->getSubmissionMedianTimeDetailsByJournal($years, $startAfterDate, $indicator, $unit);
+        $names = [];
 
-        if ($detailsByJournal === []) {
+        foreach ($indicators as $indicator) {
+            array_push($names, ...($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['evaluation_get_collection'] ? Statistic::EVAL_INDICATOR_VALUES : [$indicator]));
+        }
+
+        $names = array_values(array_unique($names));
+        $medians = [Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'], Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get']];
+        $counts = [Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'], Statistic::EVAL_INDICATORS['reviews-requested_get'], Statistic::EVAL_INDICATORS['reviews-received_get']];
+
+        /** @var PaperLogRepository $paperLogRepo */
+        $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
+        $values = []; // indicator => rvid => ['value' => ..., 'count' => ...]
+        $evaluation = null;
+
+        foreach ($names as $name) {
+            if ($name === Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get']) {
+                foreach ($this->entityManager->getRepository(Paper::class)->countSubmissionsByJournal(['is' => $filters]) as $rvId => $total) {
+                    $values[$name][$rvId] = ['value' => $total];
+                }
+            } elseif ($name === Statistic::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get']) {
+                $accepted = $paperLogRepo->getAcceptedByJournal($years, $startAfterDate);
+                $refused = $paperLogRepo->getRefusedByJournal($years, $startAfterDate);
+
+                foreach (array_keys($accepted + $refused) as $rvId) {
+                    $values[$name][$rvId] = ['value' => $this->getAcceptanceRate(['acceptedTotal' => $accepted[$rvId] ?? 0, 'refusedTotal' => $refused[$rvId] ?? 0])];
+                }
+            } elseif (in_array($name, $medians, true)) {
+                foreach ($paperLogRepo->getSubmissionMedianTimeDetailsByJournal($years, $startAfterDate, $name, $unit) as $rvId => $details) {
+                    $values[$name][$rvId] = ['value' => $details['median'], 'count' => $details['count']];
+                }
+            } else { // evaluation
+                $evaluation ??= $this->getEvaluationStatsByJournal($filters);
+
+                foreach ($evaluation as $rvId => $stats) {
+                    $values[$name][$rvId] = ['value' => $stats[$name]];
+                }
+            }
+        }
+
+        $rvIds = [];
+
+        foreach ($values as $byJournal) {
+            $rvIds += array_fill_keys(array_keys($byJournal), true);
+        }
+
+        if ($rvIds === []) {
             return [];
         }
 
         $codes = [];
 
-        foreach ($this->entityManager->getRepository(Review::class)->findBy(['rvid' => array_keys($detailsByJournal)]) as $journal) {
+        // active journals only, as with rvcode: the data of a disabled or deleted journal are ignored
+        foreach ($this->entityManager->getRepository(Review::class)->findBy(['rvid' => array_keys($rvIds), 'status' => Review::STATUS_ENABLED]) as $journal) {
             $codes[$journal->getRvid()] = $journal->getCode();
         }
 
+        asort($codes, SORT_STRING);
         $response = [];
 
-        foreach ($detailsByJournal as $rvId => $details) {
-            if (!isset($codes[$rvId])) { // log of a journal that no longer exists
-                continue;
-            }
+        foreach ($codes as $rvId => $code) {
+            foreach ($names as $name) {
+                $data = $values[$name][$rvId] ?? [];
+                $statistic = new Statistic()
+                    ->setName($name)
+                    ->setJournal($code)
+                    ->setValue($data['value'] ?? (in_array($name, $counts, true) ? 0 : null));
 
-            $response[] = new Statistic()
-                ->setName($indicator)
-                ->setJournal($codes[$rvId])
-                ->setValue($details['median'])
-                ->setUnit(strtolower($unit))
-                ->setCount($details['count']);
+                if ($name === Statistic::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get']) {
+                    $statistic->setUnit('%');
+                } elseif (in_array($name, $medians, true)) {
+                    $statistic->setUnit(strtolower($unit))->setCount($data['count'] ?? 0);
+                }
+
+                $response[] = $statistic;
+            }
         }
 
-        usort($response, static fn(Statistic $a, Statistic $b): int => strcmp((string)$a->getJournal(), (string)$b->getJournal()));
-
         return $response;
+    }
+
+    /**
+     * Same figures as getEvaluationStats(), for each journal (one query by figure for all the journals)
+     *
+     * @return array<int, array<string, int|float|null>> indexed by journal identifier (rvid), then by evaluation indicator
+     */
+    private function getEvaluationStatsByJournal(array $options): array
+    {
+        $requested = [];
+
+        foreach ($this->entityManager->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult() as $row) {
+            $requested[(int)$row['rvid']] = ($requested[(int)$row['rvid']] ?? 0) + 1;
+        }
+
+        $reports = [];
+        $reportsQuery = $this->entityManager->getRepository(ReviewerReport::class)
+            ->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))
+            ->addSelect('p.rvid AS rvid');
+
+        foreach ($reportsQuery->getQuery()->getArrayResult() as $row) {
+            $reports[(int)$row['rvid']][] = $row;
+        }
+
+        $byJournal = [];
+
+        foreach (array_keys($requested + $reports) as $rvId) {
+            $journalReports = $reports[$rvId] ?? [];
+
+            $byJournal[$rvId] = [
+                Statistic::EVAL_INDICATORS['reviews-requested_get'] => $requested[$rvId] ?? 0,
+                Statistic::EVAL_INDICATORS['reviews-received_get'] => count($journalReports),
+                Statistic::EVAL_INDICATORS['median-reviews-number_get'] => $journalReports === [] ? null : $this->getMedian($this->processResult($journalReports)),
+            ];
+        }
+
+        return $byJournal;
     }
 
     /**

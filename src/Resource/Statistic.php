@@ -121,7 +121,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: self::GROUP_BY_PARAM,
                         in: 'query',
-                        description: 'Returns the median of each journal (one item by journal, its code in `journal`). Only with a single indicator, `median-submission-publication` or `median-submission-acceptance`, and without `rvcode`.',
+                        description: self::GROUP_BY_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -530,6 +530,20 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         allowReserved: false,
 
                     ),
+                    new Parameter(
+                        name: self::GROUP_BY_PARAM,
+                        in: 'query',
+                        description: self::GROUP_BY_DESCRIPTION,
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                            'enum' => [self::GROUP_BY_JOURNAL],
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    ),
                 ]
             ),
         ),
@@ -562,6 +576,7 @@ class Statistic
         self::EVAL_INDICATORS['reviews-received_get'],
         self::EVAL_INDICATORS['median-reviews-number_get'],
     ];
+    public const GROUP_BY_DESCRIPTION = 'Returns the statistics of each active journal: one item by journal and by indicator, with the journal code in `journal`, sorted by code. Only the journals having data are returned. Not with `rvcode`';
     public const GROUP_BY_PARAM = 'groupBy';
     public const GROUP_BY_JOURNAL = 'journal';
     public const STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER = '/api/statistics/';

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 # Unreleased
 
 ### Added
+- Statistics: `groupBy=journal` now works with all the indicators (`nb-submissions`, `acceptance-rate`, the median delays, `evaluation`, one or several, all of them without `indicator`) on `GET /api/statistics/`, and on `GET /api/statistics/evaluation`: one item by active journal and by indicator, computed as for a single journal, with the journal code in `journal` (one query by indicator for all the journals). It was limited to a single median delay.
 - Statistics: several indicators can be requested at once with `indicator[]` (`GET /api/statistics/` and `GET /api/statistics/evaluation`), returned in the requested order; it was rejected ("only one indicator can be requested at a time"). `groupBy=journal` still requires a single median indicator.
 - Statistics: the median delays (`median-submission-publication`, `median-submission-acceptance`) now return `count`, the number of articles the median is computed from. `GET /api/statistics/` accepts `groupBy=journal` with one of these indicators (and without `rvcode`) to return the median of each journal in a single call, with its code in `journal`. The OpenAPI documentation describes how the delay is computed and that `year` filters on the year of publication (or acceptance) for these indicators; `unit` is now documented on `GET /api/statistics/`.
 - `make openapi-lint` exports the OpenAPI specification and lints it with Redocly (`redocly.yaml`); it runs in CI.

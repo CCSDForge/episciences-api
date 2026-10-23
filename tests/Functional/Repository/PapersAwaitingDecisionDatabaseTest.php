@@ -141,6 +141,33 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
         $this->assertSame(2, $this->paperLogRepository->getAllAcceptedNotYetPublished(self::RVID));
     }
 
+    /**
+     * The statistics grouped by journal (groupBy=journal) give, for each journal, the counts of a single journal.
+     */
+    public function testCountsByJournalMatchTheCountsOfEachJournal(): void
+    {
+        $submissions = $this->repository->countSubmissionsByJournal(['is' => []]);
+
+        foreach ([self::RVID, self::OTHER_RVID] as $rvId) {
+            $single = (int)$this->repository->submissionsQuery(['is' => ['rvid' => $rvId]])->getQuery()->getSingleScalarResult();
+            $this->assertSame($single, $submissions[$rvId] ?? 0, "Submissions of journal $rvId");
+        }
+
+        foreach ([[], [2024], [2023, 2024]] as $years) {
+            $accepted = $this->paperLogRepository->getAcceptedByJournal($years);
+            $refused = $this->paperLogRepository->getRefusedByJournal($years);
+
+            foreach ([self::RVID, self::OTHER_RVID] as $rvId) {
+                $this->assertSame($this->paperLogRepository->getAccepted($rvId, $years), $accepted[$rvId] ?? 0, "Accepted, journal $rvId");
+                $this->assertSame($this->paperLogRepository->getRefused($rvId, $years), $refused[$rvId] ?? 0, "Refused, journal $rvId");
+            }
+        }
+
+        // paper 3 and paper 11 accepted, paper 4 and paper 9 refused (logs of 2024)
+        $this->assertSame([self::RVID => 2], $this->paperLogRepository->getAcceptedByJournal());
+        $this->assertSame([self::RVID => 2], $this->paperLogRepository->getRefusedByJournal([2024]));
+    }
+
     private function insertData(): void
     {
         $papers = [

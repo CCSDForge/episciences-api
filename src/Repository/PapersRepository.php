@@ -577,6 +577,27 @@ class PapersRepository extends ServiceEntityRepository
     }
 
     /**
+     * Same count as submissionsQuery(), for each journal: one query for all the journals
+     *
+     * @param array<string, mixed> $filters see submissionsQuery()
+     * @return array<int, int> number of submissions indexed by journal identifier (rvid); the journals without submission are not returned
+     */
+    public function countSubmissionsByJournal(array $filters = []): array
+    {
+        $qb = $this->submissionsQuery($filters)
+            ->select(sprintf('%1$s.rvid AS rvid, COUNT(DISTINCT %1$s.paperid) AS total', self::PAPERS_ALIAS))
+            ->groupBy('rvid');
+
+        $totals = [];
+
+        foreach ($qb->getQuery()->getArrayResult() as $row) {
+            $totals[(int)$row['rvid']] = (int)$row['total'];
+        }
+
+        return $totals;
+    }
+
+    /**
      * Same count as submissionsQuery(), grouped by year of submission and by repository: one query for all the years
      *
      * @param array<string, mixed> $filters see submissionsQuery()
