@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI runs the tests against MySQL 8.4 (was 8.0), with `DATABASE_SERVER_VERSION` set accordingly.
 
 ### Fixed
+- Journal dashboard (`/api/journals/stats/dashboard/{code}`): `nbOtherStatus` and the `others` of each year (`withDetails`) are now the number of articles awaiting an editorial decision, counted directly by submission date, as `being-to-publish.other-status` of the statistics. They were the submissions minus the acceptances and refusals of the period.
 - Statistics without start date: removed a PHP deprecation (`DateTime::createFromFormat()` called with `null`).
 - Statistics and journal dashboard: the accepted articles not yet published (`being-to-publish.accepted`, `nbAcceptedNotYetPublished`) now include the abandoned ones, an abandoned article being only paused.
 - Statistics (`nb-submissions-details`): `being-to-publish.other-status` is now the number of submitted articles still awaiting an editorial decision (neither published, accepted nor refused, deleted nor removed; abandoned articles, only paused, are counted; imported articles ignored), counted by submission date. It was the difference between the submissions of the period and the decisions of the period, which mixed two populations when filtered by year (e.g. 20 instead of 91 for one journal and the current year).

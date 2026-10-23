@@ -685,6 +685,36 @@ class PapersRepository extends ServiceEntityRepository
      */
     public function getSubmissionsAwaitingDecision(?int $rvId = null, ?string $startAfterDate = null, array|string|null $years = null): int
     {
+        try {
+            return (int)$this->awaitingDecisionQuery($rvId, $startAfterDate, $years)->getQuery()->getSingleScalarResult();
+        } catch (NoResultException|NonUniqueResultException $e) {
+            $this->logger->critical($e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Same count as getSubmissionsAwaitingDecision(), by year of submission: one query for all the years
+     *
+     * @return array<int, int> indexed by year; the years without submission awaiting a decision are not returned
+     */
+    public function getSubmissionsAwaitingDecisionByYear(?int $rvId = null, ?string $startAfterDate = null): array
+    {
+        $qb = $this->awaitingDecisionQuery($rvId, $startAfterDate)
+            ->select(sprintf('YEAR(%1$s.submissionDate) AS year, COUNT(DISTINCT %1$s.paperid) AS total', self::PAPERS_ALIAS))
+            ->groupBy('year');
+
+        $totals = [];
+
+        foreach ($qb->getQuery()->getArrayResult() as $row) {
+            $totals[(int)$row['year']] = (int)$row['total'];
+        }
+
+        return $totals;
+    }
+
+    private function awaitingDecisionQuery(?int $rvId, ?string $startAfterDate, array|string|null $years = null): QueryBuilder
+    {
         $filters = ['rvid' => $rvId, 'startAfterDate' => $startAfterDate, 'flag' => self::AVAILABLE_FLAG_VALUES['submitted'], 'year' => $years];
 
         // deleted and removed papers are already excluded
@@ -698,15 +728,8 @@ class PapersRepository extends ServiceEntityRepository
             ->where('decisionLog.paperid = p.paperid')
             ->andWhere('decisionLog.status IN (:decisionStatuses)');
 
-        $qb->andWhere($qb->expr()->not($qb->expr()->exists($decision->getDQL())))
+        return $qb->andWhere($qb->expr()->not($qb->expr()->exists($decision->getDQL())))
             ->setParameter('decisionStatuses', [...PaperLogRepository::ACCEPTED_STATUSES, PaperLogRepository::REFUSED_STATUS]);
-
-        try {
-            return (int)$qb->getQuery()->getSingleScalarResult();
-        } catch (NoResultException|NonUniqueResultException $e) {
-            $this->logger->critical($e->getMessage());
-            return 0;
-        }
     }
 
     public function partialQuery(array $cols = ['rvid', 'docid', 'paperid', 'vid', 'sid', 'status', 'version', 'flag'], string $alias = self::PAPERS_ALIAS): QueryBuilder

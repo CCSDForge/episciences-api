@@ -106,6 +106,23 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
         $this->assertSame(0, $this->repository->getSubmissionsAwaitingDecision(self::RVID, null, [2021]));
     }
 
+    /**
+     * Dashboard detail by year: the same counts as with a year filter (paper 1 in 2022; papers 6 and 7 in 2023).
+     */
+    public function testSubmissionsAwaitingDecisionAreCountedByYear(): void
+    {
+        $byYear = $this->repository->getSubmissionsAwaitingDecisionByYear(self::RVID);
+        ksort($byYear);
+
+        $this->assertSame([2022 => 1, 2023 => 2], $byYear);
+
+        foreach ($byYear as $year => $total) {
+            $this->assertSame($this->repository->getSubmissionsAwaitingDecision(self::RVID, null, [$year]), $total, "Year $year");
+        }
+
+        $this->assertSame([2023 => 2], $this->repository->getSubmissionsAwaitingDecisionByYear(self::RVID, '2023-01-01'));
+    }
+
     public function testStartAfterDateFiltersOnTheSubmissionDate(): void
     {
         $this->assertSame(2, $this->repository->getSubmissionsAwaitingDecision(self::RVID, '2023-01-01'));

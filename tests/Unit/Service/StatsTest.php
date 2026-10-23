@@ -541,11 +541,10 @@ class StatsTest extends TestCase
         $this->papersRepo->method('submissionsQuery')->willReturn($this->makeScalarQb(10));
 
         // Submission counters are fetched once for all the years (not once per year)
-        $this->papersRepo->expects($this->exactly(2))->method('countSubmissionsByYear')->willReturnCallback(
-            // without imported papers: 8 submissions; all papers: 10 submissions
-            static fn(array $filters): array => isset($filters['is']['flag']) ? [2023 => 8] : [2023 => 10]
-        );
+        $this->papersRepo->expects($this->once())->method('countSubmissionsByYear')->willReturn([2023 => 10]);
         $this->papersRepo->expects($this->once())->method('countSubmissionsByYearAndRepository')->willReturn([2023 => [1 => 7]]);
+        // awaiting an editorial decision, counted directly (not "submissions - (accepted + refused)" = 8 - 7 = 1)
+        $this->papersRepo->expects($this->once())->method('getSubmissionsAwaitingDecisionByYear')->with($rvId, null)->willReturn([2023 => 3]);
 
         // PAPER_LOG counters are fetched once for all the years (not once per year)
         $this->paperLogRepo->expects($this->once())->method('getAcceptedByYear')->with($rvId, [2023])->willReturn([2023 => 5]);
@@ -564,7 +563,7 @@ class StatsTest extends TestCase
         $this->assertEquals(5, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['accepted']);
         $this->assertEquals(2, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['refused']);
         $this->assertEquals(1, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['acceptedNotYetPublished']);
-        $this->assertEquals(1, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['others']);
+        $this->assertEquals(3, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['others']);
         
         $this->assertArrayHasKey('submissionsByRepo', $details);
         $this->assertArrayHasKey(2023, $details['submissionsByRepo']);
