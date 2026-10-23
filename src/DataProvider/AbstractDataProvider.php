@@ -55,7 +55,12 @@ abstract class AbstractDataProvider
                 throw new ResourceNotFoundException(sprintf('Oops! %s is only available on the dashboard', Statistic::WITH_PAPERS_PARAM));
             }
 
-            // before any computation: reserved for the administrators of the journal
+            // before any computation
+            if ($isDashboard) {
+                $this->statisticPapers->denyAccessUnlessDashboardIsVisible($journal);
+            }
+
+            // reserved for the administrators of the journal
             $conflictedPapers = $withPapers ? $this->statisticPapers->getConflictedPapers($journal) : null;
 
             if ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][1]) {

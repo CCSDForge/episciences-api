@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\Paper;
 use App\Entity\PaperConflicts;
 use App\Entity\Review;
+use App\Entity\ReviewSetting;
 use App\Entity\User;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\PapersRepository;
@@ -16,6 +17,8 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 /**
+ * Visibility of the journal dashboard, as on the statistics page of Episciences (setting "displayStatistics").
+ *
  * "withPapers" of the statistics (/api/statistics/ and the journal dashboard): the papers counted by each figure,
  * for the administrators of the journal only. The papers for which a journal administrator has declared a conflict
  * of interest are not listed (only counted); the platform administrators are not subject to the conflicts, as in PapersVoter.
@@ -42,6 +45,33 @@ final readonly class StatisticPapers
         }
 
         return $value;
+    }
+
+    /**
+     * The dashboard follows the setting "displayStatistics" of the journal: hidden by default (to everyone),
+     * public, or reserved for the editorial secretaries of the journal (and the roles above).
+     *
+     * @throws AccessDeniedException
+     */
+    public function denyAccessUnlessDashboardIsVisible(Review $journal): void
+    {
+        $visibility = $journal->getSetting(ReviewSetting::DISPLAY_STATISTICS);
+
+        // same test as Episciences: an empty value hides the statistics, any other value than "2" displays them
+        if ($visibility === null || $visibility === '' || $visibility === '0') {
+            throw new AccessDeniedException('The statistics of this journal are not available');
+        }
+
+        if ($visibility !== ReviewSetting::DISPLAY_STATISTICS_SECRETARIES || $this->security->isGranted('ROLE_EPIADMIN')) {
+            return;
+        }
+
+        $user = $this->security->getUser();
+
+        // the journal of the JWT (roles of this journal) must be the requested one
+        if (!$user instanceof User || !$this->security->isGranted('ROLE_SECRETARY') || $user->getCurrentJournalID() !== $journal->getRvid()) {
+            throw new AccessDeniedException('The statistics of this journal are reserved for its editorial secretaries');
+        }
     }
 
     /**

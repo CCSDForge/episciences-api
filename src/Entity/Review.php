@@ -160,7 +160,7 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Dashboard",
-                description: 'Dashboard of a journal: submissions, decisions, rates, delays and users (by year with `withDetails`).',
+                description: 'Dashboard of a journal: submissions, decisions, rates, delays and users (by year with `withDetails`). Follows the setting `displayStatistics` of the journal: hidden by default, public, or reserved for the editorial secretaries of the journal (JWT).',
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
