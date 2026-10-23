@@ -114,6 +114,21 @@ class StatsTest extends TestCase
         $this->assertNull($this->stats->getJournal(['code' => 'unknown']));
     }
 
+    /**
+     * /journals/stats/{code}: the journal is looked up among the active journals only (strict mode),
+     * so that a disabled journal returns a 404, as an unknown one.
+     */
+    public function testGetJournalOnlyLooksUpTheActiveJournals(): void
+    {
+        $this->reviewRepo
+            ->expects($this->once())
+            ->method('getJournalByIdentifier')
+            ->with('disabled', true)
+            ->willReturn(null);
+
+        $this->assertNull($this->stats->getJournal(['code' => 'disabled']));
+    }
+
     // -------------------------------------------------------------------------
     // getNbPapersByStatus()
     // -------------------------------------------------------------------------

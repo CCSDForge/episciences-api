@@ -164,6 +164,26 @@ class StatisticStateProviderTest extends TestCase
         $this->assertSame('day', $statistics[0]->getUnit());
     }
 
+    /**
+     * A disabled journal is looked up among the active journals only (strict mode): 404, as an unknown journal.
+     */
+    public function testDisabledJournalIsNotFound(): void
+    {
+        $reviewRepository = $this->createMock(ReviewRepository::class);
+        $reviewRepository->expects($this->atLeastOnce())->method('getJournalByIdentifier')->with('disabled', true)->willReturn(null);
+
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturnMap([[Review::class, $reviewRepository]]);
+
+        $provider = new StatisticStateProvider($entityManager, $this->createStub(LoggerInterface::class), new Pagination(['client_enabled' => true]), $this->createStub(Stats::class));
+        $operation = new GetCollection(class: Statistic::class, name: self::COLLECTION_OPERATION, paginationMaximumItemsPerPage: 30);
+
+        $this->expectException(ResourceNotFoundException::class);
+        $this->expectExceptionMessage('not found Journal disabled');
+
+        $provider->provide($operation, [], ['operation' => $operation, 'filters' => ['pagination' => 'true', 'rvcode' => 'disabled'], 'request' => $this->request]);
+    }
+
     #[DataProvider('invalidGroupByProvider')]
     public function testInvalidGroupByIsRejected(array $filters): void
     {
