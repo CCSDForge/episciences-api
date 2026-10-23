@@ -95,7 +95,9 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
         }
 
         if (in_array($name, Statistic::EVAL_INDICATORS, true)) {
-            return sprintf('%s/%s?indicator=%s', $base, Statistic::AVAILABLE_PUBLICATION_INDICATORS['evaluation_get_collection'], $name);
+            $iri = sprintf('%s/%s?indicator=%s', $base, Statistic::AVAILABLE_PUBLICATION_INDICATORS['evaluation_get_collection'], $name);
+
+            return $journal === null ? $iri : sprintf('%s&rvcode=%s', $iri, rawurlencode($journal));
         }
 
         // no dedicated operation (e.g. nb-submissions-details)

@@ -114,6 +114,76 @@ class StatsTest extends TestCase
         $this->assertNull($this->stats->getJournal(['code' => 'unknown']));
     }
 
+    /**
+     * /journals/stats/{code}: the journal is looked up among the active journals only (strict mode),
+     * so that a disabled journal returns a 404, as an unknown one.
+     */
+    public function testGetJournalOnlyLooksUpTheActiveJournals(): void
+    {
+        $this->reviewRepo
+            ->expects($this->once())
+            ->method('getJournalByIdentifier')
+            ->with('disabled', true)
+            ->willReturn(null);
+
+        $this->assertNull($this->stats->getJournal(['code' => 'disabled']));
+    }
+
+    // -------------------------------------------------------------------------
+    // getDashboardPaperIds()
+    // -------------------------------------------------------------------------
+
+    /**
+     * withPapers: the papers of each figure of the dashboard, with the filters of the figures (year: submissionDate).
+     */
+    public function testDashboardPaperIdsAreComputedForEachFigure(): void
+    {
+        $filters = ['is' => ['rvid' => '8', 'submissionDate' => '2025']];
+
+        $this->papersRepo->method('getSubmissionPaperIds')->willReturnCallback(
+            static fn(array $f, ?string $flag = null, string $date = 'submissionDate'): array => match (true) {
+                $flag === null => [1, 2, 3],
+                $date === 'publicationDate' => [9],
+                default => [8, 9],
+            }
+        );
+        $this->papersRepo->expects($this->once())->method('getSubmissionsAwaitingDecisionPaperIds')->with(8, null, ['2025'])->willReturn([3]);
+        $this->paperLogRepo->method('getPaperIds')->willReturnCallback(static fn(string $figure, int $rvId, array $years): array => match ($figure) {
+            'published' => [1],
+            'accepted' => [1, 2],
+            'refused' => [4],
+            default => [2],
+        });
+        $this->paperLogRepo->method('getSubmissionDelayPaperIds')->willReturnCallback(
+            static fn(int $rvId, ?array $years, ?string $start, string $operation): array => $operation === 'median-submission-publication' ? [1] : [1, 2]
+        );
+
+        $this->assertSame([
+            'nbSubmissions' => [1, 2, 3],
+            'nbImported' => [8, 9],
+            'nbImportedPublished' => [9],
+            'nbPublished' => [1],
+            'nbAccepted' => [1, 2],
+            'nbRefused' => [4],
+            'nbAcceptedNotYetPublished' => [2],
+            'nbOtherStatus' => [3],
+            'submissionAcceptanceTime' => [1, 2],
+            'submissionPublicationTime' => [1],
+        ], $this->stats->getDashboardPaperIds($filters));
+    }
+
+    public function testDashboardPaperIdsWithoutImportedPublishedWithAStartDateOnly(): void
+    {
+        $this->papersRepo->method('getSubmissionPaperIds')->willReturn([]);
+        $this->papersRepo->method('getSubmissionsAwaitingDecisionPaperIds')->willReturn([]);
+        $this->paperLogRepo->method('getPaperIds')->willReturn([]);
+        $this->paperLogRepo->method('getSubmissionDelayPaperIds')->willReturn([]);
+
+        $papers = $this->stats->getDashboardPaperIds(['is' => ['rvid' => '8', 'startAfterDate' => '2025-01-01']]);
+
+        $this->assertArrayNotHasKey('nbImportedPublished', $papers); // as in getDashboard()
+    }
+
     // -------------------------------------------------------------------------
     // getNbPapersByStatus()
     // -------------------------------------------------------------------------
@@ -541,11 +611,10 @@ class StatsTest extends TestCase
         $this->papersRepo->method('submissionsQuery')->willReturn($this->makeScalarQb(10));
 
         // Submission counters are fetched once for all the years (not once per year)
-        $this->papersRepo->expects($this->exactly(2))->method('countSubmissionsByYear')->willReturnCallback(
-            // without imported papers: 8 submissions; all papers: 10 submissions
-            static fn(array $filters): array => isset($filters['is']['flag']) ? [2023 => 8] : [2023 => 10]
-        );
+        $this->papersRepo->expects($this->once())->method('countSubmissionsByYear')->willReturn([2023 => 10]);
         $this->papersRepo->expects($this->once())->method('countSubmissionsByYearAndRepository')->willReturn([2023 => [1 => 7]]);
+        // awaiting an editorial decision, counted directly (not "submissions - (accepted + refused)" = 8 - 7 = 1)
+        $this->papersRepo->expects($this->once())->method('getSubmissionsAwaitingDecisionByYear')->with($rvId, null)->willReturn([2023 => 3]);
 
         // PAPER_LOG counters are fetched once for all the years (not once per year)
         $this->paperLogRepo->expects($this->once())->method('getAcceptedByYear')->with($rvId, [2023])->willReturn([2023 => 5]);
@@ -564,7 +633,7 @@ class StatsTest extends TestCase
         $this->assertEquals(5, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['accepted']);
         $this->assertEquals(2, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['refused']);
         $this->assertEquals(1, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['acceptedNotYetPublished']);
-        $this->assertEquals(1, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['others']);
+        $this->assertEquals(3, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['others']);
         
         $this->assertArrayHasKey('submissionsByRepo', $details);
         $this->assertArrayHasKey(2023, $details['submissionsByRepo']);

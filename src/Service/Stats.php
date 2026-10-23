@@ -110,7 +110,8 @@ class Stats
         $totalAccepted = $paperLogRepo->getAccepted($rvId, $years, $startAfterDate); // Tous les articles, même ceux déjà publiés, sont pris en compte pour calculer le taux d'acceptation.
         $totalRefused = $paperLogRepo->getRefused($rvId, $years, $startAfterDate);
         $totalAcceptedNotYetPublished = $paperLogRepo->getAllAcceptedNotYetPublished($rvId, $years, $startAfterDate);
-        $totalOther = max(0, $submissionsWithoutImported - ($totalAccepted + $totalRefused));
+        // articles awaiting an editorial decision, counted directly (by submission date), as "other-status" of the statistics
+        $totalOther = $paperRepo->getSubmissionsAwaitingDecision($rvId, $startAfterDate, $years);
 
         $values [$submissions->getName()] = $nbSubmissions;
 
@@ -198,6 +199,45 @@ class Stats
 
     }
 
+
+    /**
+     * "withPapers" of the dashboard: the papers (PAPERID) counted by each figure, computed with the same queries as the figures.
+     * The papers of the delays are those of the average and of the median delays.
+     *
+     * @return array<string, list<int>> indexed by figure of the dashboard
+     */
+    public function getDashboardPaperIds(array $filters): array
+    {
+        $years = isset($filters['is']['submissionDate']) ? (array)$filters['is']['submissionDate'] : [];
+        $rvId = (int)$filters['is']['rvid'];
+        $startAfterDate = $filters['is']['startAfterDate'] ?? null;
+
+        /** @var PaperLogRepository $paperLogRepo */
+        $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
+        /** @var PapersRepository $paperRepo */
+        $paperRepo = $this->entityManager->getRepository(Paper::class);
+        $figures = PaperLogRepository::PAPER_IDS_FIGURES;
+
+        $papers = [
+            'nbSubmissions' => $paperRepo->getSubmissionPaperIds($filters),
+            'nbImported' => $paperRepo->getSubmissionPaperIds($filters, PapersRepository::AVAILABLE_FLAG_VALUES['imported']),
+        ];
+
+        if (!($startAfterDate && !$years)) { // as getDashboard()
+            $publishedFilters['is'] = array_merge($filters['is'], ['status' => Paper::STATUS_PUBLISHED]);
+            $papers['nbImportedPublished'] = $paperRepo->getSubmissionPaperIds($publishedFilters, PapersRepository::AVAILABLE_FLAG_VALUES['imported'], 'publicationDate');
+        }
+
+        return $papers + [
+            'nbPublished' => $paperLogRepo->getPaperIds($figures['published'], $rvId, $years, $startAfterDate),
+            'nbAccepted' => $paperLogRepo->getPaperIds($figures['accepted'], $rvId, $years, $startAfterDate),
+            'nbRefused' => $paperLogRepo->getPaperIds($figures['refused'], $rvId, $years, $startAfterDate),
+            'nbAcceptedNotYetPublished' => $paperLogRepo->getPaperIds($figures['accepted-not-yet-published'], $rvId, $years, $startAfterDate),
+            'nbOtherStatus' => $paperRepo->getSubmissionsAwaitingDecisionPaperIds($rvId, $startAfterDate, $years),
+            'submissionAcceptanceTime' => $paperLogRepo->getSubmissionDelayPaperIds($rvId, $years, $startAfterDate, 'median-submission-acceptance', 'day'),
+            'submissionPublicationTime' => $paperLogRepo->getSubmissionDelayPaperIds($rvId, $years, $startAfterDate, 'median-submission-publication', 'day'),
+        ];
+    }
 
     /**
      * Par annee, par revue, delai moyen, ou la valeur médiane en nombre d'$unité entre dépôt et acceptation|publication
@@ -501,12 +541,9 @@ class Stats
         $refusedByYear = $paperLogRepository->getRefusedByYear($rvId, $years, $startAfterDate);
         $publishedByYear = $paperLogRepository->getPublishedByYear($rvId, $years, $startAfterDate);
         $acceptedNotYetPublishedByYear = $paperLogRepository->getAllAcceptedNotYetPublishedByYear($rvId, $years, $startAfterDate);
+        $awaitingDecisionByYear = $papersRepository->getSubmissionsAwaitingDecisionByYear($rvId, $startAfterDate);
 
         $submissionsByYear = $papersRepository->countSubmissionsByYear(['is' => ['rvid' => $rvId]]);
-        // Some versions of a paper may have been imported while others have not: counted apart rather than by difference
-        $submissionsWithoutImportedByYear = $papersRepository->countSubmissionsByYear([
-            'is' => ['rvid' => $rvId, AppConstants::START_AFTER_DATE => $startAfterDate, AppConstants::PAPER_FLAG => PapersRepository::AVAILABLE_FLAG_VALUES['submitted']],
-        ]);
         $submissionsByYearAndRepo = $papersRepository->countSubmissionsByYearAndRepository([
             'is' => ['rvid' => $rvId, AppConstants::START_AFTER_DATE => $startAfterDate],
         ]);
@@ -517,8 +554,6 @@ class Stats
 
             $details[self::SUBMISSIONS_BY_YEAR][$year]['imported'] = $importedByYear[(int)$year] ?? 0;
 
-            $submissionsWithoutImported = $submissionsWithoutImportedByYear[(int)$year] ?? 0;
-
             $accepted = $acceptedByYear[(int)$year] ?? 0;
             $refused = $refusedByYear[(int)$year] ?? 0;
             $published = $publishedByYear[(int)$year] ?? 0;
@@ -527,7 +562,7 @@ class Stats
             $details[self::SUBMISSIONS_BY_YEAR][$year]['acceptedNotYetPublished'] = $acceptedNotYetPublishedByYear[(int)$year] ?? 0;
             $details[self::SUBMISSIONS_BY_YEAR][$year]['refused'] = $refused;
             $details[self::SUBMISSIONS_BY_YEAR][$year]['accepted'] = $accepted;
-            $details[self::SUBMISSIONS_BY_YEAR][$year]['others'] = max(0, $submissionsWithoutImported - ($accepted + $refused));
+            $details[self::SUBMISSIONS_BY_YEAR][$year]['others'] = $awaitingDecisionByYear[(int)$year] ?? 0;
 
             $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] =
                 isset($nbAcceptedSubmittedSameYear[$rvId][$year]) ?

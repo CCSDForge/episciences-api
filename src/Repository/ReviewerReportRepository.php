@@ -45,6 +45,8 @@ class ReviewerReportRepository extends ServiceEntityRepository
 
         if($rvId){
             $qb->andWhere('p.rvid = :rvid')->setParameter('rvid', $rvId);
+        } else {
+            $this->andActiveJournals($qb, 'p.rvid');
         }
 
         if($status){

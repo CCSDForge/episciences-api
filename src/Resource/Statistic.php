@@ -24,7 +24,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Retrieve all available statistical indicators",
-                description: self::COLLECTION_DESCRIPTION,
+                description: 'Statistics of all the journals, or of one journal with `rvcode`. ' . self::OTHER_STATUS_DESCRIPTION,
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -32,29 +32,29 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         description: 'Journal code (exp. epijinfo)',
                         required: false,
                         schema: [
-                            "type" => 'string',
-                            "default" => ''
+                            "type" => 'string'
                         ]
                     ),
                     new Parameter(
                         name: 'indicator',
                         in: 'query',
-                        description: "Statistic's identifier (exp. nb-submissions)",
+                        description: 'Indicator; all of them when omitted',
                         required: false,
                         schema: [
                             "type" => 'string',
-                            "default" => ''
+                            'enum' => self::PUBLICATION_INDICATOR_VALUES,
                         ]
                     ),
                     new Parameter(
                         name: 'indicator[]',
                         in: 'query',
-                        description: "Statistic's identifier (exp. nb-submissions)",
+                        description: 'Several indicators, returned in this order',
                         required: false,
                         schema: [
                             "type" => 'array',
                             'items' => [
                                 'type' => 'string',
+                                'enum' => self::PUBLICATION_INDICATOR_VALUES,
                             ]
                         ],
                         explode: true,
@@ -76,7 +76,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: self::YEAR_COLLECTION_DESCRIPTION,
+                        description: 'Several years, with the same meaning as `year`',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -119,9 +119,22 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         allowReserved: false
                     ),
                     new Parameter(
+                        name: self::WITH_PAPERS_PARAM,
+                        in: 'query',
+                        description: self::WITH_PAPERS_DESCRIPTION,
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    ),
+                    new Parameter(
                         name: self::GROUP_BY_PARAM,
                         in: 'query',
-                        description: 'Returns the indicator of each journal (one item by journal, with its code in "journal"); only with "indicator=median-submission-publication" or "indicator=median-submission-acceptance", and without "rvcode"',
+                        description: self::GROUP_BY_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -149,14 +162,13 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         description: 'Journal code (exp. epijinfo)',
                         required: false,
                         schema: [
-                            "type" => 'string',
-                            "default" => ''
+                            "type" => 'string'
                         ]
                     ),
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The year of submission of the articles',
+                        description: 'Year of submission of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -169,7 +181,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The year of submission of the articles',
+                        description: 'Several years of submission',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -255,14 +267,13 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         description: 'Journal code (exp. epijinfo)',
                         required: false,
                         schema: [
-                            "type" => 'string',
-                            "default" => ''
+                            "type" => 'string'
                         ]
                     ),
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The year of publication of the articles',
+                        description: 'Year of publication of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -275,7 +286,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The year of publication of the articles',
+                        description: 'Several years of publication',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -333,14 +344,13 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         description: 'Journal code (exp. epijinfo)',
                         required: false,
                         schema: [
-                            "type" => 'string',
-                            "default" => ''
+                            "type" => 'string'
                         ]
                     ),
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The year of acceptance of the articles',
+                        description: 'Year of acceptance of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -353,7 +363,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The year of acceptance of the articles',
+                        description: 'Several years of acceptance',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -412,14 +422,13 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         description: 'Journal code (exp. epijinfo)',
                         required: false,
                         schema: [
-                            "type" => 'string',
-                            "default" => ''
+                            "type" => 'string'
                         ]
                     ),
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The year of the decision (acceptance or refusal)',
+                        description: 'Year of the decision (acceptance or refusal)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -432,7 +441,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The year of the decision (acceptance or refusal)',
+                        description: 'Several years of decision',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -476,29 +485,29 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         description: 'Journal code (exp. epijinfo)',
                         required: false,
                         schema: [
-                            "type" => 'string',
-                            "default" => ''
+                            "type" => 'string'
                         ]
                     ),
                     new Parameter(
                         name: 'indicator',
                         in: 'query',
-                        description: "Statistic's identifier (exp. nb-submissions)",
+                        description: 'Indicator; all of them when omitted',
                         required: false,
                         schema: [
                             "type" => 'string',
-                            "default" => ''
+                            'enum' => self::EVAL_INDICATOR_VALUES,
                         ]
                     ),
                     new Parameter(
                         name: 'indicator[]',
                         in: 'query',
-                        description: "Statistic's identifier (exp. nb-submissions)",
+                        description: 'Several indicators, returned in this order',
                         required: false,
                         schema: [
                             "type" => 'array',
                             'items' => [
                                 'type' => 'string',
+                                'enum' => self::EVAL_INDICATOR_VALUES,
                             ]
                         ],
                         explode: true,
@@ -507,7 +516,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The year the invitations were sent (reviews-requested) or the reports were created (reviews-received, median-reviews-number)',
+                        description: 'Year of the invitation (reviews-requested) or of the report (reviews-received, median-reviews-number)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -520,7 +529,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'The year the invitations were sent (reviews-requested) or the reports were created (reviews-received, median-reviews-number)',
+                        description: 'Several years, with the same meaning as `year`',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -533,6 +542,20 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         explode: true,
                         allowReserved: false,
 
+                    ),
+                    new Parameter(
+                        name: self::GROUP_BY_PARAM,
+                        in: 'query',
+                        description: self::GROUP_BY_DESCRIPTION,
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'string',
+                            'enum' => [self::GROUP_BY_JOURNAL],
+                        ],
+                        explode: false,
+                        allowReserved: false
                     ),
                 ]
             ),
@@ -549,10 +572,27 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 )]
 class Statistic
 {
-    public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles";
-    public const MEDIAN_DELAY_DESCRIPTION = 'The delay of an article runs from its first submission to its latest publication (or acceptance for "median-submission-acceptance") recorded in its history, and is truncated to the unit (e.g. 13 days count as 1 week). "year" filters on the year of this publication (or acceptance). "count" is the number of articles the median is computed from.';
-    public const COLLECTION_DESCRIPTION = 'The median delays exclude imported articles: ' . self::MEDIAN_DELAY_DESCRIPTION . ' With "groupBy=journal", a median delay is returned for each journal having at least one article.';
-    public const YEAR_COLLECTION_DESCRIPTION = 'The year, whose meaning depends on the indicator: year of submission (nb-submissions, submitted and imported versions of nb-submissions-details), year of the decision (acceptance-rate, published, accepted and refused articles of nb-submissions-details), year of publication or acceptance (median delays), year the invitations were sent or the reports were created (evaluation)';
+    public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles.";
+    public const MEDIAN_DELAY_DESCRIPTION = 'The delay runs from the first submission of the article to its latest publication (or acceptance), truncated to the unit (13 days = 1 week). `count` is the number of articles.';
+    public const OTHER_STATUS_DESCRIPTION = 'In `nb-submissions-details`, `being-to-publish.other-status` is the number of articles awaiting an editorial decision (neither published, accepted, refused, deleted nor removed; an abandoned article is only paused).';
+    public const YEAR_COLLECTION_DESCRIPTION = 'Year of: submission for `nb-submissions` (and the submitted, imported and awaiting-decision articles of `nb-submissions-details`); decision for `acceptance-rate` (and the published, accepted and refused articles); publication or acceptance for the median delays; invitation or report for `evaluation`';
+    /** Values of the "indicator" parameter (lists for the OpenAPI enums) */
+    public const PUBLICATION_INDICATOR_VALUES = [
+        self::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'],
+        self::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get'],
+        self::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'],
+        self::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get'],
+        self::AVAILABLE_PUBLICATION_INDICATORS['evaluation_get_collection'],
+    ];
+    public const EVAL_INDICATOR_VALUES = [
+        self::EVAL_INDICATORS['reviews-requested_get'],
+        self::EVAL_INDICATORS['reviews-received_get'],
+        self::EVAL_INDICATORS['median-reviews-number_get'],
+    ];
+    public const GROUP_BY_DESCRIPTION = 'Returns the statistics of each active journal: one item by journal and by indicator, with the journal code in `journal`, sorted by code. Only the journals having data are returned. Not with `rvcode`';
+    public const NB_SUBMISSIONS_DETAILS = 'nb-submissions-details';
+    public const WITH_PAPERS_PARAM = 'withPapers';
+    public const WITH_PAPERS_DESCRIPTION = 'Adds `papers`, the papers counted by each statistic (not for `evaluation`): one DOCID by paper, its latest version, computed with the same queries as the figures. Only with `rvcode`, without `groupBy`, for the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number is in `hiddenPapers`';
     public const GROUP_BY_PARAM = 'groupBy';
     public const GROUP_BY_JOURNAL = 'journal';
     public const STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER = '/api/statistics/';
@@ -582,12 +622,20 @@ class Statistic
     private string|null $unit = null;
     #[groups(['read:Statistic'])]
     #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
-    #[ApiProperty(description: 'Code of the journal, with "groupBy=journal"', schema: ['type' => 'string', 'example' => 'epijinfo'])]
+    #[ApiProperty(description: 'Code of the journal, with `groupBy=journal`', schema: ['type' => 'string', 'example' => 'epijinfo'])]
     private ?string $journal = null;
     #[groups(['read:Statistic'])]
     #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
     #[ApiProperty(description: 'Number of articles the median delay is computed from (median delays only)', schema: ['type' => 'integer', 'minimum' => 0, 'example' => 412])]
     private ?int $count = null;
+    #[groups(['read:Statistic'])]
+    #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
+    #[ApiProperty(description: 'With `withPapers`: the papers counted (one DOCID by paper, its latest version), or, for a statistic made of several figures, the papers of each figure', schema: ['type' => ['array', 'object'], 'items' => ['type' => 'integer'], 'example' => [18910, 18947]])]
+    private ?array $papers = null;
+    #[groups(['read:Statistic'])]
+    #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
+    #[ApiProperty(description: 'With `withPapers`: the number of papers not listed in `papers` because of a conflict of interest (by figure for a statistic made of several figures)', schema: ['type' => ['integer', 'object'], 'example' => 0])]
+    private int|array|null $hiddenPapers = null;
 
     public function getName(): string
     {
@@ -636,6 +684,28 @@ class Statistic
     public function getCount(): ?int
     {
         return $this->count;
+    }
+
+    public function getPapers(): ?array
+    {
+        return $this->papers;
+    }
+
+    public function setPapers(?array $papers): self
+    {
+        $this->papers = $papers;
+        return $this;
+    }
+
+    public function getHiddenPapers(): int|array|null
+    {
+        return $this->hiddenPapers;
+    }
+
+    public function setHiddenPapers(int|array|null $hiddenPapers): self
+    {
+        $this->hiddenPapers = $hiddenPapers;
+        return $this;
     }
 
     public function setCount(?int $count): self

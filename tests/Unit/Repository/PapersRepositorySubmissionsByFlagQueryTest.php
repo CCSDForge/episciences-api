@@ -44,6 +44,7 @@ class PapersRepositorySubmissionsByFlagQueryTest extends TestCase
 
     /**
      * The journal, year and date filters apply to the three numbers: they are in the WHERE clause.
+     * The year and the start date are the ones of the first submission of the paper (oldest version).
      */
     public function testCommonFiltersRestrictTheThreeNumbers(): void
     {
@@ -51,8 +52,8 @@ class PapersRepositorySubmissionsByFlagQueryTest extends TestCase
 
         $where = substr($sql, (int)strpos($sql, ' WHERE '));
         $this->assertStringContainsString('RVID = ?', $where);
-        $this->assertMatchesRegularExpression("/YEAR\(\w+\.SUBMISSION_DATE\) = '?2024'?/", $where);
-        $this->assertMatchesRegularExpression('/SUBMISSION_DATE >= \?/', $where);
+        $this->assertMatchesRegularExpression('/PAPERID IN \(SELECT \w+\.PAPERID FROM PAPERS \w+ GROUP BY \w+\.PAPERID HAVING YEAR\(MIN\(\w+\.SUBMISSION_DATE\)\) IN \(\?\)\)/', $where);
+        $this->assertMatchesRegularExpression('/PAPERID IN \(SELECT \w+\.PAPERID FROM PAPERS \w+ GROUP BY \w+\.PAPERID HAVING MIN\(\w+\.SUBMISSION_DATE\) >= \?\)/', $where);
     }
 
     /**

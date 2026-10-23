@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Entity\News;
+use App\Entity\Review;
 use App\Entity\Section;
 use App\Entity\Volume;
 use App\Repository\VolumeRepository;
@@ -10,6 +11,19 @@ use Doctrine\ORM\QueryBuilder;
 
 trait QueryTrait
 {
+    /** SQL condition: the statistics without journal only take into account the active journals */
+    public const string ACTIVE_JOURNALS_SQL = 'SELECT RVID FROM REVIEW WHERE STATUS = ' . Review::STATUS_ENABLED;
+
+    /**
+     * The statistics without journal only take into account the active journals,
+     * as the statistics of a journal (a disabled journal cannot be requested).
+     */
+    final public function andActiveJournals(QueryBuilder $qb, string $rvIdField): QueryBuilder
+    {
+        return $qb
+            ->andWhere(sprintf('%s IN (SELECT activeJournal.rvid FROM %s activeJournal WHERE activeJournal.status = :activeJournalStatus)', $rvIdField, Review::class))
+            ->setParameter('activeJournalStatus', Review::STATUS_ENABLED);
+    }
 
     final public function processOrExpression(QueryBuilder $qb, string $alias, array $values, string $resourceClass): QueryBuilder
     {

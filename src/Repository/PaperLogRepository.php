@@ -30,6 +30,13 @@ use Psr\Log\LogLevel;
  */
 class PaperLogRepository extends ServiceEntityRepository
 {
+    /** Statuses of an accepted article in its history (see acceptedQuery) */
+    public const array ACCEPTED_STATUSES = [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED];
+    /** Figures whose papers can be listed (see getPaperIds()) */
+    public const array PAPER_IDS_FIGURES = ['accepted' => 'accepted', 'refused' => 'refused', 'published' => 'published', 'accepted-not-yet-published' => 'accepted-not-yet-published'];
+    /** Status of a refused article in its history (see refusedQuery) */
+    public const int REFUSED_STATUS = Paper::STATUS_REFUSED;
+
     use QueryTrait;
     use ToolsTrait;
 
@@ -141,6 +148,8 @@ class PaperLogRepository extends ServiceEntityRepository
 
         if ($rvId) {
             $sql .= " AND pl1.rvid = $rvId";
+        } else {
+            $sql .= sprintf(' AND pl1.rvid IN (%s)', self::ACTIVE_JOURNALS_SQL);
         }
 
 
@@ -175,19 +184,21 @@ class PaperLogRepository extends ServiceEntityRepository
         $papers = 'PAPERS';
         $paperLog = 'PAPER_LOG';
 
-        $year = $isSubmittedSameYear ? "pl.DATE" : "$papers.SUBMISSION_DATE";
-
+        // the submission date of a paper is the one of its first version (the oldest of its versions)
+        $year = $isSubmittedSameYear ? "pl.DATE" : "firstSubmission.SUBMISSION_DATE";
 
         $sql = "SELECT $papers.RVID AS rvid, YEAR($year) AS `year`, COUNT(DISTINCT($papers.PAPERID)) AS $as";
-        $sql .= " FROM $paperLog pl JOIN $papers ON $papers.DOCID = pl.DOCID AND YEAR($papers.SUBMISSION_DATE) = YEAR(pl.DATE)";
+        $sql .= " FROM $paperLog pl JOIN $papers ON $papers.DOCID = pl.DOCID";
+        $sql .= " JOIN (SELECT PAPERID, MIN(SUBMISSION_DATE) AS SUBMISSION_DATE FROM $papers GROUP BY PAPERID) firstSubmission";
+        $sql .= " ON firstSubmission.PAPERID = $papers.PAPERID AND YEAR(firstSubmission.SUBMISSION_DATE) = YEAR(pl.DATE)";
         $sql .= " WHERE pl.status IS NOT NULL AND pl.status = $status";
 
         if ($withoutImported) {
             $sql .= " AND $papers.FLAG = 'submitted'";
         }
 
-        $sql .= "GROUP BY rvid, `year`";
-        $sql .= "ORDER BY rvid, `year` DESC";
+        $sql .= " GROUP BY rvid, `year`";
+        $sql .= " ORDER BY rvid, `year` DESC";
 
 
         return $sql;
@@ -308,11 +319,15 @@ class PaperLogRepository extends ServiceEntityRepository
         }
 
         if (self::isValidDate($startAfterDate)) {
-            $qb->andWhere('p.submissionDate > :date')->setParameter('date', $startAfterDate);
+            // first submission of the paper (the oldest submission date of its versions), as for the submissions
+            $qb->andWhere(sprintf('p.paperid IN (SELECT firstSubmission.paperid FROM %s firstSubmission GROUP BY firstSubmission.paperid HAVING MIN(firstSubmission.submissionDate) > :date)', Paper::class))
+                ->setParameter('date', $startAfterDate);
         }
 
         if ($rvId) {
             $qb->andWhere('p.rvid = :rvid')->setParameter('rvid', $rvId);
+        } else {
+            $this->andActiveJournals($qb, 'p.rvid');
         }
 
         return $qb;
@@ -339,6 +354,26 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
     /**
+     * Same count as getAccepted(), for each journal (one query for all the journals)
+     *
+     * @return array<int, int> indexed by journal identifier (rvid); the journals without accepted paper are not returned
+     */
+    public function getAcceptedByJournal(array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
+    {
+        return $this->processResultByJournal($this->acceptedQuery(null, $years, $startAfterDate, $ignoreImportedArticles), $years);
+    }
+
+    /**
+     * Same count as getRefused(), for each journal (one query for all the journals)
+     *
+     * @return array<int, int> indexed by journal identifier (rvid); the journals without refused paper are not returned
+     */
+    public function getRefusedByJournal(array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
+    {
+        return $this->processResultByJournal($this->refusedQuery(null, $years, $startAfterDate, $ignoreImportedArticles), $years);
+    }
+
+    /**
      * @return array<int, int> number of refused papers indexed by year (one query for all the years)
      */
     public function getRefusedByYear(?int $rvId, array $years, ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
@@ -348,12 +383,12 @@ class PaperLogRepository extends ServiceEntityRepository
 
     private function acceptedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
     {
-        return $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
+        return $this->commonQuery($rvId, $years, $startAfterDate, self::ACCEPTED_STATUSES, $ignoreImportedArticles);
     }
 
     private function refusedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
     {
-        return $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_REFUSED, $ignoreImportedArticles);
+        return $this->commonQuery($rvId, $years, $startAfterDate, self::REFUSED_STATUS, $ignoreImportedArticles);
     }
 
     private function publishedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
@@ -373,6 +408,75 @@ class PaperLogRepository extends ServiceEntityRepository
         }
 
         return array_sum($this->processResultByYear($qb, $years));
+    }
+
+    /**
+     * Identifiers (PAPERID) of the papers counted by getAccepted(), getRefused(), getPublished() and getAllAcceptedNotYetPublished()
+     *
+     * @param string $figure one of the PAPER_IDS_FIGURES
+     * @return list<int> sorted; with several years, a paper decided in several of them is listed once
+     */
+    public function getPaperIds(string $figure, int $rvId, array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
+    {
+        $qb = match ($figure) {
+            self::PAPER_IDS_FIGURES['accepted'] => $this->acceptedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles),
+            self::PAPER_IDS_FIGURES['refused'] => $this->refusedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles),
+            self::PAPER_IDS_FIGURES['published'] => $this->publishedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles),
+            self::PAPER_IDS_FIGURES['accepted-not-yet-published'] => $this->acceptedNotYetPublishedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles),
+            default => throw new \InvalidArgumentException(sprintf('Unknown figure "%s"', $figure)),
+        };
+
+        $qb->select('DISTINCT pl.paperid AS paperid')->orderBy('paperid');
+
+        if ($years !== []) {
+            $this->andOrExp($qb, 'YEAR(pl.date)', $years);
+        }
+
+        return array_map('intval', array_column($qb->getQuery()->getScalarResult(), 'paperid'));
+    }
+
+    /**
+     * Identifiers (PAPERID) of the papers a median delay is computed from (see getSubmissionMedianTimeDetails())
+     *
+     * @return list<int> sorted
+     */
+    public function getSubmissionDelayPaperIds(int $rvId, ?array $years = null, ?string $startAfterDate = null, string $operationName = 'median-submission-publication', string $unit = 'week'): array
+    {
+        $ids = [];
+
+        foreach ($this->getSubmissionDelays($rvId, $years, $startAfterDate, $operationName, $unit) as $row) {
+            if (is_numeric($row[self::DELAY])) {
+                $ids[] = (int)$row['PAPERID'];
+            }
+        }
+
+        $ids = array_values(array_unique($ids));
+        sort($ids);
+
+        return $ids;
+    }
+
+    /**
+     * Totals of each journal, computed as processResult(): with years, the totals of each year are added up.
+     *
+     * @return array<int, int> indexed by journal identifier (rvid)
+     */
+    private function processResultByJournal(QueryBuilder $qb, array $years): array
+    {
+        $qb->addSelect('p.rvid AS rvid')->addGroupBy('rvid');
+
+        if ($years !== []) {
+            $this->andOrExp($qb, 'YEAR(pl.date)', $years);
+            $qb->addGroupBy('year');
+        }
+
+        $totals = [];
+
+        foreach ($qb->getQuery()->getResult() as $values) {
+            $totals[(int)$values['rvid']] = ($totals[(int)$values['rvid']] ?? 0) + (int)$values['total'];
+        }
+
+        return $totals;
     }
 
     /**
@@ -431,7 +535,7 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
     /**
-     * Accepted papers that have been neither published, refused nor abandoned.
+     * Accepted papers that have been neither published nor refused (an abandoned paper is only paused: it is still counted).
      * One NOT EXISTS per status: with an OR on the status, MySQL materializes the subquery with a full scan of PAPER_LOG.
      */
     private function acceptedNotYetPublishedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
@@ -441,7 +545,6 @@ class PaperLogRepository extends ServiceEntityRepository
         $excludedStatuses = [
             'pStatus' => Paper::STATUS_PUBLISHED, // accepted and published
             'rStatus' => Paper::STATUS_REFUSED, // accepted and refused
-            'aStatus' => Paper::STATUS_ABANDONED, // accepted and abandoned
         ];
 
         foreach ($excludedStatuses as $parameter => $status) {
