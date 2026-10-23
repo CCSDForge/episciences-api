@@ -53,6 +53,8 @@ class UserInvitationRepository extends ServiceEntityRepository
 
         if ($rvId) {
             $qb->andWhere('ua.rvid = :rvId')->setParameter('rvId', $rvId);
+        } else {
+            $this->andActiveJournals($qb, 'ua.rvid');
         }
 
         if ($invitationStatus) {

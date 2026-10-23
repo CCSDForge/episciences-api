@@ -146,6 +146,8 @@ class PaperLogRepository extends ServiceEntityRepository
 
         if ($rvId) {
             $sql .= " AND pl1.rvid = $rvId";
+        } else {
+            $sql .= sprintf(' AND pl1.rvid IN (%s)', self::ACTIVE_JOURNALS_SQL);
         }
 
 
@@ -318,6 +320,8 @@ class PaperLogRepository extends ServiceEntityRepository
 
         if ($rvId) {
             $qb->andWhere('p.rvid = :rvid')->setParameter('rvid', $rvId);
+        } else {
+            $this->andActiveJournals($qb, 'p.rvid');
         }
 
         return $qb;

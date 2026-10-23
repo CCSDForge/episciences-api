@@ -6,6 +6,7 @@ namespace App\Tests\Functional\Repository;
 
 use App\Entity\Paper;
 use App\Entity\PaperLog;
+use App\Entity\Review;
 use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
 use Doctrine\DBAL\DriverManager;
@@ -24,15 +25,17 @@ use Psr\Log\NullLogger;
  * Runs PapersRepository::getSubmissionsAwaitingDecision() ("other-status" of the statistics) and
  * PaperLogRepository::getAllAcceptedNotYetPublished() ("being-to-publish.accepted") against a real MySQL database:
  * the decisions are read from the history, and an abandoned article, only paused, is still counted.
+ * Without journal, only the active journals are taken into account.
  *
  * Requires TEST_DATABASE_URL (set in CI, see docker-compose.ci.yml); skipped otherwise.
- * The test creates and drops the PAPERS and PAPER_LOG tables: it is skipped if one of them already exists,
+ * The test creates and drops the PAPERS, PAPER_LOG and REVIEW tables: it is skipped if one of them already exists,
  * so that it never touches real data.
  */
 class PapersAwaitingDecisionDatabaseTest extends TestCase
 {
     private const int RVID = 1;
     private const int OTHER_RVID = 2;
+    private const int DISABLED_RVID = 3;
 
     private EntityManagerInterface $entityManager;
     private PapersRepository $repository;
@@ -57,15 +60,17 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
 
         $connection = DriverManager::getConnection(new DsnParser(['mysql' => 'pdo_mysql'])->parse($url), $config);
 
-        if ($connection->createSchemaManager()->tablesExist([Paper::TABLE]) || $connection->createSchemaManager()->tablesExist([PaperLog::TABLE])) {
-            $connection->close();
-            $this->markTestSkipped(sprintf('The %s or %s table already exists: the test does not touch existing data.', Paper::TABLE, PaperLog::TABLE));
+        foreach ([Paper::TABLE, PaperLog::TABLE, Review::TABLE] as $table) {
+            if ($connection->createSchemaManager()->tablesExist([$table])) {
+                $connection->close();
+                $this->markTestSkipped(sprintf('The %s table already exists: the test does not touch existing data.', $table));
+            }
         }
 
         $this->entityManager = new EntityManager($connection, $config);
-        $this->metadata = [$this->entityManager->getClassMetadata(Paper::class), $this->entityManager->getClassMetadata(PaperLog::class)];
+        $this->metadata = [$this->entityManager->getClassMetadata(Paper::class), $this->entityManager->getClassMetadata(PaperLog::class), $this->entityManager->getClassMetadata(Review::class)];
 
-        // Only PAPERS and PAPER_LOG are created: their foreign keys reference tables that do not exist
+        // Only PAPERS, PAPER_LOG and REVIEW are created: their foreign keys reference tables that do not exist
         $connection->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
         new SchemaTool($this->entityManager)->createSchema($this->metadata);
         $this->tablesCreated = true;
@@ -128,6 +133,9 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
         $this->assertSame(2, $this->repository->getSubmissionsAwaitingDecision(self::RVID, '2023-01-01'));
     }
 
+    /**
+     * Without journal, the active journals only: the paper of the disabled journal is ignored.
+     */
     public function testAllTheJournalsAreCountedWithoutJournal(): void
     {
         $this->assertSame(4, $this->repository->getSubmissionsAwaitingDecision());
@@ -147,6 +155,7 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
     public function testCountsByJournalMatchTheCountsOfEachJournal(): void
     {
         $submissions = $this->repository->countSubmissionsByJournal(['is' => []]);
+        $this->assertArrayNotHasKey(self::DISABLED_RVID, $submissions, 'Disabled journal');
 
         foreach ([self::RVID, self::OTHER_RVID] as $rvId) {
             $single = (int)$this->repository->submissionsQuery(['is' => ['rvid' => $rvId]])->getQuery()->getSingleScalarResult();
@@ -184,6 +193,8 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
             [10, 9, self::RVID, Paper::STATUS_WAITING_FOR_MINOR_REVISION, 'submitted', '2021-06-10'], // refused, then reopened
             [11, 10, self::OTHER_RVID, Paper::STATUS_SUBMITTED, 'submitted', '2023-06-10'],
             [12, 11, self::RVID, Paper::STATUS_ABANDONED, 'submitted', '2023-07-10'],             // accepted, then paused
+            [13, 12, self::DISABLED_RVID, Paper::STATUS_SUBMITTED, 'submitted', '2023-08-10'],    // disabled journal: ignored without journal
+            [14, 13, self::DISABLED_RVID, Paper::STATUS_CE_READY_TO_PUBLISH, 'submitted', '2023-09-10'], // idem (accepted)
         ];
 
         $logs = [
@@ -194,10 +205,17 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
             [9, 10, Paper::STATUS_BEING_REVIEWED],
             [11, 12, Paper::STATUS_STRICTLY_ACCEPTED],
             [11, 12, Paper::STATUS_ABANDONED],
+            [13, 14, Paper::STATUS_STRICTLY_ACCEPTED],
         ];
 
         $connection = $this->entityManager->getConnection();
         $platform = $connection->getDatabasePlatform();
+
+        $journalDefaults = $this->requiredColumnDefaults(Review::TABLE);
+
+        foreach ([self::RVID => Review::STATUS_ENABLED, self::OTHER_RVID => Review::STATUS_ENABLED, self::DISABLED_RVID => Review::STATUS_DISABLED] as $rvId => $status) {
+            $connection->insert(Review::TABLE, array_merge($journalDefaults, ['RVID' => $rvId, 'CODE' => 'journal' . $rvId, 'STATUS' => $status]));
+        }
 
         $paperDefaults = $this->requiredColumnDefaults(Paper::TABLE);
 

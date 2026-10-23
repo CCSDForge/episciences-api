@@ -75,6 +75,10 @@ class PapersRepository extends ServiceEntityRepository
 
         $qb = $this->addQueryFilters($qb, $filters, $fieldDateToBeUsed);
 
+        if (empty($filters['is']['rvid'])) {
+            $this->andActiveJournals($qb, sprintf('%s.rvid', self::PAPERS_ALIAS));
+        }
+
         if ($withoutObsolete) {
 
             $qb->andWhere('p.status != :obsolete');
@@ -484,6 +488,8 @@ class PapersRepository extends ServiceEntityRepository
 
         if ($rvId) {
             $qb->andWhere("p.rvid = :rvId")->setParameter('rvId', $rvId);
+        } else {
+            $this->andActiveJournals($qb, 'p.rvid');
         }
 
         $result = $qb->getQuery()->getResult();

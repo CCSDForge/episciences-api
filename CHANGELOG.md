@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a database test (`tests/Functional/`, MySQL in CI through `TEST_DATABASE_URL`, skipped otherwise) checking that the cap of the unpaginated collections keeps the to-many fetch-joined collections complete.
 
 ### Changed
+- Statistics without journal (`GET /api/statistics/*` without `rvcode`, `groupBy=journal`, the years of `hydra:range`) only take into account the active journals, as the statistics of a journal (a disabled journal cannot be requested).
 - OpenAPI documentation of the statistics: the `year` parameter is described for each indicator (year of submission, of the decision, of publication or acceptance, or of the invitation or report), instead of "The Year of submission" everywhere. No change in the computed figures.
 - OpenAPI documentation of the journal statistics (`/api/journals/stats/*`): the `year` parameter says which date it filters on (year of submission, of acceptance, of publication, or of each figure for the dashboard), instead of "The Year of submission" everywhere. `indicator` lists its possible values and the empty default values of `rvcode` and `indicator` are removed. No change in the computed figures.
 - `GET /api/news/` and `GET /api/news/{id}`: the `creator` is embedded without its IRI (`screenName` only).
