@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "401415631a734df3ca750857b2b441d1",
+    "content-hash": "4153ecdf8b07cfee6e7036f026064e70",
     "packages": [
         {
             "name": "api-platform/core",
-            "version": "v4.4.5",
+            "version": "v4.4.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/api-platform/core.git",
-                "reference": "e0cb3502c86ac8668a4283d1af27121d7925599f"
+                "reference": "fcaa1cd28551de1a84ae1437b16472486ebf57f9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/api-platform/core/zipball/e0cb3502c86ac8668a4283d1af27121d7925599f",
-                "reference": "e0cb3502c86ac8668a4283d1af27121d7925599f",
+                "url": "https://api.github.com/repos/api-platform/core/zipball/fcaa1cd28551de1a84ae1437b16472486ebf57f9",
+                "reference": "fcaa1cd28551de1a84ae1437b16472486ebf57f9",
                 "shasum": ""
             },
             "require": {
@@ -47,7 +47,7 @@
                 "doctrine/persistence": "<1.3",
                 "phpspec/prophecy": "<1.15",
                 "phpunit/phpunit": "<9.5",
-                "symfony/framework-bundle": "6.4.6 || 7.0.6",
+                "symfony/framework-bundle": "<7.4",
                 "symfony/object-mapper": "<7.3.4",
                 "symfony/var-exporter": "<6.1.1"
             },
@@ -220,9 +220,9 @@
             ],
             "support": {
                 "issues": "https://github.com/api-platform/core/issues",
-                "source": "https://github.com/api-platform/core/tree/v4.4.5"
+                "source": "https://github.com/api-platform/core/tree/v4.4.6"
             },
-            "time": "2026-10-16T14:14:36+00:00"
+            "time": "2026-10-23T07:49:00+00:00"
         },
         {
             "name": "beberlei/doctrineextensions",
@@ -288,16 +288,16 @@
         },
         {
             "name": "composer/semver",
-            "version": "3.5.1",
+            "version": "3.5.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/composer/semver.git",
-                "reference": "528948210cc46f967a4b98e83b19e76f2b504993"
+                "reference": "9dfce66f1e97360ea5e6d3e38ab14277e4cc591e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/composer/semver/zipball/528948210cc46f967a4b98e83b19e76f2b504993",
-                "reference": "528948210cc46f967a4b98e83b19e76f2b504993",
+                "url": "https://api.github.com/repos/composer/semver/zipball/9dfce66f1e97360ea5e6d3e38ab14277e4cc591e",
+                "reference": "9dfce66f1e97360ea5e6d3e38ab14277e4cc591e",
                 "shasum": ""
             },
             "require": {
@@ -349,7 +349,7 @@
             "support": {
                 "irc": "ircs://irc.libera.chat:6697/composer",
                 "issues": "https://github.com/composer/semver/issues",
-                "source": "https://github.com/composer/semver/tree/3.5.1"
+                "source": "https://github.com/composer/semver/tree/3.5.2"
             },
             "funding": [
                 {
@@ -361,7 +361,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-10-05T13:12:12+00:00"
+            "time": "2026-10-22T15:37:26+00:00"
         },
         {
             "name": "doctrine/collections",
@@ -11817,7 +11817,7 @@
     },
     "platform-dev": {},
     "platform-overrides": {
-        "php": "8.4.4"
+        "php": "8.4.27"
     },
     "plugin-api-version": "2.9.0"
 }
