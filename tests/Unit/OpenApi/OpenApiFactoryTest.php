@@ -106,6 +106,17 @@ class OpenApiFactoryTest extends TestCase
         $this->assertSame([200], array_keys($withoutJournal));
     }
 
+    public function testNotFoundResponseOfTheStatisticsListsTheCheckedFilters(): void
+    {
+        $paths = $this->createAuthOpenApi()->getPaths();
+
+        $this->assertSame('Journal not found, or invalid `year` or `startAfterDate`', $paths->getPath('/api/statistics/')?->getGet()?->getResponses()[404]->getDescription());
+        $this->assertSame('Journal not found, or invalid `year`', $paths->getPath('/api/statistics/evaluation')?->getGet()?->getResponses()[404]->getDescription());
+        // without year nor startAfterDate
+        $this->assertSame('Not found', $paths->getPath('/api/journals/stats/nb-users/{code}')?->getGet()?->getResponses()[404]->getDescription());
+        $this->assertSame('Journal not found', $paths->getPath('/api/volumes')?->getGet()?->getResponses()[404]->getDescription());
+    }
+
     public function testOptionalJwtIsDocumentedOnDoubleModeOperations(): void
     {
         $operation = $this->createAuthOpenApi()->getPaths()->getPath('/api/volumes')?->getGet();
@@ -233,6 +244,18 @@ class OpenApiFactoryTest extends TestCase
         $paths->addPath('/api/volumes', new PathItem(get: new Operation(
             responses: [200 => new Response('OK')],
             parameters: [new Parameter('rvcode', 'query')]
+        )));
+        $paths->addPath('/api/statistics/', new PathItem(get: new Operation(
+            responses: [200 => new Response('OK')],
+            parameters: [new Parameter('rvcode', 'query'), new Parameter('year', 'query'), new Parameter('year[]', 'query'), new Parameter('startAfterDate', 'query')]
+        )));
+        $paths->addPath('/api/statistics/evaluation', new PathItem(get: new Operation(
+            responses: [200 => new Response('OK')],
+            parameters: [new Parameter('rvcode', 'query'), new Parameter('year[]', 'query')]
+        )));
+        $paths->addPath('/api/journals/stats/nb-users/{code}', new PathItem(get: new Operation(
+            responses: [200 => new Response('OK'), 404 => new Response('Not found')],
+            parameters: [new Parameter('code', 'path')]
         )));
 
         $decorated = $this->createStub(OpenApiFactoryInterface::class);

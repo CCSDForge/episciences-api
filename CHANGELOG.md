@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a database test (`tests/Functional/`, MySQL in CI through `TEST_DATABASE_URL`, skipped otherwise) checking that the cap of the unpaginated collections keeps the to-many fetch-joined collections complete.
 
 ### Changed
+- OpenAPI documentation of the statistics (`/api/statistics/*`, `/api/journals/stats/*`): the 404 response says that it is also returned for an invalid `year` or `startAfterDate`, not only for an unknown journal.
 - OpenAPI documentation: the `info` object gives the license of the API (GNU General Public License v3.0).
 - Statistics: a median computed from no value (e.g. no article in the period) is `null` without being logged as a critical error.
 - Statistics without journal (`GET /api/statistics/*` without `rvcode`, `groupBy=journal`, the years of `hydra:range`) only take into account the active journals, as the statistics of a journal (a disabled journal cannot be requested).

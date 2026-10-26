@@ -42,6 +42,12 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     /** Parameters holding a journal code: an unknown journal returns a 404 */
     private const array JOURNAL_CODE_PARAMETERS = ['code', 'rvcode'];
 
+    /** Statistics paths: an invalid year or start date also returns a 404 */
+    private const array STATISTICS_PATH_PREFIXES = ['/api/statistics', '/api/journals/stats/'];
+
+    /** Filters of the statistics rejected with a 404 when invalid */
+    private const array STATISTICS_CHECKED_FILTERS = [AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE];
+
     public const string NOTE_PAPERS_MANAGE = 'Confidential field: only returned to the users allowed to manage the paper (`papers_manage` voter).';
     public const string NOTE_ROLE_SECRETARY = 'Confidential field: only returned to the editorial secretaries (ROLE_SECRETARY).';
     public const string NOTE_ROLE_MEMBER = 'Confidential field: only returned to the authenticated members (ROLE_MEMBER).';
@@ -108,6 +114,8 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             'Journal not found',
             $this->hasJournalCodeParameter(...)
         );
+
+        $openApi = $this->documentStatisticsNotFound($openApi);
 
         $openApi = $this->addAuthSchemas($openApi);
 
@@ -430,6 +438,43 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             }
 
             $paths->addPath($key, $path);
+        }
+
+        return $openApi->withPaths($paths);
+    }
+
+    /**
+     * On the statistics, the 404 is also returned for an invalid year or start date
+     */
+    private function documentStatisticsNotFound(OpenApi $openApi): OpenApi
+    {
+        $paths = $openApi->getPaths();
+
+        foreach ($paths->getPaths() as $key => $path) {
+            $isStatistics = array_filter(self::STATISTICS_PATH_PREFIXES, static fn(string $prefix): bool => str_starts_with((string)$key, $prefix)) !== [];
+            $operation = $path->getGet();
+
+            if (!$isStatistics || !$operation instanceof Operation || !isset(($operation->getResponses() ?? [])[Response::HTTP_NOT_FOUND])) {
+                continue;
+            }
+
+            $filters = [];
+
+            foreach ($operation->getParameters() ?? [] as $parameter) {
+                $name = rtrim($parameter->getName(), '[]');
+
+                if (in_array($name, self::STATISTICS_CHECKED_FILTERS, true) && !in_array("`$name`", $filters, true)) {
+                    $filters[] = "`$name`";
+                }
+            }
+
+            if ($filters === []) {
+                continue;
+            }
+
+            $responses = $operation->getResponses();
+            $responses[Response::HTTP_NOT_FOUND] = new OpenApiResponse(sprintf('Journal not found, or invalid %s', implode(' or ', $filters)));
+            $paths->addPath($key, $path->withGet($operation->withResponses($responses)));
         }
 
         return $openApi->withPaths($paths);
