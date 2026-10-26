@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - OpenAPI documentation: the paginated collections document the 400 response returned for an invalid pagination parameter (e.g. `page` lower than 1).
-- OpenAPI documentation: the 400 and 404 responses added to the operations (invalid pagination, unknown journal) describe their body (`Error` schemas), as the responses documented by API Platform; the 404 of the journal statistics keeps its body.
+- OpenAPI documentation: the 4xx responses (except the 401 of the JWT authentication) describe their body (`Error` schemas), as the responses documented by API Platform; the 404 of the journal statistics keeps its body. The journal dashboard documents its 403 (`displayStatistics` setting).
 - OpenAPI documentation of the statistics (`/api/statistics/*`, `/api/journals/stats/*`): the 404 response says that it is also returned for an invalid `year` or `startAfterDate`, not only for an unknown journal.
 - OpenAPI documentation: the `info` object gives the license of the API (GNU General Public License v3.0).
 - Statistics: a median computed from no value (e.g. no article in the period) is `null` without being logged as a critical error.

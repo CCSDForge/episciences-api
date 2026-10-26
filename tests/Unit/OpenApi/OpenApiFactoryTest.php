@@ -124,6 +124,16 @@ class OpenApiFactoryTest extends TestCase
         $this->assertSame('Journal not found', $paths->getPath('/api/volumes')?->getGet()?->getResponses()[404]->getDescription());
     }
 
+    public function testErrorResponsesWithoutBodyGetTheErrorBody(): void
+    {
+        $responses = $this->createAuthOpenApi()->getPaths()->getPath('/api/me')?->getGet()?->getResponses();
+
+        // 403 declared without body
+        $this->assertSame('#/components/schemas/Error.jsonld', $responses[403]->getContent()['application/ld+json']->getSchema()['$ref']);
+        // 401: body of the JWT authentication, not documented
+        $this->assertNull($responses[401]->getContent());
+    }
+
     public function testOptionalJwtIsDocumentedOnDoubleModeOperations(): void
     {
         $operation = $this->createAuthOpenApi()->getPaths()->getPath('/api/volumes')?->getGet();

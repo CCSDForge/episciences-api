@@ -117,6 +117,8 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
 
         $openApi = $this->documentStatisticsNotFound($openApi);
 
+        $openApi = $this->addErrorBodies($openApi);
+
         $openApi = $this->addAuthSchemas($openApi);
 
         $openApi = $this->addAuthPaths($openApi);
@@ -499,11 +501,56 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
      */
     private function errorResponse(string $description): OpenApiResponse
     {
-        return new OpenApiResponse($description, new \ArrayObject([
+        return new OpenApiResponse($description, self::errorContent());
+    }
+
+    /**
+     * @return \ArrayObject<string, MediaType>
+     */
+    private static function errorContent(): \ArrayObject
+    {
+        return new \ArrayObject([
             'application/ld+json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/Error.jsonld'])),
             'application/problem+json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/Error'])),
             'application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/Error'])),
-        ]));
+        ]);
+    }
+
+    /**
+     * The 4xx responses declared without body (e.g. in the #[ApiResource] attributes) get the body of the API Platform errors.
+     * The 401 are skipped: they are returned by the JWT authentication, with another body.
+     */
+    private function addErrorBodies(OpenApi $openApi): OpenApi
+    {
+        $paths = $openApi->getPaths();
+
+        foreach ($paths->getPaths() as $key => $path) {
+            foreach (self::HTTP_METHODS as $method) {
+                $operation = $path->{'get' . $method}();
+
+                if (!$operation instanceof Operation) {
+                    continue;
+                }
+
+                $responses = $operation->getResponses() ?? [];
+
+                foreach ($responses as $status => $response) {
+                    if ((int)$status < 400 || (int)$status >= 500 || (int)$status === Response::HTTP_UNAUTHORIZED) {
+                        continue;
+                    }
+
+                    if ($response instanceof OpenApiResponse && ($response->getContent() === null || count($response->getContent()) === 0)) {
+                        $responses[$status] = $response->withContent(self::errorContent());
+                    }
+                }
+
+                $path = $path->{'with' . $method}($operation->withResponses($responses));
+            }
+
+            $paths->addPath($key, $path);
+        }
+
+        return $openApi->withPaths($paths);
     }
 
     private function hasJournalCodeParameter(Operation $operation): bool
