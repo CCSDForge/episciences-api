@@ -136,6 +136,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     /**
      * Documents, on the collections that can be requested without pagination, the cap
      * applied to ?pagination=false and the TRUNCATED_HEADER response header.
+     * They also return a 400 for an invalid pagination parameter.
      * The collections served by a Symfony controller are not capped: they are skipped.
      */
     private function documentUnpaginatedCap(OpenApi $openApi): OpenApi
@@ -168,7 +169,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             ), '. '));
 
             $paths->addPath($key, $path->withGet(
-                $get->withParameters($parameters)->withResponses($this->withTruncatedHeader($get->getResponses() ?? []))
+                $get->withParameters($parameters)->withResponses($this->withInvalidPaginationResponse($this->withTruncatedHeader($get->getResponses() ?? [])))
             ));
         }
 
@@ -193,6 +194,19 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         }
 
         return $uriTemplates;
+    }
+
+    /**
+     * An invalid pagination parameter returns a 400 (see InvalidPaginationSubscriber)
+     *
+     * @param array<int|string, mixed> $responses
+     * @return array<int|string, mixed>
+     */
+    private function withInvalidPaginationResponse(array $responses): array
+    {
+        $responses[Response::HTTP_BAD_REQUEST] ??= new OpenApiResponse('Invalid pagination parameter (e.g. `page` lower than 1)');
+
+        return $responses;
     }
 
     /**

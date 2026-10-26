@@ -50,6 +50,8 @@ class OpenApiFactoryTest extends TestCase
         $headers = $get->getResponses()[200]->getHeaders();
         $this->assertArrayHasKey(TruncatedCollectionSubscriber::TRUNCATED_HEADER, $headers);
         $this->assertSame(['type' => 'integer'], $headers[TruncatedCollectionSubscriber::TRUNCATED_HEADER]['schema']);
+
+        $this->assertSame('Invalid pagination parameter (e.g. `page` lower than 1)', $get->getResponses()[400]->getDescription());
     }
 
     public function testCollectionServedByAControllerIsUnchanged(): void
@@ -58,6 +60,7 @@ class OpenApiFactoryTest extends TestCase
 
         $this->assertSame('Enable or disable pagination', $get->getParameters()[0]->getDescription());
         $this->assertNull($get->getResponses()[200]->getHeaders());
+        $this->assertArrayNotHasKey(400, $get->getResponses());
     }
 
     public function testOperationWithoutPaginationIsUnchanged(): void
