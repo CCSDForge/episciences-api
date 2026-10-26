@@ -657,6 +657,47 @@ class StatsTest extends TestCase
         $this->assertSame('median', $result->getValue()[Stats::STATS_METHOD]);
     }
 
+    public function testGetDelayMedianWithDetailsGivesTheMedianOfEachYear(): void
+    {
+        $rows = [
+            ['rvid' => 5, 'year' => 2023, 'delay' => '30'],
+            ['rvid' => 5, 'year' => 2022, 'delay' => '10'],
+            ['rvid' => 5, 'year' => 2022, 'delay' => '40'],
+            ['rvid' => 5, 'year' => 2022, 'delay' => '20'],
+            ['rvid' => 5, 'year' => 2023, 'delay' => '15'],
+        ];
+
+        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['rvid' => 5, AppConstants::WITH_DETAILS => true]],
+            Paper::STATUS_STRICTLY_ACCEPTED,
+            Stats::MEDIAN_METHOD
+        );
+
+        $details = $result->getDetails();
+
+        // the years in ascending order: median(10, 20, 40) = 20, median(15, 30) = 22.5, rounded to 23
+        $this->assertSame([2022, 2023], array_keys($details));
+        $this->assertEquals(20, $details[2022]['delay']['value']);
+        $this->assertEquals(23, $details[2023]['delay']['value']);
+        $this->assertSame('DAY', $details[2022]['delay'][Stats::STATS_UNIT]);
+        $this->assertSame(Stats::MEDIAN_METHOD, $details[2022]['delay'][Stats::STATS_METHOD]);
+    }
+
+    public function testGetDelayMedianWithoutDetailsHasNoDetails(): void
+    {
+        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([['rvid' => 5, 'year' => 2022, 'delay' => 10]]);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['rvid' => 5]],
+            Paper::STATUS_STRICTLY_ACCEPTED,
+            Stats::MEDIAN_METHOD
+        );
+
+        $this->assertSame([], $result->getDetails());
+    }
+
     public function testGetDelayWithDetailsAndNoYearNorRvIdSetsDetailsToRawResult(): void
     {
         $rows = [['rvid' => 5, 'year' => 2022, 'delay' => 10.0]];

@@ -184,7 +184,9 @@ class Stats
             $details = [
                 $submissions->getName() => $submissions->getDetails(),
                 $avgSubmissionsDelay->getName() => $avgSubmissionsDelay->getDetails(),
-                $avgPublicationsDelay->getName() => $avgPublicationsDelay->getDetails()
+                $avgPublicationsDelay->getName() => $avgPublicationsDelay->getDetails(),
+                $medianSubmissionsDelay->getName() => $medianSubmissionsDelay->getDetails(),
+                $medianPublicationsDelay->getName() => $medianPublicationsDelay->getDetails(),
             ];
 
             if (isset($users)) {
@@ -318,6 +320,10 @@ class Stats
 
             $statResource->setValue(['value' => $median, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]);
             $statResource->setName($statResourceName);
+
+            if ($withDetails) {
+                $statResource->setDetails($this->medianDelayByYear($result, $unit));
+            }
 
             return $statResource;
         }
@@ -753,6 +759,33 @@ class Stats
 
         return $this->getMedian($validValues);
 
+    }
+
+    /**
+     * Median delay of each year, in the shape of the details of the average delay
+     * (year => ['delay' => ['value' => ..., 'unit' => ..., 'method' => 'median']]).
+     *
+     * @param array<int, array<string, mixed>> $rows Delay of each article (year, delay).
+     * @param string                           $unit Delay unit.
+     *
+     * @return array<int|string, array<string, array<string, mixed>>> indexed by year, in ascending order
+     */
+    private function medianDelayByYear(array $rows, string $unit): array
+    {
+        $delaysByYear = [];
+
+        foreach ($rows as $row) {
+            if (isset($row['year']) && is_numeric($row[PaperLogRepository::DELAY] ?? null)) {
+                $delaysByYear[$row['year']][] = (float)$row[PaperLogRepository::DELAY];
+            }
+        }
+
+        ksort($delaysByYear);
+
+        return array_map(
+            fn(array $delays): array => [PaperLogRepository::DELAY => ['value' => $this->getMedian($delays), self::STATS_UNIT => $unit, self::STATS_METHOD => self::MEDIAN_METHOD]],
+            $delaysByYear
+        );
     }
 
     /**
