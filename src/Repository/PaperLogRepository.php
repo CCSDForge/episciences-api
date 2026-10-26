@@ -51,80 +51,28 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
     /**
-     * Average number of days (or months) between submission and acceptance (or publication), by year and by journal
+     * Delay of each article between its first submission and its latest acceptance (or publication), imported articles excluded:
+     * rows [year (of the latest acceptance/publication), rvid, delay, PAPERID, min_date, max_date].
+     * The average and the median delays are computed from these rows (see Stats).
      * @param string $unit
      * @param int $latestStatus
      * @param string|null $startDate
-     * @param string|int|array|null $years
-     * @param string $method
+     * @param string|int|array<int|string>|null $years
      * @param int|null $rvId
-     * @return array|null
+     * @return list<array<string, mixed>>|null null on a database error
      */
-
-    public function delayBetweenSubmissionAndLatestStatus(string           $unit = self::DEFAULT_UNIT,
-                                                          int              $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED,
-                                                          ?string           $startDate = null,
-                                                          string|int|array|null $years = null,
-                                                          string           $method = Stats::DEFAULT_METHOD,
-                                                          ?int              $rvId = null
-    ): ?array
+    public function getArticleDelays(string $unit = self::DEFAULT_UNIT, int $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED, ?string $startDate = null, string|int|array|null $years = null, ?int $rvId = null): ?array
     {
-        $result = null;
         try {
-            $conn = $this->getEntityManager()->getConnection();
-            $stmt = $conn->prepare($this->query($unit, $latestStatus, $startDate, $years, $rvId, $method));
-            $result = $stmt->executeQuery()->fetchAllAssociative();
-
+            return $this->getEntityManager()->getConnection()
+                ->executeQuery($this->timeDiffByArticleQuery($unit, $latestStatus, $startDate, $rvId, $years))
+                ->fetchAllAssociative();
         } catch (\Exception $e) {
             $this->logger->log(LogLevel::CRITICAL, $e->getMessage(), ['Exception' => $e]);
         }
 
-
-        return $result;
-
+        return null;
     }
-
-    private function query(
-        string           $unit = self::DEFAULT_UNIT,
-        int              $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED,
-        ?string           $startStatsDate = null,
-        string|int|array|null $years = null,
-        ?int              $rvId = null,
-        string           $method = Stats::DEFAULT_METHOD,
-    ): string
-    {
-
-        if ($method === Stats::MEDIAN_METHOD) {
-            return $this->timeDiffByArticleQuery($unit, $latestStatus, $startStatsDate, $rvId, $years);
-        }
-
-        // count: the number of articles the average is computed from
-        $sql = "SELECT year, rvid, ROUND(AVG(t3.delay), 0) AS delay, COUNT(*) AS count FROM (";
-
-        $sql .= $this->timeDiffByArticleQuery($unit, $latestStatus, $startStatsDate, $rvId, $years);
-
-        $sql .= ") t3 GROUP BY rvid, year";
-
-        $having = [];
-
-        if ($rvId) {
-            $having[] = "rvid = $rvId";
-        }
-
-        if ($years) {
-            // the years are concatenated into the SQL: an invalid year gives no result
-            $validYears = self::toValidYears($years);
-            $having[] = $validYears === null ? '1 = 0' : sprintf('year IN (%s)', implode(',', $validYears));
-        }
-
-        if ($having !== []) {
-            $sql .= ' HAVING ' . implode(' AND ', $having);
-        }
-
-        return $sql;
-
-    }
-
 
     private function timeDiffByArticleQuery(string           $unit = self::DEFAULT_UNIT,
                                             int              $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED,
@@ -262,7 +210,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
         $status = $operationName !== 'median-submission-publication' ? Paper::STATUS_STRICTLY_ACCEPTED : Paper::STATUS_PUBLISHED;
 
-        return $this->delayBetweenSubmissionAndLatestStatus($unit, $status, $startAfterDate, $years, 'median', $rvId) ?? [];
+        return $this->getArticleDelays($unit, $status, $startAfterDate, $years, $rvId) ?? [];
     }
 
     /**

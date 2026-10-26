@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Journal dashboard: the delays of each year in `details` (average and median) now give `count`, the number of articles the delay is computed from.
 ### Changed
 - Journal dashboard: the average and the median delays are computed from the same delay of each article, in two queries instead of four.
+- Statistics: the average delays are always computed from the delay of each article, as the median delays (same figures): the SQL query of the average delays is removed.
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.
 ### Deprecated
 ### Removed

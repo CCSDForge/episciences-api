@@ -50,12 +50,12 @@ class PaperLogRepositoryMedianTest extends TestCase
     {
         $repository = $this->getMockBuilder(PaperLogRepository::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['delayBetweenSubmissionAndLatestStatus'])
+            ->onlyMethods(['getArticleDelays'])
             ->getMock();
 
         $repository->expects($this->once())
-            ->method('delayBetweenSubmissionAndLatestStatus')
-            ->with('DAY', $expectedStatus, null, [], 'median', null)
+            ->method('getArticleDelays')
+            ->with('DAY', $expectedStatus, null, [], null)
             ->willReturn(self::DELAYS);
 
         return $repository;

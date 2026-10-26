@@ -291,11 +291,9 @@ class Stats
         /** @var PaperLogRepository $paperLogRepository */
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
 
-        if ($articleDelays === null) {
-            $result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year, $method, $rvId) ?? [];
-        } else {
-            $result = $method === self::MEDIAN_METHOD ? $articleDelays : $this->averageDelayRows($articleDelays);
-        }
+        // the average and the median are computed from the delay of each article
+        $articleDelays ??= $paperLogRepository->getArticleDelays($unit, $latestStatus, $startDate, $year, $rvId) ?? [];
+        $result = $method === self::MEDIAN_METHOD ? $articleDelays : self::averageDelayRows($articleDelays);
 
         if ($method === self::MEDIAN_METHOD) {
 
@@ -763,7 +761,7 @@ class Stats
         /** @var PaperLogRepository $paperLogRepository */
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
 
-        return $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year, self::MEDIAN_METHOD, $rvId) ?? [];
+        return $paperLogRepository->getArticleDelays($unit, $latestStatus, $startDate, $year, $rvId) ?? [];
     }
 
     /**
@@ -795,14 +793,14 @@ class Stats
     }
 
     /**
-     * Average delay of each journal and year, from the delay of each article: the rows of the average query
+     * Average delay of each journal and year, from the delay of each article
      * (year, rvid, delay rounded as MySQL ROUND(AVG(...), 0), count).
      *
      * @param array<int, array<string, mixed>> $articleDelays The delay of each article.
      *
      * @return array<int, array<string, mixed>>
      */
-    private function averageDelayRows(array $articleDelays): array
+    public static function averageDelayRows(array $articleDelays): array
     {
         $groups = [];
 

@@ -435,7 +435,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayReturnsAcceptanceDelayOutputByDefault(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(['is' => []]);
 
@@ -445,7 +445,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayReturnsPublicationDelayOutputForPublishedStatus(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => []],
@@ -458,7 +458,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayDefaultUnitIsDay(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(['is' => []]);
 
@@ -467,7 +467,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayAcceptsMonthUnitFromFilter(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => [Stats::STATS_UNIT => 'month']]
@@ -478,7 +478,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayIgnoresInvalidUnitFromFilterAndKeepsParameterUnit(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         // Invalid filter unit → stays at parameter-level default ('day' → 'DAY')
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
@@ -490,7 +490,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayWithInvalidParameterUnitNormalizesToWeek(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         // Passing 'fortnight' as $unit parameter → normalised to 'WEEK'
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
@@ -505,7 +505,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayMedianMethodAppendedToName(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => []],
@@ -518,13 +518,14 @@ class StatsTest extends TestCase
 
     public function testGetDelayComputesAverageOverAllRows(): void
     {
+        // the delay of each article, of the same journal and year
         $rows = [
-            ['delay' => 10],
-            ['delay' => 20],
-            ['delay' => 30],
+            ['year' => 2022, 'rvid' => 5, 'delay' => 10],
+            ['year' => 2022, 'rvid' => 5, 'delay' => 20],
+            ['year' => 2022, 'rvid' => 5, 'delay' => 30],
         ];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(['is' => []]);
 
@@ -534,7 +535,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayReturnsNullValueWhenNoRows(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $this->assertNull($this->stats->getDelayBetweenSubmissionAndLatestStatus(['is' => []])->getValue()['value']);
     }
@@ -547,7 +548,7 @@ class StatsTest extends TestCase
             ['rvid' => 8, 'year' => 2022, 'delay' => 22.0],
         ];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => ['submissionDate' => 2022]]
@@ -565,7 +566,7 @@ class StatsTest extends TestCase
             ['rvid' => 8, 'year' => 2022, 'delay' => 22.0],
         ];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => ['submissionDate' => [2022]]]
@@ -584,7 +585,7 @@ class StatsTest extends TestCase
             ['rvid' => 8, 'year' => 2023, 'delay' => 5.0],
         ];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => ['submissionDate' => [2022, 2023]]]
@@ -602,7 +603,7 @@ class StatsTest extends TestCase
             ['rvid' => 8, 'year' => 2022, 'delay' => 99.0],
         ];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => ['submissionDate' => [2022], 'rvid' => 5]]
@@ -620,7 +621,7 @@ class StatsTest extends TestCase
             ['rvid' => 8, 'year' => 2022, 'delay' => 99.0],
         ];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => ['submissionDate' => [2022, 2023], 'rvid' => 5]]
@@ -637,7 +638,7 @@ class StatsTest extends TestCase
             ['rvid' => 8, 'year' => 2022, 'delay' => 40.0],
         ];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => ['rvid' => 5]]
@@ -648,7 +649,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayMethodCanBeOverriddenFromFilter(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => [Stats::STATS_METHOD => 'median']]
@@ -667,7 +668,7 @@ class StatsTest extends TestCase
             ['rvid' => 5, 'year' => 2023, 'delay' => '15'],
         ];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => ['rvid' => 5, AppConstants::WITH_DETAILS => true]],
@@ -689,12 +690,15 @@ class StatsTest extends TestCase
 
     public function testGetDelayAverageWithDetailsGivesTheNumberOfArticlesOfEachYear(): void
     {
+        // the delay of each article
         $rows = [
-            ['year' => 2022, 'rvid' => 5, 'delay' => '18', 'count' => '3'],
-            ['year' => 2023, 'rvid' => 5, 'delay' => '7', 'count' => '1'],
+            ['year' => 2022, 'rvid' => 5, 'delay' => '10'],
+            ['year' => 2022, 'rvid' => 5, 'delay' => '18'],
+            ['year' => 2022, 'rvid' => 5, 'delay' => '26'],
+            ['year' => 2023, 'rvid' => 5, 'delay' => '7'],
         ];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $details = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => ['rvid' => 5, AppConstants::WITH_DETAILS => true]]
@@ -707,7 +711,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayFromTheArticleDelaysDoesNotQuery(): void
     {
-        $this->paperLogRepo->expects($this->never())->method('delayBetweenSubmissionAndLatestStatus');
+        $this->paperLogRepo->expects($this->never())->method('getArticleDelays');
 
         $articleDelays = [
             ['year' => '2022', 'rvid' => '5', 'delay' => '10'],
@@ -729,18 +733,14 @@ class StatsTest extends TestCase
         $this->assertEquals(13, $median->getDetails()['2022']['delay']['value']);
     }
 
-    public function testGetDelayFromTheArticleDelaysGivesTheSameAverageAsTheQuery(): void
+    public function testGetDelayFromTheGivenArticleDelaysGivesTheSameAverageAsFromTheQuery(): void
     {
         $articleDelays = [
             ['year' => '2022', 'rvid' => '5', 'delay' => '10'],
             ['year' => '2022', 'rvid' => '5', 'delay' => '15'],
             ['year' => '2023', 'rvid' => '5', 'delay' => '40'],
         ];
-        // rows of the average query for the same articles
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([
-            ['year' => '2022', 'rvid' => '5', 'delay' => '13', 'count' => '2'],
-            ['year' => '2023', 'rvid' => '5', 'delay' => '40', 'count' => '1'],
-        ]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($articleDelays);
         $filters = ['is' => ['rvid' => 5, 'submissionDate' => [2022, 2023], AppConstants::WITH_DETAILS => true]];
 
         $fromQuery = $this->stats->getDelayBetweenSubmissionAndLatestStatus($filters);
@@ -752,7 +752,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayMedianWithoutDetailsHasNoDetails(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([['rvid' => 5, 'year' => 2022, 'delay' => 10]]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([['rvid' => 5, 'year' => 2022, 'delay' => 10]]);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => ['rvid' => 5]],
@@ -767,7 +767,7 @@ class StatsTest extends TestCase
     {
         $rows = [['rvid' => 5, 'year' => 2022, 'delay' => 10.0]];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => [AppConstants::WITH_DETAILS => true]]

@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Repository;
 
-use App\AppConstants;
 use App\Entity\Paper;
 use App\Entity\PaperLog;
 use App\Entity\Review;
 use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
-use App\Service\MetadataSources;
-use App\Service\Stats;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Tools\DsnParser;
 use Doctrine\ORM\EntityManager;
@@ -217,41 +214,18 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
     }
 
     /**
-     * Average delays of the dashboard (raw SQL): papers 3 and 11 are last accepted in 2024; an invalid year gives no result.
+     * Delays of the articles: papers 3 and 11 are last accepted in 2024; an invalid year gives no result.
      */
     public function testDelaysAreFilteredOnValidYearsOnly(): void
     {
-        $delays = fn(mixed $years, ?int $rvId = self::RVID): ?array => $this->paperLogRepository->delayBetweenSubmissionAndLatestStatus(PaperLogRepository::DEFAULT_UNIT, Paper::STATUS_STRICTLY_ACCEPTED, null, $years, Stats::DEFAULT_METHOD, $rvId);
+        $delays = fn(mixed $years, ?int $rvId = self::RVID): ?array => $this->paperLogRepository->getArticleDelays(PaperLogRepository::DEFAULT_UNIT, Paper::STATUS_STRICTLY_ACCEPTED, null, $years, $rvId);
+        $years = static fn(?array $rows): array => array_values(array_unique(array_map('intval', array_column($rows ?? [], 'year'))));
 
-        $this->assertSame([2024], array_map('intval', array_column($delays([2024]), 'year')));
-        $this->assertSame([2024], array_map('intval', array_column($delays('2024', null), 'year')), 'Without journal');
+        $this->assertSame([2024], $years($delays([2024])));
+        $this->assertSame([2024], $years($delays('2024', null)), 'Without journal');
         $this->assertSame([], $delays([2023]));
         $this->assertSame([], $delays(['2024', 'abc']));
         $this->assertSame([], $delays('24'));
-    }
-
-    /**
-     * The dashboard computes the average delays from the delay of each article (the median query):
-     * the same figures as the average query.
-     */
-    public function testAverageDelaysFromTheArticleDelaysMatchTheAverageQuery(): void
-    {
-        $entityManager = $this->createStub(EntityManagerInterface::class);
-        $entityManager->method('getRepository')->willReturn($this->paperLogRepository);
-        $stats = new Stats($entityManager, $this->createStub(MetadataSources::class), new NullLogger());
-
-        foreach ([[], ['submissionDate' => [2024]]] as $yearFilter) {
-            $filters = ['is' => ['rvid' => self::RVID, AppConstants::WITH_DETAILS => true] + $yearFilter];
-            $articleDelays = $this->paperLogRepository->delayBetweenSubmissionAndLatestStatus('DAY', Paper::STATUS_STRICTLY_ACCEPTED, null, $yearFilter['submissionDate'] ?? null, Stats::MEDIAN_METHOD, self::RVID);
-
-            $this->assertNotEmpty($articleDelays);
-
-            $fromQuery = $stats->getDelayBetweenSubmissionAndLatestStatus($filters);
-            $fromArticles = $stats->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, Stats::DEFAULT_METHOD, 'day', $articleDelays);
-
-            $this->assertEquals($fromQuery->getValue(), $fromArticles->getValue());
-            $this->assertEquals($fromQuery->getDetails(), $fromArticles->getDetails());
-        }
     }
 
     /**
