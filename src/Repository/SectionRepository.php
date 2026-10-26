@@ -48,11 +48,11 @@ class SectionRepository extends ServiceEntityRepository
             ->distinct()
             ->from(UserAssignment::class, 'assignment')
             // a removed section is not returned
-            ->leftJoin(Section::class, 'section', Join::WITH, 'section.rvid = assignment.rvid AND section.sid = assignment.itemid')
+            ->leftJoin(Section::class, 'section', Join::ON, 'section.rvid = assignment.rvid AND section.sid = assignment.itemid')
             ->andWhere('assignment.uid IN (:uids)')
             ->setParameter('uids', array_map('intval', (array)$uid), ArrayParameterType::INTEGER)
             ->setParameter('published', Paper::STATUS_PUBLISHED)
-            ->orderBy('section.position', 'ASC');
+            ->orderBy('section.position', \SortDirection::Ascending);
 
         $result = self::whereLatestActiveEditorAssignment($qb, 'assignment', $rvId, 'section')
             ->getQuery()

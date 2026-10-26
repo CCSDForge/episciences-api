@@ -150,7 +150,7 @@ class PaperLogRepository extends ServiceEntityRepository
         $qb = $this->getEntityManager()->createQueryBuilder()
             ->select('version.rvid AS rvid', 'YEAR(history.date) AS year', 'COUNT(DISTINCT version.paperid) AS total')
             ->from(PaperLog::class, 'history')
-            ->innerJoin(Paper::class, 'version', Join::WITH, 'version.docid = history.docid')
+            ->innerJoin(Paper::class, 'version', Join::ON, 'version.docid = history.docid')
             ->andWhere('history.status = :status')
             ->andWhere('version.flag = :submitted')
             // the year of the first submission of the paper
@@ -158,8 +158,8 @@ class PaperLogRepository extends ServiceEntityRepository
             ->setParameter('status', $status)
             ->setParameter('submitted', 'submitted')
             ->groupBy('version.rvid', 'year')
-            ->orderBy('version.rvid', 'ASC')
-            ->addOrderBy('year', 'DESC');
+            ->orderBy('version.rvid', \SortDirection::Ascending)
+            ->addOrderBy('year', \SortDirection::Descending);
 
         if ($rvId) {
             $qb->andWhere('version.rvid = :rvid')->setParameter('rvid', $rvId);

@@ -583,9 +583,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
         return null;
     }
 
+    #[\Deprecated('Empty since credentials are never cleared, as the plain password is never stored.')]
     public function eraseCredentials(): void
     {
-        // TODO: Implement eraseCredentials() method.
+        // No-op: the plaintext password is never kept on the entity.
     }
 
     public function addUserRoles(UserRoles $userRole): self

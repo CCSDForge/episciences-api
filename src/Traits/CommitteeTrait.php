@@ -31,12 +31,12 @@ trait CommitteeTrait
             ->select('editor.civ AS civ', 'editor.screenName AS screenName', 'editor.orcid AS orcid')
             ->from(UserAssignment::class, 'assignment')
             // the item exists
-            ->innerJoin($itemClass, 'item', Join::WITH, sprintf('item.rvid = assignment.rvid AND item.%s = assignment.itemid', $itemIdField))
-            ->innerJoin(User::class, 'editor', Join::WITH, 'editor.uid = assignment.uid')
+            ->innerJoin($itemClass, 'item', Join::ON, sprintf('item.rvid = assignment.rvid AND item.%s = assignment.itemid', $itemIdField))
+            ->innerJoin(User::class, 'editor', Join::ON, 'editor.uid = assignment.uid')
             ->andWhere('assignment.itemid = :itemId')
             ->setParameter('itemId', $itemId)
             ->groupBy('editor.uid', 'editor.civ', 'editor.screenName', 'editor.orcid', 'editor.lastname')
-            ->orderBy('editor.lastname', 'ASC');
+            ->orderBy('editor.lastname', \SortDirection::Ascending);
 
         return self::whereLatestActiveEditorAssignment($qb, 'assignment', $rvId, $item)
             ->getQuery()
