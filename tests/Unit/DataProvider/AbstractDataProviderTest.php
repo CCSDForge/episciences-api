@@ -190,7 +190,7 @@ class AbstractDataProviderTest extends TestCase
                 fn(array $filters): bool => isset($filters['is']['rvid']) && $filters['is']['rvid'] === '42'
                 && isset($filters['is'][AppConstants::WITH_DETAILS]) && $filters['is'][AppConstants::WITH_DETAILS] === true
                 && isset($filters['is'][AppConstants::START_AFTER_DATE]) && $filters['is'][AppConstants::START_AFTER_DATE] === '2023-01-01'
-                && isset($filters['is']['submissionDate']) && $filters['is']['submissionDate'] === '2022'))
+                && isset($filters['is']['submissionDate']) && $filters['is']['submissionDate'] === [2022]))
             ->willReturn(new SubmissionOutput());
 
         $this->dataProvider->exposeGetCollection($operation, $context);
@@ -228,6 +228,64 @@ class AbstractDataProviderTest extends TestCase
         yield 'impossible date' => ['2023-02-30'];
         yield 'incomplete date' => ['2023-1-1'];
         yield 'date sent as array' => [['2023-01-01']];
+    }
+
+    /**
+     * An invalid year is rejected, as for /api/statistics/*: it must not reach the query.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidYearProvider')]
+    public function testInvalidYearIsRejected(mixed $year): void
+    {
+        $journal = $this->createMock(Review::class);
+        $journal->method('getRvid')->willReturn(42);
+
+        $this->statsService->method('getJournal')->willReturn($journal);
+        $this->statsService->expects($this->never())->method('getSubmissionsStat');
+
+        $operation = new Get(name: AppConstants::STATS_NB_SUBMISSIONS_ITEM);
+        $context = [
+            'uri_variables' => ['code' => 'myjournal'],
+            'filters' => [AppConstants::YEAR_PARAM => $year],
+        ];
+
+        $this->expectException(ResourceNotFoundException::class);
+
+        $this->dataProvider->exposeGetCollection($operation, $context);
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function invalidYearProvider(): iterable
+    {
+        yield 'not a year' => ['abc'];
+        yield 'incomplete year' => ['24'];
+        yield 'one invalid year among several' => [['2023', 'abc']];
+        yield 'nested array' => [[['2023']]];
+    }
+
+    /**
+     * Several valid years are passed to the query as integers.
+     */
+    public function testValidYearsAreConvertedToIntegers(): void
+    {
+        $journal = $this->createMock(Review::class);
+        $journal->method('getRvid')->willReturn(42);
+
+        $this->statsService->method('getJournal')->willReturn($journal);
+
+        $operation = new Get(name: AppConstants::STATS_NB_SUBMISSIONS_ITEM);
+        $context = [
+            'uri_variables' => ['code' => 'myjournal'],
+            'filters' => [AppConstants::YEAR_PARAM => ['2023', '2024', '2023']],
+        ];
+
+        $this->statsService->expects($this->once())
+            ->method('getSubmissionsStat')
+            ->with($this->callback(fn(array $filters): bool => $filters['is']['submissionDate'] === [2023, 2024]))
+            ->willReturn(new SubmissionOutput());
+
+        $this->dataProvider->exposeGetCollection($operation, $context);
     }
 
     /**

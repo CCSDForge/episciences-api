@@ -104,27 +104,20 @@ class PaperLogRepository extends ServiceEntityRepository
 
         $sql .= ") t3 GROUP BY rvid, year";
 
-        if ($years || $rvId) {
+        $having = [];
 
-            $sql .= ' HAVING';
+        if ($rvId) {
+            $having[] = "rvid = $rvId";
+        }
 
+        if ($years) {
+            // the years are concatenated into the SQL: an invalid year gives no result
+            $validYears = self::toValidYears($years);
+            $having[] = $validYears === null ? '1 = 0' : sprintf('year IN (%s)', implode(',', $validYears));
+        }
 
-            if ($rvId) {
-                $sql .= " rvid = $rvId";
-            }
-
-            if ($years) {
-
-                $sql .= !$rvId . '' . ' AND';
-
-                if (is_array($years)) {
-                    $years = implode(',', $years);
-                    $sql .= " year IN ($years)";
-                } else {
-                    $sql .= " year = $years";
-                }
-
-            }
+        if ($having !== []) {
+            $sql .= ' HAVING ' . implode(' AND ', $having);
         }
 
         return $sql;

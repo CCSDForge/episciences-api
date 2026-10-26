@@ -99,6 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - Reduce the user data exposed by the public endpoints.
 - The `startAfterDate` filter is now validated (`Y-m-d`) before being concatenated into the delay statistics SQL query.
+- Harden the year filter of the statistics and journal dashboard queries: an invalid `year` on the dashboard is now rejected (404), as on `/api/statistics/`.
 - Upgraded `symfony/expression-language` from 7.4.18 to 7.4.21 (CVE-2026-109449: unbounded nesting in the expression parser lets untrusted expressions crash the process).
 
 ## v1.3.1 2026-09-22

@@ -9,6 +9,7 @@ use App\Entity\PaperLog;
 use App\Entity\Review;
 use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
+use App\Service\Stats;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Tools\DsnParser;
 use Doctrine\ORM\EntityManager;
@@ -214,6 +215,20 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
     }
 
     /**
+     * Average delays of the dashboard (raw SQL): papers 3 and 11 are last accepted in 2024; an invalid year gives no result.
+     */
+    public function testDelaysAreFilteredOnValidYearsOnly(): void
+    {
+        $delays = fn(mixed $years, ?int $rvId = self::RVID): ?array => $this->paperLogRepository->delayBetweenSubmissionAndLatestStatus(PaperLogRepository::DEFAULT_UNIT, Paper::STATUS_STRICTLY_ACCEPTED, null, $years, Stats::DEFAULT_METHOD, $rvId);
+
+        $this->assertSame([2024], array_map('intval', array_column($delays([2024]), 'year')));
+        $this->assertSame([2024], array_map('intval', array_column($delays('2024', null), 'year')), 'Without journal');
+        $this->assertSame([], $delays([2023]));
+        $this->assertSame([], $delays(['2024', 'abc']));
+        $this->assertSame([], $delays('24'));
+    }
+
+    /**
      * withPapers lists one DOCID by paper: the one of its latest version (paper 1 has the versions 1 and 2).
      */
     public function testLatestVersionOfEachPaper(): void
@@ -246,11 +261,13 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
 
         $logs = [
             // paperid, docid, status[, date]
+            [3, 4, Paper::STATUS_SUBMITTED, '2022-05-01'], // start of the delays
             [3, 4, Paper::STATUS_STRICTLY_ACCEPTED, '2023-06-01'], // accepted in 2023, then again in 2024
             [3, 4, Paper::STATUS_STRICTLY_ACCEPTED],
             [4, 5, Paper::STATUS_REFUSED],
             [9, 10, Paper::STATUS_REFUSED],
             [9, 10, Paper::STATUS_BEING_REVIEWED],
+            [11, 12, Paper::STATUS_SUBMITTED, '2023-07-10'],
             [11, 12, Paper::STATUS_STRICTLY_ACCEPTED],
             [11, 12, Paper::STATUS_ABANDONED],
             [13, 14, Paper::STATUS_STRICTLY_ACCEPTED],
