@@ -59,6 +59,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['paper']],
                 summary: 'All Papers (In offline mode: only published papers )',
+                description: 'List the papers. In offline mode only published papers are returned. In connected mode the papers of the journal of the token are returned according to the role: all of them for an administrator, a chief editor or a secretary, the assigned ones for an editor, a copy editor or a reviewer, and only their own papers for an author (an empty list if they have none). The journal (rvcode) and publication year filters apply in both modes; in connected mode a journal other than the one of the token returns an empty list.',
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
