@@ -20,8 +20,9 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
  * Visibility of the journal dashboard, as on the statistics page of Episciences (setting "displayStatistics").
  *
  * "withPapers" of the statistics (/api/statistics/ and the journal dashboard): the papers counted by each figure,
- * for the administrators of the journal only. The papers for which a journal administrator has declared a conflict
- * of interest are not listed (only counted); the platform administrators are not subject to the conflicts, as in PapersVoter.
+ * for the administrators and the editorial secretaries of the journal. The papers for which such a user has declared
+ * a conflict of interest are not listed (only counted); the platform administrators are not subject to the conflicts,
+ * as in PapersVoter.
  */
 final readonly class StatisticPapers
 {
@@ -58,7 +59,7 @@ final readonly class StatisticPapers
         $visibility = $journal->getSetting(ReviewSetting::DISPLAY_STATISTICS);
 
         // same test as Episciences: an empty value hides the statistics, any other value than "2" displays them
-        if ($visibility === null || $visibility === '' || $visibility === '0') {
+        if (in_array($visibility, [null, '', '0'], true)) {
             throw new AccessDeniedException('The statistics of this journal are not available');
         }
 
@@ -76,7 +77,7 @@ final readonly class StatisticPapers
 
     /**
      * @return array<int, true> the papers (PAPERID) not to list because of a declared conflict of interest
-     * @throws AccessDeniedException not an administrator of the journal
+     * @throws AccessDeniedException not an administrator or an editorial secretary of the journal
      */
     public function getConflictedPapers(Review $journal): array
     {
@@ -86,9 +87,10 @@ final readonly class StatisticPapers
 
         $user = $this->security->getUser();
 
-        // the journal of the JWT (roles of this journal) must be the requested one
-        if (!$user instanceof User || !$this->security->isGranted('ROLE_ADMINISTRATOR') || $user->getCurrentJournalID() !== $journal->getRvid()) {
-            throw new AccessDeniedException(sprintf('The lists of papers (%s) are reserved for the administrators of the journal', Statistic::WITH_PAPERS_PARAM));
+        // the journal of the JWT (roles of this journal) must be the requested one;
+        // ROLE_ADMINISTRATOR inherits ROLE_SECRETARY (see role_hierarchy), so ROLE_SECRETARY covers both
+        if (!$user instanceof User || !$this->security->isGranted('ROLE_SECRETARY') || $user->getCurrentJournalID() !== $journal->getRvid()) {
+            throw new AccessDeniedException(sprintf('The lists of papers (%s) are reserved for the administrators and the editorial secretaries of the journal', Statistic::WITH_PAPERS_PARAM));
         }
 
         if (!$journal->getSetting('isCoiEnabled')) {

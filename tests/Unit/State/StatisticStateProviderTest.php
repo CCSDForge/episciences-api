@@ -321,7 +321,10 @@ class StatisticStateProviderTest extends TestCase
         $security->method('getUser')->willReturn($user);
         $security->method('isGranted')->willReturnCallback(static fn(string $role): bool => match ($role) {
             'ROLE_EPIADMIN' => $epiAdmin,
-            'ROLE_ADMINISTRATOR' => $epiAdmin || ($administrator && $user !== null),
+            // as in the role hierarchy, ROLE_ADMINISTRATOR covers ROLE_SECRETARY,
+            // which is the role actually checked by StatisticPapers::getConflictedPapers
+            'ROLE_SECRETARY' => $epiAdmin || ($administrator && $user instanceof User),
+            'ROLE_ADMINISTRATOR' => $epiAdmin || ($administrator && $user instanceof User),
             default => false,
         });
 

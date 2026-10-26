@@ -92,7 +92,9 @@ class AbstractDataProviderTest extends TestCase
         $this->statsService->expects($this->never())->method('getDashboard');
 
         $this->security->method('getUser')->willReturn(new User()->setUid(7)->setCurrentJournalID(43));
-        $this->security->method('isGranted')->willReturnCallback(static fn(string $role): bool => $role === 'ROLE_ADMINISTRATOR');
+        // as in the role hierarchy, ROLE_ADMINISTRATOR covers ROLE_SECRETARY, the role
+        // actually checked by StatisticPapers::getConflictedPapers
+        $this->security->method('isGranted')->willReturnCallback(static fn(string $role): bool => in_array($role, ['ROLE_ADMINISTRATOR', 'ROLE_SECRETARY'], true));
 
         $this->expectException(AccessDeniedException::class);
 
