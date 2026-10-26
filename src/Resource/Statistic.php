@@ -76,7 +76,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'Several years, with the same meaning as `year`',
+                        description: 'Several years, with the same meaning as `year`; an article decided in several of them is counted once in the total',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -441,7 +441,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: 'year[]',
                         in: 'query',
-                        description: 'Several years of decision',
+                        description: 'Several years of decision; an article decided in several of them is counted once',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,

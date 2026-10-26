@@ -9,6 +9,7 @@ use App\Entity\PaperLog;
 use App\Entity\Review;
 use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
+use App\Service\Stats;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Tools\DsnParser;
 use Doctrine\ORM\EntityManager;
@@ -204,6 +205,30 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
     }
 
     /**
+     * Paper 3 is accepted in 2023 and in 2024: it is counted in each year, but once in the total of the two years.
+     */
+    public function testPaperDecidedInSeveralYearsIsCountedOnceInTheTotal(): void
+    {
+        $this->assertSame([2023 => 1, 2024 => 2], $this->paperLogRepository->getAcceptedByYear(self::RVID, [2023, 2024]));
+        $this->assertSame(2, $this->paperLogRepository->getAccepted(self::RVID, [2023, 2024]));
+        $this->assertSame([self::RVID => 2], $this->paperLogRepository->getAcceptedByJournal([2023, 2024]));
+    }
+
+    /**
+     * Average delays of the dashboard (raw SQL): papers 3 and 11 are last accepted in 2024; an invalid year gives no result.
+     */
+    public function testDelaysAreFilteredOnValidYearsOnly(): void
+    {
+        $delays = fn(mixed $years, ?int $rvId = self::RVID): ?array => $this->paperLogRepository->delayBetweenSubmissionAndLatestStatus(PaperLogRepository::DEFAULT_UNIT, Paper::STATUS_STRICTLY_ACCEPTED, null, $years, Stats::DEFAULT_METHOD, $rvId);
+
+        $this->assertSame([2024], array_map('intval', array_column($delays([2024]), 'year')));
+        $this->assertSame([2024], array_map('intval', array_column($delays('2024', null), 'year')), 'Without journal');
+        $this->assertSame([], $delays([2023]));
+        $this->assertSame([], $delays(['2024', 'abc']));
+        $this->assertSame([], $delays('24'));
+    }
+
+    /**
      * withPapers lists one DOCID by paper: the one of its latest version (paper 1 has the versions 1 and 2).
      */
     public function testLatestVersionOfEachPaper(): void
@@ -235,11 +260,14 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
         ];
 
         $logs = [
-            // paperid, docid, status
+            // paperid, docid, status[, date]
+            [3, 4, Paper::STATUS_SUBMITTED, '2022-05-01'], // start of the delays
+            [3, 4, Paper::STATUS_STRICTLY_ACCEPTED, '2023-06-01'], // accepted in 2023, then again in 2024
             [3, 4, Paper::STATUS_STRICTLY_ACCEPTED],
             [4, 5, Paper::STATUS_REFUSED],
             [9, 10, Paper::STATUS_REFUSED],
             [9, 10, Paper::STATUS_BEING_REVIEWED],
+            [11, 12, Paper::STATUS_SUBMITTED, '2023-07-10'],
             [11, 12, Paper::STATUS_STRICTLY_ACCEPTED],
             [11, 12, Paper::STATUS_ABANDONED],
             [13, 14, Paper::STATUS_STRICTLY_ACCEPTED],
@@ -273,7 +301,8 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
 
         $logDefaults = $this->requiredColumnDefaults(PaperLog::TABLE);
 
-        foreach ($logs as [$paperId, $docId, $status]) {
+        foreach ($logs as $log) {
+            [$paperId, $docId, $status] = $log;
             // "status" is generated from DETAIL
             $connection->insert(PaperLog::TABLE, array_merge($logDefaults, [
                 'PAPERID' => $paperId,
@@ -281,7 +310,7 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
                 'RVID' => self::RVID,
                 'ACTION' => 'status',
                 'DETAIL' => json_encode(['status' => $status], JSON_THROW_ON_ERROR),
-                'DATE' => '2024-01-01 10:00:00',
+                'DATE' => ($log[3] ?? '2024-01-01') . ' 10:00:00',
             ]));
         }
     }

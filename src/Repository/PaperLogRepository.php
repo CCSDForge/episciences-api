@@ -104,27 +104,20 @@ class PaperLogRepository extends ServiceEntityRepository
 
         $sql .= ") t3 GROUP BY rvid, year";
 
-        if ($years || $rvId) {
+        $having = [];
 
-            $sql .= ' HAVING';
+        if ($rvId) {
+            $having[] = "rvid = $rvId";
+        }
 
+        if ($years) {
+            // the years are concatenated into the SQL: an invalid year gives no result
+            $validYears = self::toValidYears($years);
+            $having[] = $validYears === null ? '1 = 0' : sprintf('year IN (%s)', implode(',', $validYears));
+        }
 
-            if ($rvId) {
-                $sql .= " rvid = $rvId";
-            }
-
-            if ($years) {
-
-                $sql .= !$rvId . '' . ' AND';
-
-                if (is_array($years)) {
-                    $years = implode(',', $years);
-                    $sql .= " year IN ($years)";
-                } else {
-                    $sql .= " year = $years";
-                }
-
-            }
+        if ($having !== []) {
+            $sql .= ' HAVING ' . implode(' AND ', $having);
         }
 
         return $sql;
@@ -398,16 +391,18 @@ class PaperLogRepository extends ServiceEntityRepository
 
     private function processResult(QueryBuilder $qb, array $years = []): int
     {
-        if ($years === []) {
-            try {
-                return (int)$qb->getQuery()->getSingleScalarResult();
-            } catch (NoResultException|NonUniqueResultException  $e) {
-                $this->logger->critical($e->getMessage());
-                return 0;
-            }
+        // each paper is counted once over all the years, as in getPaperIds(): a paper decided in several years is counted in each of them by processResultByYear()
+        if ($years !== []) {
+            $qb->select('COUNT(DISTINCT(pl.paperid)) AS total');
+            $this->andOrExp($qb, 'YEAR(pl.date)', $years);
         }
 
-        return array_sum($this->processResultByYear($qb, $years));
+        try {
+            return (int)$qb->getQuery()->getSingleScalarResult();
+        } catch (NoResultException|NonUniqueResultException  $e) {
+            $this->logger->critical($e->getMessage());
+            return 0;
+        }
     }
 
     /**
@@ -457,23 +452,22 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
     /**
-     * Totals of each journal, computed as processResult(): with years, the totals of each year are added up.
+     * Totals of each journal, computed as processResult(): with years, each paper is counted once over all the years.
      *
      * @return array<int, int> indexed by journal identifier (rvid)
      */
     private function processResultByJournal(QueryBuilder $qb, array $years): array
     {
-        $qb->addSelect('p.rvid AS rvid')->addGroupBy('rvid');
+        $qb->select('COUNT(DISTINCT(pl.paperid)) AS total, p.rvid AS rvid')->groupBy('rvid');
 
         if ($years !== []) {
             $this->andOrExp($qb, 'YEAR(pl.date)', $years);
-            $qb->addGroupBy('year');
         }
 
         $totals = [];
 
         foreach ($qb->getQuery()->getResult() as $values) {
-            $totals[(int)$values['rvid']] = ($totals[(int)$values['rvid']] ?? 0) + (int)$values['total'];
+            $totals[(int)$values['rvid']] = (int)$values['total'];
         }
 
         return $totals;

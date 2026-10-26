@@ -50,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistics and journal dashboard: the submission date of a paper is the one of its first version (the oldest of its versions): a paper whose versions were submitted in different years is counted once, in the year of its first submission (`year`, `startAfterDate`, counts by year, lists of `withPapers`), so that the years add up to the total. The submissions by repository (`withDetails`) ignore the temporary versions (local repository) and count a paper in the repository of its first other version.
 - Journal dashboard (`/api/journals/stats/dashboard/{code}`): `nbOtherStatus` and the `others` of each year (`withDetails`) are now the number of articles awaiting an editorial decision, counted directly by submission date, as `being-to-publish.other-status` of the statistics. They were the submissions minus the acceptances and refusals of the period.
 - Statistics without start date: removed a PHP deprecation (`DateTime::createFromFormat()` called with `null`).
+- Statistics and journal dashboard: with several years, the accepted, refused, published and accepted-not-yet-published totals (also with `groupBy=journal`) count each paper once (as `withPapers`), instead of adding up the counts of each year; the counts by year are unchanged.
 - Statistics and journal dashboard: the accepted articles not yet published (`being-to-publish.accepted`, `nbAcceptedNotYetPublished`) now include the abandoned ones, an abandoned article being only paused.
 - Statistics (`nb-submissions-details`): `being-to-publish.other-status` is now the number of submitted articles still awaiting an editorial decision (neither published, accepted nor refused, deleted nor removed; abandoned articles, only paused, are counted; imported articles ignored), counted by submission date. It was the difference between the submissions of the period and the decisions of the period, which mixed two populations when filtered by year (e.g. 20 instead of 91 for one journal and the current year).
 - Statistics: each item of the statistics collections (`GET /api/statistics/`, `GET /api/statistics/evaluation`) now has the IRI of its own indicator instead of `/api/statistics/nb-submissions` for all of them.
@@ -98,6 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - Reduce the user data exposed by the public endpoints.
 - The `startAfterDate` filter is now validated (`Y-m-d`) before being concatenated into the delay statistics SQL query.
+- Harden the year filter of the statistics and journal dashboard queries: an invalid `year` on the dashboard is now rejected (404), as on `/api/statistics/`.
 - Upgraded `symfony/expression-language` from 7.4.18 to 7.4.21 (CVE-2026-109449: unbounded nesting in the expression parser lets untrusted expressions crash the process).
 
 ## v1.3.1 2026-09-22

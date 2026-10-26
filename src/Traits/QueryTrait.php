@@ -186,20 +186,37 @@ trait QueryTrait
         return $qb->andWhere($orExp);
     }
 
-    final public function whereYears(string &$sql, array|string|int|null $years = null, string $refDate = 'p.SUBMISSION_DATE'): void
+    /**
+     * The years as integers, or null if one of them is not a year (4 digits)
+     *
+     * @param array<mixed>|string|int $years
+     * @return list<int>|null
+     */
+    final public static function toValidYears(array|string|int $years): ?array
     {
+        $valid = [];
 
-        if ($years !== null && !in_array($years, ['', '0', 0, []], true)) { // More explicit: empty() and $years !== null && !in_array(...) cover exactly the same set of empty values
-
-            $sql .= ' AND';
-
-            if (is_array($years)) {
-                $years = implode(',', $years);
-                $sql .= " YEAR($refDate) IN ($years)";
-            } else {
-                $sql .= " YEAR($refDate) = $years";
+        foreach ((array)$years as $year) {
+            if ((!is_int($year) && !is_string($year)) || preg_match('/^\d{4}$/', (string)$year) !== 1) {
+                return null;
             }
 
+            $valid[] = (int)$year;
         }
+
+        return array_values(array_unique($valid));
+    }
+
+    /**
+     * The years are concatenated into the SQL: an invalid year gives no result
+     */
+    final public function whereYears(string &$sql, array|string|int|null $years = null, string $refDate = 'p.SUBMISSION_DATE'): void
+    {
+        if ($years === null || in_array($years, ['', '0', 0, []], true)) {
+            return;
+        }
+
+        $years = self::toValidYears($years);
+        $sql .= $years === null ? ' AND 1 = 0' : sprintf(' AND YEAR(%s) IN (%s)', $refDate, implode(',', $years));
     }
 }

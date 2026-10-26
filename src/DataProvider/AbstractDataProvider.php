@@ -11,12 +11,14 @@ use App\Resource\Statistic;
 use App\Service\StatisticPapers;
 use App\Service\Stats;
 use App\Traits\CheckExistingResourceTrait;
+use App\Traits\QueryTrait;
 use App\Traits\ToolsTrait;
 use Doctrine\ORM\EntityManagerInterface;
 
 abstract class AbstractDataProvider
 {
     use CheckExistingResourceTrait;
+    use QueryTrait;
     use ToolsTrait;
 
     public function __construct(private readonly EntityManagerInterface $entityManagerInterface, private readonly Stats $statsService, private readonly StatisticPapers $statisticPapers)
@@ -87,7 +89,7 @@ abstract class AbstractDataProvider
 
 
     /**
-     * @throws ResourceNotFoundException an invalid startAfterDate, as for /api/statistics/*
+     * @throws ResourceNotFoundException an invalid startAfterDate or year, as for /api/statistics/*
      */
     private function addFilters(array &$availableFilters, string $operationName, array &$contextFilters = []): void
     {
@@ -107,8 +109,16 @@ abstract class AbstractDataProvider
             $availableFilters[AppConstants::WITH_DETAILS] = true;
         }
 
-        if (isset($contextFilters[AppConstants::YEAR_PARAM])) {
-            $availableFilters['submissionDate'] = $contextFilters[AppConstants::YEAR_PARAM];
+        $years = $contextFilters[AppConstants::YEAR_PARAM] ?? '';
+
+        if ($years !== '' && $years !== []) {
+            $years = is_array($years) || is_string($years) || is_int($years) ? self::toValidYears($years) : null;
+
+            if ($years === null) {
+                throw new ResourceNotFoundException(sprintf('Oops! invalid %s: the expected format is YYYY', AppConstants::YEAR_PARAM));
+            }
+
+            $availableFilters['submissionDate'] = $years;
         }
 
         // by operation name: enable additional filters
