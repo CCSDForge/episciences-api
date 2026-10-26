@@ -705,6 +705,51 @@ class StatsTest extends TestCase
         $this->assertSame(1, $details[2023]['delay']['count']);
     }
 
+    public function testGetDelayFromTheArticleDelaysDoesNotQuery(): void
+    {
+        $this->paperLogRepo->expects($this->never())->method('delayBetweenSubmissionAndLatestStatus');
+
+        $articleDelays = [
+            ['year' => '2022', 'rvid' => '5', 'delay' => '10'],
+            ['year' => '2022', 'rvid' => '5', 'delay' => '15'],
+            ['year' => '2023', 'rvid' => '5', 'delay' => '40'],
+        ];
+        $filters = ['is' => ['rvid' => 5, AppConstants::WITH_DETAILS => true]];
+
+        $average = $this->stats->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, Stats::DEFAULT_METHOD, 'day', $articleDelays);
+        $median = $this->stats->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, Stats::MEDIAN_METHOD, 'day', $articleDelays);
+
+        // average of each year as the query: 12.5 rounded half away from zero, with the number of articles
+        $this->assertEquals(13, $average->getDetails()['2022']['delay']['value']);
+        $this->assertSame(2, $average->getDetails()['2022']['delay']['count']);
+        $this->assertEquals(40, $average->getDetails()['2023']['delay']['value']);
+        // global average: the average of the yearly averages, as with the query
+        $this->assertEquals(27, $average->getValue()['value']);
+        $this->assertEquals(15, $median->getValue()['value']);
+        $this->assertEquals(13, $median->getDetails()['2022']['delay']['value']);
+    }
+
+    public function testGetDelayFromTheArticleDelaysGivesTheSameAverageAsTheQuery(): void
+    {
+        $articleDelays = [
+            ['year' => '2022', 'rvid' => '5', 'delay' => '10'],
+            ['year' => '2022', 'rvid' => '5', 'delay' => '15'],
+            ['year' => '2023', 'rvid' => '5', 'delay' => '40'],
+        ];
+        // rows of the average query for the same articles
+        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([
+            ['year' => '2022', 'rvid' => '5', 'delay' => '13', 'count' => '2'],
+            ['year' => '2023', 'rvid' => '5', 'delay' => '40', 'count' => '1'],
+        ]);
+        $filters = ['is' => ['rvid' => 5, 'submissionDate' => [2022, 2023], AppConstants::WITH_DETAILS => true]];
+
+        $fromQuery = $this->stats->getDelayBetweenSubmissionAndLatestStatus($filters);
+        $fromArticles = $this->stats->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, Stats::DEFAULT_METHOD, 'day', $articleDelays);
+
+        $this->assertEquals($fromQuery->getValue(), $fromArticles->getValue());
+        $this->assertEquals($fromQuery->getDetails(), $fromArticles->getDetails());
+    }
+
     public function testGetDelayMedianWithoutDetailsHasNoDetails(): void
     {
         $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([['rvid' => 5, 'year' => 2022, 'delay' => 10]]);

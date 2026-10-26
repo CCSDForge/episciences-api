@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Repository;
 
+use App\AppConstants;
 use App\Entity\Paper;
 use App\Entity\PaperLog;
 use App\Entity\Review;
 use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
+use App\Service\MetadataSources;
 use App\Service\Stats;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Tools\DsnParser;
@@ -226,6 +228,30 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
         $this->assertSame([], $delays([2023]));
         $this->assertSame([], $delays(['2024', 'abc']));
         $this->assertSame([], $delays('24'));
+    }
+
+    /**
+     * The dashboard computes the average delays from the delay of each article (the median query):
+     * the same figures as the average query.
+     */
+    public function testAverageDelaysFromTheArticleDelaysMatchTheAverageQuery(): void
+    {
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturn($this->paperLogRepository);
+        $stats = new Stats($entityManager, $this->createStub(MetadataSources::class), new NullLogger());
+
+        foreach ([[], ['submissionDate' => [2024]]] as $yearFilter) {
+            $filters = ['is' => ['rvid' => self::RVID, AppConstants::WITH_DETAILS => true] + $yearFilter];
+            $articleDelays = $this->paperLogRepository->delayBetweenSubmissionAndLatestStatus('DAY', Paper::STATUS_STRICTLY_ACCEPTED, null, $yearFilter['submissionDate'] ?? null, Stats::MEDIAN_METHOD, self::RVID);
+
+            $this->assertNotEmpty($articleDelays);
+
+            $fromQuery = $stats->getDelayBetweenSubmissionAndLatestStatus($filters);
+            $fromArticles = $stats->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, Stats::DEFAULT_METHOD, 'day', $articleDelays);
+
+            $this->assertEquals($fromQuery->getValue(), $fromArticles->getValue());
+            $this->assertEquals($fromQuery->getDetails(), $fromArticles->getDetails());
+        }
     }
 
     /**

@@ -107,10 +107,13 @@ class Stats
         $submissionsWithoutImported = $paperRepo->getSubmissionsWithoutImported($rvId, $startAfterDate, $years);
 
         // Only submitted flag : imported articles ignored
-        $avgSubmissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters);
-        $avgPublicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED);
-        $medianSubmissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, self::MEDIAN_METHOD);
-        $medianPublicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED, self::MEDIAN_METHOD);
+        // the delay of each article is fetched once for the average and the median delays (two queries instead of four)
+        $acceptanceDelays = $this->getArticleDelays($filters, Paper::STATUS_STRICTLY_ACCEPTED);
+        $publicationDelays = $this->getArticleDelays($filters, Paper::STATUS_PUBLISHED);
+        $avgSubmissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, self::DEFAULT_METHOD, 'day', $acceptanceDelays);
+        $avgPublicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED, self::DEFAULT_METHOD, 'day', $publicationDelays);
+        $medianSubmissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, self::MEDIAN_METHOD, 'day', $acceptanceDelays);
+        $medianPublicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED, self::MEDIAN_METHOD, 'day', $publicationDelays);
         // Published without imported
         $totalPublished = $paperLogRepo->getPublished($rvId, $years, $startAfterDate);
         $totalAccepted = $paperLogRepo->getAccepted($rvId, $years, $startAfterDate); // All papers, even already published ones, are taken into account to compute the acceptance rate.
@@ -257,43 +260,21 @@ class Stats
      * @param int                  $latestStatus Paper status considered as the end of the delay.
      * @param string               $method       self::DEFAULT_METHOD ('average') or self::MEDIAN_METHOD ('median').
      * @param string               $unit         Delay unit (e.g. 'day'); an unsupported value falls back to 'week'.
+     * @param array<int, array<string, mixed>>|null $articleDelays The delay of each article (see getArticleDelays()), already fetched
+     *                                                            with the same filters and unit: no query.
      *
      * @return AbstractStatResource
      */
-    public function getDelayBetweenSubmissionAndLatestStatus(array $filters = [], int $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED, string $method = self::DEFAULT_METHOD, string $unit = 'day'): AbstractStatResource
+    public function getDelayBetweenSubmissionAndLatestStatus(array $filters = [], int $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED, string $method = self::DEFAULT_METHOD, string $unit = 'day', ?array $articleDelays = null): AbstractStatResource
     {
 
-        $unit = strtoupper($unit);
-
-        if (!in_array($unit, ['SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR'])) {
-            $unit = 'WEEK';
-        }
-
-        $year = null;
-        $rvId = null;
-        $startDate = null;
+        ['unit' => $unit, 'year' => $year, 'rvId' => $rvId, 'startDate' => $startDate] = $this->delayQueryParameters($filters['is'], $unit);
 
         $withDetails = array_key_exists(AppConstants::WITH_DETAILS, $filters['is']);
         $filters['is'][AppConstants::WITH_DETAILS] = $withDetails;
 
-        if (array_key_exists('submissionDate', $filters['is']) && !empty($filters['is']['submissionDate'])) {
-            $year = $filters['is']['submissionDate'];
-        }
-
-        if (array_key_exists('rvid', $filters['is']) && !empty($filters['is']['rvid'])) {
-            $rvId = (int)$filters['is']['rvid'];
-        }
-
         if (array_key_exists('method', $filters['is']) && in_array($filters['is']['method'], [self::DEFAULT_METHOD, 'median'], true)) {
             $method = $filters['is']['method'];
-        }
-
-        if (array_key_exists(self::STATS_UNIT, $filters['is']) && in_array($filters['is'][self::STATS_UNIT], ['day', 'month'], true)) {
-            $unit = strtoupper($filters['is'][self::STATS_UNIT]);
-        }
-
-        if (isset($filters['is'][AppConstants::START_AFTER_DATE])) {
-            $startDate = $filters['is'][AppConstants::START_AFTER_DATE];
         }
 
         $defaultValue = ['value' => null, self::STATS_UNIT => $unit, self::STATS_METHOD => $method];
@@ -310,7 +291,11 @@ class Stats
         /** @var PaperLogRepository $paperLogRepository */
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
 
-        $result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year, $method, $rvId) ?? [];
+        if ($articleDelays === null) {
+            $result = $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year, $method, $rvId) ?? [];
+        } else {
+            $result = $method === self::MEDIAN_METHOD ? $articleDelays : $this->averageDelayRows($articleDelays);
+        }
 
         if ($method === self::MEDIAN_METHOD) {
 
@@ -759,6 +744,92 @@ class Stats
 
         return $this->getMedian($validValues);
 
+    }
+
+    /**
+     * Delay of each article between its submission and its latest acceptance/publication
+     * (rows: year, rvid, delay, ...), for the average and the median delays.
+     *
+     * @param array<string, mixed> $filters      Request filters, as getDelayBetweenSubmissionAndLatestStatus().
+     * @param int                  $latestStatus Paper status considered as the end of the delay.
+     * @param string               $unit         Delay unit, as getDelayBetweenSubmissionAndLatestStatus().
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function getArticleDelays(array $filters, int $latestStatus, string $unit = 'day'): array
+    {
+        ['unit' => $unit, 'year' => $year, 'rvId' => $rvId, 'startDate' => $startDate] = $this->delayQueryParameters($filters['is'], $unit);
+
+        /** @var PaperLogRepository $paperLogRepository */
+        $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
+
+        return $paperLogRepository->delayBetweenSubmissionAndLatestStatus($unit, $latestStatus, $startDate, $year, self::MEDIAN_METHOD, $rvId) ?? [];
+    }
+
+    /**
+     * Parameters of the delay queries, from the request filters.
+     *
+     * @param array<string, mixed> $filtersIs The "is" filters of the request.
+     * @param string               $unit      Delay unit (e.g. 'day'); an unsupported value falls back to 'week'.
+     *
+     * @return array{unit: string, year: mixed, rvId: int|null, startDate: string|null}
+     */
+    private function delayQueryParameters(array $filtersIs, string $unit): array
+    {
+        $unit = strtoupper($unit);
+
+        if (!in_array($unit, ['SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR'])) {
+            $unit = 'WEEK';
+        }
+
+        if (array_key_exists(self::STATS_UNIT, $filtersIs) && in_array($filtersIs[self::STATS_UNIT], ['day', 'month'], true)) {
+            $unit = strtoupper($filtersIs[self::STATS_UNIT]);
+        }
+
+        return [
+            'unit' => $unit,
+            'year' => !empty($filtersIs['submissionDate']) ? $filtersIs['submissionDate'] : null,
+            'rvId' => !empty($filtersIs['rvid']) ? (int)$filtersIs['rvid'] : null,
+            'startDate' => $filtersIs[AppConstants::START_AFTER_DATE] ?? null,
+        ];
+    }
+
+    /**
+     * Average delay of each journal and year, from the delay of each article: the rows of the average query
+     * (year, rvid, delay rounded as MySQL ROUND(AVG(...), 0), count).
+     *
+     * @param array<int, array<string, mixed>> $articleDelays The delay of each article.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function averageDelayRows(array $articleDelays): array
+    {
+        $groups = [];
+
+        foreach ($articleDelays as $row) {
+            if (!isset($row['year'], $row['rvid']) || !is_numeric($row[PaperLogRepository::DELAY] ?? null)) {
+                continue;
+            }
+
+            $key = $row['rvid'] . '-' . $row['year'];
+            $groups[$key] ??= ['year' => $row['year'], 'rvid' => $row['rvid'], 'sum' => 0, 'count' => 0];
+            $groups[$key]['sum'] += $row[PaperLogRepository::DELAY];
+            $groups[$key]['count']++;
+        }
+
+        $rows = [];
+
+        foreach ($groups as $group) {
+            $rows[] = [
+                'year' => $group['year'],
+                'rvid' => $group['rvid'],
+                // MySQL AVG() gives 4 decimals, then ROUND(..., 0) rounds half away from zero
+                PaperLogRepository::DELAY => round(round($group['sum'] / $group['count'], 4), 0),
+                'count' => $group['count'],
+            ];
+        }
+
+        return $rows;
     }
 
     /**
