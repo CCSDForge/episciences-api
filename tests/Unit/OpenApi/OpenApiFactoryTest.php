@@ -52,6 +52,8 @@ class OpenApiFactoryTest extends TestCase
         $this->assertSame(['type' => 'integer'], $headers[TruncatedCollectionSubscriber::TRUNCATED_HEADER]['schema']);
 
         $this->assertSame('Invalid pagination parameter (e.g. `page` lower than 1)', $get->getResponses()[400]->getDescription());
+        $this->assertSame('#/components/schemas/Error.jsonld', $get->getResponses()[400]->getContent()['application/ld+json']->getSchema()['$ref']);
+        $this->assertSame('#/components/schemas/Error', $get->getResponses()[400]->getContent()['application/json']->getSchema()['$ref']);
     }
 
     public function testCollectionServedByAControllerIsUnchanged(): void
@@ -114,6 +116,8 @@ class OpenApiFactoryTest extends TestCase
         $paths = $this->createAuthOpenApi()->getPaths();
 
         $this->assertSame('Journal not found, or invalid `year` or `startAfterDate`', $paths->getPath('/api/statistics/')?->getGet()?->getResponses()[404]->getDescription());
+        // the error body of the response is kept
+        $this->assertSame('#/components/schemas/Error', $paths->getPath('/api/statistics/')?->getGet()?->getResponses()[404]->getContent()['application/problem+json']->getSchema()['$ref']);
         $this->assertSame('Journal not found, or invalid `year`', $paths->getPath('/api/statistics/evaluation')?->getGet()?->getResponses()[404]->getDescription());
         // without year nor startAfterDate
         $this->assertSame('Not found', $paths->getPath('/api/journals/stats/nb-users/{code}')?->getGet()?->getResponses()[404]->getDescription());

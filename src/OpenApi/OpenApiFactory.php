@@ -104,14 +104,14 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         $openApi = $this->addMissingResponse(
             $openApi,
             Response::HTTP_UNAUTHORIZED,
-            'Authentication required, or invalid or expired JWT token',
+            new OpenApiResponse('Authentication required, or invalid or expired JWT token'),
             $this->requiresBearerAuth(...)
         );
 
         $openApi = $this->addMissingResponse(
             $openApi,
             Response::HTTP_NOT_FOUND,
-            'Journal not found',
+            $this->errorResponse('Journal not found'),
             $this->hasJournalCodeParameter(...)
         );
 
@@ -204,7 +204,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
      */
     private function withInvalidPaginationResponse(array $responses): array
     {
-        $responses[Response::HTTP_BAD_REQUEST] ??= new OpenApiResponse('Invalid pagination parameter (e.g. `page` lower than 1)');
+        $responses[Response::HTTP_BAD_REQUEST] ??= $this->errorResponse('Invalid pagination parameter (e.g. `page` lower than 1)');
 
         return $responses;
     }
@@ -429,7 +429,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     /**
      * @param callable(Operation): bool $isConcerned
      */
-    private function addMissingResponse(OpenApi $openApi, int $status, string $description, callable $isConcerned): OpenApi
+    private function addMissingResponse(OpenApi $openApi, int $status, OpenApiResponse $response, callable $isConcerned): OpenApi
     {
         $paths = $openApi->getPaths();
 
@@ -447,7 +447,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
                     continue;
                 }
 
-                $responses[$status] = new OpenApiResponse($description);
+                $responses[$status] = $response;
                 $path = $path->{'with' . $method}($operation->withResponses($responses));
             }
 
@@ -487,11 +487,23 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             }
 
             $responses = $operation->getResponses();
-            $responses[Response::HTTP_NOT_FOUND] = new OpenApiResponse(sprintf('Journal not found, or invalid %s', implode(' or ', $filters)));
+            $responses[Response::HTTP_NOT_FOUND] = $responses[Response::HTTP_NOT_FOUND]->withDescription(sprintf('Journal not found, or invalid %s', implode(' or ', $filters)));
             $paths->addPath($key, $path->withGet($operation->withResponses($responses)));
         }
 
         return $openApi->withPaths($paths);
+    }
+
+    /**
+     * Error response with the body of the API Platform errors (as the responses it documents itself)
+     */
+    private function errorResponse(string $description): OpenApiResponse
+    {
+        return new OpenApiResponse($description, new \ArrayObject([
+            'application/ld+json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/Error.jsonld'])),
+            'application/problem+json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/Error'])),
+            'application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/Error'])),
+        ]));
     }
 
     private function hasJournalCodeParameter(Operation $operation): bool
