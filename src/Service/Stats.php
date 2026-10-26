@@ -652,15 +652,7 @@ class Stats
             return $this->getAvg($validValues);
         }
 
-        try {
-            $median = $this->getMedian($validValues);
-
-        } catch (\LengthException $e) {
-            $this->logger->critical($e->getMessage());
-            $median = null;
-        }
-
-        return $median;
+        return $this->getMedian($validValues);
 
     }
 

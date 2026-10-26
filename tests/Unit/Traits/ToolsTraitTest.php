@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Traits;
 
 use App\Traits\ToolsTrait;
-use LengthException;
 use PHPUnit\Framework\TestCase;
 
 class ToolsTraitTest extends TestCase
@@ -206,12 +205,9 @@ class ToolsTraitTest extends TestCase
         $this->assertEquals(42, $this->getMedian($array));
     }
 
-    public function testGetMedianWithEmptyArrayThrowsException(): void
+    public function testGetMedianWithEmptyArrayReturnsNull(): void
     {
-        $this->expectException(LengthException::class);
-        $this->expectExceptionMessage('Cannot calculate median because Argument #1 ($array) is empty');
-
-        $this->getMedian([]);
+        $this->assertNull($this->getMedian([]));
     }
 
     public function testGetMedianWithFloatingPointNumbers(): void

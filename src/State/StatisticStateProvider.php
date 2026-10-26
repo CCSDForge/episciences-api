@@ -561,16 +561,10 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         if (!$indicator) {
             $result = $this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult();
             $processed = $this->processResult($result);
-            try {
-                $medianReviewsNumber = $this->getMedian($processed);
-            } catch (\LengthException $e) {
-                $this->logger->critical($e->getMessage());
-                $medianReviewsNumber = null;
-            }
             return [
                 Statistic::EVAL_INDICATORS['reviews-requested_get'] => count($this->entityManager->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult()),
                 Statistic::EVAL_INDICATORS['reviews-received_get'] => count($result),
-                Statistic::EVAL_INDICATORS['median-reviews-number_get'] => $medianReviewsNumber,
+                Statistic::EVAL_INDICATORS['median-reviews-number_get'] => $this->getMedian($processed),
             ];
 
         }
@@ -586,13 +580,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
         } elseif ($indicator === Statistic::EVAL_INDICATORS['median-reviews-number_get']) {
             $processed = $this->processResult($this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult());
-            try {
-                $medianReviewsNumber = $this->getMedian($processed);
-            } catch (\LengthException $e) {
-                $this->logger->critical($e->getMessage());
-                $medianReviewsNumber = null;
-            }
-            $result = $medianReviewsNumber;
+            $result = $this->getMedian($processed);
 
         }
 

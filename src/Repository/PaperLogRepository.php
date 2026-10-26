@@ -271,15 +271,7 @@ class PaperLogRepository extends ServiceEntityRepository
     {
         $validValues = array_filter($delays, is_numeric(...));
 
-        try {
-            $median = $this->getMedian($validValues);
-
-        } catch (\LengthException $e) {
-            $this->logger->critical($e->getMessage());
-            $median = null;
-        }
-
-        return ['median' => $median, 'count' => count($validValues)];
+        return ['median' => $this->getMedian($validValues), 'count' => count($validValues)];
     }
 
     private function commonQuery(?int $rvId = null, array $years = [], ?string $startAfterDate = null, int|array $status = [Paper::STATUS_STRICTLY_ACCEPTED], bool $ignoreImportedArticles = false): QueryBuilder
