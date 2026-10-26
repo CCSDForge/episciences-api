@@ -4,12 +4,12 @@ namespace App\Entity;
 
 use App\OpenApi\OpenApiSchemas;
 use App\OpenApi\QueryParameters;
-use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
-use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Doctrine\Orm\Filter\ExactFilter;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
@@ -43,6 +43,10 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
         ),
     ],
+    parameters: [
+        'rvcode' => new QueryParameter(filter: new ExactFilter(), property: 'rvcode'),
+        'news_code' => new QueryParameter(filter: new ExactFilter(), property: 'news_code'),
+    ],
 
 )]
 
@@ -62,20 +66,11 @@ use Symfony\Component\Serializer\Annotation\Groups;
     ],
 )]
 
-#[ApiFilter(
-    SearchFilter::class,
-    properties: self::FILTERS
-)]
 class News
 {
     public const TABLE = 'news';
     public const string VISIBILITY_PUBLIC = 'public';
     public const string VISIBILITY_PRIVATE = 'private';
-
-    public const FILTERS = [
-        'rvcode' => AppConstants::FILTER_TYPE_EXACT,
-        'news_code' => AppConstants::FILTER_TYPE_EXACT,
-    ];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

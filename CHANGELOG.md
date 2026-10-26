@@ -86,6 +86,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OpenAPI documentation: the parameters of the search and date filters (e.g. `rvid[]`, `status[]`, `submissionDate[before]` on the papers, `page_code[]` on the pages) now have a description.
 - Tests and CHANGELOG: fictitious journal codes only.
 - Migrated the deprecated `SearchFilter` of the `Paper` collection (`?docid=`, `?doi=`, `?rvid=`, `?paperid=`, `?vid=`, `?sid=`, `?repoid=`, `?flag=`, `?status=`, all exact match) to the new API Platform `QueryParameter`/`ExactFilter` system declared in the `#[ApiResource]` attribute. Same behaviour.
+- Migrated the deprecated `SearchFilter` of the `News`, `Page` and `User` collections to the new API Platform `QueryParameter`/`ExactFilter` system declared in the `#[ApiResource]` attribute: `News` (`?rvcode=`, `?news_code=`), `Page` (`?uid=`, `?rvcode=`, `?page_code=`) and `User` (`?userRoles.rvid=`, filtering on the review id of the `userRoles` association). Same behaviour.
+- Migrated the deprecated `DateFilter` of the `Paper` collection (`?submissionDate[before/after]=`, `?publicationDate[before/after]=`) to the new API Platform `QueryParameter`/`DateFilter` system declared in the `#[ApiResource]` attribute. Same behaviour.
+- Migrated the deprecated `SearchFilter` of the `Volume` collection (`?vid=`, exact match) to the new API Platform `QueryParameter`/`ExactFilter` system declared in the `#[ApiResource]` attribute. Same behaviour.
 
 ### Removed
 - Internal: the counting methods of `PapersRepository` and `PaperLogRepository` no longer used since the statistics are counted by submission (`countSubmissionsByYear`, `countSubmissionsByFlag`, `getSubmissionsAwaitingDecision`, `getAcceptedByYear`, `getAcceptedByJournal`, …), with their tests, and the unused `$excludeTmpVersions` parameter of `Stats::getSubmissionsStat()`. No change to the API responses.

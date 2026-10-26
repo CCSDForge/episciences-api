@@ -3,12 +3,12 @@
 namespace App\Entity;
 
 use App\OpenApi\OpenApiSchemas;
-use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
-use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Doctrine\Orm\Filter\ExactFilter;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
@@ -68,9 +68,11 @@ use Symfony\Component\Serializer\Attribute\Groups;
             ],
         ),
 
-    ], provider: VolumeStateProvider::class
+    ], provider: VolumeStateProvider::class,
+    parameters: [
+        'vid' => new QueryParameter(filter: new ExactFilter(), property: 'vid'),
+    ],
 )]
-#[ApiFilter(SearchFilter::class, properties: ['vid' => 'exact'])]
 class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
 {
     public const TABLE = 'VOLUME';

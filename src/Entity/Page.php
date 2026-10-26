@@ -3,15 +3,14 @@
 namespace App\Entity;
 
 use App\OpenApi\OpenApiSchemas;
-use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
-use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Doctrine\Orm\Filter\ExactFilter;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
-use App\AppConstants;
 use App\Repository\PageRepository;
 use DateTimeInterface;
 use Doctrine\DBAL\Types\Types;
@@ -63,21 +62,18 @@ use Symfony\Component\Serializer\Attribute\Groups;
             ],
         ),
 
-    ]
+    ],
+    parameters: [
+        'uid' => new QueryParameter(filter: new ExactFilter(), property: 'uid'),
+        'rvcode' => new QueryParameter(filter: new ExactFilter(), property: 'rvcode'),
+        'page_code' => new QueryParameter(filter: new ExactFilter(), property: 'page_code'),
+    ],
 )]
-#[ApiFilter(
-    SearchFilter::class,
-    properties: self::FILTERS
-)]
+
 class Page
 {
     public const TABLE = 'pages';
     public const string VISIBILITY_PUBLIC = 'public';
-    public const FILTERS = [
-        'uid' => AppConstants::FILTER_TYPE_EXACT,
-        'rvcode' => AppConstants::FILTER_TYPE_EXACT,
-        'page_code' => AppConstants::FILTER_TYPE_EXACT,
-    ];
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]

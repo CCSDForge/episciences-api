@@ -3,12 +3,12 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
-use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
-use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Doctrine\Orm\Filter\ExactFilter;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use ApiPlatform\OpenApi\Model\MediaType;
@@ -140,10 +140,12 @@ use App\OpenApi\OpenApiSchemas;
 
 
     order: ['uid' => 'DESC'],
+    parameters: [
+        'userRoles.rvid' => new QueryParameter(filter: new ExactFilter(), property: self::USERS_REVIEW_ID_FILTER),
+    ],
 
 
 )]
-#[ApiFilter(SearchFilter::class, properties: self::FILTERS)]
 class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUserInterface
 {
     use ToolsTrait;
@@ -159,7 +161,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public const ROLE_WEB = 'editor';
     public const EPISCIENCES_UID = 666;
     public const USERS_REVIEW_ID_FILTER = 'userRoles.rvid';
-    public const FILTERS = [self::USERS_REVIEW_ID_FILTER => 'exact'];
     public const ROLE_WEBMASTER = 'webmaster';
 
     #[Groups(['read:Me',])]

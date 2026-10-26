@@ -7,7 +7,6 @@ use App\OpenApi\OpenApiSchemas;
 use App\OpenApi\QueryParameters;
 use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Doctrine\Orm\Filter\ExactFilter;
-use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
@@ -91,22 +90,13 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
         'repoid' => new QueryParameter(filter: new ExactFilter(), property: 'repoid'),
         'flag' => new QueryParameter(filter: new ExactFilter(), property: 'flag'),
         'status' => new QueryParameter(filter: new ExactFilter(), property: 'status'),
+        'submissionDate' => new QueryParameter(filter: new DateFilter(), property: 'submissionDate'),
+        'publicationDate' => new QueryParameter(filter: new DateFilter(), property: 'publicationDate'),
     ],
 )]
-#[ApiFilter(DateFilter::class, properties: self::DATE_FILTER_PROPERTIES)]
 class Paper implements UserOwnedInterface
 {
     public const ITEM_NORMALIZATION_GROUPS = AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0];
-
-    /**
-     * DateFilter query parameters.
-     *
-     * ApiPlatform DateFilter uses "[before]" and "[after]" operators:
-     * - ?submissionDate[after]=2025-01-01
-     * - ?submissionDate[before]=2025-12-31
-     * - ?publicationDate[after]=2024-01-01
-     */
-    public const DATE_FILTER_PROPERTIES = ['submissionDate', 'publicationDate'];
     public const COLLECTION_NAME = '_api_/papers/_get_collection';
 
     /**
