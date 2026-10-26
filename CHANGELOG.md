@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Journal dashboard: the average and the median delays are computed from the same delay of each article, in two queries instead of four.
 - Statistics: the average delays are always computed from the delay of each article, as the median delays (same figures): the SQL query of the average delays is removed.
 - Statistics: the delay of each article is computed with a Doctrine query instead of a hand-written SQL query (same figures), in a single reading of the history of the articles (faster without journal).
+- Statistics: the papers accepted, published or refused the year of their submission (`*SubmittedSameYear`) are counted with a Doctrine query instead of a hand-written SQL query (same figures), only for the requested journal (several times faster).
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.
 ### Deprecated
 ### Removed

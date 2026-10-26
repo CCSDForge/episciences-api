@@ -11,8 +11,6 @@ use App\Service\Stats;
 use App\Traits\QueryTrait;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\DBAL\Exception;
-use Doctrine\DBAL\Statement;
 use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\NoResultException;
 use Doctrine\ORM\Query\Expr\Join;
@@ -138,49 +136,43 @@ class PaperLogRepository extends ServiceEntityRepository
         return null;
     }
 
-    public function getNbPapersByStatusSql(bool $isSubmittedSameYear = true, $as = 'totalNumberOfPapersAccepted', int $status = 4, bool $withoutImported = true): string
+    /**
+     * Number of papers whose status (in their history) was given the year of their first submission
+     * (the oldest submission date of their versions), imported versions excluded, by journal and year:
+     * rows [rvid, year, total], by journal then from the latest year.
+     * As before, without journal, all the journals are counted.
+     * @param int $status
+     * @param int|null $rvId
+     * @return list<array{rvid: int|string, year: int|string, total: int|string}>|null null on a database error
+     */
+    public function getSubmittedSameYear(int $status, ?int $rvId = null): ?array
     {
-        $papers = 'PAPERS';
-        $paperLog = 'PAPER_LOG';
+        $qb = $this->getEntityManager()->createQueryBuilder()
+            ->select('version.rvid AS rvid', 'YEAR(history.date) AS year', 'COUNT(DISTINCT version.paperid) AS total')
+            ->from(PaperLog::class, 'history')
+            ->innerJoin(Paper::class, 'version', Join::WITH, 'version.docid = history.docid')
+            ->andWhere('history.status = :status')
+            ->andWhere('version.flag = :submitted')
+            // the year of the first submission of the paper
+            ->andWhere(sprintf('YEAR(history.date) = (SELECT YEAR(MIN(firstVersion.submissionDate)) FROM %s firstVersion WHERE firstVersion.paperid = version.paperid)', Paper::class))
+            ->setParameter('status', $status)
+            ->setParameter('submitted', 'submitted')
+            ->groupBy('version.rvid', 'year')
+            ->orderBy('version.rvid', 'ASC')
+            ->addOrderBy('year', 'DESC');
 
-        // the submission date of a paper is the one of its first version (the oldest of its versions)
-        $year = $isSubmittedSameYear ? "pl.DATE" : "firstSubmission.SUBMISSION_DATE";
-
-        $sql = "SELECT $papers.RVID AS rvid, YEAR($year) AS `year`, COUNT(DISTINCT($papers.PAPERID)) AS $as";
-        $sql .= " FROM $paperLog pl JOIN $papers ON $papers.DOCID = pl.DOCID";
-        $sql .= " JOIN (SELECT PAPERID, MIN(SUBMISSION_DATE) AS SUBMISSION_DATE FROM $papers GROUP BY PAPERID) firstSubmission";
-        $sql .= " ON firstSubmission.PAPERID = $papers.PAPERID AND YEAR(firstSubmission.SUBMISSION_DATE) = YEAR(pl.DATE)";
-        $sql .= " WHERE pl.status IS NOT NULL AND pl.status = $status";
-
-        if ($withoutImported) {
-            $sql .= " AND $papers.FLAG = 'submitted'";
+        if ($rvId) {
+            $qb->andWhere('version.rvid = :rvid')->setParameter('rvid', $rvId);
         }
 
-        $sql .= " GROUP BY rvid, `year`";
-        $sql .= " ORDER BY rvid, `year` DESC";
-
-
-        return $sql;
-
-    }
-
-    public function totalNbPapersByStatusStatement(bool $isSubmittedSameYear = true, $as = Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): ?Statement
-    {
-
-        $conn = $this->getEntityManager()->getConnection();
-
         try {
-            return $conn->prepare($this->getNbPapersByStatusSql($isSubmittedSameYear, $as, $status));
-
-        } catch (Exception $e) {
+            return $qb->getQuery()->getScalarResult();
+        } catch (\Exception $e) {
             $this->logger->critical($e->getMessage());
         }
 
         return null;
-
-
     }
-
 
     public function getSubmissionMedianTimeByStatusQuery(?int $rvId = null, ?array $years = null, ?string $startAfterDate = null, string $operationName = 'median-submission-publication', string $unit = 'week'): float|int|null
     {

@@ -628,7 +628,7 @@ class Stats
      */
     private function getSubmittedSameYearByYear(int|null $rvId, string $as, int $status): array
     {
-        $rows = $this->getNbPapersByStatus($rvId, true, $as, $status);
+        $rows = $this->getNbPapersByStatus($rvId, $as, $status);
 
         if ($rvId) {
             // [$rvId => [year => [$as => int]]]
@@ -653,56 +653,50 @@ class Stats
     }
 
     /**
-     * Returns the number of papers sharing a given status, either for a single journal
+     * Returns the number of papers given a status the year of their first submission, either for a single journal
      * or for the whole platform.
      *
      * With $rvId set, the result is indexed [rvId => [year => [as => int]]]; with $rvId null
      * it is a raw row list (one entry per journal/year).
      *
      * @param int|null $rvId                Journal identifier, or null for the whole platform.
-     * @param bool     $isSubmittedSameYear Whether only the papers submitted during the year are counted.
      * @param string   $as                  Figure key (e.g. self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR).
      * @param int      $status              Paper status to filter on.
      *
      * @return array<int|string, mixed>
      */
-    public function getNbPapersByStatus(?int $rvId = null, bool $isSubmittedSameYear = true, string $as = self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): array
+    public function getNbPapersByStatus(?int $rvId = null, string $as = self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): array
     {
         /** @var PaperLogRepository $paperLogRepository */
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
 
-        try {
-            $stmt = $paperLogRepository->totalNbPapersByStatusStatement($isSubmittedSameYear, $as, $status);
+        $rows = $paperLogRepository->getSubmittedSameYear($status, $rvId);
 
-            if ($stmt) {
-
-                $result = $stmt->executeQuery()->fetchAllAssociative();
-
-                if ($rvId) {
-
-                    //before reformat data : [ 8 => [0 => ["year" => 2023, PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [], ... ]
-                    $filtered = $this->applyFilterBy($result, 'rvid', (string)$rvId);
-
-                    //after: [8 => [ 2023 => [PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [2022 => ], .....
-                    // ['extractedKey' => []] if empty result
-
-                    if (!empty($filtered[$rvId])) {
-                        return $this->reformatPaperLogData($filtered, null, $as);
-                    }
-                    return $filtered;
-
-                }
-
-                return $result;
-            }
-
-        } catch (Exception $e) {
-            $this->logger->critical($e->getMessage());
+        if ($rows === null) {
+            return [];
         }
 
-        return [];
+        // the number of papers under the name of the figure
+        $result = array_map(static fn(array $row): array => ['rvid' => $row['rvid'], 'year' => $row['year'], $as => (int)$row['total']], $rows);
 
+        if ($rvId) {
 
+            //before reformat data : [ 8 => [0 => ["year" => 2023, PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [], ... ]
+            $filtered = $this->applyFilterBy($result, 'rvid', (string)$rvId);
+
+            //after: [8 => [ 2023 => [PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [2022 => ], .....
+            // ['extractedKey' => []] if empty result
+
+            if (!empty($filtered[$rvId])) {
+                return $this->reformatPaperLogData($filtered, null, $as);
+            }
+
+            // no paper: an empty list for the journal
+            return [$rvId => []];
+
+        }
+
+        return $result;
     }
 
 

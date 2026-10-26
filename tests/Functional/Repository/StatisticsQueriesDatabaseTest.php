@@ -23,7 +23,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
 /**
- * The statistics queries give the same results as the reference SQL queries they replace (non-regression),
+ * The statistics queries give the same results as the reference SQL queries they replaced (non-regression),
  * against a real MySQL database, for all the combinations of their filters.
  *
  * Requires TEST_DATABASE_URL (set in CI, see docker-compose.ci.yml); skipped otherwise.
@@ -138,6 +138,30 @@ class StatisticsQueriesDatabaseTest extends TestCase
     }
 
     /**
+     * The papers given a status the year of their first submission: the same rows as the reference SQL query
+     * (without journal, all the journals, as the reference).
+     */
+    public function testSubmittedSameYearMatchesTheReferenceQuery(): void
+    {
+        $withRows = 0;
+
+        foreach ([Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_PUBLISHED, Paper::STATUS_REFUSED] as $status) {
+            $reference = $this->fetch(self::referenceSubmittedSameYearSql($status));
+
+            foreach ([null, self::RVID, self::OTHER_RVID, self::DISABLED_RVID] as $rvId) {
+                // the reference query gives all the journals: the rows of the journal
+                $expected = $rvId === null ? $reference : array_values(array_filter($reference, static fn(array $row): bool => (int)$row['rvid'] === $rvId));
+                $actual = $this->paperLogRepository->getSubmittedSameYear($status, $rvId);
+
+                $this->assertSame(self::normalizeCounts($expected), self::normalizeCounts($actual), sprintf('status %d, journal %s', $status, $rvId ?? '-'));
+                $withRows += $expected === [] ? 0 : 1;
+            }
+        }
+
+        $this->assertGreaterThan(5, $withRows);
+    }
+
+    /**
      * All the combinations of the filters of the delays
      *
      * @return iterable<string, array{0: string, 1: int, 2: int|null, 3: mixed, 4: string|null}>
@@ -198,6 +222,21 @@ class StatisticsQueriesDatabaseTest extends TestCase
     }
 
     /**
+     * Reference: the SQL query of the papers given a status the year of their first submission, before its conversion to Doctrine.
+     */
+    private static function referenceSubmittedSameYearSql(int $status): string
+    {
+        $sql = 'SELECT PAPERS.RVID AS rvid, YEAR(pl.DATE) AS `year`, COUNT(DISTINCT(PAPERS.PAPERID)) AS total';
+        $sql .= ' FROM PAPER_LOG pl JOIN PAPERS ON PAPERS.DOCID = pl.DOCID';
+        $sql .= ' JOIN (SELECT PAPERID, MIN(SUBMISSION_DATE) AS SUBMISSION_DATE FROM PAPERS GROUP BY PAPERID) firstSubmission';
+        $sql .= ' ON firstSubmission.PAPERID = PAPERS.PAPERID AND YEAR(firstSubmission.SUBMISSION_DATE) = YEAR(pl.DATE)';
+        $sql .= " WHERE pl.status IS NOT NULL AND pl.status = $status AND PAPERS.FLAG = 'submitted'";
+        $sql .= ' GROUP BY rvid, `year` ORDER BY rvid, `year` DESC';
+
+        return $sql;
+    }
+
+    /**
      * @return list<array<string, mixed>>
      */
     private function fetch(string $sql): array
@@ -222,6 +261,17 @@ class StatisticsQueriesDatabaseTest extends TestCase
         sort($normalized);
 
         return $normalized;
+    }
+
+    /**
+     * The order of the rows is kept: by journal, then from the latest year
+     *
+     * @param array<int, array<string, mixed>>|null $rows
+     * @return list<array{int, int, int}>
+     */
+    private static function normalizeCounts(?array $rows): array
+    {
+        return array_map(static fn(array $row): array => [(int)$row['rvid'], (int)$row['year'], (int)$row['total']], $rows ?? []);
     }
 
     /**
@@ -254,6 +304,9 @@ class StatisticsQueriesDatabaseTest extends TestCase
             [12, 10, self::RVID, 'imported', '2022-07-07'],      // a version of the paper 10 is imported: left out
             [13, 11, self::OTHER_RVID, 'submitted', '2023-11-11'],
             [14, 12, self::RVID, 'submitted', '2023-04-04'],      // its latest acceptance is the one of a temporary version
+            [15, 13, self::RVID, 'submitted', '2021-11-11'],      // first version of the paper 13, the year before its acceptance
+            [16, 13, self::RVID, 'submitted', '2022-03-03'],
+            [17, 14, self::OTHER_RVID, 'submitted', '2023-02-02'], // refused the year of its submission
         ];
 
         $logs = [
@@ -288,6 +341,11 @@ class StatisticsQueriesDatabaseTest extends TestCase
             [11, 13, self::OTHER_RVID, Paper::STATUS_PUBLISHED, '2024-05-05 10:00:00'],
             [12, 14, self::RVID, Paper::STATUS_SUBMITTED, '2023-04-04 10:00:00'],
             [12, 14, self::RVID, Paper::STATUS_TMP_VERSION_ACCEPTED, '2024-01-15 10:00:00'],
+            [13, 15, self::RVID, Paper::STATUS_SUBMITTED, '2021-11-11 10:00:00'],
+            [13, 16, self::RVID, Paper::STATUS_STRICTLY_ACCEPTED, '2022-06-06 10:00:00'], // accepted the year of its second version only
+            [14, 17, self::OTHER_RVID, Paper::STATUS_SUBMITTED, '2023-02-02 10:00:00'],
+            [14, 17, self::OTHER_RVID, Paper::STATUS_REFUSED, '2023-05-05 10:00:00'],
+            [14, 17, self::OTHER_RVID, Paper::STATUS_REFUSED, '2023-06-06 10:00:00'], // refused twice: counted once
         ];
 
         $connection = $this->entityManager->getConnection();

@@ -17,8 +17,6 @@ use App\Resource\SubmissionOutput;
 use App\Resource\UsersStatsOutput;
 use App\Service\MetadataSources;
 use App\Service\Stats;
-use Doctrine\DBAL\Result;
-use Doctrine\DBAL\Statement;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
@@ -188,78 +186,49 @@ class StatsTest extends TestCase
     // getNbPapersByStatus()
     // -------------------------------------------------------------------------
 
-    public function testGetNbPapersByStatusReturnsEmptyArrayWhenStmtIsNull(): void
+    public function testGetNbPapersByStatusReturnsEmptyArrayOnADatabaseError(): void
     {
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn(null);
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn(null);
 
         $this->assertSame([], $this->stats->getNbPapersByStatus());
     }
 
-    /**
-     * Regression: executeQuery() must be called only ONCE when $rvId is null.
-     * Before the fix the method called $stmt->executeQuery() twice.
-     */
-    public function testGetNbPapersByStatusWithNoRvIdCallsExecuteQueryOnce(): void
+    public function testGetNbPapersByStatusWithNoRvIdGivesTheRowsOfAllTheJournals(): void
     {
-        $dbResult = [
+        $this->paperLogRepo->expects($this->once())
+            ->method('getSubmittedSameYear')
+            ->with(Paper::STATUS_STRICTLY_ACCEPTED, null)
+            ->willReturn([
+                ['rvid' => 5, 'year' => 2022, 'total' => '10'],
+                ['rvid' => 8, 'year' => 2023, 'total' => '3'],
+            ]);
+
+        $this->assertSame([
             ['rvid' => 5, 'year' => 2022, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 10],
             ['rvid' => 8, 'year' => 2023, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 3],
-        ];
-
-        $dbalResult = $this->createMock(Result::class);
-        $dbalResult->method('fetchAllAssociative')->willReturn($dbResult);
-
-        $stmt = $this->createMock(Statement::class);
-        $stmt->expects($this->once()) // must NOT be called twice
-            ->method('executeQuery')
-            ->willReturn($dbalResult);
-
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn($stmt);
-
-        $result = $this->stats->getNbPapersByStatus(null);
-
-        $this->assertSame($dbResult, $result);
+        ], $this->stats->getNbPapersByStatus(null));
     }
 
-    public function testGetNbPapersByStatusFiltersAndReformatsWhenRvIdSet(): void
+    public function testGetNbPapersByStatusReformatsByYearWhenRvIdSet(): void
     {
-        $dbResult = [
-            ['rvid' => 8, 'year' => 2022, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 5],
-            ['rvid' => 8, 'year' => 2023, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 7],
-            ['rvid' => 99, 'year' => 2023, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 1],
-        ];
-
-        $dbalResult = $this->createMock(Result::class);
-        $dbalResult->method('fetchAllAssociative')->willReturn($dbResult);
-
-        $stmt = $this->createMock(Statement::class);
-        $stmt->method('executeQuery')->willReturn($dbalResult);
-
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn($stmt);
+        // the query only gives the rows of the journal
+        $this->paperLogRepo->expects($this->once())
+            ->method('getSubmittedSameYear')
+            ->with(Paper::STATUS_STRICTLY_ACCEPTED, 8)
+            ->willReturn([
+                ['rvid' => 8, 'year' => 2022, 'total' => 5],
+                ['rvid' => 8, 'year' => 2023, 'total' => 7],
+            ]);
 
         $result = $this->stats->getNbPapersByStatus(8);
 
-        $this->assertArrayHasKey(8, $result);
-        $this->assertArrayHasKey(2022, $result[8]);
-        $this->assertArrayHasKey(2023, $result[8]);
-        $this->assertArrayNotHasKey(99, $result);
         $this->assertSame(['acceptedSubmittedSameYear' => 5], $result[8][2022]);
         $this->assertSame(['acceptedSubmittedSameYear' => 7], $result[8][2023]);
     }
 
-    public function testGetNbPapersByStatusReturnsFilteredEmptyWhenRvIdNotInData(): void
+    public function testGetNbPapersByStatusReturnsFilteredEmptyWhenRvIdHasNoRow(): void
     {
-        $dbResult = [
-            ['rvid' => 99, 'year' => 2023, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 1],
-        ];
-
-        $dbalResult = $this->createMock(Result::class);
-        $dbalResult->method('fetchAllAssociative')->willReturn($dbResult);
-
-        $stmt = $this->createMock(Statement::class);
-        $stmt->method('executeQuery')->willReturn($dbalResult);
-
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn($stmt);
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn([]);
 
         $result = $this->stats->getNbPapersByStatus(8);
 
@@ -801,7 +770,7 @@ class StatsTest extends TestCase
         $this->paperLogRepo->expects($this->once())->method('getPublishedByYear')->willReturn([2023 => 4]);
         $this->paperLogRepo->expects($this->once())->method('getAllAcceptedNotYetPublishedByYear')->willReturn([2023 => 1]);
         $this->paperLogRepo->method('getAcceptanceRate')->willReturn(71.4);
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn(null); // Simple case for getNbPapersByStatus
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn([]); // Simple case for getNbPapersByStatus
 
         $this->stats->getSubmissionByYearStats($filters, $rvId, $details);
 
@@ -844,18 +813,10 @@ class StatsTest extends TestCase
         $this->paperLogRepo->method('getAcceptanceRate')->willReturn(40.0);
 
         // Raw rows across multiple journals for the same year: must be summed per year.
-        $dbResult = [
-            ['rvid' => 5, 'year' => 2022, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 4],
-            ['rvid' => 8, 'year' => 2022, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 6],
-        ];
-
-        $dbalResult = $this->createMock(Result::class);
-        $dbalResult->method('fetchAllAssociative')->willReturn($dbResult);
-
-        $stmt = $this->createMock(Statement::class);
-        $stmt->method('executeQuery')->willReturn($dbalResult);
-
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn($stmt);
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn([
+            ['rvid' => 5, 'year' => 2022, 'total' => 4],
+            ['rvid' => 8, 'year' => 2022, 'total' => 6],
+        ]);
 
         $this->stats->getSubmissionByYearStats($filters, $rvId, $details);
 
@@ -876,7 +837,7 @@ class StatsTest extends TestCase
         $this->papersRepo->method('getSubmissionsWithoutImported')->willReturn(8);
         // Fetched once for all the years
         $this->papersRepo->expects($this->once())->method('getImportedByYear')->with($filters)->willReturn([2022 => 3]);
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn(null);
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn([]);
 
         $this->stats->getSubmissionByYearStats($filters, 8, $details);
 
@@ -900,7 +861,7 @@ class StatsTest extends TestCase
             ->method('getImportedByYear')
             ->with(['is' => ['rvid' => 8]]) // submissionDate removed by the service
             ->willReturn([2022 => 3, 2023 => 5]);
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn(null);
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn([]);
 
         $this->stats->getSubmissionByYearStats($filters, 8, $details);
 
