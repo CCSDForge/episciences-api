@@ -60,9 +60,9 @@ api_platform:
         # The license information for the exposed API.
         license:
             # The license name used for the API.
-            name:
+            name: 'GNU General Public License v3.0'
             # URL to the license used for the API. MUST be in the format of a URL.
-            url:
+            url: https://github.com/CCSDForge/episciences-api/blob/main/LICENSE
 
     mapping:
         # The list of paths with files or directories where the bundle will look for additional resource files.
