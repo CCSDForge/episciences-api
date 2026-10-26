@@ -15,6 +15,10 @@ class ReviewSetting
     // todo to be implemented: new setting "allowBrowseAcceptedDocuments"
     public const ALLOW_BROWSE_ACCEPTED_ARTICLE = 'allowBrowseAcceptedDocuments';
     public const DISPLAY_EMPTY_VOLUMES = 'displayEmptyVolumes';
+    /** Visibility of the statistics of the journal: hidden (absent, empty or "0", default), editorial secretaries ("2"), public (any other value, "1") */
+    public const DISPLAY_STATISTICS = 'displayStatistics';
+    public const DISPLAY_STATISTICS_PUBLIC = '1';
+    public const DISPLAY_STATISTICS_SECRETARIES = '2';
 
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]

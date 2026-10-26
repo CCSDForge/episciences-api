@@ -7,6 +7,7 @@ use ApiPlatform\Metadata\Operation;
 use App\AppConstants;
 use App\DataProvider\AbstractDataProvider;
 use App\Entity\Review;
+use App\Entity\ReviewSetting;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\DashboardOutput;
 use App\Resource\SubmissionOutput;
@@ -58,6 +59,7 @@ class AbstractDataProviderTest extends TestCase
     {
         $journal = $this->createStub(Review::class);
         $journal->method('getRvid')->willReturn(42);
+        $journal->method('getSetting')->willReturnMap([[ReviewSetting::DISPLAY_STATISTICS, ReviewSetting::DISPLAY_STATISTICS_PUBLIC]]);
         $this->statsService->method('getJournal')->willReturn($journal);
         $this->statsService->method('getDashboard')->willReturn(new DashboardOutput()->setValue(['nbSubmissions' => 3]));
         $this->statsService->method('getDashboardPaperIds')->willReturn(['nbSubmissions' => [1, 2, 3], 'nbOtherStatus' => [3]]);
@@ -85,6 +87,7 @@ class AbstractDataProviderTest extends TestCase
     {
         $journal = $this->createStub(Review::class);
         $journal->method('getRvid')->willReturn(42);
+        $journal->method('getSetting')->willReturnMap([[ReviewSetting::DISPLAY_STATISTICS, ReviewSetting::DISPLAY_STATISTICS_PUBLIC]]);
         $this->statsService->method('getJournal')->willReturn($journal);
         $this->statsService->expects($this->never())->method('getDashboard');
 
@@ -128,6 +131,7 @@ class AbstractDataProviderTest extends TestCase
     {
         $journal = $this->createMock(Review::class);
         $journal->method('getRvid')->willReturn(42);
+        $journal->method('getSetting')->willReturnMap([[ReviewSetting::DISPLAY_STATISTICS, ReviewSetting::DISPLAY_STATISTICS_PUBLIC]]);
 
         $this->statsService->method('getJournal')->willReturn($journal);
 
@@ -143,6 +147,48 @@ class AbstractDataProviderTest extends TestCase
         $result = $this->dataProvider->exposeGetCollection($operation, $context);
 
         $this->assertSame($dashboardOutput, $result);
+    }
+
+    /**
+     * The setting "displayStatistics" of the journal: the dashboard is not computed when it is hidden.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('hiddenDashboardProvider')]
+    public function testHiddenDashboardIsDenied(?string $visibility): void
+    {
+        $journal = $this->createStub(Review::class);
+        $journal->method('getRvid')->willReturn(42);
+        $journal->method('getSetting')->willReturnMap([[ReviewSetting::DISPLAY_STATISTICS, $visibility]]);
+        $this->statsService->method('getJournal')->willReturn($journal);
+        $this->statsService->expects($this->never())->method('getDashboard');
+
+        $this->expectException(AccessDeniedException::class);
+
+        $operation = new Get(name: AppConstants::APP_CONST['custom_operations']['items']['review'][0]);
+        $this->dataProvider->exposeGetCollection($operation, ['uri_variables' => ['code' => 'myjournal'], 'filters' => []]);
+    }
+
+    /**
+     * @return iterable<string, array{?string}>
+     */
+    public static function hiddenDashboardProvider(): iterable
+    {
+        yield 'no setting (hidden by default)' => [null];
+        yield 'hidden' => ['0'];
+        yield 'reserved, anonymous user' => [ReviewSetting::DISPLAY_STATISTICS_SECRETARIES];
+    }
+
+    /**
+     * The other statistics of the journal do not depend on the setting "displayStatistics".
+     */
+    public function testHiddenDashboardDoesNotApplyToTheOtherStatistics(): void
+    {
+        $journal = $this->createStub(Review::class);
+        $journal->method('getRvid')->willReturn(42);
+        $this->statsService->method('getJournal')->willReturn($journal);
+        $this->statsService->expects($this->once())->method('getSubmissionsStat')->willReturn(new SubmissionOutput());
+
+        $operation = new Get(name: AppConstants::APP_CONST['custom_operations']['items']['review'][1]);
+        $this->dataProvider->exposeGetCollection($operation, ['uri_variables' => ['code' => 'myjournal'], 'filters' => []]);
     }
 
     public function testNbSubmissionsItemCallsGetSubmissionsStat(): void
