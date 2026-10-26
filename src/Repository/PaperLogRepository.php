@@ -98,7 +98,8 @@ class PaperLogRepository extends ServiceEntityRepository
             return $this->timeDiffByArticleQuery($unit, $latestStatus, $startStatsDate, $rvId, $years);
         }
 
-        $sql = "SELECT year, rvid, ROUND(AVG(t3.delay), 0) AS delay FROM (";
+        // count: the number of articles the average is computed from
+        $sql = "SELECT year, rvid, ROUND(AVG(t3.delay), 0) AS delay, COUNT(*) AS count FROM (";
 
         $sql .= $this->timeDiffByArticleQuery($unit, $latestStatus, $startStatsDate, $rvId, $years);
 

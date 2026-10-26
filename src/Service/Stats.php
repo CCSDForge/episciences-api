@@ -762,8 +762,8 @@ class Stats
     }
 
     /**
-     * Median delay of each year, in the shape of the details of the average delay
-     * (year => ['delay' => ['value' => ..., 'unit' => ..., 'method' => 'median']]).
+     * Median delay of each year and number of articles it is computed from, in the shape of the details
+     * of the average delay (year => ['delay' => ['value' => ..., 'unit' => ..., 'method' => 'median', 'count' => ...]]).
      *
      * @param array<int, array<string, mixed>> $rows Delay of each article (year, delay).
      * @param string                           $unit Delay unit.
@@ -783,7 +783,7 @@ class Stats
         ksort($delaysByYear);
 
         return array_map(
-            fn(array $delays): array => [PaperLogRepository::DELAY => ['value' => $this->getMedian($delays), self::STATS_UNIT => $unit, self::STATS_METHOD => self::MEDIAN_METHOD]],
+            fn(array $delays): array => [PaperLogRepository::DELAY => ['value' => $this->getMedian($delays), self::STATS_UNIT => $unit, self::STATS_METHOD => self::MEDIAN_METHOD, 'count' => count($delays)]],
             $delaysByYear
         );
     }
@@ -849,6 +849,11 @@ class Stats
 
                     if ($kv === $extractedField) {
                         $result[$rvId][$year][$kv] = in_array($extractedField, [self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, self::TOTAL_REFUSED_SUBMITTED_SAME_YEAR, self::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR], true) ? (int)$vv : ['value' => (float)$vv, self::STATS_UNIT => $unit, self::STATS_METHOD => $method];
+
+                        // the number of articles of a delay
+                        if (is_array($result[$rvId][$year][$kv]) && isset($v['count'])) {
+                            $result[$rvId][$year][$kv]['count'] = (int)$v['count'];
+                        }
                     }
                 }
 

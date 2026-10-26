@@ -683,6 +683,26 @@ class StatsTest extends TestCase
         $this->assertEquals(23, $details[2023]['delay']['value']);
         $this->assertSame('DAY', $details[2022]['delay'][Stats::STATS_UNIT]);
         $this->assertSame(Stats::MEDIAN_METHOD, $details[2022]['delay'][Stats::STATS_METHOD]);
+        $this->assertSame(3, $details[2022]['delay']['count']);
+        $this->assertSame(2, $details[2023]['delay']['count']);
+    }
+
+    public function testGetDelayAverageWithDetailsGivesTheNumberOfArticlesOfEachYear(): void
+    {
+        $rows = [
+            ['year' => 2022, 'rvid' => 5, 'delay' => '18', 'count' => '3'],
+            ['year' => 2023, 'rvid' => 5, 'delay' => '7', 'count' => '1'],
+        ];
+
+        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+
+        $details = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['rvid' => 5, AppConstants::WITH_DETAILS => true]]
+        )->getDetails();
+
+        $this->assertEquals(18, $details[2022]['delay']['value']);
+        $this->assertSame(3, $details[2022]['delay']['count']);
+        $this->assertSame(1, $details[2023]['delay']['count']);
     }
 
     public function testGetDelayMedianWithoutDetailsHasNoDetails(): void

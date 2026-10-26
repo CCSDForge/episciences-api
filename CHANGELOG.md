@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Added
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): with `withDetails`, `details` now also gives the median delays of each year (`submissionAcceptanceTimeMedian`, `submissionPublicationTimeMedian`), in the shape of the average delays.
+- Journal dashboard: the delays of each year in `details` (average and median) now give `count`, the number of articles the delay is computed from.
 ### Changed
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.
 ### Deprecated
