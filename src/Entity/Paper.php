@@ -6,10 +6,10 @@ namespace App\Entity;
 use App\OpenApi\OpenApiSchemas;
 use App\OpenApi\QueryParameters;
 use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
+use ApiPlatform\Doctrine\Orm\Filter\ExactFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
-use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\QueryParameter;
@@ -81,34 +81,22 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
         ),
     ],
     order: ['rvid' => 'DESC'],
+    parameters: [
+        'rvid' => new QueryParameter(filter: new ExactFilter(), property: 'rvid'),
+        'doi' => new QueryParameter(filter: new ExactFilter(), property: 'doi'),
+        'paperid' => new QueryParameter(filter: new ExactFilter(), property: 'paperid'),
+        'docid' => new QueryParameter(filter: new ExactFilter(), property: 'docid'),
+        'vid' => new QueryParameter(filter: new ExactFilter(), property: 'vid'),
+        'sid' => new QueryParameter(filter: new ExactFilter(), property: 'sid'),
+        'repoid' => new QueryParameter(filter: new ExactFilter(), property: 'repoid'),
+        'flag' => new QueryParameter(filter: new ExactFilter(), property: 'flag'),
+        'status' => new QueryParameter(filter: new ExactFilter(), property: 'status'),
+    ],
 )]
-#[ApiFilter(SearchFilter::class, properties: self::SEARCH_FILTER_PROPERTIES)]
 #[ApiFilter(DateFilter::class, properties: self::DATE_FILTER_PROPERTIES)]
 class Paper implements UserOwnedInterface
 {
     public const ITEM_NORMALIZATION_GROUPS = AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0];
-
-    /**
-     * SearchFilter (exact match) query parameters for Paper collection.
-     *
-     * Usage examples:
-     * - ?docid=123
-     * - ?doi=10.XXXX/abcd
-     * - ?status=16
-     */
-    public const SEARCH_FILTER_PROPERTIES = [
-        'rvid' => AppConstants::FILTER_TYPE_EXACT,
-        'doi' => AppConstants::FILTER_TYPE_EXACT,
-        'paperid' => AppConstants::FILTER_TYPE_EXACT,
-        'docid' => AppConstants::FILTER_TYPE_EXACT,
-        'vid' => AppConstants::FILTER_TYPE_EXACT,
-        'sid' => AppConstants::FILTER_TYPE_EXACT,
-        'repoid' => AppConstants::FILTER_TYPE_EXACT,
-        'flag' => AppConstants::FILTER_TYPE_EXACT,
-        'status' => AppConstants::FILTER_TYPE_EXACT,
-    ];
-
-
 
     /**
      * DateFilter query parameters.
