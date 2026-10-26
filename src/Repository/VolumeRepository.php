@@ -6,6 +6,7 @@ use App\Entity\Paper;
 use App\Entity\ReviewSetting;
 use App\Entity\Volume;
 use App\Entity\VolumePaperPosition;
+use App\Traits\CommitteeTrait;
 use App\Traits\ToolsTrait;
 use App\Traits\VolumeTrait;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -20,6 +21,7 @@ use Doctrine\ORM\Tools\Pagination\Paginator as DoctrinePaginator;
 
 class VolumeRepository extends AbstractRepository implements RangeInterface
 {
+    use CommitteeTrait;
     use ToolsTrait;
     use VolumeTrait;
 
@@ -86,44 +88,18 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
     }
 
-    public function getCommitteeQuery(int $rvId, int $vid): string
-    {
-        $sql = "SELECT CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid`
-                FROM ( SELECT UID, VID, `WHEN`
-                       FROM ( SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua`
-                           INNER JOIN(
-                           SELECT `USER_ASSIGNMENT`.`ITEMID`, MAX(`WHEN`) AS `WHEN`, ITEMID as vid
-                           FROM `USER_ASSIGNMENT`
-                           WHERE (RVID = $rvId) AND (`USER_ASSIGNMENT`.`ITEMID` = $vid) AND(ITEM = 'volume') AND(ROLEID = 'editor')
-                           GROUP BY `ITEMID`, UID
-                           ) AS `r1` ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.`WHEN`
-                                            WHERE (RVID = $rvId) AND (ua.ITEMID = $vid) AND (ITEM = 'volume') AND(ROLEID = 'editor') AND( STATUS = 'active' )
-                                            ) AS `r2`
-                           INNER JOIN VOLUME AS v ON v.RVID = r2.RVID AND v.VID = r2.ITEMID
-                       ) AS `result`
-                    INNER JOIN USER AS `u` ON result.UID = u.UID
-                GROUP BY VID, u.UID, CIV, SCREEN_NAME, ORCID, u.LASTNAME
-                ORDER BY u.LASTNAME ASC;";
-        return $sql;
-
-    }
-
-
+    /**
+     * The editors of the volume, ordered by last name (public: no account identifier)
+     * @return list<array{civ: ?string, screenName: string, orcid: ?string}>
+     */
     public function getCommittee(int $rvId, int $vid): array
     {
         try {
-            $result = $this->getEntityManager()
-                ->getConnection()
-                ->prepare($this->getCommitteeQuery($rvId, $vid))
-                ->executeQuery()
-                ->fetchAllAssociative();
-        } catch (Exception $e) {
+            return $this->committee($rvId, $vid, 'volume', Volume::class, 'vid');
+        } catch (\Exception $e) {
             $this->logger->critical($e->getMessage());
             return [];
         }
-
-        return $result;
-
     }
 
     public function fetchSortedPapers(?int $vid = null): array
