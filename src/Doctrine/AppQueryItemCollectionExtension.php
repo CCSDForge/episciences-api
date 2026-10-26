@@ -242,6 +242,24 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     }
 
 
+    /**
+     * Applies the journal (rvcode) and publication year filters to the papers visible to a connected user.
+     * The papers are already restricted to the journal of the token: a journal other than this one returns no paper.
+     */
+    private function applyPrivatePaperFilters(QueryBuilder $queryBuilder, string $alias, array $context = []): void
+    {
+        $requestedRvId = $context['filters']['rvid'] ?? null;
+
+        if ($requestedRvId) {
+            $queryBuilder->andWhere("$alias.rvid = :requestedRvId")->setParameter('requestedRvId', $requestedRvId);
+        }
+
+        if (isset($context['filters'][AppConstants::YEAR_PARAM])) {
+            $years = $this->processYears($context['filters'][AppConstants::YEAR_PARAM]);
+            $this->andOrExp($queryBuilder, sprintf('YEAR(%s.%s)', $alias, 'publicationDate'), $years);
+        }
+    }
+
     private function privateAccessProcess(
         QueryBuilder  $queryBuilder,
         string        $alias,
@@ -294,9 +312,12 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
                     $queryBuilder->
                     andWhere("$alias.user= :currentUser")->
-                    setParameter('currentUser', $currentUser->getUid());
+                    setParameter('currentUser', $currentUser->getUid())
+                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $currentUser->getCurrentJournalID());
 
                 }
+
+                $this->applyPrivatePaperFilters($queryBuilder, $alias, $context);
 
             }
 
