@@ -52,6 +52,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated to Doctrine ORM 3.7: updated `doctrine/orm` constraint from `^2.14` to `^3.7` and aligned unit test mocks (mocked `Doctrine\DBAL\Exception` and `Doctrine\ORM\Query` instances) with the new ORM/DBAL APIs.
 - CI runs the tests against MySQL 8.4 (was 8.0), with `DATABASE_SERVER_VERSION` set accordingly.
 
+### Removed
+- `GET /api/journals/{code}` and `GET /api/journals/` no longer expose the `settings` field of the journals (a raw `REVIEW_SETTING` `{setting, value}` array, without external consumer). The settings still work internally via `Review::getSetting()` and the public, structured configuration remains available through `GET /api/journals/front/configuration` (`{code}/front/configuration`).
+
 ### Fixed
 - Statistics and journal dashboard: the submission date of a paper is the one of its first version (the oldest of its versions): a paper whose versions were submitted in different years is counted once, in the year of its first submission (`year`, `startAfterDate`, counts by year, lists of `withPapers`), so that the years add up to the total. The submissions by repository (`withDetails`) ignore the temporary versions (local repository) and count a paper in the repository of its first other version.
 - Journal dashboard (`/api/journals/stats/dashboard/{code}`): `nbOtherStatus` and the `others` of each year (`withDetails`) are now the number of articles awaiting an editorial decision, counted directly by submission date, as `being-to-publish.other-status` of the statistics. They were the submissions minus the acceptances and refusals of the period.

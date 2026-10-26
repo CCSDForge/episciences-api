@@ -520,13 +520,6 @@ class Review
     private Collection $papers;
 
     #[ORM\OneToMany(mappedBy: 'review', targetEntity: ReviewSetting::class, fetch: "EAGER")]
-    #[Groups(
-        [
-            'read:Review',
-            'read:Reviews'
-        ]
-
-    )]
     private Collection $settings;
 
     #[ORM\ManyToMany(targetEntity: IndexingDatabase::class, mappedBy: 'reviews')]
