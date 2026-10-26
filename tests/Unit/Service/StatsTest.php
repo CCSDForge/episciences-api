@@ -714,6 +714,51 @@ class StatsTest extends TestCase
         $this->assertEquals(7, $details['submissionsByRepo'][2023]['HAL']['submissions']);
     }
 
+    /**
+     * Regression: when no journal is selected ($rvId = null), the "accepted submitted same year"
+     * figure must be summed per year across all journals' raw rows, not keyed/indexed by $rvId
+     * (the previous null-$rvId path indexed by $rvId, producing no per-year values).
+     */
+    public function testGetSubmissionByYearStatsSumsSubmittedSameYearPerYearWithNoRvId(): void
+    {
+        $filters = ['is' => []];
+        $rvId = null;
+        $details = [];
+
+        $this->papersRepo->method('getSubmissionYearRange')->willReturn([2022]);
+        $this->papersRepo->method('getAvailableRepositories')->willReturn([]);
+        $this->papersRepo->method('submissionsQuery')->willReturn($this->makeScalarQb(10));
+        $this->papersRepo->method('countSubmissionsByYear')->willReturn([2022 => 10]);
+        $this->papersRepo->method('countSubmissionsByYearAndRepository')->willReturn([2022 => []]);
+        $this->papersRepo->method('getSubmissionsAwaitingDecisionByYear')->willReturn([2022 => 0]);
+        $this->paperLogRepo->method('getAcceptedByYear')->willReturn([2022 => 3]);
+        $this->paperLogRepo->method('getRefusedByYear')->willReturn([2022 => 1]);
+        $this->paperLogRepo->method('getPublishedByYear')->willReturn([2022 => 1]);
+        $this->paperLogRepo->method('getAllAcceptedNotYetPublishedByYear')->willReturn([2022 => 0]);
+        $this->paperLogRepo->method('getAcceptanceRate')->willReturn(40.0);
+
+        // Raw rows across multiple journals for the same year: must be summed per year.
+        $dbResult = [
+            ['rvid' => 5, 'year' => 2022, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 4],
+            ['rvid' => 8, 'year' => 2022, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 6],
+        ];
+
+        $dbalResult = $this->createMock(Result::class);
+        $dbalResult->method('fetchAllAssociative')->willReturn($dbResult);
+
+        $stmt = $this->createMock(Statement::class);
+        $stmt->method('executeQuery')->willReturn($dbalResult);
+
+        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn($stmt);
+
+        $this->stats->getSubmissionByYearStats($filters, $rvId, $details);
+
+        $this->assertSame(
+            10,
+            $details[Stats::SUBMISSIONS_BY_YEAR][2022][Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR]
+        );
+    }
+
     public function testGetSubmissionByYearStatsCountsImportedSubmissionsByYear(): void
     {
         $filters = ['is' => ['rvid' => 8]];

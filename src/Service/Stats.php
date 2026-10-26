@@ -83,7 +83,7 @@ class Stats
 
             // Imported and published articles
             $importedPublished = $paperRepo->submissionsQuery($newFilters, false, 'publicationDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
-            $values ['nbImportedPublished'] = $importedPublished;
+            $values['nbImportedPublished'] = $importedPublished;
         }
 
         // Imported articles
@@ -113,14 +113,14 @@ class Stats
         // articles awaiting an editorial decision, counted directly (by submission date), as "other-status" of the statistics
         $totalOther = $paperRepo->getSubmissionsAwaitingDecision($rvId, $startAfterDate, $years);
 
-        $values [$submissions->getName()] = $nbSubmissions;
+        $values[$submissions->getName()] = $nbSubmissions;
 
-        $values ['nbImported'] = $imported;
-        $values ['nbPublished'] = $totalPublished;
+        $values['nbImported'] = $imported;
+        $values['nbPublished'] = $totalPublished;
         $values['nbRefused'] = $totalRefused;
-        $values['nbAccepted'] = $totalAccepted; //  To calculate the acceptance rate by review
+        $values['nbAccepted'] = $totalAccepted; // To calculate the acceptance rate by review
         $values['nbOtherStatus'] = $totalOther;
-        $values ['nbAcceptedNotYetPublished'] = $totalAcceptedNotYetPublished;
+        $values['nbAcceptedNotYetPublished'] = $totalAcceptedNotYetPublished;
         $values[$avgSubmissionsDelay->getName()] = $avgSubmissionsDelay->getValue();
         $values[$avgPublicationsDelay->getName()] = $avgPublicationsDelay->getValue();
         $values[$medianSubmissionsDelay->getName()] = $medianSubmissionsDelay->getValue();
@@ -130,9 +130,9 @@ class Stats
 
             $values = array_merge($values, ['totalAcceptedSubmittedSameYear' => 0, 'totalPublishedSubmittedSameYear' => 0, 'totalRefusedSubmittedSameYear' => 0]);
 
-            $totalAcceptedSubmittedSameYear = $this->getNbPapersByStatus($rvId)[$rvId];
-            $nbPublishedSubmittedSameYear = $this->getNbPapersByStatus($rvId, true, self::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR, Paper::STATUS_PUBLISHED)[$rvId];
-            $nbRefusedSubmittedSameYear = $this->getNbPapersByStatus($rvId, true, self::TOTAL_REFUSED_SUBMITTED_SAME_YEAR, Paper::STATUS_REFUSED)[$rvId];
+            $totalAcceptedSubmittedSameYear = $this->getSubmittedSameYearByYear($rvId, self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, Paper::STATUS_STRICTLY_ACCEPTED);
+            $nbPublishedSubmittedSameYear = $this->getSubmittedSameYearByYear($rvId, self::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR, Paper::STATUS_PUBLISHED);
+            $nbRefusedSubmittedSameYear = $this->getSubmittedSameYearByYear($rvId, self::TOTAL_REFUSED_SUBMITTED_SAME_YEAR, Paper::STATUS_REFUSED);
 
             foreach ($years as $year) {
 
@@ -555,7 +555,7 @@ class Stats
         unset($importedByYearFilters['is']['submissionDate']);
         $importedByYear = $papersRepository->getImportedByYear($importedByYearFilters);
 
-        $nbAcceptedSubmittedSameYear = $this->getNbPapersByStatus($rvId);
+        $nbAcceptedSubmittedSameYear = $this->getSubmittedSameYearByYear($rvId, self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, Paper::STATUS_STRICTLY_ACCEPTED);
 
         $acceptedByYear = $paperLogRepository->getAcceptedByYear($rvId, $years, $startAfterDate);
         $refusedByYear = $paperLogRepository->getRefusedByYear($rvId, $years, $startAfterDate);
@@ -585,9 +585,7 @@ class Stats
             $details[self::SUBMISSIONS_BY_YEAR][$year]['others'] = $awaitingDecisionByYear[(int)$year] ?? 0;
 
             $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] =
-                isset($nbAcceptedSubmittedSameYear[$rvId][$year]) ?
-                    $nbAcceptedSubmittedSameYear[$rvId][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] :
-                    0;
+                $nbAcceptedSubmittedSameYear[$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] ?? 0;
 
             $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE] = $paperLogRepository->getAcceptanceRate([
                 'rvid' => $rvId,
@@ -604,6 +602,41 @@ class Stats
 
     }
 
+    /**
+     * Returns the "submitted same year" counts per year for the given status, keyed by year
+     * ([year => [figure => int]]). The shape is consistent whether a journal is selected ($rvId)
+     * or the whole platform is queried ($rvId null), so callers can index by [$year] in both cases.
+     *
+     * @param int|null $rvId     Journal identifier, or null for the whole platform.
+     * @param string   $as       Figure key (e.g. self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR).
+     * @param int      $status   Paper status to filter on.
+     * @return array<int, array<string, int>>
+     */
+    private function getSubmittedSameYearByYear(int|null $rvId, string $as, int $status): array
+    {
+        $rows = $this->getNbPapersByStatus($rvId, true, $as, $status);
+
+        if ($rvId) {
+            // [$rvId => [year => [$as => int]]]
+            return $rows[$rvId] ?? [];
+        }
+
+        // Whole platform: $rows is a raw row list, one entry per journal/year.
+        // Group and sum by year.
+        $byYear = [];
+
+        foreach ($rows as $row) {
+            $year = $row['year'] ?? null;
+
+            if ($year === null) {
+                continue;
+            }
+
+            $byYear[$year][$as] = ($byYear[$year][$as] ?? 0) + (int)($row[$as] ?? 0);
+        }
+
+        return $byYear;
+    }
 
     public function getNbPapersByStatus($rvId = null, bool $isSubmittedSameYear = true, $as = self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): array
     {
@@ -676,27 +709,6 @@ class Stats
 
     }
 
-    private function reformatSubmissionsData(array $array): array
-    {
-        $result = [];
-
-        foreach ($array as $value) {
-            $rvId = $value['rvid'] ?? null;
-            $year = $value['year'] ?? null;
-            $repoId = $value['repoid'] ?? null;
-            $status = $value['status'] ?? null;
-            $nbSubmissions = $value['nbSubmissions'] ?? 0;
-
-            if ($rvId === null) {
-                $result[$year][$this->metadataSources->getLabel($repoId)][Paper::STATUS_DICTIONARY[$status]]['nbSubmissions'] = $nbSubmissions;
-            } else {
-                $result[$rvId][$year][$this->metadataSources->getLabel($repoId)][Paper::STATUS_DICTIONARY[$status]]['nbSubmissions'] = $nbSubmissions;
-            }
-        }
-
-        return $result;
-    }
-
     private function reformatUsersData(array $array): array
     {
         $result = [];
@@ -747,31 +759,5 @@ class Stats
 
 
         return $result;
-    }
-
-    /**
-     * @param array $data
-     * @return array|int[]
-     */
-    #[\Deprecated(message: 'use functions in PaperLogRepository')]
-    private function getPercentages(array $data = ['totalSubmissions' => 0, 'totalAccepted' => 0, 'totalPublished' => 0, 'totalRefused' => 0]): array
-    {
-
-        if (!isset($data['totalSubmissions']) || $data['totalSubmissions'] < 1) {
-            return ['published' => 0, 'accepted' => 0, 'refused' => 0, 'other' => 0];
-        }
-
-        $publishedPercentage = $data['totalPublished'] ? round($data['totalPublished'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, \RoundingMode::HalfAwayFromZero) : 0;
-        $acceptedPercentage = $data['totalAccepted'] ? round($data['totalAccepted'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, \RoundingMode::HalfAwayFromZero) : 0;
-        $refusedPercentage = $data['totalRefused'] ? round($data['totalRefused'] / $data['totalSubmissions'] * 100, AppConstants::RATE_DEFAULT_PRECISION, \RoundingMode::HalfAwayFromZero) : 0;
-        $otherPercentage = round(100 - ($acceptedPercentage + $refusedPercentage), AppConstants::RATE_DEFAULT_PRECISION, \RoundingMode::HalfAwayFromZero);
-
-        return [
-            'published' => $publishedPercentage,
-            'accepted' => $acceptedPercentage,
-            'refused' => $refusedPercentage,
-            'other' => $otherPercentage
-        ];
-
     }
 }
