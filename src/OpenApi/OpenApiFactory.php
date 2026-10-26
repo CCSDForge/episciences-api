@@ -633,7 +633,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
                 tags: [self::OAF_TAGS['auth']],
                 responses: $this->tokenResponse('User token created', 'Invalid credentials'),
                 summary: 'Get a JWT token',
-                description: 'The lifetime of the token is 1 hour',
+                description: 'Exchanges the user\'s credentials (login and API password) for a JWT token and its refresh token. The `code` is optional: provide it to authenticate against a specific journal and get the corresponding roles. The lifetime of the token is 1 hour.',
                 requestBody: $this->requestBody('#/components/schemas/Credentials')
             )
         );
@@ -650,7 +650,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
                 tags: [self::OAF_TAGS['auth']],
                 responses: $this->tokenResponse('User token refreshed', 'Invalid or expired refresh token'),
                 summary: 'Refresh a JWT token',
-                description: 'The lifetime of the new token will be extended by one month',
+                description: 'Exchanges a still valid refresh token for a new JWT token and a new refresh token. The lifetime of the new token will be extended by one month.',
                 requestBody: $this->requestBody('#/components/schemas/RefreshTokenCredential')
             )
         );
@@ -702,17 +702,22 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     {
         return new \ArrayObject([
             'type' => 'object',
+            'description' => 'Credentials of a user of the platform. The `code` of the journal is optional: it scopes the authentication to that journal and grants the corresponding roles.',
             'properties' => [
                 'username' => [
                     'type' => 'string',
+                    'description' => 'Login of the user',
                     'example' => 'Your login',
                 ],
                 'password' => [
                     'type' => 'string',
+                    'format' => 'password',
+                    'description' => 'API password of the user (different from the password used on the website)',
                     'example' => 'Your API password',
                 ],
                 'code' => [
                     'type' => ['string', 'null'],
+                    'description' => 'Code of the journal to authenticate against (optional)',
                     'example' => "Journal's code",
                 ],
             ],
@@ -727,12 +732,15 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     {
         return new \ArrayObject([
             'type' => 'object',
+            'description' => 'Tokens returned after a successful authentication. Use the `token` as a Bearer token in the `Authorization` header of the protected endpoints. The `refresh_token` allows renewing the token before it expires (see `/api/token/refresh`).',
             'properties' => [
                 'token' => [
                     'type' => 'string',
+                    'description' => 'JWT access token, valid for 1 hour',
                 ],
                 'refresh_token' => [
                     'type' => 'string',
+                    'description' => 'JWT refresh token, valid about one month',
                 ],
             ],
             'required' => ['token'],
@@ -746,9 +754,11 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     {
         return new \ArrayObject([
             'type' => 'object',
+            'description' => 'Payload of the `/api/token/refresh` endpoint: the still valid refresh token obtained at login or at the previous refresh.',
             'properties' => [
                 'refresh_token' => [
                     'type' => 'string',
+                    'description' => 'The refresh token to exchange for a new pair of tokens',
                     'example' => 'd50de0498e38b6489d7....',
                 ],
             ],

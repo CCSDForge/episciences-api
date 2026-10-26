@@ -20,7 +20,7 @@ use App\State\BrowseStateProvider;
                 operationId: 'api_browse_authors_get_collection',
                 tags: [OpenApiFactory::OAF_TAGS['browse_search']],
                 summary: 'Browse by authors',
-                description: 'Browse by authors',
+                description: self::BROWSE_AUTHORS_DESCRIPTION,
                 parameters: [
                     new Parameter(
                         name: 'code',
@@ -71,7 +71,7 @@ use App\State\BrowseStateProvider;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['browse_search']],
                 summary: 'Author search by text',
-                description: 'Search authors by text ',
+                description: self::SEARCH_AUTHORS_DESCRIPTION,
                 parameters: [
                     new Parameter(
                         name: 'code',
@@ -99,6 +99,8 @@ use App\State\BrowseStateProvider;
 )]
 class Browse extends AbstractBrowse
 {
+    public const string BROWSE_AUTHORS_DESCRIPTION = 'Browse the authors of published papers, with their number of articles. Filter by journal code, first letter or substring; sort alphabetically or by number of articles.';
+    public const string SEARCH_AUTHORS_DESCRIPTION = 'Published documents of the authors whose full name matches the given text, optionally in one journal.';
     public const AVAILABLE_VALUES_TO_PREFIX_DESCRIPTION = 'Prefixed with a letter: available values [A...Z, others, all]';
     public const BROWSE_AUTHORS_COLLECTION_IDENTIFIER = '/api/browse/authors/';
 }

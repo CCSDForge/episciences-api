@@ -229,7 +229,7 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Total number of submissions",
-                description: "",
+                description: "Total number of submissions of the journal, optionally by year and with details.",
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
@@ -472,7 +472,7 @@ class Review
             'read:Reviews', 'read:Review'
         ]
     )]
-    #[ApiProperty(identifier: false)]
+    #[ApiProperty(identifier: false, description: 'Identifier of the journal')]
     private int $rvid;
 
 
@@ -484,35 +484,36 @@ class Review
             'read:Reviews', 'read:Review', 'read:Browse:Authors'
         ]
     )]
-    #[ApiProperty(identifier: true)]
+    #[ApiProperty(identifier: true, description: 'Code of the journal (ex. epijinfo)')]
     private string $code;
 
 
     #[ORM\Column(name: 'NAME', type: \Doctrine\DBAL\Types\Types::STRING, length: 2000, nullable: false)]
     #[Groups(['read:Reviews', 'read:Review'])]
+    #[ApiProperty(description: 'Name of the journal')]
     private string $name;
 
     #[ORM\Column(name: 'SUBTITLE', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: true)]
     #[Groups(['read:Reviews', 'read:Review'])]
-    #[ApiProperty(description: 'Le sous-titre du journal', readable: true, writable: true)]
+    #[ApiProperty(description: 'Subtitle of the journal', readable: true, writable: true)]
     private ?string $subtitle = null;
 
     #[ORM\Column(name: 'STATUS', type: \Doctrine\DBAL\Types\Types::SMALLINT, nullable: false, options: ['unsigned' => true])]
     #[Groups(['read:Reviews'])]
-    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")] // Property viewable and writable only by users with ROLE_ADMIN
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')", description: 'Status of the journal (enabled/disabled)')] // Property viewable and writable only by users with ROLE_ADMIN
     private int $status;
 
 
     #[ORM\Column(name: 'CREATION', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     #[Groups(['read:Reviews'])]
-    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')", description: 'Date the journal was created on the platform')]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTimeInterface $creation;
 
 
     #[ORM\Column(name: 'PIWIKID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[Groups(['read:Reviews'])]
-    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')", description: 'Piwik (Matomo) analytics identifier of the journal')]
     private int $piwikid;
 
 

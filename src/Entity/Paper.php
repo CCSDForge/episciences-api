@@ -45,6 +45,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['paper']],
                 summary: 'The paper identified by docid or paperid',
+                description: 'Consult a particular paper by its document identifier (docid) or paper identifier (paperid).',
             ),
             normalizationContext: [
                 'groups' => self::ITEM_NORMALIZATION_GROUPS,
@@ -58,6 +59,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['paper']],
                 summary: 'All Papers (In offline mode: only published papers )',
+                description: 'List the papers. In offline mode only published papers are returned. Filter by journal code (rvcode), paper type(s) and publication year(s).',
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -282,14 +284,17 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
+    #[ApiProperty(description: 'Unique identifier of the paper (document identifier)')]
     private ?int $docid = null;
 
 
     #[ORM\Column(name: 'PAPERID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true, options: ['unsigned' => true])]
     #[groups(self::PAPERS_GROUPS)]
+    #[ApiProperty(description: 'Identifier of the paper representing all its versions')]
     private ?int $paperid = null;
 
     #[ORM\Column(name: 'TYPE', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
+    #[ApiProperty(description: 'Type(s) of the paper')]
     private ?array $type = null;
 
     #[ORM\Column(name: 'DOI', type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: true)]
@@ -298,6 +303,7 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
+    #[ApiProperty(description: 'Digital Object Identifier (DOI) of the paper')]
     private ?string $doi = null;
 
 
@@ -335,6 +341,7 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
+    #[ApiProperty(description: 'Workflow status of the paper (see the STATUS_* constants)')]
     private int $status = 0;
 
 
@@ -360,7 +367,7 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         ]
     )]
-    #[ApiProperty(schema: OpenApiSchemas::OBJECT)]
+    #[ApiProperty(description: 'Document metadata of the paper (title, abstract, authors, files...)', schema: OpenApiSchemas::OBJECT)]
     private array $document;
     #[ORM\Column(name: 'CONCEPT_IDENTIFIER', type: \Doctrine\DBAL\Types\Types::STRING, length: 500, nullable: true, options: ['comment' => 'This identifier represents all versions'])]
     private ?string $conceptIdentifier = null;
@@ -396,7 +403,7 @@ class Paper implements UserOwnedInterface
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         ])]
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Submitting user of the paper')]
     private UserInterface $user;
 
 
@@ -407,6 +414,7 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
+    #[ApiProperty(description: 'Journal (Review) the paper belongs to')]
     private Review $review;
 
     #[ORM\ManyToOne(targetEntity: Section::class, inversedBy: 'papers')]
@@ -424,23 +432,23 @@ class Paper implements UserOwnedInterface
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
     ])]
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Editors assigned to the paper')]
     private array $editors = [];
 
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
     ])]
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Reviewers assigned to the paper')]
     private array $reviewers = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
     ])]
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Copy editors assigned to the paper')]
     private array $copyEditors = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
     ])]
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Co-authors of the paper')]
     private array $coAuthors = [];
 
     #[groups(
@@ -448,7 +456,7 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         ]
     )]
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Conflicts of interest reported for the paper')]
     private ?Collection $conflicts = null;
 
     private bool $conflictsLoaded = false;

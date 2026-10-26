@@ -19,7 +19,7 @@ use App\State\SearchStateProvider;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['browse_search']],
                 summary: 'Document search',
-                description: '',
+                description: 'Full-text search in the documents published by Episciences journals (Solr). Supports filters on journal, document type, volume, section, publication year and author. The results come with facets (volume, section, year, type); use the author search or the browse endpoints for the authors.',
                 parameters: [
                     new Parameter(
                         name: self::TERMS_PARAM,

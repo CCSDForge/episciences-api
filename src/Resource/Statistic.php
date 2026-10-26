@@ -154,7 +154,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Total number of submissions",
-                description: "",
+                description: 'Total number of submitted articles, for all the journals or for one journal with `rvcode`. Filter by year(s) of submission, by status and by flag; the imported articles are excluded. Returns the figure and, with `withDetails`, the number of articles in each status.',
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -477,7 +477,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Evaluation",
-                description: 'Evaluation',
+                description: 'Statistics of the editorial evaluation: the number of reviews requested (`reviews-requested`), the number of reviews received (`reviews-received`) and the median number of reviews per article (`median-reviews-number`), for all the journals or for one journal with `rvcode`. Filter by year(s) of invitation or report; `groupBy=journal` returns one figure by journal.',
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
