@@ -316,9 +316,14 @@ class Stats
 
 
         if ($year && !$rvId) { // all platform by year
-            $yearResult = $this->applyFilterBy($result, 'year', $year);
+            $years = (array)$year;
 
-            $avg = array_key_exists($year, $yearResult) ? $this->processDelay($yearResult[$year], $method) : null;
+            $yearRows = array_values(array_filter(
+                $result,
+                static fn(array $row): bool => in_array($row['year'] ?? null, $years, false)
+            ));
+
+            $avg = $yearRows === [] ? null : $this->processDelay($yearRows, $method);
 
             $statResource->setValue(
                 $avg !== null
@@ -362,10 +367,25 @@ class Stats
 
             if (isset($reformattedResult[$rvId])) {
 
-                $statResource->setValue($reformattedResult[$rvId][$year][PaperLogRepository::DELAY]);
+                $yearlyValues = [];
 
-                if ($withDetails) {
-                    $statResource->setDetails($reformattedResult[$rvId]);
+                foreach ((array)$year as $y) {
+                    if (isset($reformattedResult[$rvId][$y][PaperLogRepository::DELAY]['value'])) {
+                        $yearlyValues[] = $reformattedResult[$rvId][$y][PaperLogRepository::DELAY]['value'];
+                    }
+                }
+
+                if ($yearlyValues !== []) {
+                    $statResource->setValue([
+                        'value' => $method === self::MEDIAN_METHOD ? $this->getMedian($yearlyValues) : $this->getAvg($yearlyValues),
+                        self::STATS_UNIT => $unit,
+                        self::STATS_METHOD => $method,
+                    ]);
+
+                    if ($withDetails) {
+                        $statResource->setDetails($reformattedResult[$rvId]);
+
+                    }
 
                 }
 

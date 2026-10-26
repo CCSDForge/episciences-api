@@ -557,6 +557,79 @@ class StatsTest extends TestCase
         $this->assertEquals(18, $result->getValue()['value']);
     }
 
+    public function testGetDelayWithYearFilterAsArrayAveragesOnlyMatchingYearRows(): void
+    {
+        $rows = [
+            ['rvid' => 5, 'year' => 2022, 'delay' => 14.0],
+            ['rvid' => 5, 'year' => 2023, 'delay' => 7.0],
+            ['rvid' => 8, 'year' => 2022, 'delay' => 22.0],
+        ];
+
+        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['submissionDate' => [2022]]]
+        );
+
+        // avg(14, 22) = 18 (rounded to 0 precision)
+        $this->assertEquals(18, $result->getValue()['value']);
+    }
+
+    public function testGetDelayWithMultipleYearFilterAsArrayAveragesAllRequestedYears(): void
+    {
+        $rows = [
+            ['rvid' => 5, 'year' => 2022, 'delay' => 14.0],
+            ['rvid' => 5, 'year' => 2023, 'delay' => 7.0],
+            ['rvid' => 8, 'year' => 2022, 'delay' => 22.0],
+            ['rvid' => 8, 'year' => 2023, 'delay' => 5.0],
+        ];
+
+        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['submissionDate' => [2022, 2023]]]
+        );
+
+        // avg(14, 7, 22, 5) = 12 (rounded to 0 precision)
+        $this->assertEquals(12, $result->getValue()['value']);
+    }
+
+    public function testGetDelayWithRvIdAndYearFilterAsArrayDoesNotCrashAndAverages(): void
+    {
+        $rows = [
+            ['rvid' => 5, 'year' => 2022, 'delay' => 14.0],
+            ['rvid' => 5, 'year' => 2023, 'delay' => 20.0],
+            ['rvid' => 8, 'year' => 2022, 'delay' => 99.0],
+        ];
+
+        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['submissionDate' => [2022], 'rvid' => 5]]
+        );
+
+        // only year 2022 for rvid 5 -> avg(14) = 14
+        $this->assertEquals(14, $result->getValue()['value']);
+    }
+
+    public function testGetDelayWithRvIdAndMultipleYearFilterAsArrayAveragesAcrossYear(): void
+    {
+        $rows = [
+            ['rvid' => 5, 'year' => 2022, 'delay' => 14.0],
+            ['rvid' => 5, 'year' => 2023, 'delay' => 20.0],
+            ['rvid' => 8, 'year' => 2022, 'delay' => 99.0],
+        ];
+
+        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['submissionDate' => [2022, 2023], 'rvid' => 5]]
+        );
+
+        // avg(14, 20) = 17 for rvid 5
+        $this->assertEquals(17, $result->getValue()['value']);
+    }
+
     public function testGetDelayWithRvIdFilterAveragesOnlyMatchingRvIdRows(): void
     {
         $rows = [
