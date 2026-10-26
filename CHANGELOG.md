@@ -56,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated to Doctrine ORM 3.7: updated `doctrine/orm` constraint from `^2.14` to `^3.7` and aligned unit test mocks (mocked `Doctrine\DBAL\Exception` and `Doctrine\ORM\Query` instances) with the new ORM/DBAL APIs.
 - CI runs the tests against MySQL 8.4 (was 8.0), with `DATABASE_SERVER_VERSION` set accordingly.
 - Journal dashboard and statistics: removed the dead `reformatSubmissionsData()` and `getPercentages()` helpers of `Stats`, and normalized the `$values` array-key spacing. No change in the computed figures.
+- `Stats` service: typed the parameters and return types of the public methods, documented them (English PHPDoc with array generics) and translated the remaining French comments into English; repository variables keep their `@var` annotations so that the custom repository methods remain type-resolvable. No change in the computed figures.
 
 ### Removed
 - `GET /api/journals/{code}` and `GET /api/journals/` no longer expose the `settings` field of the journals (a raw `REVIEW_SETTING` `{setting, value}` array, without external consumer). The settings still work internally via `Review::getSetting()` and the public, structured configuration remains available through `GET /api/journals/front/configuration` (`{code}/front/configuration`).

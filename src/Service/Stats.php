@@ -48,9 +48,16 @@ class Stats
 
     }
 
+    /**
+     * Builds the dashboard statistics.
+     *
+     * @param array<string, mixed> $context Request context, for instance ['filters' => [...]].
+     * @param array<string, mixed> $filters Request filters, for instance ['is' => ['rvid' => int, 'submissionDate' => [...], 'startAfterDate' => string]].
+     *
+     * @return DashboardOutput
+     */
     public function getDashboard(array $context, array $filters): DashboardOutput
     {
-
         $years = isset($filters['is']['submissionDate']) ? (array)$filters['is']['submissionDate'] : [];
         $rvId = $filters['is']['rvid'] ?? null;
         $startAfterDate = $filters['is']['startAfterDate'] ?? null;
@@ -59,7 +66,6 @@ class Stats
 
         /** @var PaperLogRepository $paperLogRepo */
         $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
-
         /** @var PapersRepository $paperRepo */
         $paperRepo = $this->entityManager->getRepository(Paper::class);
 
@@ -95,8 +101,8 @@ class Stats
             $imported = 0;
             $this->logger->error($e->getMessage());
         }
-        //Il est possible que certaines versions soient importées tandis que d'autres ne le soient pas.
-        // D'où la nécessité d'une nouvelle requête plutôt que de faire la différence
+        // Some versions may be imported while others are not:
+        // hence a dedicated query rather than a difference between totals.
 
         $submissionsWithoutImported = $paperRepo->getSubmissionsWithoutImported($rvId, $startAfterDate, $years);
 
@@ -107,7 +113,7 @@ class Stats
         $medianPublicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED, self::MEDIAN_METHOD);
         // Published without imported
         $totalPublished = $paperLogRepo->getPublished($rvId, $years, $startAfterDate);
-        $totalAccepted = $paperLogRepo->getAccepted($rvId, $years, $startAfterDate); // Tous les articles, même ceux déjà publiés, sont pris en compte pour calculer le taux d'acceptation.
+        $totalAccepted = $paperLogRepo->getAccepted($rvId, $years, $startAfterDate); // All papers, even already published ones, are taken into account to compute the acceptance rate.
         $totalRefused = $paperLogRepo->getRefused($rvId, $years, $startAfterDate);
         $totalAcceptedNotYetPublished = $paperLogRepo->getAllAcceptedNotYetPublished($rvId, $years, $startAfterDate);
         // articles awaiting an editorial decision, counted directly (by submission date), as "other-status" of the statistics
@@ -204,6 +210,8 @@ class Stats
      * "withPapers" of the dashboard: the papers (PAPERID) counted by each figure, computed with the same queries as the figures.
      * The papers of the delays are those of the average and of the median delays.
      *
+     * @param array<string, mixed> $filters Request filters, for instance ['is' => ['rvid' => int, 'submissionDate' => [...], 'startAfterDate' => string]].
+     *
      * @return array<string, list<int>> indexed by figure of the dashboard
      */
     public function getDashboardPaperIds(array $filters): array
@@ -240,14 +248,16 @@ class Stats
     }
 
     /**
-     * Par annee, par revue, delai moyen, ou la valeur médiane en nombre d'$unité entre dépôt et acceptation|publication
-     * @param array $filters
-     * @param int $latestStatus
-     * @param string $method
-     * @param string $unit
+     * Per year and per journal, computes the average (default) or the median delay,
+     * in the given unit, between the submission and the acceptance/publication.
+     *
+     * @param array<string, mixed> $filters      Request filters, for instance ['is' => ['rvid' => int, 'submissionDate' => ..., 'startAfterDate' => string, 'method' => string, 'unit' => string]].
+     * @param int                  $latestStatus Paper status considered as the end of the delay.
+     * @param string               $method       self::DEFAULT_METHOD ('average') or self::MEDIAN_METHOD ('median').
+     * @param string               $unit         Delay unit (e.g. 'day'); an unsupported value falls back to 'week'.
+     *
      * @return AbstractStatResource
      */
-
     public function getDelayBetweenSubmissionAndLatestStatus(array $filters = [], int $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED, string $method = self::DEFAULT_METHOD, string $unit = 'day'): AbstractStatResource
     {
 
@@ -340,7 +350,7 @@ class Stats
         }
 
         if (!$year && $rvId) {
-            $rvIdResult = $this->applyFilterBy($result, 'rvid', $rvId);
+            $rvIdResult = $this->applyFilterBy($result, 'rvid', (string)$rvId);
 
             if (array_key_exists($rvId, $rvIdResult)) {
                 $avg = $this->processDelay($rvIdResult[$rvId], $method);
@@ -361,7 +371,7 @@ class Stats
         }
 
         if ($year && $rvId) {
-            $details = $this->applyFilterBy($result, 'rvid', $rvId);
+            $details = $this->applyFilterBy($result, 'rvid', (string)$rvId);
 
             $reformattedResult = $this->reformatPaperLogData($details, $unit, PaperLogRepository::DELAY, $method);
 
@@ -408,6 +418,13 @@ class Stats
     }
 
 
+    /**
+     * Computes the platform or per-journal user statistics (number of users, optionally with details).
+     *
+     * @param array<string, mixed> $filters Request filters, for instance ['rvid' => int, 'uid' => int, 'role' => string, 'registrationDate' => int, AppConstants::WITH_DETAILS => bool].
+     *
+     * @return UsersStatsOutput
+     */
     public function getUserStats(array $filters): UsersStatsOutput
     {
         $rvId = null;
@@ -477,8 +494,11 @@ class Stats
     }
 
     /**
-     * @param array $filters
-     * @param bool $excludeTmpVersions
+     * Computes the number of submissions, optionally with per-year details.
+     *
+     * @param array<string, mixed> $filters            Request filters, for instance ['is' => ['rvid' => int, 'submissionDate' => ..., 'startAfterDate' => string, AppConstants::WITH_DETAILS => bool]].
+     * @param bool                 $excludeTmpVersions Whether temporary versions should be excluded.
+     *
      * @return SubmissionOutput
      */
     public function getSubmissionsStat(array $filters = [], bool $excludeTmpVersions = false): SubmissionOutput
@@ -517,19 +537,24 @@ class Stats
 
         }
 
-        return new SubmissionOutput()->
-        setAvailableFilters(self::AVAILABLE_PAPERS_FILTERS)->
+        $statResource = new SubmissionOutput();
+        $statResource->setAvailableFilters(self::AVAILABLE_PAPERS_FILTERS)->
         setRequestedFilters($filters['is'])->
         setName('nbSubmissions')->
         setValue($nbSubmissions)->
         setDetails($details);
+
+        return $statResource;
     }
 
 
     /**
-     * @param array $filters
-     * @param mixed $rvId
-     * @param array $details
+     * Fills the per-year submission details consumed by the dashboard.
+     *
+     * @param array<string, mixed> $filters Request filters, for instance ['is' => ['rvid' => int, 'submissionDate' => ..., 'startAfterDate' => string]].
+     * @param int|null             $rvId    Journal identifier, or null for the whole platform.
+     * @param array<string, mixed> $details The array whose 'submissionsByYear' and 'submissionsByRepo' keys are filled.
+     *
      * @return void
      */
     public function getSubmissionByYearStats(array $filters, mixed $rvId, array &$details = []): void
@@ -568,7 +593,7 @@ class Stats
             'is' => ['rvid' => $rvId, AppConstants::START_AFTER_DATE => $startAfterDate],
         ]);
 
-        foreach ($years as $year) { // pour le dashboard
+        foreach ($years as $year) { // Values are filled per year for the dashboard.
 
             $details[self::SUBMISSIONS_BY_YEAR][$year]['submissions'] = $submissionsByYear[(int)$year] ?? 0;
 
@@ -638,7 +663,21 @@ class Stats
         return $byYear;
     }
 
-    public function getNbPapersByStatus($rvId = null, bool $isSubmittedSameYear = true, $as = self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): array
+    /**
+     * Returns the number of papers sharing a given status, either for a single journal
+     * or for the whole platform.
+     *
+     * With $rvId set, the result is indexed [rvId => [year => [as => int]]]; with $rvId null
+     * it is a raw row list (one entry per journal/year).
+     *
+     * @param int|null $rvId                Journal identifier, or null for the whole platform.
+     * @param bool     $isSubmittedSameYear Whether only the papers submitted during the year are counted.
+     * @param string   $as                  Figure key (e.g. self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR).
+     * @param int      $status              Paper status to filter on.
+     *
+     * @return array<int|string, mixed>
+     */
+    public function getNbPapersByStatus(?int $rvId = null, bool $isSubmittedSameYear = true, string $as = self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): array
     {
         /** @var PaperLogRepository $paperLogRepository */
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
@@ -653,7 +692,7 @@ class Stats
                 if ($rvId) {
 
                     //before reformat data : [ 8 => [0 => ["year" => 2023, PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [], ... ]
-                    $filtered = $this->applyFilterBy($result, 'rvid', $rvId);
+                    $filtered = $this->applyFilterBy($result, 'rvid', (string)$rvId);
 
                     //after: [8 => [ 2023 => [PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [2022 => ], .....
                     // ['extractedKey' => []] if empty result
@@ -679,7 +718,10 @@ class Stats
 
 
     /**
-     * @param array $context //['code' => $rvCode]
+     * Returns the journal (Review) matching the context, or null when not found.
+     *
+     * @param array<string, mixed> $context Request context, for instance ['code' => $rvCode].
+     *
      * @return Review|null
      */
     public function getJournal(array $context): ?Review
@@ -690,9 +732,13 @@ class Stats
     }
 
     /**
-     * @param array $array
-     * @param string $method
-     * @param string $key
+     * Computes the average (default) or the median of the values of the given key
+     * extracted from the rows of $array.
+     *
+     * @param array<int, array<string, mixed>> $array  Rows of data, for instance the reformatted PAPER_LOG data.
+     * @param string                           $method self::DEFAULT_METHOD ('average') or self::MEDIAN_METHOD ('median').
+     * @param string                           $key    Column containing the value to aggregate.
+     *
      * @return int|float|null
      */
     private function processDelay(array $array, string $method = self::DEFAULT_METHOD, string $key = PaperLogRepository::DELAY): int|float|null
@@ -709,8 +755,17 @@ class Stats
 
     }
 
+    /**
+     * Re-shapes the user statistics rows so that they are indexed by role (platform)
+     * or by journal and role.
+     *
+     * @param array<int, array<string, mixed>> $array Rows of user statistics.
+     *
+     * @return array<string|int, mixed>
+     */
     private function reformatUsersData(array $array): array
     {
+
         $result = [];
 
         foreach ($array as $value) {
@@ -728,7 +783,17 @@ class Stats
         return $result;
     }
 
-
+    /**
+     * Re-shapes the reformatted PAPER_LOG data so that it is indexed by journal and
+     * by year, extracting only the requested field.
+     *
+     * @param array<int, array<string, mixed>> $array          Reformatted PAPER_LOG data.
+     * @param string|null                      $unit           Delay unit, for delay figures.
+     * @param string                           $extractedField Field to extract.
+     * @param string                           $method         self::DEFAULT_METHOD or self::MEDIAN_METHOD.
+     *
+     * @return array<int|string, mixed>
+     */
     private function reformatPaperLogData(array $array, ?string $unit = null, string $extractedField = PaperLogRepository::DELAY, string $method = self::DEFAULT_METHOD): array
     {
 
