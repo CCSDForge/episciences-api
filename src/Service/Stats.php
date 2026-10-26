@@ -776,7 +776,7 @@ class Stats
     {
         $unit = strtoupper($unit);
 
-        if (!in_array($unit, ['SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR'])) {
+        if (!in_array($unit, PaperLogRepository::DELAY_UNITS, true)) {
             $unit = 'WEEK';
         }
 

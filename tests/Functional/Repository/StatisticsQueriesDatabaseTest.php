@@ -253,6 +253,7 @@ class StatisticsQueriesDatabaseTest extends TestCase
             [11, 10, self::RVID, 'submitted', '2022-07-07'],
             [12, 10, self::RVID, 'imported', '2022-07-07'],      // a version of the paper 10 is imported: left out
             [13, 11, self::OTHER_RVID, 'submitted', '2023-11-11'],
+            [14, 12, self::RVID, 'submitted', '2023-04-04'],      // its latest acceptance is the one of a temporary version
         ];
 
         $logs = [
@@ -285,6 +286,8 @@ class StatisticsQueriesDatabaseTest extends TestCase
             [11, 13, self::OTHER_RVID, Paper::STATUS_SUBMITTED, '2023-11-11 10:00:00'],
             [11, 13, self::OTHER_RVID, Paper::STATUS_STRICTLY_ACCEPTED, '2024-02-02 10:00:00'],
             [11, 13, self::OTHER_RVID, Paper::STATUS_PUBLISHED, '2024-05-05 10:00:00'],
+            [12, 14, self::RVID, Paper::STATUS_SUBMITTED, '2023-04-04 10:00:00'],
+            [12, 14, self::RVID, Paper::STATUS_TMP_VERSION_ACCEPTED, '2024-01-15 10:00:00'],
         ];
 
         $connection = $this->entityManager->getConnection();

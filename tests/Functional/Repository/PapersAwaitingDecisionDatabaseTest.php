@@ -17,6 +17,7 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
+use DoctrineExtensions\Query\Mysql\TimestampDiff;
 use DoctrineExtensions\Query\Mysql\Year;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -57,6 +58,7 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
         $config = ORMSetup::createAttributeMetadataConfig([dirname(__DIR__, 3) . '/src/Entity'], true);
         $config->enableNativeLazyObjects(true);
         $config->addCustomStringFunction('YEAR', Year::class);
+        $config->addCustomStringFunction('TIMESTAMPDIFF', TimestampDiff::class);
 
         $connection = DriverManager::getConnection(new DsnParser(['mysql' => 'pdo_mysql'])->parse($url), $config);
 
@@ -226,6 +228,11 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
         $this->assertSame([], $delays([2023]));
         $this->assertSame([], $delays(['2024', 'abc']));
         $this->assertSame([], $delays('24'));
+
+        // an empty value is no filter
+        foreach (['', '0', 0, []] as $empty) {
+            $this->assertSame($delays(null), $delays($empty), var_export($empty, true));
+        }
     }
 
     /**

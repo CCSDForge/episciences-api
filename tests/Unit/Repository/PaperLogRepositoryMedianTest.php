@@ -55,7 +55,7 @@ class PaperLogRepositoryMedianTest extends TestCase
 
         $repository->expects($this->once())
             ->method('getArticleDelays')
-            ->with('DAY', $expectedStatus, null, [], null)
+            ->with('day', $expectedStatus, null, [], null)
             ->willReturn(self::DELAYS);
 
         return $repository;

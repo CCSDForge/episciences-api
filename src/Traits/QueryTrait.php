@@ -11,9 +11,6 @@ use Doctrine\ORM\QueryBuilder;
 
 trait QueryTrait
 {
-    /** SQL condition: the statistics without journal only take into account the active journals */
-    public const string ACTIVE_JOURNALS_SQL = 'SELECT RVID FROM REVIEW WHERE STATUS = ' . Review::STATUS_ENABLED;
-
     /**
      * The statistics without journal only take into account the active journals,
      * as the statistics of a journal (a disabled journal cannot be requested).
@@ -205,18 +202,5 @@ trait QueryTrait
         }
 
         return array_values(array_unique($valid));
-    }
-
-    /**
-     * The years are concatenated into the SQL: an invalid year gives no result
-     */
-    final public function whereYears(string &$sql, array|string|int|null $years = null, string $refDate = 'p.SUBMISSION_DATE'): void
-    {
-        if ($years === null || in_array($years, ['', '0', 0, []], true)) {
-            return;
-        }
-
-        $years = self::toValidYears($years);
-        $sql .= $years === null ? ' AND 1 = 0' : sprintf(' AND YEAR(%s) IN (%s)', $refDate, implode(',', $years));
     }
 }
