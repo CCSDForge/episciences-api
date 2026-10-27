@@ -250,6 +250,22 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
 
     /**
+     * Statuses of the papers open to everyone, as in offline mode (publicAccessProcess): a published
+     * or accepted paper can be read; the list holds the published papers, or the accepted ones only
+     * with only_accepted.
+     *
+     * @return list<int>
+     */
+    private function publicPaperStatuses(bool $isItem, bool $isOnlyAccepted): array
+    {
+        if ($isItem) {
+            return [...Paper::STATUS_ACCEPTED, Paper::STATUS_PUBLISHED];
+        }
+
+        return $isOnlyAccepted ? Paper::STATUS_ACCEPTED : [Paper::STATUS_PUBLISHED];
+    }
+
+    /**
      * Scope of the papers listed to a connected user (`scope` query parameter, validated by its schema):
      * the papers opened by their role by default.
      *
@@ -463,7 +479,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 $isItem = isset($context[AppConstants::IS_APP_ITEM]) && filter_var($context[AppConstants::IS_APP_ITEM], FILTER_VALIDATE_BOOLEAN);
                 $scope = $isItem ? Paper::SCOPE_ALL : $this->paperScope($context);
 
-                if ($scope === Paper::SCOPE_PUBLISHED) { // the published papers, as in offline mode
+                if ($scope === Paper::SCOPE_PUBLIC) { // the papers listed in offline mode
                     $this->publicAccessProcess($queryBuilder, $alias, $resourceClass, $context);
                     return;
                 }
@@ -475,11 +491,11 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 $access = $this->paperAccessCondition($queryBuilder, $alias, $currentUser);
 
                 if ($scope === Paper::SCOPE_ALL) {
-                    // As isRestrictedAccess in the gpl, a published paper is open to everyone, whatever
-                    // the journal of the token; its confidential fields stay protected by the voter.
+                    // The papers open to everyone (as isRestrictedAccess in the gpl), whatever the journal of
+                    // the token, and those opened by the role; the confidential fields stay protected by the voter.
                     $queryBuilder
-                        ->andWhere($queryBuilder->expr()->orX("$alias.status = :publishedStatus", $access))
-                        ->setParameter('publishedStatus', Paper::STATUS_PUBLISHED);
+                        ->andWhere($queryBuilder->expr()->orX("$alias.status IN (:publicStatuses)", $access))
+                        ->setParameter('publicStatuses', $this->publicPaperStatuses($isItem, $isOnlyAccepted));
 
                     if (!$isItem) {
                         $queryBuilder

@@ -377,9 +377,10 @@ class PaperPrivateCollectionTest extends TestCase
         $queryBuilder = $this->applyToItem($this->security($this->user(), $roles));
         $where = $this->where($queryBuilder);
 
-        self::assertStringStartsWith('o.docid = :docid AND (o.status = :publishedStatus OR ', $where);
+        self::assertStringStartsWith('o.docid = :docid AND (o.status IN (:publicStatuses) OR ', $where);
         self::assertStringContainsString('o.rvid = :rvId', $where);
-        self::assertSame(Paper::STATUS_PUBLISHED, $this->parameter($queryBuilder, 'publishedStatus'));
+        // As in offline mode, an accepted paper can be read too
+        self::assertSame(array_values(array_merge(Paper::STATUS_ACCEPTED, [Paper::STATUS_PUBLISHED])), $this->parameter($queryBuilder, 'publicStatuses'));
         self::assertSame(self::TOKEN_JOURNAL, $this->parameter($queryBuilder, 'rvId'));
     }
 
@@ -393,8 +394,8 @@ class PaperPrivateCollectionTest extends TestCase
     {
         $queryBuilder = $this->apply($this->security($this->user(), $roles));
 
-        self::assertStringNotContainsString(':publishedStatus', $this->where($queryBuilder));
-        self::assertNull($queryBuilder->getParameter('publishedStatus'));
+        self::assertStringNotContainsString(':publicStatuses', $this->where($queryBuilder));
+        self::assertNull($queryBuilder->getParameter('publicStatuses'));
     }
 
     // ------------------------------------------------------------------ GET /api/papers?scope=
@@ -419,19 +420,19 @@ class PaperPrivateCollectionTest extends TestCase
         $where = $this->where($queryBuilder);
 
         self::assertStringContainsString('uAss.uid = :to', $where);
-        self::assertStringNotContainsString(':publishedStatus', $where);
+        self::assertStringNotContainsString(':publicStatuses', $where);
         self::assertStringNotContainsString(':published', $where);
     }
 
     /**
-     * scope=published lists the published papers, as in offline mode, whatever the role.
+     * scope=public lists the papers as in offline mode, whatever the role.
      *
      * @param string[] $roles
      */
     #[DataProvider('itemRolesProvider')]
-    public function testPublishedScopeListsThePublishedPapersAsInOfflineMode(array $roles): void
+    public function testPublicScopeListsThePapersAsInOfflineMode(array $roles): void
     {
-        $queryBuilder = $this->apply($this->security($this->user(), $roles), ['scope' => Paper::SCOPE_PUBLISHED, 'rvcode' => 'other']);
+        $queryBuilder = $this->apply($this->security($this->user(), $roles), ['scope' => Paper::SCOPE_PUBLIC, 'rvcode' => 'other']);
         $where = $this->where($queryBuilder);
 
         self::assertStringContainsString('o.status= :published', $where);
@@ -453,9 +454,9 @@ class PaperPrivateCollectionTest extends TestCase
         $queryBuilder = $this->apply($this->security($this->user(), $roles), ['scope' => Paper::SCOPE_ALL]);
         $where = $this->where($queryBuilder);
 
-        self::assertStringStartsWith('o.status = :publishedStatus OR ', $where);
+        self::assertStringStartsWith('o.status IN (:publicStatuses) OR ', $where);
         self::assertStringContainsString('o.rvid = :rvId', $where);
-        self::assertSame(Paper::STATUS_PUBLISHED, $this->parameter($queryBuilder, 'publishedStatus'));
+        self::assertSame([Paper::STATUS_PUBLISHED], $this->parameter($queryBuilder, 'publicStatuses'));
         self::assertSame('o.publicationDate DESC, o.when DESC', implode(', ', array_map('strval', $queryBuilder->getDQLPart('orderBy'))));
     }
 
@@ -467,6 +468,34 @@ class PaperPrivateCollectionTest extends TestCase
         $queryBuilder = $this->apply($this->security(null), ['scope' => Paper::SCOPE_ALL]);
 
         self::assertStringContainsString('o.status= :published', $this->where($queryBuilder));
-        self::assertNull($queryBuilder->getParameter('publishedStatus'));
+        self::assertNull($queryBuilder->getParameter('publicStatuses'));
+    }
+
+    // ------------------------------------------------------------------ scope and only_accepted
+
+    /**
+     * scope=public with only_accepted lists the accepted papers, as in offline mode.
+     */
+    public function testPublicScopeWithOnlyAcceptedListsTheAcceptedPapers(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_EDITOR']), ['scope' => Paper::SCOPE_PUBLIC, 'only_accepted' => 'true']);
+        $where = $this->where($queryBuilder);
+
+        self::assertStringNotContainsString('o.status= :published', $where);
+        self::assertStringNotContainsString('uAss', $where);
+        foreach (Paper::STATUS_ACCEPTED as $status) {
+            self::assertStringContainsString("o.status = $status", $where);
+        }
+    }
+
+    /**
+     * scope=all with only_accepted: the accepted papers of the public view, and those opened by the role.
+     */
+    public function testAllScopeWithOnlyAcceptedListsThePublicAcceptedPapersAndThoseOpenedByTheRole(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_EDITOR']), ['scope' => Paper::SCOPE_ALL, 'only_accepted' => 'true']);
+
+        self::assertStringContainsString('o.status IN (:publicStatuses) OR ', $this->where($queryBuilder));
+        self::assertSame(array_values(Paper::STATUS_ACCEPTED), $this->parameter($queryBuilder, 'publicStatuses'));
     }
 }
