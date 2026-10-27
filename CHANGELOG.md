@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `GET /api/papers`, `GET /api/papers/{docid}` and papers voter: as on Episciences, a paper deleted by its author or removed by the journal is closed to its author, co-authors and reviewers; it stays readable, confidential fields included, by the users who manage it (secretaries and above, its editors and copy editors), and nobody changes or reviews it anymore (`papers_edit`, `papers_review`).
 ### Added
 ### Changed
+- `GET /api/papers` and `GET /api/papers/{docid}` for the editors, copy editors and reviewers: the papers they are assigned to are computed once from their assignments instead of for every paper of the journal (from about 135 ms to under 10 ms for a journal of 4,500 papers).
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.
 ### Deprecated
 ### Removed

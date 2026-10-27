@@ -250,9 +250,9 @@ class PaperPrivateCollectionTest extends TestCase
         $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_EDITOR']));
         $where = $this->where($queryBuilder);
 
-        self::assertStringContainsString('latestVersion.paperid = o.paperid', $where);
+        self::assertStringContainsString('o.paperid IN(SELECT latestVersion.paperid FROM App\\Entity\\UserAssignment vAss', $where);
         self::assertStringContainsString('newerVersion.when > latestVersion.when', $where);
-        self::assertStringContainsString('vAss.itemid = latestVersion.docid', $where);
+        self::assertStringContainsString('latestVersion.docid = vAss.itemid', $where);
         self::assertStringContainsString('vAss.roleid IN (:managingRoles)', $where);
         self::assertSame(
             [UserAssignment::ROLE_EDITOR, UserAssignment::ROLE_COPY_EDITOR],
@@ -280,7 +280,7 @@ class PaperPrivateCollectionTest extends TestCase
         $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_REVIEWER']));
         $where = $this->where($queryBuilder);
 
-        self::assertStringContainsString('(o.status NOT IN (:closedStatuses) AND (EXISTS(SELECT uAss.id', $where);
+        self::assertStringContainsString('(o.status NOT IN (:closedStatuses) AND (o.docid IN(SELECT uAss.itemid', $where);
         self::assertStringContainsString('eAss.roleid IN (:managingRoles)', $where);
         self::assertSame([Paper::STATUS_DELETED, Paper::STATUS_REMOVED], $this->parameter($queryBuilder, 'closedStatuses'));
     }

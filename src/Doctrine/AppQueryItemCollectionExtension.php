@@ -295,10 +295,17 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             // The papers they are currently assigned to, and, for the editors and copy editors, the
             // previous versions of the papers whose latest version they are assigned to
             // (Episciences_Paper::isAssignedEditorOrCopyEditor in the gpl)
-            $latestVersionAssignment = $queryBuilder->getEntityManager()->createQueryBuilder()
-                ->select('latestVersion.docid')
-                ->from(Paper::class, 'latestVersion')
-                ->where("latestVersion.paperid = $alias.paperid")
+            // The paperids of the latest versions the user is currently assigned to as editor or copy
+            // editor: computed once from their assignments rather than for every paper of the journal
+            $latestVersionsOfUser = $queryBuilder->getEntityManager()->createQueryBuilder()
+                ->select('latestVersion.paperid')
+                ->from(UserAssignment::class, 'vAss')
+                ->join(Paper::class, 'latestVersion', 'WITH', 'latestVersion.docid = vAss.itemid')
+                ->where('vAss.item = :type')
+                ->andWhere('vAss.uid = :to')
+                ->andWhere('vAss.status = :activeAssignment')
+                ->andWhere('vAss.roleid IN (:managingRoles)')
+                ->andWhere($expr->not($expr->exists($this->laterAssignmentDql($queryBuilder, 'vAss'))))
                 ->andWhere($expr->not($expr->exists(
                     $queryBuilder->getEntityManager()->createQueryBuilder()
                         ->select('newerVersion.docid')
@@ -306,8 +313,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                         ->where('newerVersion.paperid = latestVersion.paperid')
                         ->andWhere('newerVersion.when > latestVersion.when')
                         ->getDQL()
-                )))
-                ->andWhere($expr->exists($this->currentAssignmentDql($queryBuilder, 'vAss', 'latestVersion.docid', true)));
+                )));
 
             $queryBuilder
                 ->setParameter('type', UserAssignment::ITEM_PAPER)
@@ -322,10 +328,10 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 // a deleted or removed paper is only shown by its administration page, to its editors and copy editors
                 $expr->andX(
                     "$alias.status NOT IN (:closedStatuses)",
-                    $expr->exists($this->currentAssignmentDql($queryBuilder, 'uAss', "$alias.docid"))
+                    $expr->in("$alias.docid", $this->currentAssignmentDql($queryBuilder, 'uAss'))
                 ),
-                $expr->exists($this->currentAssignmentDql($queryBuilder, 'eAss', "$alias.docid", true)),
-                $expr->exists($latestVersionAssignment->getDQL())
+                $expr->in("$alias.docid", $this->currentAssignmentDql($queryBuilder, 'eAss', true)),
+                $expr->in("$alias.paperid", $latestVersionsOfUser->getDQL())
             ));
         }
 
@@ -354,39 +360,47 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     }
 
     /**
-     * DQL of the current assignments of the connected user (:to) to a paper: the latest assignment of
-     * the user in a role, active (as Episciences_PapersManager::getEditors() and getReviewers() in the
-     * gpl), restricted to the editors and copy editors (:managingRoles) when asked.
+     * DQL of the docids of the papers the connected user (:to) is currently assigned to: their latest
+     * assignment in a role is active (as Episciences_PapersManager::getEditors() and getReviewers() in
+     * the gpl), restricted to the editors and copy editors (:managingRoles) when asked. Computed once
+     * from the assignments of the user rather than for every paper of the journal.
      */
-    private function currentAssignmentDql(QueryBuilder $queryBuilder, string $assignmentAlias, string $docIdExpression, bool $editorsOnly = false): string
+    private function currentAssignmentDql(QueryBuilder $queryBuilder, string $assignmentAlias, bool $editorsOnly = false): string
     {
         $expr = $queryBuilder->expr();
-        $later = "later_$assignmentAlias";
 
         $assignment = $queryBuilder->getEntityManager()->createQueryBuilder()
-            ->select("$assignmentAlias.id")
+            ->select("$assignmentAlias.itemid")
             ->from(UserAssignment::class, $assignmentAlias)
-            ->where("$assignmentAlias.itemid = $docIdExpression")
-            ->andWhere("$assignmentAlias.item = :type")
+            ->where("$assignmentAlias.item = :type")
             ->andWhere("$assignmentAlias.uid = :to")
             ->andWhere("$assignmentAlias.status = :activeAssignment")
-            ->andWhere($expr->not($expr->exists(
-                $queryBuilder->getEntityManager()->createQueryBuilder()
-                    ->select("$later.id")
-                    ->from(UserAssignment::class, $later)
-                    ->where("$later.itemid = $assignmentAlias.itemid")
-                    ->andWhere("$later.item = $assignmentAlias.item")
-                    ->andWhere("$later.uid = $assignmentAlias.uid")
-                    ->andWhere("$later.roleid = $assignmentAlias.roleid")
-                    ->andWhere("$later.when > $assignmentAlias.when")
-                    ->getDQL()
-            )));
+            ->andWhere($expr->not($expr->exists($this->laterAssignmentDql($queryBuilder, $assignmentAlias))));
 
         if ($editorsOnly) {
             $assignment->andWhere("$assignmentAlias.roleid IN (:managingRoles)");
         }
 
         return $assignment->getDQL();
+    }
+
+    /**
+     * DQL of the assignments of the same user, paper and role made after the given one: when there is
+     * none, the given assignment is the latest one.
+     */
+    private function laterAssignmentDql(QueryBuilder $queryBuilder, string $assignmentAlias): string
+    {
+        $later = "later_$assignmentAlias";
+
+        return $queryBuilder->getEntityManager()->createQueryBuilder()
+            ->select("$later.id")
+            ->from(UserAssignment::class, $later)
+            ->where("$later.itemid = $assignmentAlias.itemid")
+            ->andWhere("$later.item = $assignmentAlias.item")
+            ->andWhere("$later.uid = $assignmentAlias.uid")
+            ->andWhere("$later.roleid = $assignmentAlias.roleid")
+            ->andWhere("$later.when > $assignmentAlias.when")
+            ->getDQL();
     }
 
     /**
