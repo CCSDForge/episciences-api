@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistics: the delay of each article is computed with a Doctrine query instead of a hand-written SQL query (same figures), in a single reading of the history of the articles (faster without journal).
 - Statistics: the papers accepted, published or refused the year of their submission (`*SubmittedSameYear`) are counted with a Doctrine query instead of a hand-written SQL query (same figures), only for the requested journal (several times faster).
 - The editors of the sections and of the volumes (`committee`) and the sections assigned to the editors of the boards are read with Doctrine queries instead of hand-written SQL queries. Without editor, the assigned sections are now an empty list instead of an error.
+- The editors of the sections (`committee`): a failed query is now logged, as for the volumes, instead of raising a PHP notice.
 - `make test-db` runs the database tests (`tests/Functional`, skipped without `TEST_DATABASE_URL`) locally, against a throwaway MySQL 8.4 container.
 - The sorted papers of the volumes are read with two Doctrine queries (the papers of the volume, the papers attached to it) instead of a hand-written SQL query with UNION ALL (same papers, in the same order).
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.

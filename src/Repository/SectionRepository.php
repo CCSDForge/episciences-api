@@ -10,6 +10,7 @@ use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\Persistence\ManagerRegistry;
+use Psr\Log\LoggerInterface;
 
 /**
  * @extends ServiceEntityRepository<Section>
@@ -23,7 +24,7 @@ class SectionRepository extends ServiceEntityRepository
 {
     use CommitteeTrait;
 
-    public function __construct(ManagerRegistry $registry)
+    public function __construct(ManagerRegistry $registry, private readonly LoggerInterface $logger)
     {
         parent::__construct($registry, Section::class);
     }
@@ -86,7 +87,7 @@ class SectionRepository extends ServiceEntityRepository
         try {
             return $this->committee($rvId, $sid, 'section', Section::class, 'sid');
         } catch (\Exception $e) {
-            trigger_error($e->getMessage());
+            $this->logger->critical($e->getMessage());
             return [];
         }
     }

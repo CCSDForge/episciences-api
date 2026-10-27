@@ -81,7 +81,7 @@ class CommitteeQueriesDatabaseTest extends TestCase
 
         $registry = $this->createStub(ManagerRegistry::class);
         $registry->method('getManagerForClass')->willReturn($this->entityManager);
-        $this->sectionRepository = new SectionRepository($registry);
+        $this->sectionRepository = new SectionRepository($registry, new NullLogger());
         $this->volumeRepository = new VolumeRepository($registry, $this->createStub(PapersRepository::class), $this->createStub(VolumePaperRepository::class), new NullLogger());
 
         $this->insertData();

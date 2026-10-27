@@ -51,7 +51,7 @@ trait QueryTrait
         $yFilters = array_unique($yFilters);
 
         return array_filter($yFilters,
-            // Supprime à la fois les valeurs nulles et les valeurs vides
+            // removes both null and empty values
             static fn($val): bool => !empty($val));
 
     }
