@@ -11,31 +11,27 @@ use App\Security\Voter\PapersVoter;
 use Doctrine\Common\Collections\ArrayCollection;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 
 class PapersVoterTest extends TestCase
 {
-    private Security&MockObject $security;
     private PaperConflictsRepository&MockObject $paperConflictsRepository;
     private PapersVoter $voter;
 
     protected function setUp(): void
     {
-        $this->security = $this->createMock(Security::class);
         $this->paperConflictsRepository = $this->createMock(PaperConflictsRepository::class);
-        $this->voter = new PapersVoter($this->security, $this->paperConflictsRepository);
+        $this->voter = new PapersVoter($this->paperConflictsRepository);
     }
 
     // ------------------------------------------------------------------ helpers
 
-    private function makeUser(int $uid, array $roles = []): User&MockObject
+    private function makeUser(int $uid, array $roles = [], ?int $currentJournalId = null): User&MockObject
     {
         $user = $this->createMock(User::class);
         $user->method('getUid')->willReturn($uid);
-        $user->method('hasRole')->willReturnCallback(
-            static fn($role): bool => in_array('ROLE_' . strtoupper((string) $role), $roles, true)
-        );
+        $user->method('getCurrentJournalID')->willReturn($currentJournalId);
+        $user->method('getRoles')->willReturn($roles);
         return $user;
     }
 
@@ -111,7 +107,6 @@ class PapersVoterTest extends TestCase
 
     public function testSupportsReturnsTrueForValidAttributeAndPaper(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(1);
         $paper = $this->makePaper(1);
         $token = $this->makeToken($user);
@@ -121,7 +116,6 @@ class PapersVoterTest extends TestCase
 
     public function testAbstainsForUnknownAttribute(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(1);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(1);
@@ -130,7 +124,6 @@ class PapersVoterTest extends TestCase
 
     public function testAbstainsForNonPaperSubject(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(1);
         $token = $this->makeToken($user);
         $this->assertSame(0, $this->voter->vote($token, new \stdClass(), [PapersVoter::PAPERS_VIEW]));
@@ -138,23 +131,33 @@ class PapersVoterTest extends TestCase
 
     // ------------------------------------------------------------------ ROLE_EPIADMIN
 
-    public function testEpiAdminIsAlwaysGranted(): void
+    public function testEpiAdminOfTheJournalIsAlwaysGranted(): void
     {
-        $this->security->method('isGranted')->willReturnCallback(
-            static fn($role): bool => $role === 'ROLE_EPIADMIN'
-        );
-        $user  = $this->makeUser(99);
+        $user  = $this->makeUser(99, ['ROLE_EPIADMIN']);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(1);
 
-        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_EDIT]));
+        foreach ([PapersVoter::PAPERS_VIEW, PapersVoter::PAPERS_EDIT, PapersVoter::PAPERS_MANAGE, PapersVoter::PAPERS_REVIEW, PapersVoter::PAPERS_FOLLOW] as $attribute) {
+            $this->assertSame(1, $this->voter->vote($token, $paper, [$attribute]), $attribute);
+        }
+    }
+
+    /**
+     * As in the gpl, root is never in conflict of interest, even after answering "yes".
+     */
+    public function testEpiAdminOfTheJournalIsNeverInConflict(): void
+    {
+        $token = $this->makeToken($this->makeUser(99, ['ROLE_EPIADMIN']));
+        $conflicts = new ArrayCollection(['yes' => [99 => new PaperConflicts()]]);
+        $paper = $this->makePaper(1, coiEnabled: true, conflicts: $conflicts);
+
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_MANAGE]));
     }
 
     // ------------------------------------------------------------------ anonymous user
 
     public function testAnonymousUserIsDenied(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $token = $this->createMock(TokenInterface::class);
         $token->method('getUser')->willReturn(null);
         $paper = $this->makePaper(1);
@@ -166,11 +169,7 @@ class PapersVoterTest extends TestCase
 
     public function testAdminWithoutSpecificRolesIsGranted(): void
     {
-        $this->security->method('isGranted')->willReturnCallback(
-            static fn($role): bool => $role === 'ROLE_ADMINISTRATOR'
-        );
-        $user = $this->makeUser(42);
-        $user->method('hasRole')->willReturn(false);
+        $user = $this->makeUser(42, ['ROLE_ADMINISTRATOR']);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(1, 1);
 
@@ -180,13 +179,7 @@ class PapersVoterTest extends TestCase
     /** Admin who also has a specific role falls through to attribute-level checks. */
     public function testAdminWithSecretaryRoleFallsThroughToAttributeChecks(): void
     {
-        $this->security->method('isGranted')->willReturnCallback(
-            static fn($role): bool => in_array($role, ['ROLE_ADMINISTRATOR', 'ROLE_SECRETARY'], true)
-        );
-        $user = $this->makeUser(42);
-        $user->method('hasRole')->willReturnCallback(
-            static fn($role): bool => $role === User::ROLE_SECRETARY
-        );
+        $user = $this->makeUser(42, ['ROLE_ADMINISTRATOR', 'ROLE_SECRETARY']);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(1, 1);
 
@@ -197,7 +190,6 @@ class PapersVoterTest extends TestCase
 
     public function testAuthorCanViewOwnPaper(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(10);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(10);
@@ -207,7 +199,6 @@ class PapersVoterTest extends TestCase
 
     public function testCoAuthorCanViewPaper(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(20);
         $paper = $this->makePaper(10, coAuthors: [20 => []]);
         $token = $this->makeToken($user);
@@ -217,7 +208,6 @@ class PapersVoterTest extends TestCase
 
     public function testEditorCanViewPaper(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(30);
         $paper = $this->makePaper(10, editors: [30 => []]);
         $token = $this->makeToken($user);
@@ -227,7 +217,6 @@ class PapersVoterTest extends TestCase
 
     public function testReviewerCanViewPaper(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(31);
         $paper = $this->makePaper(10, reviewers: [31 => []]);
         $token = $this->makeToken($user);
@@ -237,7 +226,6 @@ class PapersVoterTest extends TestCase
 
     public function testCopyEditorCanViewPaper(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(32);
         $paper = $this->makePaper(10, copyEditors: [32 => []]);
         $token = $this->makeToken($user);
@@ -247,7 +235,6 @@ class PapersVoterTest extends TestCase
 
     public function testSecretaryCanViewAnyPaper(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(99, ['ROLE_SECRETARY']);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(1);
@@ -257,7 +244,6 @@ class PapersVoterTest extends TestCase
 
     public function testUnrelatedUserCannotViewPaper(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(99);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(10);
@@ -269,10 +255,7 @@ class PapersVoterTest extends TestCase
 
     public function testSecretaryCanEdit(): void
     {
-        $this->security->method('isGranted')->willReturnCallback(
-            static fn($role): bool => $role === 'ROLE_SECRETARY'
-        );
-        $user  = $this->makeUser(50);
+        $user  = $this->makeUser(50, ['ROLE_SECRETARY']);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(10);
 
@@ -281,7 +264,6 @@ class PapersVoterTest extends TestCase
 
     public function testAuthorCanEditOwnPaper(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(10);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(10);
@@ -291,7 +273,6 @@ class PapersVoterTest extends TestCase
 
     public function testCopyEditorCanEdit(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(60);
         $paper = $this->makePaper(10, copyEditors: [60 => []]);
         $token = $this->makeToken($user);
@@ -301,7 +282,6 @@ class PapersVoterTest extends TestCase
 
     public function testPaperEditorCanEdit(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(61);
         $paper = $this->makePaper(10, editors: [61 => []]);
         $token = $this->makeToken($user);
@@ -313,7 +293,6 @@ class PapersVoterTest extends TestCase
 
     public function testAuthorCannotManageOwnPaper(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(10);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(10);
@@ -323,10 +302,7 @@ class PapersVoterTest extends TestCase
 
     public function testSecretaryCanManagePaperByOtherAuthor(): void
     {
-        $this->security->method('isGranted')->willReturnCallback(
-            static fn($role): bool => $role === 'ROLE_SECRETARY'
-        );
-        $user  = $this->makeUser(99);
+        $user  = $this->makeUser(99, ['ROLE_SECRETARY']);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(10);
 
@@ -337,7 +313,6 @@ class PapersVoterTest extends TestCase
 
     public function testAuthorCannotReviewOwnPaper(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(10, ['ROLE_SECRETARY']);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(10);
@@ -347,7 +322,6 @@ class PapersVoterTest extends TestCase
 
     public function testReviewerCanReviewPaper(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(40);
         $paper = $this->makePaper(10, reviewers: [40 => []]);
         $token = $this->makeToken($user);
@@ -357,7 +331,6 @@ class PapersVoterTest extends TestCase
 
     public function testSecretaryCanReviewOtherAuthorPaper(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(99, ['ROLE_SECRETARY']);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(10);
@@ -367,28 +340,172 @@ class PapersVoterTest extends TestCase
 
     // ------------------------------------------------------------------ canFollow()
 
-    public function testEditorWithConflictCanFollow(): void
+    public function testEditorWithoutConflictCanFollow(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(70, ['ROLE_EDITOR']);
         $token = $this->makeToken($user);
-
-        // COI enabled, user 70 NOT in 'no' group → hasConflict = true → canFollow = true (editor with conflict)
-        $conflicts = new ArrayCollection(['no' => [99 => new PaperConflicts()]]);
-        $paper     = $this->makePaper(10, coiEnabled: true, conflicts: $conflicts);
+        // COI disabled → no conflict → the editor can follow the paper
+        $paper = $this->makePaper(10);
 
         $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_FOLLOW]));
     }
 
-    public function testEditorWithoutConflictCannotFollow(): void
+    public function testEditorWithConflictCannotFollow(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(70, ['ROLE_EDITOR']);
         $token = $this->makeToken($user);
-        // COI disabled → no conflict → canFollow returns false
-        $paper = $this->makePaper(10);
+
+        // COI enabled, user 70 NOT in 'no' group → hasConflict = true → cannot follow
+        $conflicts = new ArrayCollection(['no' => [99 => new PaperConflicts()]]);
+        $paper     = $this->makePaper(10, coiEnabled: true, conflicts: $conflicts);
 
         $this->assertSame(-1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_FOLLOW]));
+    }
+
+    public function testNonEditorCannotFollow(): void
+    {
+        $token = $this->makeToken($this->makeUser(70));
+
+        $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(10), [PapersVoter::PAPERS_FOLLOW]));
+    }
+
+    // ------------------------------------------------------------------ journal of the token
+
+    /**
+     * The roles of a token are those of its journal: they do not apply to a paper of another one.
+     */
+    public function testTokenAdministratorOfAnotherJournalIsDenied(): void
+    {
+        $user = $this->makeUser(42, ['ROLE_ADMINISTRATOR'], currentJournalId: 2);
+        $token = $this->makeToken($user);
+
+        $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(1, rvid: 1), [PapersVoter::PAPERS_MANAGE]));
+    }
+
+    public function testTokenSecretaryOfAnotherJournalIsDenied(): void
+    {
+        $user = $this->makeUser(42, ['ROLE_SECRETARY'], currentJournalId: 2);
+        $token = $this->makeToken($user);
+
+        foreach ([PapersVoter::PAPERS_VIEW, PapersVoter::PAPERS_EDIT, PapersVoter::PAPERS_MANAGE, PapersVoter::PAPERS_REVIEW] as $attribute) {
+            $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(1, rvid: 1), [$attribute]), $attribute);
+        }
+    }
+
+    public function testTokenAdministratorOfThePaperJournalIsGranted(): void
+    {
+        $user = $this->makeUser(42, ['ROLE_ADMINISTRATOR'], currentJournalId: 1);
+        $token = $this->makeToken($user);
+
+        $this->assertSame(1, $this->voter->vote($token, $this->makePaper(1, rvid: 1), [PapersVoter::PAPERS_MANAGE]));
+    }
+
+    /**
+     * As in the gpl, epiadmin is a role of a journal: it does not apply to the papers of another one.
+     */
+    public function testEpiAdminOfAnotherJournalIsDenied(): void
+    {
+        $user = $this->makeUser(42, ['ROLE_EPIADMIN'], currentJournalId: 2);
+        $token = $this->makeToken($user);
+
+        $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(1, rvid: 1), [PapersVoter::PAPERS_MANAGE]));
+    }
+
+    /**
+     * A user loaded from the database who is epiadmin of another journal only.
+     */
+    public function testUserEpiAdminOfAnotherJournalOnlyIsDenied(): void
+    {
+        $user = $this->createMock(User::class);
+        $user->method('getUid')->willReturn(42);
+        $user->method('getCurrentJournalID')->willReturn(null);
+        $user->method('getRoles')->willReturnCallback(
+            static fn(?int $rvId = null): array => $rvId === 2 ? ['ROLE_EPIADMIN'] : ['ROLE_USER']
+        );
+        $token = $this->makeToken($user);
+
+        $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(1, rvid: 1), [PapersVoter::PAPERS_MANAGE]));
+        $this->assertSame(1, $this->voter->vote($token, $this->makePaper(1, rvid: 2), [PapersVoter::PAPERS_MANAGE]));
+    }
+
+    /**
+     * A user loaded from the database (no journal of a token): their roles in the journal of the paper.
+     */
+    public function testUserRolesAreThoseOfTheJournalOfThePaper(): void
+    {
+        $user = $this->createMock(User::class);
+        $user->method('getUid')->willReturn(42);
+        $user->method('getCurrentJournalID')->willReturn(null);
+        $user->method('getRoles')->willReturnCallback(
+            static fn(?int $rvId = null): array => $rvId === 2 ? ['ROLE_SECRETARY'] : ['ROLE_USER']
+        );
+        $token = $this->makeToken($user);
+
+        $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(1, rvid: 1), [PapersVoter::PAPERS_EDIT]));
+        $this->assertSame(1, $this->voter->vote($token, $this->makePaper(1, rvid: 2), [PapersVoter::PAPERS_EDIT]));
+    }
+
+    /**
+     * The roles inherit each other as in Episciences_Auth (gpl): a chief editor is also a secretary.
+     */
+    public function testChiefEditorInheritsTheSecretaryRole(): void
+    {
+        $token = $this->makeToken($this->makeUser(42, ['ROLE_CHIEF_EDITOR'], currentJournalId: 1));
+
+        $this->assertSame(1, $this->voter->vote($token, $this->makePaper(1, rvid: 1), [PapersVoter::PAPERS_EDIT]));
+        $this->assertSame(1, $this->voter->vote($token, $this->makePaper(1, rvid: 1), [PapersVoter::PAPERS_VIEW]));
+    }
+
+    /**
+     * As in Episciences_Auth::isEditor (gpl), a secretary is not an editor (unlike the Symfony role_hierarchy).
+     */
+    public function testSecretaryIsNotAnEditorToFollow(): void
+    {
+        $token = $this->makeToken($this->makeUser(42, ['ROLE_SECRETARY'], currentJournalId: 1));
+
+        $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(1, rvid: 1), [PapersVoter::PAPERS_FOLLOW]));
+    }
+
+    /**
+     * Only the journal roles are scoped: being the author of the paper is not a journal role.
+     */
+    public function testAuthorIsGrantedWhateverTheJournalOfTheToken(): void
+    {
+        $token = $this->makeToken($this->makeUser(10, ['ROLE_MEMBER'], currentJournalId: 2));
+
+        $this->assertSame(1, $this->voter->vote($token, $this->makePaper(10, rvid: 1), [PapersVoter::PAPERS_VIEW]));
+    }
+
+    // ------------------------------------------------------------------ administrator and conflicts of interest
+
+    public function testAdminWhoAnsweredYesToTheConflictIsDenied(): void
+    {
+        $token = $this->makeToken($this->makeUser(42, ['ROLE_ADMINISTRATOR']));
+        $conflicts = new ArrayCollection(['yes' => [42 => new PaperConflicts()]]);
+        $paper = $this->makePaper(1, coiEnabled: true, conflicts: $conflicts);
+
+        $this->assertSame(-1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_MANAGE]));
+    }
+
+    /**
+     * An administrator only cannot declare a conflict: without an explicit "yes", they are granted.
+     */
+    public function testAdminWhoAnsweredLaterOrNothingIsGranted(): void
+    {
+        $token = $this->makeToken($this->makeUser(42, ['ROLE_ADMINISTRATOR']));
+        $conflicts = new ArrayCollection(['later' => [42 => new PaperConflicts()]]);
+        $paper = $this->makePaper(1, coiEnabled: true, conflicts: $conflicts);
+
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_MANAGE]));
+    }
+
+    public function testAdminAnswerIsIgnoredWhenCoiDisabled(): void
+    {
+        $token = $this->makeToken($this->makeUser(42, ['ROLE_ADMINISTRATOR']));
+        $conflicts = new ArrayCollection(['yes' => [42 => new PaperConflicts()]]);
+        $paper = $this->makePaper(1, coiEnabled: false, conflicts: $conflicts);
+
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_MANAGE]));
     }
 
     // ------------------------------------------------------------------ hasConflict() — null-safety regression
@@ -398,7 +515,6 @@ class PapersVoterTest extends TestCase
      */
     public function testHasConflictDoesNotThrowWhenNoNoGroup(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(70);
         $token = $this->makeToken($user);
 
@@ -413,7 +529,6 @@ class PapersVoterTest extends TestCase
 
     public function testNoConflictWhenCoiDisabled(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(10);
         $token = $this->makeToken($user);
         $paper = $this->makePaper(10); // COI disabled by default
@@ -423,7 +538,6 @@ class PapersVoterTest extends TestCase
 
     public function testUserInNoGroupHasNoConflict(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(70);
         $token = $this->makeToken($user);
 
@@ -439,7 +553,6 @@ class PapersVoterTest extends TestCase
 
     public function testV2ArticleLoadsConflictsByPaperIdWhenCoiEnabled(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(70);
         $token = $this->makeToken($user);
 
@@ -461,7 +574,6 @@ class PapersVoterTest extends TestCase
 
     public function testV2ArticleWithoutNoGroupIsDenied(): void
     {
-        $this->security->method('isGranted')->willReturn(false);
         $user  = $this->makeUser(70);
         $token = $this->makeToken($user);
 
