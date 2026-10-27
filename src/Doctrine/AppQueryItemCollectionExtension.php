@@ -252,6 +252,8 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     /**
      * Scope of the papers listed to a connected user (`scope` query parameter, validated by its schema):
      * the papers opened by their role by default.
+     *
+     * @param array<string, mixed> $context
      */
     private function paperScope(array $context): string
     {
