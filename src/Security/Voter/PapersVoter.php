@@ -69,9 +69,9 @@ class PapersVoter extends Voter
         $isEditor = array_key_exists($authenticatedUser->getUid(), $paper->getEditors());
         $isReviewer = array_key_exists($authenticatedUser->getUid(), $paper->getReviewers());
         $isCopyEditor = array_key_exists($authenticatedUser->getUid(), $paper->getCopyEditors());
-        $isCoAuthor = array_key_exists($authenticatedUser->getUid(), $paper->getCoAuthors());
 
-        // As on the member page of the paper in the gpl, its author always sees its details
+        // As on the member page of the paper in the gpl, its author always sees its details; its
+        // co-authors only open the page (isAllowedToSeeNoPublicDetails: isOwner, not isCoauthor)
         if ($paper->getUid() === $authenticatedUser->getUid()) {
             return true;
         }
@@ -81,7 +81,6 @@ class PapersVoter extends Voter
             (
                 $this->isSecretary($authenticatedUser, $paper) ||
                 (
-                    $isCoAuthor ||
                     $isCopyEditor ||
                     $isReviewer ||
                     $isEditor

@@ -197,13 +197,17 @@ class PapersVoterTest extends TestCase
         $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
     }
 
-    public function testCoAuthorCanViewPaper(): void
+    /**
+     * As on the page of a paper in the gpl, the non-public details are shown to its author (isOwner),
+     * not to its co-authors.
+     */
+    public function testCoAuthorCannotViewPaperDetails(): void
     {
         $user  = $this->makeUser(20);
         $paper = $this->makePaper(10, coAuthors: [20 => []]);
         $token = $this->makeToken($user);
 
-        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+        $this->assertSame(-1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
     }
 
     public function testEditorCanViewPaper(): void
@@ -537,12 +541,12 @@ class PapersVoterTest extends TestCase
 
     public function testUserInNoGroupHasNoConflict(): void
     {
-        $user  = $this->makeUser(70);
+        $user  = $this->makeUser(70, ['ROLE_EDITOR']);
         $token = $this->makeToken($user);
 
-        // uid 70 IS in the 'no' group → no conflict → can view if co-author
+        // uid 70 IS in the 'no' group → no conflict → can view as assigned editor
         $conflicts = new ArrayCollection(['no' => [70 => new PaperConflicts()]]);
-        $paper     = $this->makePaper(10, coAuthors: [70 => []], coiEnabled: true, conflicts: $conflicts);
+        $paper     = $this->makePaper(10, editors: [70 => []], coiEnabled: true, conflicts: $conflicts);
 
         $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
     }
@@ -593,10 +597,10 @@ class PapersVoterTest extends TestCase
     /**
      * A user who cannot declare a conflict (no editorial role) is never in conflict, even without answer.
      */
-    public function testCoAuthorWithoutEditorialRoleIsNeverInConflict(): void
+    public function testReviewerWithoutEditorialRoleViewsWithoutAnswer(): void
     {
         $token = $this->makeToken($this->makeUser(70));
-        $paper = $this->makePaper(10, coAuthors: [70 => []], coiEnabled: true, conflicts: new ArrayCollection());
+        $paper = $this->makePaper(10, reviewers: [70 => []], coiEnabled: true, conflicts: new ArrayCollection());
 
         $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
     }

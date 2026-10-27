@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tightened the access checks of the papers voter (confidential fields of `GET /api/papers/{docid}`): every role, `epiadmin` included, is now checked in the journal of the paper as in Episciences (the roles of a token only apply to its journal; epiadmin > chief editor > administrator > secretary and editor); the epiadmin of the journal is never in conflict of interest; an administrator who declared a conflict of interest on a paper is no longer granted; `papers_follow` is granted to the editors without a conflict of interest.
 - Papers voter: the conflicts of interest follow Episciences: only the editorial roles allowed to declare a conflict (copy editor, guest editor, editor, secretary, editor in chief) are in conflict until they answer "no" (no answer counts as "later"), an administrator only when they answered "yes", the other users (authors, reviewers) never; a secretary in conflict no longer sees the confidential fields.
 - Papers voter: as on the member page of Episciences, the author of a paper always views its details (`papers_view`), even with an editorial role in conflict of interest.
+- Papers voter: as on the page of a paper in Episciences, its non-public details (`papers_view`) are shown to its author, not to its co-authors.
 ### Added
 ### Changed
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.
