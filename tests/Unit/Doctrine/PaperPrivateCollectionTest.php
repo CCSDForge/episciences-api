@@ -236,7 +236,7 @@ class PaperPrivateCollectionTest extends TestCase
 
         self::assertStringContainsString('uAss.status = :activeAssignment', $where);
         self::assertStringContainsString('NOT(EXISTS(SELECT later_uAss.id', $where);
-        self::assertStringContainsString('later_uAss.roleid = uAss.roleid AND later_uAss.when > uAss.when', $where);
+        self::assertStringContainsString('later_uAss.roleid = uAss.roleid AND (later_uAss.when > uAss.when OR (later_uAss.when = uAss.when AND later_uAss.id > uAss.id))', $where);
         self::assertSame(UserAssignment::STATUS_ACTIVE, $this->parameter($queryBuilder, 'activeAssignment'));
     }
 

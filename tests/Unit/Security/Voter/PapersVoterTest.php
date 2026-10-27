@@ -126,9 +126,15 @@ class PapersVoterTest extends TestCase
         return $result;
     }
 
-    private function assignment(string $status, string $when): UserAssignment
+    private function assignment(string $status, string $when, ?int $id = null): UserAssignment
     {
-        return new UserAssignment()->setStatus($status)->setWhen(new \DateTimeImmutable($when));
+        $assignment = new UserAssignment()->setStatus($status)->setWhen(new \DateTimeImmutable($when));
+
+        if ($id !== null) {
+            new \ReflectionProperty(UserAssignment::class, 'id')->setValue($assignment, $id);
+        }
+
+        return $assignment;
     }
 
     private function makeToken(User&MockObject $user): TokenInterface&MockObject
@@ -813,6 +819,35 @@ class PapersVoterTest extends TestCase
         $this->assertSame($expected, $this->voter->vote($token, $paper, [$attribute]));
     }
 
+    /**
+     * @return array<string, array{string, string, int}> status of the assignment of id 1, of id 2, expected vote
+     */
+    public static function sameDateAssignmentsProvider(): array
+    {
+        return [
+            'unassigned after' => [UserAssignment::STATUS_ACTIVE, UserAssignment::STATUS_INACTIVE, -1],
+            'reassigned after' => [UserAssignment::STATUS_INACTIVE, UserAssignment::STATUS_ACTIVE, 1],
+        ];
+    }
+
+    /**
+     * For two assignments of the same date, the latest id wins, as the row kept by the gpl, whatever
+     * their order.
+     */
+    #[DataProvider('sameDateAssignmentsProvider')]
+    public function testTheLatestIdWinsForTheSameDate(string $firstStatus, string $secondStatus, int $expected): void
+    {
+        $token = $this->makeToken($this->makeUser(70));
+        $first = $this->assignment($firstStatus, '2024-06-01 10:00:00', 1);
+        $second = $this->assignment($secondStatus, '2024-06-01 10:00:00', 2);
+
+        foreach ([[$first, $second], [$second, $first]] as $history) {
+            $paper = $this->makePaper(10, editors: [70 => $history]);
+
+            $this->assertSame($expected, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_MANAGE]));
+        }
+    }
+
     // ------------------------------------------------------------------ own paper of an administrator
 
     /**
@@ -858,6 +893,19 @@ class PapersVoterTest extends TestCase
 
         $this->assertSame(1, $this->voter->vote($token, $previousVersion, [PapersVoter::PAPERS_VIEW]));
         $this->assertSame(1, $this->voter->vote($token, $previousVersion, [PapersVoter::PAPERS_MANAGE]));
+    }
+
+    public function testResetForgetsTheLatestVersions(): void
+    {
+        $token = $this->makeToken($this->makeUser(70, ['ROLE_EDITOR']));
+        $previousVersion = $this->makePaper(10);
+        $previousVersion->method('getDocid')->willReturn(42);
+        $this->papersRepository->expects($this->exactly(2))->method('findLatestVersion')->willReturn(null);
+
+        $this->voter->vote($token, $previousVersion, [PapersVoter::PAPERS_MANAGE]);
+        $this->voter->vote($token, $previousVersion, [PapersVoter::PAPERS_MANAGE]);
+        $this->voter->reset();
+        $this->voter->vote($token, $previousVersion, [PapersVoter::PAPERS_MANAGE]);
     }
 
     public function testCopyEditorOfTheLatestVersionHandlesThePreviousOnes(): void

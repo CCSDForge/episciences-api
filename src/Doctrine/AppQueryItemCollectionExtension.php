@@ -280,7 +280,8 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
     /**
      * Applies the journal (rvcode) and publication year filters to the papers visible to a connected user.
-     * The papers are already restricted to the journal of the token: a journal other than this one returns no paper.
+     * With scope=workspace, the papers are restricted to the journal of the token: a journal other than this one
+     * returns no paper; with scope=all, it returns the public papers of this journal.
      */
     private function applyPrivatePaperFilters(QueryBuilder $queryBuilder, string $alias, array $context = []): void
     {
@@ -427,8 +428,9 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     }
 
     /**
-     * DQL of the assignments of the same user, paper and role made after the given one: when there is
-     * none, the given assignment is the latest one.
+     * DQL of the assignments of the same user, paper and role made after the given one (the latest id
+     * first for the same date, as the row kept by the gpl): when there is none, the given assignment is
+     * the latest one.
      */
     private function laterAssignmentDql(QueryBuilder $queryBuilder, string $assignmentAlias): string
     {
@@ -441,7 +443,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             ->andWhere("$later.item = $assignmentAlias.item")
             ->andWhere("$later.uid = $assignmentAlias.uid")
             ->andWhere("$later.roleid = $assignmentAlias.roleid")
-            ->andWhere("$later.when > $assignmentAlias.when")
+            ->andWhere("$later.when > $assignmentAlias.when OR ($later.when = $assignmentAlias.when AND $later.id > $assignmentAlias.id)")
             ->getDQL();
     }
 

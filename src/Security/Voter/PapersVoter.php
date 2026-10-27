@@ -11,8 +11,9 @@ use App\Repository\PapersRepository;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
+use Symfony\Contracts\Service\ResetInterface;
 
-class PapersVoter extends Voter
+class PapersVoter extends Voter implements ResetInterface
 {
     public const PAPERS_EDIT = 'papers_edit';
     public const PAPERS_VIEW = 'papers_view';
@@ -33,6 +34,14 @@ class PapersVoter extends Voter
         private readonly PaperConflictsRepository $paperConflictsRepository,
         private readonly PapersRepository $papersRepository
     ) {
+    }
+
+    /**
+     * Forgets the latest versions between two requests (long-running processes).
+     */
+    public function reset(): void
+    {
+        $this->latestVersions = [];
     }
 
     protected function supports(string $attribute, mixed $subject): bool
@@ -220,6 +229,7 @@ class PapersVoter extends Voter
      * Whether the user is currently assigned to the paper in one of its roles (editor, copy editor,
      * reviewer): their latest assignment is active, as Episciences_PapersManager::getEditors() and
      * getReviewers() in the gpl. An editor unassigned or a reviewer who declined is no longer assigned.
+     * For the same date, the latest id wins (the row kept by the gpl).
      *
      * @param array<int, mixed> $assignmentsByUid assignments of the paper in this role, grouped by uid
      */
@@ -228,12 +238,19 @@ class PapersVoter extends Voter
         $latest = null;
 
         foreach ((array)($assignmentsByUid[$authenticatedUser->getUid()] ?? []) as $assignment) {
-            if ($assignment instanceof UserAssignment && ($latest === null || $assignment->getWhen() > $latest->getWhen())) {
+            if ($assignment instanceof UserAssignment && ($latest === null || $this->isAfter($assignment, $latest))) {
                 $latest = $assignment;
             }
         }
 
         return $latest?->getStatus() === UserAssignment::STATUS_ACTIVE;
+    }
+
+    private function isAfter(UserAssignment $assignment, UserAssignment $other): bool
+    {
+        return
+            $assignment->getWhen() > $other->getWhen() ||
+            ($assignment->getWhen() == $other->getWhen() && $assignment->getId() > $other->getId());
     }
 
     /**
