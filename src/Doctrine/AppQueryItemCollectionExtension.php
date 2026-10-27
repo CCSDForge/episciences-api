@@ -313,11 +313,18 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                 ->setParameter('type', UserAssignment::ITEM_PAPER)
                 ->setParameter('to', $currentUser->getUid())
                 ->setParameter('activeAssignment', UserAssignment::STATUS_ACTIVE)
-                ->setParameter('latestVersionRoles', [UserAssignment::ROLE_EDITOR, UserAssignment::ROLE_COPY_EDITOR])
+                ->setParameter('managingRoles', [UserAssignment::ROLE_EDITOR, UserAssignment::ROLE_COPY_EDITOR])
                 ->orderBy("$alias.when", \SortDirection::Descending);
 
+            $queryBuilder->setParameter('closedStatuses', [Paper::STATUS_DELETED, Paper::STATUS_REMOVED]);
+
             return $access->add($expr->orX(
-                $expr->exists($this->currentAssignmentDql($queryBuilder, 'uAss', "$alias.docid")),
+                // a deleted or removed paper is only shown by its administration page, to its editors and copy editors
+                $expr->andX(
+                    "$alias.status NOT IN (:closedStatuses)",
+                    $expr->exists($this->currentAssignmentDql($queryBuilder, 'uAss', "$alias.docid"))
+                ),
+                $expr->exists($this->currentAssignmentDql($queryBuilder, 'eAss', "$alias.docid", true)),
                 $expr->exists($latestVersionAssignment->getDQL())
             ));
         }
@@ -334,18 +341,22 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         $queryBuilder
             ->setParameter('currentUser', $currentUser->getUid())
             ->setParameter('coAuthorItem', UserAssignment::ITEM_PAPER)
-            ->setParameter('coAuthorRole', UserAssignment::ROLE_CO_AUTHOR);
+            ->setParameter('coAuthorRole', UserAssignment::ROLE_CO_AUTHOR)
+            ->setParameter('closedStatuses', [Paper::STATUS_DELETED, Paper::STATUS_REMOVED]);
 
         return $access->add($expr->orX(
             "$alias.user= :currentUser",
             $expr->exists($coAuthorAssignment->getDQL())
-        ));
+        ))->add(
+            // the page of a deleted or removed paper is closed to its author (paper/view in the gpl)
+            "$alias.status NOT IN (:closedStatuses)"
+        );
     }
 
     /**
      * DQL of the current assignments of the connected user (:to) to a paper: the latest assignment of
      * the user in a role, active (as Episciences_PapersManager::getEditors() and getReviewers() in the
-     * gpl), restricted to the editors and copy editors (:latestVersionRoles) when asked.
+     * gpl), restricted to the editors and copy editors (:managingRoles) when asked.
      */
     private function currentAssignmentDql(QueryBuilder $queryBuilder, string $assignmentAlias, string $docIdExpression, bool $editorsOnly = false): string
     {
@@ -372,7 +383,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             )));
 
         if ($editorsOnly) {
-            $assignment->andWhere("$assignmentAlias.roleid IN (:latestVersionRoles)");
+            $assignment->andWhere("$assignmentAlias.roleid IN (:managingRoles)");
         }
 
         return $assignment->getDQL();

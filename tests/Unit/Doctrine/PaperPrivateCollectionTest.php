@@ -253,11 +253,36 @@ class PaperPrivateCollectionTest extends TestCase
         self::assertStringContainsString('latestVersion.paperid = o.paperid', $where);
         self::assertStringContainsString('newerVersion.when > latestVersion.when', $where);
         self::assertStringContainsString('vAss.itemid = latestVersion.docid', $where);
-        self::assertStringContainsString('vAss.roleid IN (:latestVersionRoles)', $where);
+        self::assertStringContainsString('vAss.roleid IN (:managingRoles)', $where);
         self::assertSame(
             [UserAssignment::ROLE_EDITOR, UserAssignment::ROLE_COPY_EDITOR],
-            $this->parameter($queryBuilder, 'latestVersionRoles')
+            $this->parameter($queryBuilder, 'managingRoles')
         );
+    }
+
+    /**
+     * As in the gpl, a deleted or removed paper is closed to its author and co-authors.
+     */
+    public function testAuthorNoLongerSeesTheirDeletedOrRemovedPapers(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_MEMBER']));
+
+        self::assertStringContainsString('o.status NOT IN (:closedStatuses)', $this->where($queryBuilder));
+        self::assertSame([Paper::STATUS_DELETED, Paper::STATUS_REMOVED], $this->parameter($queryBuilder, 'closedStatuses'));
+    }
+
+    /**
+     * A deleted or removed paper stays readable by its editors and copy editors (administration page of
+     * the gpl), not by its reviewers.
+     */
+    public function testOnlyTheEditorsStillSeeTheDeletedOrRemovedPapersTheyAreAssignedTo(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_REVIEWER']));
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('(o.status NOT IN (:closedStatuses) AND (EXISTS(SELECT uAss.id', $where);
+        self::assertStringContainsString('eAss.roleid IN (:managingRoles)', $where);
+        self::assertSame([Paper::STATUS_DELETED, Paper::STATUS_REMOVED], $this->parameter($queryBuilder, 'closedStatuses'));
     }
 
     public function testAuthorOnlySeesOwnPapersOfTheTokenJournal(): void

@@ -59,7 +59,8 @@ class PapersVoterTest extends TestCase
         bool $coiEnabled = false,
         ?ArrayCollection $conflicts = null,
         int $paperid = 1,
-        array $settings = []
+        array $settings = [],
+        ?int $status = null
     ): Paper&MockObject {
         $settings += ['isCoiEnabled' => $coiEnabled ? '1' : null];
         $review = $this->createMock(Review::class);
@@ -69,6 +70,7 @@ class PapersVoterTest extends TestCase
 
         $paper = $this->createMock(Paper::class);
         $paper->method('getUid')->willReturn($uid);
+        $paper->method('getStatus')->willReturn($status);
         $paper->method('getRvid')->willReturn($rvid);
         $paper->method('getPaperid')->willReturn($paperid);
         $paper->method('getEditors')->willReturn($this->assignments($editors));
@@ -885,5 +887,46 @@ class PapersVoterTest extends TestCase
         $this->papersRepository->method('findLatestVersion')->willReturn($this->makePaper(10, reviewers: [70 => []]));
 
         $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(10), [PapersVoter::PAPERS_VIEW]));
+    }
+
+    // ------------------------------------------------------------------ deleted or removed paper
+
+    /**
+     * @return array<string, array{int, int, string[], array<string, mixed>, array<string, int>}> status, uid, roles, paper assignments, expected vote by attribute
+     */
+    public static function deletedOrRemovedProvider(): array
+    {
+        $view = PapersVoter::PAPERS_VIEW;
+        $manage = PapersVoter::PAPERS_MANAGE;
+        $edit = PapersVoter::PAPERS_EDIT;
+        $review = PapersVoter::PAPERS_REVIEW;
+
+        return [
+            'deleted, its author' => [Paper::STATUS_DELETED, 10, [], [], [$view => -1, $manage => -1, $edit => -1]],
+            'deleted, its reviewer' => [Paper::STATUS_DELETED, 70, [], ['reviewers' => [70 => []]], [$view => -1, $review => -1]],
+            'deleted, secretary' => [Paper::STATUS_DELETED, 70, ['ROLE_SECRETARY'], [], [$view => 1, $manage => 1, $edit => -1, $review => -1]],
+            'removed, assigned editor' => [Paper::STATUS_REMOVED, 70, ['ROLE_EDITOR'], ['editors' => [70 => []]], [$view => 1, $manage => 1, $edit => -1]],
+            'removed, epiadmin' => [Paper::STATUS_REMOVED, 70, ['ROLE_EPIADMIN'], [], [$view => 1, $manage => 1, $edit => -1, $review => -1]],
+            'removed, its author who is secretary' => [Paper::STATUS_REMOVED, 10, ['ROLE_SECRETARY'], [], [$view => -1, $manage => -1]],
+        ];
+    }
+
+    /**
+     * As in the gpl, the page of a deleted or removed paper is closed to everyone, its author included;
+     * its administration page still shows it to the users who manage it, and nobody changes it anymore.
+     *
+     * @param string[] $roles
+     * @param array<string, mixed> $assignments
+     * @param array<string, int> $expected
+     */
+    #[DataProvider('deletedOrRemovedProvider')]
+    public function testDeletedOrRemovedPaper(int $status, int $uid, array $roles, array $assignments, array $expected): void
+    {
+        $token = $this->makeToken($this->makeUser($uid, $roles));
+        $paper = $this->makePaper(10, ...$assignments, status: $status);
+
+        foreach ($expected as $attribute => $vote) {
+            $this->assertSame($vote, $this->voter->vote($token, $paper, [$attribute]), $attribute);
+        }
     }
 }

@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `GET /api/papers`, `GET /api/papers/{docid}` and papers voter: as on Episciences, an editor, copy editor or reviewer is only assigned to a paper through their latest assignment in this role, when it is active: an editor unassigned, a reviewer who declined, was cancelled or is still invited no longer reads the paper nor sees its details as assigned.
 - Papers voter: as on Episciences, nobody manages or reviews their own paper (`papers_manage`, `papers_review`), administrators and epiadmin included.
 - `GET /api/papers`, `GET /api/papers/{docid}` and papers voter: as on Episciences, the editors and copy editors currently assigned to the latest version of a paper also read and handle its previous versions.
+- `GET /api/papers`, `GET /api/papers/{docid}` and papers voter: as on Episciences, a paper deleted by its author or removed by the journal is closed to its author, co-authors and reviewers; it stays readable, confidential fields included, by the users who manage it (secretaries and above, its editors and copy editors), and nobody changes or reviews it anymore (`papers_edit`, `papers_review`).
 ### Added
 ### Changed
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.

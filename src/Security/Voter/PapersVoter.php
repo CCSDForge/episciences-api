@@ -51,6 +51,19 @@ class PapersVoter extends Voter
             return false;
         }
 
+        // A paper deleted by its author or removed by the journal: its page is closed to everyone, its
+        // administration page still shows it to the users who manage it, and nobody changes it anymore
+        // (paper/view, administratepaper/view and findManagementRefusal in the gpl)
+        if (in_array($subject->getStatus(), [Paper::STATUS_DELETED, Paper::STATUS_REMOVED], true)) {
+            if (in_array($attribute, [self::PAPERS_EDIT, self::PAPERS_REVIEW], true)) {
+                return false;
+            }
+
+            if ($attribute === self::PAPERS_VIEW) {
+                $attribute = self::PAPERS_MANAGE;
+            }
+        }
+
         // As on the administration page of the gpl (findManagementRefusal), nobody manages or reviews
         // their own paper, whatever their roles (root and administrators included)
         if (
