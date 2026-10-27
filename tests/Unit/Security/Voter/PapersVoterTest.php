@@ -515,14 +515,13 @@ class PapersVoterTest extends TestCase
      */
     public function testHasConflictDoesNotThrowWhenNoNoGroup(): void
     {
-        $user  = $this->makeUser(70);
+        $user  = $this->makeUser(70, ['ROLE_EDITOR']);
         $token = $this->makeToken($user);
 
         // COI enabled, conflicts collection has NO 'no' key → get('no') returns null
-        $paper = $this->makePaper(10, coiEnabled: true, conflicts: new ArrayCollection());
-        $user->method('hasRole')->willReturn(false);
+        $paper = $this->makePaper(10, editors: [70 => []], coiEnabled: true, conflicts: new ArrayCollection());
 
-        // Must NOT throw TypeError. User not in 'no' group → has conflict → canView false
+        // Must NOT throw TypeError. Editor without answer ("later") → has conflict → canView false
         $result = $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]);
         $this->assertSame(-1, $result);
     }
@@ -544,7 +543,6 @@ class PapersVoterTest extends TestCase
         // uid 70 IS in the 'no' group → no conflict → can view if co-author
         $conflicts = new ArrayCollection(['no' => [70 => new PaperConflicts()]]);
         $paper     = $this->makePaper(10, coAuthors: [70 => []], coiEnabled: true, conflicts: $conflicts);
-        $user->method('hasRole')->willReturn(false);
 
         $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
     }
@@ -567,14 +565,13 @@ class PapersVoterTest extends TestCase
 
         // user 70 is co-author and declared 'no' conflict → no conflict → can view
         $paper = $this->makePaper(10, coAuthors: [70 => []], coiEnabled: true, paperid: $paperid);
-        $user->method('hasRole')->willReturn(false);
 
         $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
     }
 
     public function testV2ArticleWithoutNoGroupIsDenied(): void
     {
-        $user  = $this->makeUser(70);
+        $user  = $this->makeUser(70, ['ROLE_EDITOR']);
         $token = $this->makeToken($user);
 
         // v2 article: conflicts exist for the paperid but the user is NOT in the 'no' group
@@ -585,10 +582,69 @@ class PapersVoterTest extends TestCase
             ->with($paperid)
             ->willReturn([$declaredOther]);
 
-        // user 70 is co-author but has a conflict (not in 'no' group) → denied
-        $paper = $this->makePaper(10, coAuthors: [70 => []], coiEnabled: true, paperid: $paperid);
-        $user->method('hasRole')->willReturn(false);
+        // user 70 is an assigned editor without answer ("later") → conflict → denied
+        $paper = $this->makePaper(10, editors: [70 => []], coiEnabled: true, paperid: $paperid);
 
         $this->assertSame(-1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+    }
+
+    // ------------------------------------------------------------------ conflicts of interest as in the gpl
+
+    /**
+     * A user who cannot declare a conflict (no editorial role) is never in conflict, even without answer.
+     */
+    public function testCoAuthorWithoutEditorialRoleIsNeverInConflict(): void
+    {
+        $token = $this->makeToken($this->makeUser(70));
+        $paper = $this->makePaper(10, coAuthors: [70 => []], coiEnabled: true, conflicts: new ArrayCollection());
+
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+    }
+
+    public function testReviewerWithoutEditorialRoleIsNeverInConflict(): void
+    {
+        $token = $this->makeToken($this->makeUser(70));
+        $paper = $this->makePaper(10, reviewers: [70 => []], coiEnabled: true, conflicts: new ArrayCollection());
+
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_REVIEW]));
+    }
+
+    public function testEditorWhoAnsweredLaterIsInConflict(): void
+    {
+        $token = $this->makeToken($this->makeUser(70, ['ROLE_EDITOR']));
+        $conflicts = new ArrayCollection(['later' => [70 => new PaperConflicts()]]);
+        $paper = $this->makePaper(10, editors: [70 => []], coiEnabled: true, conflicts: $conflicts);
+
+        $this->assertSame(-1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+    }
+
+    public function testEditorWhoAnsweredNoIsNotInConflict(): void
+    {
+        $token = $this->makeToken($this->makeUser(70, ['ROLE_EDITOR']));
+        $conflicts = new ArrayCollection(['no' => [70 => new PaperConflicts()]]);
+        $paper = $this->makePaper(10, editors: [70 => []], coiEnabled: true, conflicts: $conflicts);
+
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+    }
+
+    /**
+     * As in the gpl, a secretary in conflict of interest does not see the details of the paper.
+     */
+    public function testSecretaryInConflictCannotView(): void
+    {
+        $token = $this->makeToken($this->makeUser(70, ['ROLE_SECRETARY']));
+        $conflicts = new ArrayCollection(['yes' => [70 => new PaperConflicts()]]);
+        $paper = $this->makePaper(10, coiEnabled: true, conflicts: $conflicts);
+
+        $this->assertSame(-1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+    }
+
+    public function testSecretaryWithoutConflictCanView(): void
+    {
+        $token = $this->makeToken($this->makeUser(70, ['ROLE_SECRETARY']));
+        $conflicts = new ArrayCollection(['no' => [70 => new PaperConflicts()]]);
+        $paper = $this->makePaper(10, coiEnabled: true, conflicts: $conflicts);
+
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
     }
 }

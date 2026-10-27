@@ -48,9 +48,7 @@ class PapersVoter extends Voter
         }
 
         if ($this->hasOnlyAdministratorRole($authenticatedUser, $subject)) {
-            // An administrator only cannot declare a conflict of interest: only an explicit
-            // "yes" answer excludes them (see DefaultController::isConflictDetected in the gpl).
-            return !$this->hasAnswered($authenticatedUser, $subject, PaperConflicts::AVAILABLE_ANSWER['yes']);
+            return !$this->hasConflict($authenticatedUser, $subject);
         }
 
         // check conditions and return true to grant permission
@@ -74,9 +72,9 @@ class PapersVoter extends Voter
         $isCoAuthor = array_key_exists($authenticatedUser->getUid(), $paper->getCoAuthors());
 
         return
-            $this->isSecretary($authenticatedUser, $paper) ||
+            !$this->hasConflict($authenticatedUser, $paper) &&
             (
-                !$this->hasConflict($authenticatedUser, $paper) &&
+                $this->isSecretary($authenticatedUser, $paper) ||
                 (
                     $paper->getUid() === $authenticatedUser->getUid() ||
                     $isCoAuthor ||
@@ -211,32 +209,62 @@ class PapersVoter extends Voter
             !$this->is($authenticatedUser, $paper, User::ROLE_COPY_EDITOR);
     }
 
+    /**
+     * Conflict of interest of the user on the paper, as DefaultController::isConflictDetected in the
+     * gpl, when the conflicts of interest are enabled for the journal: the users allowed to declare
+     * one are in conflict until they answer "no" (no answer counts as "later"), an administrator
+     * only (who cannot declare one) when they answered "yes", the other users and root never.
+     */
     private function hasConflict(User $authenticatedUser, Paper $currentPaper): bool
     {
-        if (!$this->isCoiEnabled($currentPaper)) {
+        if (!$this->isCoiEnabled($currentPaper) || $this->isRoot($authenticatedUser, $currentPaper)) {
             return false;
         }
 
-        return !$this->hasAnswered($authenticatedUser, $currentPaper, PaperConflicts::AVAILABLE_ANSWER['no']);
+        $answer = $this->conflictAnswer($authenticatedUser, $currentPaper);
+
+        if ($this->hasOnlyAdministratorRole($authenticatedUser, $currentPaper)) {
+            return $answer === PaperConflicts::AVAILABLE_ANSWER['yes'];
+        }
+
+        return
+            $this->isAllowedToDeclareConflict($authenticatedUser, $currentPaper) &&
+            in_array($answer, [PaperConflicts::AVAILABLE_ANSWER['yes'], PaperConflicts::AVAILABLE_ANSWER['later']], true);
     }
 
     /**
-     * Whether the user has given this answer to the conflict of interest question of the paper
-     * (always false when the conflicts of interest are disabled for the journal).
+     * Answer of the user to the conflict of interest question of the paper, "later" when they have
+     * not answered (Episciences_Paper::checkConflictResponse in the gpl).
      */
-    private function hasAnswered(User $authenticatedUser, Paper $currentPaper, string $answer): bool
+    private function conflictAnswer(User $authenticatedUser, Paper $currentPaper): string
     {
-        if (!$this->isCoiEnabled($currentPaper)) {
-            return false;
-        }
-
         if ($currentPaper->getPaperid() !== null && !$currentPaper->conflictsLoaded()) {
             $currentPaper->setConflicts($this->paperConflictsRepository->findByPaperId($currentPaper->getPaperid()));
         }
 
-        $answerGroup = $currentPaper->getConflicts()->get($answer);
+        foreach (PaperConflicts::AVAILABLE_ANSWER as $answer) {
+            $answerGroup = $currentPaper->getConflicts()->get($answer);
 
-        return is_array($answerGroup) && array_key_exists($authenticatedUser->getUid(), $answerGroup);
+            if (is_array($answerGroup) && array_key_exists($authenticatedUser->getUid(), $answerGroup)) {
+                return $answer;
+            }
+        }
+
+        return PaperConflicts::AVAILABLE_ANSWER['later'];
+    }
+
+    /**
+     * Editorial roles allowed to declare a conflict of interest, without inheritance
+     * (Episciences_Auth::isAllowedToDeclareConflict in the gpl).
+     */
+    private function isAllowedToDeclareConflict(User $authenticatedUser, Paper $paper): bool
+    {
+        return
+            $this->is($authenticatedUser, $paper, User::ROLE_COPY_EDITOR) ||
+            $this->is($authenticatedUser, $paper, User::ROLE_GUEST_EDITOR) ||
+            $this->is($authenticatedUser, $paper, User::ROLE_EDITOR) ||
+            $this->is($authenticatedUser, $paper, User::ROLE_SECRETARY) ||
+            $this->is($authenticatedUser, $paper, User::ROLE_EDITOR_IN_CHIEF);
     }
 
     private function isCoiEnabled(Paper $currentPaper): bool
