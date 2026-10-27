@@ -9,7 +9,6 @@ use App\Entity\PaperLog;
 use App\Entity\Review;
 use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
-use App\Service\Stats;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Tools\DsnParser;
 use Doctrine\ORM\EntityManager;
@@ -18,6 +17,7 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
+use DoctrineExtensions\Query\Mysql\TimestampDiff;
 use DoctrineExtensions\Query\Mysql\Year;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -58,6 +58,7 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
         $config = ORMSetup::createAttributeMetadataConfig([dirname(__DIR__, 3) . '/src/Entity'], true);
         $config->enableNativeLazyObjects(true);
         $config->addCustomStringFunction('YEAR', Year::class);
+        $config->addCustomStringFunction('TIMESTAMPDIFF', TimestampDiff::class);
 
         $connection = DriverManager::getConnection(new DsnParser(['mysql' => 'pdo_mysql'])->parse($url), $config);
 
@@ -215,17 +216,23 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
     }
 
     /**
-     * Average delays of the dashboard (raw SQL): papers 3 and 11 are last accepted in 2024; an invalid year gives no result.
+     * Delays of the articles: papers 3 and 11 are last accepted in 2024; an invalid year gives no result.
      */
     public function testDelaysAreFilteredOnValidYearsOnly(): void
     {
-        $delays = fn(mixed $years, ?int $rvId = self::RVID): ?array => $this->paperLogRepository->delayBetweenSubmissionAndLatestStatus(PaperLogRepository::DEFAULT_UNIT, Paper::STATUS_STRICTLY_ACCEPTED, null, $years, Stats::DEFAULT_METHOD, $rvId);
+        $delays = fn(mixed $years, ?int $rvId = self::RVID): ?array => $this->paperLogRepository->getArticleDelays(PaperLogRepository::DEFAULT_UNIT, Paper::STATUS_STRICTLY_ACCEPTED, null, $years, $rvId);
+        $years = static fn(?array $rows): array => array_values(array_unique(array_map('intval', array_column($rows ?? [], 'year'))));
 
-        $this->assertSame([2024], array_map('intval', array_column($delays([2024]), 'year')));
-        $this->assertSame([2024], array_map('intval', array_column($delays('2024', null), 'year')), 'Without journal');
+        $this->assertSame([2024], $years($delays([2024])));
+        $this->assertSame([2024], $years($delays('2024', null)), 'Without journal');
         $this->assertSame([], $delays([2023]));
         $this->assertSame([], $delays(['2024', 'abc']));
         $this->assertSame([], $delays('24'));
+
+        // an empty value is no filter
+        foreach (['', '0', 0, []] as $empty) {
+            $this->assertSame($delays(null), $delays($empty), var_export($empty, true));
+        }
     }
 
     /**

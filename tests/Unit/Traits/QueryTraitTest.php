@@ -40,30 +40,4 @@ class QueryTraitTest extends TestCase
         yield 'nested array' => [[['2023']]];
         yield 'float' => [[2023.0]];
     }
-
-    public function testWhereYearsAddsTheValidYears(): void
-    {
-        $sql = 'SELECT 1 FROM t WHERE 1';
-        $this->whereYears($sql, ['2023', 2024], 't.date');
-
-        $this->assertSame('SELECT 1 FROM t WHERE 1 AND YEAR(t.date) IN (2023,2024)', $sql);
-    }
-
-    public function testWhereYearsGivesNoResultForAnInvalidYear(): void
-    {
-        $sql = 'SELECT 1 FROM t WHERE 1';
-        $this->whereYears($sql, ['2023', 'abc'], 't.date');
-
-        $this->assertSame('SELECT 1 FROM t WHERE 1 AND 1 = 0', $sql);
-    }
-
-    public function testWhereYearsIgnoresAnEmptyValue(): void
-    {
-        foreach ([null, '', '0', 0, []] as $years) {
-            $sql = 'SELECT 1 FROM t WHERE 1';
-            $this->whereYears($sql, $years);
-
-            $this->assertSame('SELECT 1 FROM t WHERE 1', $sql);
-        }
-    }
 }

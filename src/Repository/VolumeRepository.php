@@ -5,13 +5,15 @@ namespace App\Repository;
 use App\Entity\Paper;
 use App\Entity\ReviewSetting;
 use App\Entity\Volume;
+use App\Entity\VolumePaper;
 use App\Entity\VolumePaperPosition;
+use App\Traits\CommitteeTrait;
 use App\Traits\ToolsTrait;
 use App\Traits\VolumeTrait;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Exception;
-use Doctrine\DBAL\ParameterType;
+use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
@@ -20,6 +22,7 @@ use Doctrine\ORM\Tools\Pagination\Paginator as DoctrinePaginator;
 
 class VolumeRepository extends AbstractRepository implements RangeInterface
 {
+    use CommitteeTrait;
     use ToolsTrait;
     use VolumeTrait;
 
@@ -86,44 +89,18 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
 
     }
 
-    public function getCommitteeQuery(int $rvId, int $vid): string
-    {
-        $sql = "SELECT CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid`
-                FROM ( SELECT UID, VID, `WHEN`
-                       FROM ( SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua`
-                           INNER JOIN(
-                           SELECT `USER_ASSIGNMENT`.`ITEMID`, MAX(`WHEN`) AS `WHEN`, ITEMID as vid
-                           FROM `USER_ASSIGNMENT`
-                           WHERE (RVID = $rvId) AND (`USER_ASSIGNMENT`.`ITEMID` = $vid) AND(ITEM = 'volume') AND(ROLEID = 'editor')
-                           GROUP BY `ITEMID`, UID
-                           ) AS `r1` ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.`WHEN`
-                                            WHERE (RVID = $rvId) AND (ua.ITEMID = $vid) AND (ITEM = 'volume') AND(ROLEID = 'editor') AND( STATUS = 'active' )
-                                            ) AS `r2`
-                           INNER JOIN VOLUME AS v ON v.RVID = r2.RVID AND v.VID = r2.ITEMID
-                       ) AS `result`
-                    INNER JOIN USER AS `u` ON result.UID = u.UID
-                GROUP BY VID, u.UID, CIV, SCREEN_NAME, ORCID, u.LASTNAME
-                ORDER BY u.LASTNAME ASC;";
-        return $sql;
-
-    }
-
-
+    /**
+     * The editors of the volume, ordered by last name (public: no account identifier)
+     * @return list<array{civ: ?string, screenName: string, orcid: ?string}>
+     */
     public function getCommittee(int $rvId, int $vid): array
     {
         try {
-            $result = $this->getEntityManager()
-                ->getConnection()
-                ->prepare($this->getCommitteeQuery($rvId, $vid))
-                ->executeQuery()
-                ->fetchAllAssociative();
-        } catch (Exception $e) {
+            return $this->committee($rvId, $vid, 'volume', Volume::class, 'vid');
+        } catch (\Exception $e) {
             $this->logger->critical($e->getMessage());
             return [];
         }
-
-        return $result;
-
     }
 
     public function fetchSortedPapers(?int $vid = null): array
@@ -155,11 +132,7 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
             return $sorted;
         }
 
-        $result = $this->getEntityManager()->getConnection()->executeQuery(
-            $this->fetchSortedPapersSql(),
-            ['vids' => $vids, 'obsolete' => Paper::STATUS_OBSOLETE],
-            ['vids' => ArrayParameterType::INTEGER, 'obsolete' => ParameterType::INTEGER]
-        )->fetchAllAssociative();
+        $result = $this->sortedPaperRows($vids);
 
         $processed = [];
 
@@ -201,27 +174,52 @@ class VolumeRepository extends AbstractRepository implements RangeInterface
     }
 
     /**
-     * Papers attached to the volumes either as primary volume (PAPERS.VID) or as secondary volume (VOLUME_PAPER),
-     * ordered by their position in that volume.
-     * Filters are applied in each branch (WHERE) so that the PAPERS / VOLUME_PAPER indexes on VID can be used.
+     * The papers of the volumes (rows VID, DOCID, PAPERID, STATUS, POSITION), obsolete versions excluded:
+     * the papers of which it is the volume and the papers attached to it (VOLUME_PAPER),
+     * ordered by volume, position (the papers without position last), paper and latest version first.
+     *
+     * @param int[] $vids
+     * @return list<array{VID: int, DOCID: int, PAPERID: int, STATUS: int, POSITION: int|null}>
      */
-    private function fetchSortedPapersSql(): string
+    private function sortedPaperRows(array $vids): array
     {
-        return
-            "SELECT t.VID, t.DOCID, t.PAPERID, t.STATUS, t.POSITION
-            FROM (
-                SELECT p.VID AS VID, p.DOCID, p.PAPERID, p.STATUS, vpp.POSITION
-                FROM PAPERS p
-                LEFT JOIN VOLUME_PAPER_POSITION vpp ON (vpp.VID = p.VID AND vpp.PAPERID = p.PAPERID)
-                WHERE p.VID IN (:vids) AND p.STATUS != :obsolete
-                UNION ALL
-                SELECT vp.VID AS VID, p.DOCID, p.PAPERID, p.STATUS, vpp.POSITION
-                FROM VOLUME_PAPER vp
-                INNER JOIN PAPERS p ON (p.DOCID = vp.DOCID)
-                LEFT JOIN VOLUME_PAPER_POSITION vpp ON (vpp.VID = vp.VID AND vpp.PAPERID = p.PAPERID)
-                WHERE vp.VID IN (:vids) AND p.STATUS != :obsolete
-            ) t
-            ORDER BY t.VID ASC, COALESCE(t.POSITION, 999999) ASC, t.PAPERID ASC, t.DOCID DESC";
+        $select = static fn(string $vid): array => [$vid . ' AS VID', 'paper.docid AS DOCID', 'paper.paperid AS PAPERID', 'paper.status AS STATUS', 'position.position AS POSITION'];
+
+        $volumePapers = $this->getEntityManager()->createQueryBuilder()
+            ->select(...$select('paper.vid'))
+            ->from(Paper::class, 'paper')
+            ->leftJoin(VolumePaperPosition::class, 'position', Join::WITH, 'position.vid = paper.vid AND position.paperid = paper.paperid')
+            ->andWhere('paper.vid IN (:vids)')
+            ->andWhere('paper.status != :obsolete')
+            ->setParameter('vids', $vids, ArrayParameterType::INTEGER)
+            ->setParameter('obsolete', Paper::STATUS_OBSOLETE)
+            ->getQuery()
+            ->getScalarResult();
+
+        $attachedPapers = $this->getEntityManager()->createQueryBuilder()
+            ->select(...$select('attached.vid'))
+            ->from(VolumePaper::class, 'attached')
+            ->innerJoin(Paper::class, 'paper', Join::WITH, 'paper.docid = attached.docid')
+            ->leftJoin(VolumePaperPosition::class, 'position', Join::WITH, 'position.vid = attached.vid AND position.paperid = paper.paperid')
+            ->andWhere('attached.vid IN (:vids)')
+            ->andWhere('paper.status != :obsolete')
+            ->setParameter('vids', $vids, ArrayParameterType::INTEGER)
+            ->setParameter('obsolete', Paper::STATUS_OBSOLETE)
+            ->getQuery()
+            ->getScalarResult();
+
+        $rows = array_map(static fn(array $row): array => [
+            'VID' => (int)$row['VID'],
+            'DOCID' => (int)$row['DOCID'],
+            'PAPERID' => (int)$row['PAPERID'],
+            'STATUS' => (int)$row['STATUS'],
+            'POSITION' => $row['POSITION'] === null ? null : (int)$row['POSITION'],
+        ], array_merge($volumePapers, $attachedPapers));
+
+        // as the previous SQL query: ORDER BY VID, COALESCE(POSITION, 999999), PAPERID, DOCID DESC
+        usort($rows, static fn(array $a, array $b): int => [$a['VID'], $a['POSITION'] ?? 999999, $a['PAPERID'], $b['DOCID']] <=> [$b['VID'], $b['POSITION'] ?? 999999, $b['PAPERID'], $a['DOCID']]);
+
+        return $rows;
     }
 
     public function listQuery(array $filters = []): QueryBuilder

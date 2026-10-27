@@ -15,6 +15,7 @@ use App\Resource\BoardMember;
 use App\Service\Solr\SolrConstants;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Exception\ORMException;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -117,7 +118,7 @@ class BoardsController extends AbstractController
                     /** @var SectionRepository $sectionRepo */
                     $sectionRepo = $this->entityManager->getRepository(Section::class);
                     $assignedSections = $sectionRepo->getAssignedSection($journal->getRvid(), $boardIdentifies);
-                } catch (Exception|\JsonException  $e) {
+                } catch (Exception|ORMException|\JsonException $e) {
                     $assignedSections = [];
                     $this->logger->critical($e->getMessage());
 

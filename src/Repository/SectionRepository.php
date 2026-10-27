@@ -4,10 +4,13 @@ namespace App\Repository;
 
 use App\Entity\Paper;
 use App\Entity\Section;
-use App\Entity\User;
+use App\Entity\UserAssignment;
+use App\Traits\CommitteeTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\DBAL\Exception;
+use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\Persistence\ManagerRegistry;
+use Psr\Log\LoggerInterface;
 
 /**
  * @extends ServiceEntityRepository<Section>
@@ -19,28 +22,41 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class SectionRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry)
+    use CommitteeTrait;
+
+    public function __construct(ManagerRegistry $registry, private readonly LoggerInterface $logger)
     {
         parent::__construct($registry, Section::class);
     }
 
 
     /**
+     * The sections whose latest editor assignment of the given editors is active, indexed by editor (UID),
+     * ordered by position; their number of published papers is counted by the query (their papers are not loaded).
      * @param int $rvId
-     * @param int|array $uid
-     * @return array
-     * @throws \Doctrine\DBAL\Exception
+     * @param int|array<int> $uid
+     * @return array<int, list<Section>>
      * @throws \JsonException
      */
     public function getAssignedSection(int $rvId, int|array $uid = []): array
     {
         $sections = [];
 
-        $result = $this->getEntityManager()
-            ->getConnection()
-            ->prepare($this->assignedSectionsQuery($rvId, $uid))
-            ->executeQuery()
-            ->fetchAllAssociative();
+        $qb = $this->getEntityManager()->createQueryBuilder()
+            ->select('assignment.uid AS UID', 'assignment.rvid AS RVID', 'section.sid AS SID', 'section.titles AS titles', 'section.descriptions AS descriptions', 'section.position AS POSITION')
+            ->addSelect(sprintf('(SELECT COUNT(published.docid) FROM %s published WHERE published.rvid = section.rvid AND published.sid = section.sid AND published.status = :published) AS %s', Paper::class, PapersRepository::TOTAL_ARTICLE))
+            ->distinct()
+            ->from(UserAssignment::class, 'assignment')
+            // a removed section is not returned
+            ->leftJoin(Section::class, 'section', Join::WITH, 'section.rvid = assignment.rvid AND section.sid = assignment.itemid')
+            ->andWhere('assignment.uid IN (:uids)')
+            ->setParameter('uids', array_map('intval', (array)$uid), ArrayParameterType::INTEGER)
+            ->setParameter('published', Paper::STATUS_PUBLISHED)
+            ->orderBy('section.position', 'ASC');
+
+        $result = self::whereLatestActiveEditorAssignment($qb, 'assignment', $rvId, 'section')
+            ->getQuery()
+            ->getScalarResult();
 
         foreach ($result as $values) {
 
@@ -49,73 +65,44 @@ class SectionRepository extends ServiceEntityRepository
             }
 
             $section = new Section();
-            $titles = $values['titles'] ? json_decode((string) $values['titles'], true, 512, JSON_THROW_ON_ERROR) : null;
-            $descriptions = $values['descriptions'] ? json_decode((string) $values['descriptions'], true, 512, JSON_THROW_ON_ERROR) : null;
             $section
-                ->setSid($values['SID'])
-                ->setRvid($values['RVID'])
-                ->setPosition($values['POSITION'])
-                ->setTitles($titles)
-                ->setDescriptions($descriptions);
+                ->setSid((int)$values['SID'])
+                ->setRvid((int)$values['RVID'])
+                ->setPosition((int)$values['POSITION'])
+                ->setTitles(self::jsonValue($values['titles']))
+                ->setDescriptions(self::jsonValue($values['descriptions']));
             // the papers of the section are not loaded: their number is counted by the query
             $section->setTotalPublishedArticles((int) $values[PapersRepository::TOTAL_ARTICLE]);
-            $sections[$values['UID']][] = $section;
+            $sections[(int)$values['UID']][] = $section;
         }
         return $sections;
     }
 
     /**
-     * @param int|array<int>|null $uid
+     * The editors of the section, ordered by last name (public: no account identifier)
+     * @return list<array{civ: ?string, screenName: string, orcid: ?string}>
      */
-    public function assignedSectionsQuery(int $rvId, int|array|null $uid = null): string
-    {
-
-        if (!is_array($uid)) {
-            $uid = (array)$uid;
-        }
-
-        $implodedUids = implode(',', $uid);
-
-        return "
-        SELECT DISTINCT(ua.UID), ua.RVID, sc.SID,sc.titles, sc.descriptions, sc.POSITION,
-        (SELECT COUNT(*) FROM " . Paper::TABLE . " AS p WHERE p.RVID = sc.RVID AND p.SID = sc.SID AND p.STATUS = " . Paper::STATUS_PUBLISHED . ") AS " . PapersRepository::TOTAL_ARTICLE . "
-        FROM USER_ASSIGNMENT AS ua
-        JOIN(
-        SELECT ITEMID, MAX(`WHEN`) AS max_when
-        FROM
-        USER_ASSIGNMENT
-        WHERE RVID = {$rvId} AND ITEM = 'section' AND ROLEID = 'editor' AND UID IN ({$implodedUids})
-        GROUP BY ITEMID, UID) AS r1
-        ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.max_when
-        LEFT JOIN SECTION AS sc
-        ON
-        sc.RVID = ua.RVID AND sc.SID = ua.ITEMID
-        WHERE ua.RVID = {$rvId} AND ua.ITEM = 'section' AND ua.ROLEID = 'editor' AND ua.STATUS = 'active' AND ua.UID IN ({$implodedUids})
-        ORDER BY sc.POSITION ASC;
-        ";
-    }
-
-
-    public function getCommitteeQuery(int $rvId, int $sid): string
-    {
-        return "SELECT CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid` FROM ( SELECT UID, SID, `WHEN` FROM ( SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua` INNER JOIN( SELECT `USER_ASSIGNMENT`.`ITEMID`, MAX(`WHEN`) AS `WHEN`, ITEMID as sid FROM `USER_ASSIGNMENT` WHERE (RVID = $rvId) AND (`USER_ASSIGNMENT`.`ITEMID` = $sid) AND(ITEM = 'section') AND(ROLEID = 'editor') GROUP BY `ITEMID`, UID ) AS `r1` ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.`WHEN` WHERE (RVID = $rvId) AND (ua.ITEMID = $sid) AND (ITEM = 'section') AND(ROLEID = 'editor') AND( STATUS = 'active' ) ) AS `r2` INNER JOIN SECTION AS s ON s.RVID = r2.RVID AND s.SID = r2.ITEMID) AS `result` INNER JOIN USER AS `u` ON result.UID = u.UID  GROUP BY SID, u.UID, u.CIV, u.SCREEN_NAME, u.ORCID, u.LASTNAME ORDER BY u.LASTNAME ASC;";
-    }
-
-
     public function getCommittee(int $rvId, int $sid): array
     {
         try {
-            $result = $this->getEntityManager()
-                ->getConnection()
-                ->prepare($this->getCommitteeQuery($rvId, $sid))
-                ->executeQuery()
-                ->fetchAllAssociative();
-        } catch (Exception $e) {
-            trigger_error($e->getMessage());
+            return $this->committee($rvId, $sid, 'section', Section::class, 'sid');
+        } catch (\Exception $e) {
+            $this->logger->critical($e->getMessage());
             return [];
         }
+    }
 
-        return $result;
+    /**
+     * A JSON column read by a scalar query: already decoded, or not
+     * @return array<mixed>|null
+     * @throws \JsonException
+     */
+    private static function jsonValue(mixed $value): ?array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
 
+        return $value ? json_decode((string)$value, true, 512, JSON_THROW_ON_ERROR) : null;
     }
 }

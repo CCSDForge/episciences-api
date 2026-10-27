@@ -8,8 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!--
 ## Unreleased
 ### Fixed
+- The editors of the sections and of the volumes (`committee`) and the sections assigned to the editors of the boards: an editor whose latest assignment to the section (or volume) is inactive is no longer listed, even if an earlier assignment has the same date as the latest assignment of another editor.
 ### Added
+- Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): with `withDetails`, `details` now also gives the median delays of each year (`submissionAcceptanceTimeMedian`, `submissionPublicationTimeMedian`), in the shape of the average delays.
+- Journal dashboard: the delays of each year in `details` (average and median) now give `count`, the number of articles the delay is computed from.
 ### Changed
+- Journal dashboard: the average and the median delays are computed from the same delay of each article, in two queries instead of four.
+- Statistics: the average delays are always computed from the delay of each article, as the median delays (same figures): the SQL query of the average delays is removed.
+- Statistics: the delay of each article is computed with a Doctrine query instead of a hand-written SQL query (same figures), in a single reading of the history of the articles (faster without journal).
+- Statistics: the papers accepted, published or refused the year of their submission (`*SubmittedSameYear`) are counted with a Doctrine query instead of a hand-written SQL query (same figures), only for the requested journal (several times faster).
+- The editors of the sections and of the volumes (`committee`) and the sections assigned to the editors of the boards are read with Doctrine queries instead of hand-written SQL queries. Without editor, the assigned sections are now an empty list instead of an error.
+- The editors of the sections (`committee`): a failed query is now logged, as for the volumes, instead of raising a PHP notice.
+- `make test-db` runs the database tests (`tests/Functional`, skipped without `TEST_DATABASE_URL`) locally, against a throwaway MySQL 8.4 container.
+- The sorted papers of the volumes are read with two Doctrine queries (the papers of the volume, the papers attached to it) instead of a hand-written SQL query with UNION ALL (same papers, in the same order).
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.
 ### Deprecated
 ### Removed
@@ -55,6 +66,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Journal dashboard statistics (`withDetails`): the submissions are counted by year and by repository in grouped queries instead of one query per year and per repository (92 queries down to 29 for a journal with 11 years of activity).
 - Migrated to Doctrine ORM 3.7: updated `doctrine/orm` constraint from `^2.14` to `^3.7` and aligned unit test mocks (mocked `Doctrine\DBAL\Exception` and `Doctrine\ORM\Query` instances) with the new ORM/DBAL APIs.
 - CI runs the tests against MySQL 8.4 (was 8.0), with `DATABASE_SERVER_VERSION` set accordingly.
+- Journal dashboard and statistics: removed the dead `reformatSubmissionsData()` and `getPercentages()` helpers of `Stats`, and normalized the `$values` array-key spacing. No change in the computed figures.
+- `Stats` service: typed the parameters and return types of the public methods, documented them (English PHPDoc with array generics) and translated the remaining French comments into English; repository variables keep their `@var` annotations so that the custom repository methods remain type-resolvable. No change in the computed figures.
 
 ### Removed
 - `GET /api/journals/{code}` and `GET /api/journals/` no longer expose the `settings` field of the journals (a raw `REVIEW_SETTING` `{setting, value}` array, without external consumer). The settings still work internally via `Review::getSetting()` and the public, structured configuration remains available through `GET /api/journals/front/configuration` (`{code}/front/configuration`).
@@ -77,6 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `GET /api/papers`, `GET /api/papers/{docid}` and papers voter: as on Episciences, the editors and copy editors currently assigned to the latest version of a paper also read and handle its previous versions.
 - `GET /api/papers`, `GET /api/papers/{docid}` and papers voter: as on Episciences, a paper deleted by its author or removed by the journal is closed to its author, co-authors and reviewers; it stays readable, confidential fields included, by the users who manage it (secretaries and above, its editors and copy editors), and nobody changes or reviews it anymore (`papers_edit`, `papers_review`).
 - Journal dashboard (`/api/journals/stats/dashboard/{code}`) and `get_journal_dashboard`: with a single `year` filter (e.g. `2017`), the delay figures of a specific journal returned a `500` error (`Cannot access offset of type array on array`); the per-journal delay is now computed from the rows of the requested year(s) and returned. The all-platform delay by year also handles a `year` sent as an array.
+- Journal dashboard and statistics without journal (`rvcode` omitted, `groupBy=journal`): the "accepted submitted same year" figure (and the accepted/published/refused submissions submitted the same year) is now summed per year across the journals, instead of being keyed by a `null` journal id which produced no per-year value.
 - Statistics and journal dashboard: the submission date of a paper is the one of its first version (the oldest of its versions): a paper whose versions were submitted in different years is counted once, in the year of its first submission (`year`, `startAfterDate`, counts by year, lists of `withPapers`), so that the years add up to the total. The submissions by repository (`withDetails`) ignore the temporary versions (local repository) and count a paper in the repository of its first other version.
 - Journal dashboard (`/api/journals/stats/dashboard/{code}`): `nbOtherStatus` and the `others` of each year (`withDetails`) are now the number of articles awaiting an editorial decision, counted directly by submission date, as `being-to-publish.other-status` of the statistics. They were the submissions minus the acceptances and refusals of the period.
 - Statistics without start date: removed a PHP deprecation (`DateTime::createFromFormat()` called with `null`).
