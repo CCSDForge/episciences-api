@@ -46,6 +46,15 @@ class PapersVoter extends Voter
             return false;
         }
 
+        // As on the administration page of the gpl (findManagementRefusal), nobody manages or reviews
+        // their own paper, whatever their roles (root and administrators included)
+        if (
+            $subject->getUid() === $authenticatedUser->getUid() &&
+            in_array($attribute, [self::PAPERS_MANAGE, self::PAPERS_REVIEW], true)
+        ) {
+            return false;
+        }
+
         // Root of the journal of the paper: every role, never in conflict of interest
         // (see DefaultController::isConflictDetected in the gpl)
         if ($this->isRoot($authenticatedUser, $subject)) {

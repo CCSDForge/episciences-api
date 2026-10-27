@@ -807,4 +807,35 @@ class PapersVoterTest extends TestCase
 
         $this->assertSame($expected, $this->voter->vote($token, $paper, [$attribute]));
     }
+
+    // ------------------------------------------------------------------ own paper of an administrator
+
+    /**
+     * @return array<string, array{string[]}>
+     */
+    public static function administratorRolesProvider(): array
+    {
+        return [
+            'administrator only' => [['ROLE_ADMINISTRATOR']],
+            'epiadmin' => [['ROLE_EPIADMIN']],
+            'secretary' => [['ROLE_SECRETARY']],
+        ];
+    }
+
+    /**
+     * As on the administration page of the gpl, nobody manages or reviews their own paper, whatever
+     * their roles; they still view its details.
+     *
+     * @param string[] $roles
+     */
+    #[DataProvider('administratorRolesProvider')]
+    public function testNobodyManagesOrReviewsTheirOwnPaper(array $roles): void
+    {
+        $token = $this->makeToken($this->makeUser(10, $roles));
+        $paper = $this->makePaper(10);
+
+        $this->assertSame(-1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_MANAGE]));
+        $this->assertSame(-1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_REVIEW]));
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+    }
 }
