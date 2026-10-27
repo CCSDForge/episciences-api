@@ -5,6 +5,7 @@ namespace App\Security\Voter;
 use App\Entity\Paper;
 use App\Entity\PaperConflicts;
 use App\Entity\User;
+use App\Entity\UserAssignment;
 use App\Repository\PaperConflictsRepository;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
@@ -70,9 +71,9 @@ class PapersVoter extends Voter
     private function canView(User $authenticatedUser, Paper $paper): bool
     {
 
-        $isEditor = array_key_exists($authenticatedUser->getUid(), $paper->getEditors());
-        $isReviewer = array_key_exists($authenticatedUser->getUid(), $paper->getReviewers());
-        $isCopyEditor = array_key_exists($authenticatedUser->getUid(), $paper->getCopyEditors());
+        $isEditor = $this->isAssigned($authenticatedUser, $paper->getEditors());
+        $isReviewer = $this->isAssigned($authenticatedUser, $paper->getReviewers());
+        $isCopyEditor = $this->isAssigned($authenticatedUser, $paper->getCopyEditors());
 
         // As on the member page of the paper in the gpl, its author always sees its details; its
         // co-authors only open the page (isAllowedToSeeNoPublicDetails: isOwner, not isCoauthor)
@@ -96,8 +97,8 @@ class PapersVoter extends Voter
     {
         // Editors and copy editors only handle the papers they are assigned to, whatever the
         // encapsulation settings of the journal: below the secretaries, no role covers every paper.
-        $isEditor = array_key_exists($authenticatedUser->getUid(), $paper->getEditors());
-        $isCopyEditor = array_key_exists($authenticatedUser->getUid(), $paper->getCopyEditors());
+        $isEditor = $this->isAssigned($authenticatedUser, $paper->getEditors());
+        $isCopyEditor = $this->isAssigned($authenticatedUser, $paper->getCopyEditors());
 
         return
 
@@ -116,8 +117,8 @@ class PapersVoter extends Voter
 
     private function canReview(User $authenticatedUser, Paper $paper): bool
     {
-        $isEditor = array_key_exists($authenticatedUser->getUid(), $paper->getEditors());
-        $isReviewer = array_key_exists($authenticatedUser->getUid(), $paper->getReviewers());
+        $isEditor = $this->isAssigned($authenticatedUser, $paper->getEditors());
+        $isReviewer = $this->isAssigned($authenticatedUser, $paper->getReviewers());
 
         return
 
@@ -142,6 +143,26 @@ class PapersVoter extends Voter
     private function canManage(User $authenticatedUser, Paper $paper): bool
     {
         return $paper->getUid() !== $authenticatedUser->getUid() && $this->canEdit($authenticatedUser, $paper);
+    }
+
+    /**
+     * Whether the user is currently assigned to the paper in one of its roles (editor, copy editor,
+     * reviewer): their latest assignment is active, as Episciences_PapersManager::getEditors() and
+     * getReviewers() in the gpl. An editor unassigned or a reviewer who declined is no longer assigned.
+     *
+     * @param array<int, mixed> $assignmentsByUid assignments of the paper in this role, grouped by uid
+     */
+    private function isAssigned(User $authenticatedUser, array $assignmentsByUid): bool
+    {
+        $latest = null;
+
+        foreach ((array)($assignmentsByUid[$authenticatedUser->getUid()] ?? []) as $assignment) {
+            if ($assignment instanceof UserAssignment && ($latest === null || $assignment->getWhen() > $latest->getWhen())) {
+                $latest = $assignment;
+            }
+        }
+
+        return $latest?->getStatus() === UserAssignment::STATUS_ACTIVE;
     }
 
     /**

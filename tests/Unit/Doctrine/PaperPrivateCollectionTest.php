@@ -227,6 +227,20 @@ class PaperPrivateCollectionTest extends TestCase
         }
     }
 
+    /**
+     * As in the gpl, only a current assignment counts: the latest one of the user in a role, active.
+     */
+    public function testEditorOnlySeesTheCurrentAssignments(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_EDITOR']));
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('uAss.status = :activeAssignment', $where);
+        self::assertStringContainsString('NOT(EXISTS(SELECT laterAss.id', $where);
+        self::assertStringContainsString('laterAss.roleid = uAss.roleid AND laterAss.when > uAss.when', $where);
+        self::assertSame(UserAssignment::STATUS_ACTIVE, $this->parameter($queryBuilder, 'activeAssignment'));
+    }
+
     public function testAuthorOnlySeesOwnPapersOfTheTokenJournal(): void
     {
         $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_MEMBER']));

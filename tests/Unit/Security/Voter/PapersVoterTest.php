@@ -6,6 +6,7 @@ use App\Entity\Paper;
 use App\Entity\PaperConflicts;
 use App\Entity\Review;
 use App\Entity\User;
+use App\Entity\UserAssignment;
 use App\Repository\PaperConflictsRepository;
 use App\Security\Voter\PapersVoter;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -67,9 +68,9 @@ class PapersVoterTest extends TestCase
         $paper->method('getUid')->willReturn($uid);
         $paper->method('getRvid')->willReturn($rvid);
         $paper->method('getPaperid')->willReturn($paperid);
-        $paper->method('getEditors')->willReturn($editors);
-        $paper->method('getReviewers')->willReturn($reviewers);
-        $paper->method('getCopyEditors')->willReturn($copyEditors);
+        $paper->method('getEditors')->willReturn($this->assignments($editors));
+        $paper->method('getReviewers')->willReturn($this->assignments($reviewers));
+        $paper->method('getCopyEditors')->willReturn($this->assignments($copyEditors));
         $paper->method('getCoAuthors')->willReturn($coAuthors);
         $paper->method('getReview')->willReturn($review);
 
@@ -98,6 +99,31 @@ class PapersVoterTest extends TestCase
             }
         );
         return $paper;
+    }
+
+    /**
+     * Assignments grouped by uid, as Paper::getEditors(): a user given without assignments is
+     * currently assigned (one active assignment).
+     *
+     * @param array<int, mixed> $byUid uid => list of UserAssignment, or anything for an active assignment
+     * @return array<int, list<UserAssignment>>
+     */
+    private function assignments(array $byUid): array
+    {
+        $result = [];
+
+        foreach ($byUid as $uid => $assignments) {
+            $result[$uid] = is_array($assignments) && $assignments !== [] && $assignments[array_key_first($assignments)] instanceof UserAssignment
+                ? array_values($assignments)
+                : [$this->assignment(UserAssignment::STATUS_ACTIVE, '2024-01-01')];
+        }
+
+        return $result;
+    }
+
+    private function assignment(string $status, string $when): UserAssignment
+    {
+        return new UserAssignment()->setStatus($status)->setWhen(new \DateTimeImmutable($when));
     }
 
     private function makeToken(User&MockObject $user): TokenInterface&MockObject
@@ -744,5 +770,41 @@ class PapersVoterTest extends TestCase
         $paper = $this->makePaper(10, settings: ['encapsulateEditors' => '1']);
 
         $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_MANAGE]));
+    }
+
+    // ------------------------------------------------------------------ status of the assignments
+
+    /**
+     * @return array<string, array{string, string, string, int}> role of the assignment, latest status, attribute, expected vote
+     */
+    public static function latestAssignmentProvider(): array
+    {
+        return [
+            'editor unassigned' => ['editors', UserAssignment::STATUS_INACTIVE, PapersVoter::PAPERS_MANAGE, -1],
+            'editor disabled' => ['editors', 'disabled', PapersVoter::PAPERS_VIEW, -1],
+            'editor reassigned' => ['editors', UserAssignment::STATUS_ACTIVE, PapersVoter::PAPERS_MANAGE, 1],
+            'copy editor unassigned' => ['copyEditors', UserAssignment::STATUS_INACTIVE, PapersVoter::PAPERS_MANAGE, -1],
+            'reviewer who declined' => ['reviewers', UserAssignment::STATUS_DECLINED, PapersVoter::PAPERS_VIEW, -1],
+            'reviewer still invited' => ['reviewers', UserAssignment::STATUS_PENDING, PapersVoter::PAPERS_REVIEW, -1],
+            'reviewer cancelled' => ['reviewers', UserAssignment::STATUS_CANCELLED, PapersVoter::PAPERS_VIEW, -1],
+            'reviewer who accepted' => ['reviewers', UserAssignment::STATUS_ACTIVE, PapersVoter::PAPERS_REVIEW, 1],
+        ];
+    }
+
+    /**
+     * As Episciences_PapersManager::getEditors() and getReviewers() in the gpl, only the latest
+     * assignment of the user counts, and only when it is active.
+     */
+    #[DataProvider('latestAssignmentProvider')]
+    public function testOnlyTheLatestActiveAssignmentCounts(string $role, string $latestStatus, string $attribute, int $expected): void
+    {
+        $token = $this->makeToken($this->makeUser(70));
+        $history = [
+            $this->assignment($latestStatus, '2024-06-01'),
+            $this->assignment(UserAssignment::STATUS_ACTIVE, '2024-01-01'),
+        ];
+        $paper = $this->makePaper(10, ...[$role => [70 => $history]]);
+
+        $this->assertSame($expected, $this->voter->vote($token, $paper, [$attribute]));
     }
 }

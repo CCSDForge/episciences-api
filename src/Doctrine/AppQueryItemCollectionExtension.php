@@ -292,16 +292,30 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             $this->security->isGranted('ROLE_REVIEWER')
         ) { // only assigned papers
 
+            // Only a current assignment: the latest one of the user in this role, active (as
+            // Episciences_PapersManager::getEditors() and getReviewers() in the gpl)
+            $laterAssignment = $queryBuilder->getEntityManager()->createQueryBuilder()
+                ->select('laterAss.id')
+                ->from(UserAssignment::class, 'laterAss')
+                ->where('laterAss.itemid = uAss.itemid')
+                ->andWhere('laterAss.item = uAss.item')
+                ->andWhere('laterAss.uid = uAss.uid')
+                ->andWhere('laterAss.roleid = uAss.roleid')
+                ->andWhere('laterAss.when > uAss.when');
+
             $assignment = $queryBuilder->getEntityManager()->createQueryBuilder()
                 ->select('uAss.id')
                 ->from(UserAssignment::class, 'uAss')
                 ->where("uAss.itemid = $alias.docid")
                 ->andWhere('uAss.item = :type')
-                ->andWhere('uAss.uid = :to');
+                ->andWhere('uAss.uid = :to')
+                ->andWhere('uAss.status = :activeAssignment')
+                ->andWhere($queryBuilder->expr()->not($queryBuilder->expr()->exists($laterAssignment->getDQL())));
 
             $queryBuilder
                 ->setParameter('type', UserAssignment::ITEM_PAPER)
                 ->setParameter('to', $currentUser->getUid())
+                ->setParameter('activeAssignment', UserAssignment::STATUS_ACTIVE)
                 ->orderBy("$alias.when", \SortDirection::Descending);
 
             return $access->add($expr->exists($assignment->getDQL()));
