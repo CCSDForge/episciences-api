@@ -60,6 +60,12 @@ class PapersVoter extends Voter implements ResetInterface
             return false;
         }
 
+        // A token only opens the papers of its journal (rvId claim), whatever the roles and the assignments of
+        // the user: a token without journal opens none
+        if ($authenticatedUser->getCurrentJournalID() === null || $authenticatedUser->getCurrentJournalID() !== $subject->getRvid()) {
+            return false;
+        }
+
         // A paper deleted by its author or removed by the journal: its page is closed to everyone, its
         // administration page still shows it to the users who manage it, and nobody changes it anymore
         // (paper/view, administratepaper/view and findManagementRefusal in the gpl)
