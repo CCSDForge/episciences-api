@@ -31,7 +31,7 @@ class PapersVoterTest extends TestCase
 
     // ------------------------------------------------------------------ helpers
 
-    private function makeUser(int $uid, array $roles = [], ?int $currentJournalId = null): User&MockObject
+    private function makeUser(int $uid, array $roles = [], ?int $currentJournalId = 1): User&MockObject
     {
         $user = $this->createMock(User::class);
         $user->method('getUid')->willReturn($uid);
@@ -457,37 +457,35 @@ class PapersVoterTest extends TestCase
     }
 
     /**
-     * A user loaded from the database who is epiadmin of another journal only.
+     * @return array<string, array{list<string>, int, array<string, mixed>}> roles of the token, uid, paper arguments
      */
-    public function testUserEpiAdminOfAnotherJournalOnlyIsDenied(): void
+    public static function tokenWithoutJournalProvider(): array
     {
-        $user = $this->createMock(User::class);
-        $user->method('getUid')->willReturn(42);
-        $user->method('getCurrentJournalID')->willReturn(null);
-        $user->method('getRoles')->willReturnCallback(
-            static fn(?int $rvId = null): array => $rvId === 2 ? ['ROLE_EPIADMIN'] : ['ROLE_USER']
-        );
-        $token = $this->makeToken($user);
-
-        $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(1, rvid: 1), [PapersVoter::PAPERS_MANAGE]));
-        $this->assertSame(1, $this->voter->vote($token, $this->makePaper(1, rvid: 2), [PapersVoter::PAPERS_MANAGE]));
+        return [
+            'epiadmin' => [['ROLE_EPIADMIN'], 70, []],
+            'secretary' => [['ROLE_SECRETARY'], 70, []],
+            'author' => [['ROLE_USER'], 10, []],
+            'assigned editor' => [['ROLE_USER'], 70, ['editors' => [70 => []]]],
+            'reviewer' => [['ROLE_USER'], 70, ['reviewers' => [70 => []]]],
+        ];
     }
 
     /**
-     * A user loaded from the database (no journal of a token): their roles in the journal of the paper.
+     * A token issued without journal (no journal code at login) opens no paper, whatever its roles and the
+     * assignments of the user.
+     *
+     * @param list<string> $roles
+     * @param array<string, mixed> $paperArguments
      */
-    public function testUserRolesAreThoseOfTheJournalOfThePaper(): void
+    #[DataProvider('tokenWithoutJournalProvider')]
+    public function testTokenWithoutJournalOpensNoPaper(array $roles, int $uid, array $paperArguments): void
     {
-        $user = $this->createMock(User::class);
-        $user->method('getUid')->willReturn(42);
-        $user->method('getCurrentJournalID')->willReturn(null);
-        $user->method('getRoles')->willReturnCallback(
-            static fn(?int $rvId = null): array => $rvId === 2 ? ['ROLE_SECRETARY'] : ['ROLE_USER']
-        );
-        $token = $this->makeToken($user);
+        $token = $this->makeToken($this->makeUser($uid, $roles, currentJournalId: null));
+        $paper = $this->makePaper(10, ...$paperArguments);
 
-        $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(1, rvid: 1), [PapersVoter::PAPERS_EDIT]));
-        $this->assertSame(1, $this->voter->vote($token, $this->makePaper(1, rvid: 2), [PapersVoter::PAPERS_EDIT]));
+        foreach ([PapersVoter::PAPERS_VIEW, PapersVoter::PAPERS_EDIT, PapersVoter::PAPERS_MANAGE, PapersVoter::PAPERS_REVIEW, PapersVoter::PAPERS_FOLLOW] as $attribute) {
+            $this->assertSame(-1, $this->voter->vote($token, $paper, [$attribute]), $attribute);
+        }
     }
 
     /**
@@ -512,13 +510,34 @@ class PapersVoterTest extends TestCase
     }
 
     /**
-     * Only the journal roles are scoped: being the author of the paper is not a journal role.
+     * @return array<string, array{int, array<string, mixed>}> uid, paper arguments
      */
-    public function testAuthorIsGrantedWhateverTheJournalOfTheToken(): void
+    public static function assignedUserOfAnotherJournalProvider(): array
     {
-        $token = $this->makeToken($this->makeUser(10, ['ROLE_MEMBER'], currentJournalId: 2));
+        return [
+            'author' => [10, []],
+            'co-author' => [70, ['coAuthors' => [70 => []]]],
+            'assigned editor' => [70, ['editors' => [70 => []]]],
+            'assigned copy editor' => [70, ['copyEditors' => [70 => []]]],
+            'reviewer' => [70, ['reviewers' => [70 => []]]],
+        ];
+    }
 
-        $this->assertSame(1, $this->voter->vote($token, $this->makePaper(10, rvid: 1), [PapersVoter::PAPERS_VIEW]));
+    /**
+     * A token only opens the papers of its journal: being the author or assigned to a paper of another
+     * journal does not open it either.
+     *
+     * @param array<string, mixed> $paperArguments
+     */
+    #[DataProvider('assignedUserOfAnotherJournalProvider')]
+    public function testAssignedUserWithATokenOfAnotherJournalIsDenied(int $uid, array $paperArguments): void
+    {
+        $token = $this->makeToken($this->makeUser($uid, ['ROLE_EDITOR', 'ROLE_COPYEDITOR'], currentJournalId: 2));
+        $paper = $this->makePaper(10, ...[...$paperArguments, 'rvid' => 1]);
+
+        foreach ([PapersVoter::PAPERS_VIEW, PapersVoter::PAPERS_EDIT, PapersVoter::PAPERS_MANAGE, PapersVoter::PAPERS_REVIEW] as $attribute) {
+            $this->assertSame(-1, $this->voter->vote($token, $paper, [$attribute]), $attribute);
+        }
     }
 
     // ------------------------------------------------------------------ administrator and conflicts of interest
