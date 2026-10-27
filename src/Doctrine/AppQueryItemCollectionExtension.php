@@ -299,8 +299,8 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     /**
      * Papers of the journal of the token that the role of the connected user opens to them: every paper
      * for the secretaries (and the roles above) and the editors (copy editors) who are not encapsulated,
-     * the assigned papers for the other editorial roles and the reviewers, the papers submitted or
-     * co-authored for the others (as isRestrictedAccess in the gpl).
+     * the assigned papers for the other editorial roles and the reviewers, and, for everyone, the papers
+     * they submitted or co-authored (as isRestrictedAccess in the gpl).
      */
     private function paperAccessCondition(QueryBuilder $queryBuilder, string $alias, User $currentUser): Andx
     {
@@ -354,6 +354,8 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             $queryBuilder->setParameter('closedStatuses', [Paper::STATUS_DELETED, Paper::STATUS_REMOVED]);
 
             return $access->add($expr->orX(
+                // their own papers, as for the other users
+                $this->ownPaperCondition($queryBuilder, $alias, $currentUser),
                 // a deleted or removed paper is only shown by its administration page, to its editors and copy editors
                 $expr->andX(
                     "$alias.status NOT IN (:closedStatuses)",
@@ -364,7 +366,17 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             ));
         }
 
-        // papers of the author: submitted by them, or of which they are a co-author
+        return $access->add($this->ownPaperCondition($queryBuilder, $alias, $currentUser));
+    }
+
+    /**
+     * Papers of the author, whatever their other roles: submitted by them, or of which they are a
+     * co-author, except the deleted or removed ones (isRestrictedAccess and paper/view in the gpl).
+     */
+    private function ownPaperCondition(QueryBuilder $queryBuilder, string $alias, User $currentUser): Andx
+    {
+        $expr = $queryBuilder->expr();
+
         $coAuthorAssignment = $queryBuilder->getEntityManager()->createQueryBuilder()
             ->select('coAuthorAss.id')
             ->from(UserAssignment::class, 'coAuthorAss')
@@ -379,10 +391,11 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             ->setParameter('coAuthorRole', UserAssignment::ROLE_CO_AUTHOR)
             ->setParameter('closedStatuses', [Paper::STATUS_DELETED, Paper::STATUS_REMOVED]);
 
-        return $access->add($expr->orX(
-            "$alias.user= :currentUser",
-            $expr->exists($coAuthorAssignment->getDQL())
-        ))->add(
+        return $expr->andX(
+            $expr->orX(
+                "$alias.user= :currentUser",
+                $expr->exists($coAuthorAssignment->getDQL())
+            ),
             // the page of a deleted or removed paper is closed to its author (paper/view in the gpl)
             "$alias.status NOT IN (:closedStatuses)"
         );

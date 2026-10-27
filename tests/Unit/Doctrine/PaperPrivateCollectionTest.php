@@ -178,12 +178,11 @@ class PaperPrivateCollectionTest extends TestCase
     /**
      * The role of a copy editor is ROLE_COPYEDITOR (role id "copyeditor").
      */
-    public function testCopyEditorOnlySeesAssignedPapersOfTheTokenJournal(): void
+    public function testCopyEditorSeesAssignedPapersOfTheTokenJournal(): void
     {
         $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_COPYEDITOR']));
 
         self::assertStringContainsString('uAss.uid = :to', $this->where($queryBuilder));
-        self::assertStringNotContainsString('o.user', $this->where($queryBuilder));
         self::assertSame(self::UID, $this->parameter($queryBuilder, 'to'));
     }
 
@@ -308,6 +307,39 @@ class PaperPrivateCollectionTest extends TestCase
         self::assertStringContainsString('coAuthorAss.uid = :currentUser', $where);
         self::assertSame(UserAssignment::ROLE_CO_AUTHOR, $this->parameter($queryBuilder, 'coAuthorRole'));
         self::assertSame(UserAssignment::ITEM_PAPER, $this->parameter($queryBuilder, 'coAuthorItem'));
+    }
+
+    /**
+     * @return iterable<string, array{string[]}>
+     */
+    public static function assignedRolesProvider(): iterable
+    {
+        yield 'editor' => [['ROLE_EDITOR']];
+        yield 'copy editor' => [['ROLE_COPYEDITOR']];
+        yield 'guest editor' => [['ROLE_GUEST_EDITOR', 'ROLE_REVIEWER']];
+        yield 'reviewer' => [['ROLE_REVIEWER']];
+    }
+
+    /**
+     * As isRestrictedAccess in the gpl, the users limited to the papers they are assigned to also see
+     * the papers they submitted or co-authored, in the list and on the page of a paper.
+     *
+     * @param string[] $roles
+     */
+    #[DataProvider('assignedRolesProvider')]
+    public function testAssignedRolesAlsoSeeTheirOwnPapers(array $roles): void
+    {
+        foreach ([
+            $this->apply($this->security($this->user(), $roles)),
+            $this->applyToItem($this->security($this->user(), $roles)),
+        ] as $queryBuilder) {
+            $where = $this->where($queryBuilder);
+
+            self::assertStringContainsString('uAss.uid = :to', $where);
+            self::assertStringContainsString('((o.user= :currentUser OR (EXISTS(', $where);
+            self::assertStringContainsString('coAuthorAss.uid = :currentUser', $where);
+            self::assertSame(self::UID, $this->parameter($queryBuilder, 'currentUser'));
+        }
     }
 
     /**
