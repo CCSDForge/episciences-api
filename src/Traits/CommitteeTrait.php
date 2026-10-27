@@ -46,24 +46,22 @@ trait CommitteeTrait
     }
 
     /**
-     * DQL condition: an active editor assignment (parameters :rvid, :item, :editor and :active) which is one of the latest
-     * assignments of its item, i.e. dated as the latest assignment of one of the editors of the item.
-     * As before the conversion to Doctrine, the date is not compared by editor.
+     * DQL condition: an active editor assignment (parameters :rvid, :item, :editor and :active) which is the latest
+     * assignment of its editor to its item: an editor whose latest assignment is inactive is left out,
+     * even if an earlier active assignment has the date of the latest assignment of another editor.
      *
      * @param string $alias alias of the assignment (UserAssignment)
-     * @param string $latestCondition additional condition on the assignments of the item (alias "latest")
      */
-    private static function latestActiveEditorAssignment(string $alias, string $latestCondition = ''): string
+    private static function latestActiveEditorAssignment(string $alias): string
     {
         $latest = sprintf(
-            'SELECT MAX(latest.when) FROM %s latest WHERE latest.itemid = %s.itemid AND latest.rvid = :rvid AND latest.item = :item AND latest.roleid = :editor%s GROUP BY latest.uid',
+            'SELECT MAX(latest.when) FROM %1$s latest WHERE latest.itemid = %2$s.itemid AND latest.uid = %2$s.uid AND latest.rvid = :rvid AND latest.item = :item AND latest.roleid = :editor',
             UserAssignment::class,
-            $alias,
-            $latestCondition !== '' ? ' AND ' . $latestCondition : ''
+            $alias
         );
 
         return sprintf(
-            '%1$s.rvid = :rvid AND %1$s.item = :item AND %1$s.roleid = :editor AND %1$s.status = :active AND %1$s.when IN (%2$s)',
+            '%1$s.rvid = :rvid AND %1$s.item = :item AND %1$s.roleid = :editor AND %1$s.status = :active AND %1$s.when = (%2$s)',
             $alias,
             $latest
         );

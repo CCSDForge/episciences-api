@@ -27,6 +27,8 @@ use Psr\Log\NullLogger;
 /**
  * The editors of the sections and of the volumes (committees) and the sections assigned to the editors:
  * the same results as the reference SQL queries they replaced (non-regression), against a real MySQL database.
+ * The reference queries compare the date of the latest assignment by editor (the queries they replaced compared it
+ * with the latest assignment of any editor of the item, so that an unassigned editor could still be listed).
  *
  * Requires TEST_DATABASE_URL (set in CI, see docker-compose.ci.yml); skipped otherwise.
  * The test creates and drops the USER_ASSIGNMENT, SECTION, VOLUME, USER and PAPERS tables: it is skipped if one of them
@@ -124,13 +126,13 @@ class CommitteeQueriesDatabaseTest extends TestCase
     }
 
     /**
-     * The editors of the section 10: Adams, Clark and Davis.
-     * Brown's latest assignment is inactive; Davis's latest assignment is inactive too, but his earlier active assignment
-     * has the date of Brown's latest assignment: as before, the date of the latest assignments is not compared by editor.
+     * The editors of the section 10: Adams and Clark.
+     * Brown's latest assignment is inactive; Davis's latest assignment is inactive too: his earlier active assignment,
+     * which has the date of Brown's latest assignment, is left out (the date is compared by editor).
      */
     public function testSectionCommittee(): void
     {
-        $this->assertSame(['Adams', 'Clark', 'Davis'], array_column($this->sectionRepository->getCommittee(self::RVID, 10), 'screenName'));
+        $this->assertSame(['Adams', 'Clark'], array_column($this->sectionRepository->getCommittee(self::RVID, 10), 'screenName'));
         // a removed section has no committee
         $this->assertSame([], $this->sectionRepository->getCommittee(self::RVID, 12));
     }
@@ -169,20 +171,24 @@ class CommitteeQueriesDatabaseTest extends TestCase
         $this->assertSame(2, $sections[1][1]->getTotalPublishedArticles());
         $this->assertSame(['en' => 'Section A'], $sections[1][1]->getTitles());
         $this->assertSame([11], array_map(static fn(Section $section): int => $section->getSid(), $sections[7]));
+        // Davis's latest assignment to the section 10 is inactive, whatever the other editors requested
+        $this->assertArrayNotHasKey(4, $this->sectionRepository->getAssignedSection(self::RVID, [1, 2, 3, 4]));
         // no editor: no section (the reference query failed)
         $this->assertSame([], $this->sectionRepository->getAssignedSection(self::RVID, []));
     }
 
     /**
-     * Reference: the SQL query of a committee, before its conversion to Doctrine.
+     * Reference: the SQL query of a committee, before its conversion to Doctrine, with the date of the latest
+     * assignment compared by editor (r1.UID).
      */
     private static function referenceCommitteeSql(int $rvId, int $itemId, string $item, string $table, string $idColumn): string
     {
-        return "SELECT CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid` FROM ( SELECT UID, $idColumn, `WHEN` FROM ( SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua` INNER JOIN( SELECT `USER_ASSIGNMENT`.`ITEMID`, MAX(`WHEN`) AS `WHEN` FROM `USER_ASSIGNMENT` WHERE (RVID = $rvId) AND (`USER_ASSIGNMENT`.`ITEMID` = $itemId) AND(ITEM = '$item') AND(ROLEID = 'editor') GROUP BY `ITEMID`, UID ) AS `r1` ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.`WHEN` WHERE (RVID = $rvId) AND (ua.ITEMID = $itemId) AND (ITEM = '$item') AND(ROLEID = 'editor') AND( STATUS = 'active' ) ) AS `r2` INNER JOIN $table AS s ON s.RVID = r2.RVID AND s.$idColumn = r2.ITEMID) AS `result` INNER JOIN USER AS `u` ON result.UID = u.UID GROUP BY $idColumn, u.UID, u.CIV, u.SCREEN_NAME, u.ORCID, u.LASTNAME ORDER BY u.LASTNAME ASC";
+        return "SELECT CIV as `civ`, SCREEN_NAME AS `screenName`, ORCID AS `orcid` FROM ( SELECT UID, $idColumn, `WHEN` FROM ( SELECT `ua`.* FROM `USER_ASSIGNMENT` AS `ua` INNER JOIN( SELECT `USER_ASSIGNMENT`.`ITEMID`, UID, MAX(`WHEN`) AS `WHEN` FROM `USER_ASSIGNMENT` WHERE (RVID = $rvId) AND (`USER_ASSIGNMENT`.`ITEMID` = $itemId) AND(ITEM = '$item') AND(ROLEID = 'editor') GROUP BY `ITEMID`, UID ) AS `r1` ON ua.ITEMID = r1.ITEMID AND ua.UID = r1.UID AND ua.`WHEN` = r1.`WHEN` WHERE (RVID = $rvId) AND (ua.ITEMID = $itemId) AND (ITEM = '$item') AND(ROLEID = 'editor') AND( STATUS = 'active' ) ) AS `r2` INNER JOIN $table AS s ON s.RVID = r2.RVID AND s.$idColumn = r2.ITEMID) AS `result` INNER JOIN USER AS `u` ON result.UID = u.UID GROUP BY $idColumn, u.UID, u.CIV, u.SCREEN_NAME, u.ORCID, u.LASTNAME ORDER BY u.LASTNAME ASC";
     }
 
     /**
-     * Reference: the SQL query of the sections assigned to editors, before its conversion to Doctrine.
+     * Reference: the SQL query of the sections assigned to editors, before its conversion to Doctrine, with the date
+     * of the latest assignment compared by editor (r1.UID).
      *
      * @param int[] $uids
      */
@@ -193,9 +199,9 @@ class CommitteeQueriesDatabaseTest extends TestCase
         return "SELECT DISTINCT(ua.UID), ua.RVID, sc.SID, sc.titles, sc.descriptions, sc.POSITION,
             (SELECT COUNT(*) FROM PAPERS AS p WHERE p.RVID = sc.RVID AND p.SID = sc.SID AND p.STATUS = " . Paper::STATUS_PUBLISHED . ") AS totalPublishedArticles
             FROM USER_ASSIGNMENT AS ua
-            JOIN (SELECT ITEMID, MAX(`WHEN`) AS max_when FROM USER_ASSIGNMENT
+            JOIN (SELECT ITEMID, UID, MAX(`WHEN`) AS max_when FROM USER_ASSIGNMENT
                 WHERE RVID = $rvId AND ITEM = 'section' AND ROLEID = 'editor' AND UID IN ($implodedUids) GROUP BY ITEMID, UID) AS r1
-            ON ua.ITEMID = r1.ITEMID AND ua.`WHEN` = r1.max_when
+            ON ua.ITEMID = r1.ITEMID AND ua.UID = r1.UID AND ua.`WHEN` = r1.max_when
             LEFT JOIN SECTION AS sc ON sc.RVID = ua.RVID AND sc.SID = ua.ITEMID
             WHERE ua.RVID = $rvId AND ua.ITEM = 'section' AND ua.ROLEID = 'editor' AND ua.STATUS = 'active' AND ua.UID IN ($implodedUids)
             ORDER BY sc.POSITION ASC";

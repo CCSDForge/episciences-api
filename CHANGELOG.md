@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!--
 ## Unreleased
 ### Fixed
+- The editors of the sections and of the volumes (`committee`) and the sections assigned to the editors of the boards: an editor whose latest assignment to the section (or volume) is inactive is no longer listed, even if an earlier assignment has the same date as the latest assignment of another editor.
 ### Added
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): with `withDetails`, `details` now also gives the median delays of each year (`submissionAcceptanceTimeMedian`, `submissionPublicationTimeMedian`), in the shape of the average delays.
 - Journal dashboard: the delays of each year in `details` (average and median) now give `count`, the number of articles the delay is computed from.
@@ -16,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistics: the average delays are always computed from the delay of each article, as the median delays (same figures): the SQL query of the average delays is removed.
 - Statistics: the delay of each article is computed with a Doctrine query instead of a hand-written SQL query (same figures), in a single reading of the history of the articles (faster without journal).
 - Statistics: the papers accepted, published or refused the year of their submission (`*SubmittedSameYear`) are counted with a Doctrine query instead of a hand-written SQL query (same figures), only for the requested journal (several times faster).
-- The editors of the sections and of the volumes (`committee`) and the sections assigned to the editors of the boards are read with Doctrine queries instead of hand-written SQL queries (same results). Without editor, the assigned sections are now an empty list instead of an error.
+- The editors of the sections and of the volumes (`committee`) and the sections assigned to the editors of the boards are read with Doctrine queries instead of hand-written SQL queries. Without editor, the assigned sections are now an empty list instead of an error.
 - The sorted papers of the volumes are read with two Doctrine queries (the papers of the volume, the papers attached to it) instead of a hand-written SQL query with UNION ALL (same papers, in the same order).
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.
 ### Deprecated

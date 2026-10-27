@@ -49,7 +49,7 @@ class SectionRepository extends ServiceEntityRepository
             // a removed section is not returned
             ->leftJoin(Section::class, 'section', Join::WITH, 'section.rvid = assignment.rvid AND section.sid = assignment.itemid')
             ->andWhere('assignment.uid IN (:uids)')
-            ->andWhere(self::latestActiveEditorAssignment('assignment', 'latest.uid IN (:uids)'))
+            ->andWhere(self::latestActiveEditorAssignment('assignment'))
             ->setParameter('rvid', $rvId)
             ->setParameter('uids', array_map('intval', (array)$uid), ArrayParameterType::INTEGER)
             ->setParameter('item', 'section')
