@@ -8,6 +8,7 @@ use App\Entity\Review;
 use App\Entity\User;
 use App\Entity\UserAssignment;
 use App\Repository\PaperConflictsRepository;
+use App\Repository\PapersRepository;
 use App\Security\Voter\PapersVoter;
 use Doctrine\Common\Collections\ArrayCollection;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -18,12 +19,14 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 class PapersVoterTest extends TestCase
 {
     private PaperConflictsRepository&MockObject $paperConflictsRepository;
+    private PapersRepository&MockObject $papersRepository;
     private PapersVoter $voter;
 
     protected function setUp(): void
     {
         $this->paperConflictsRepository = $this->createMock(PaperConflictsRepository::class);
-        $this->voter = new PapersVoter($this->paperConflictsRepository);
+        $this->papersRepository = $this->createMock(PapersRepository::class);
+        $this->voter = new PapersVoter($this->paperConflictsRepository, $this->papersRepository);
     }
 
     // ------------------------------------------------------------------ helpers
@@ -837,5 +840,50 @@ class PapersVoterTest extends TestCase
         $this->assertSame(-1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_MANAGE]));
         $this->assertSame(-1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_REVIEW]));
         $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+    }
+
+    // ------------------------------------------------------------------ latest version of the paper
+
+    /**
+     * As Episciences_Paper::isAssignedEditorOrCopyEditor in the gpl, the editor (copy editor) of the
+     * latest version of a paper handles its previous versions.
+     */
+    public function testEditorOfTheLatestVersionHandlesThePreviousOnes(): void
+    {
+        $token = $this->makeToken($this->makeUser(70, ['ROLE_EDITOR']));
+        $previousVersion = $this->makePaper(10);
+        $this->papersRepository->method('findLatestVersion')->with($previousVersion)->willReturn($this->makePaper(10, editors: [70 => []]));
+
+        $this->assertSame(1, $this->voter->vote($token, $previousVersion, [PapersVoter::PAPERS_VIEW]));
+        $this->assertSame(1, $this->voter->vote($token, $previousVersion, [PapersVoter::PAPERS_MANAGE]));
+    }
+
+    public function testCopyEditorOfTheLatestVersionHandlesThePreviousOnes(): void
+    {
+        $token = $this->makeToken($this->makeUser(70, ['ROLE_COPYEDITOR']));
+        $previousVersion = $this->makePaper(10);
+        $this->papersRepository->method('findLatestVersion')->willReturn($this->makePaper(10, copyEditors: [70 => []]));
+
+        $this->assertSame(1, $this->voter->vote($token, $previousVersion, [PapersVoter::PAPERS_MANAGE]));
+    }
+
+    public function testEditorUnassignedFromTheLatestVersionDoesNotHandleThePreviousOnes(): void
+    {
+        $token = $this->makeToken($this->makeUser(70, ['ROLE_EDITOR']));
+        $history = [$this->assignment(UserAssignment::STATUS_INACTIVE, '2024-06-01'), $this->assignment(UserAssignment::STATUS_ACTIVE, '2024-01-01')];
+        $this->papersRepository->method('findLatestVersion')->willReturn($this->makePaper(10, editors: [70 => $history]));
+
+        $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(10), [PapersVoter::PAPERS_MANAGE]));
+    }
+
+    /**
+     * The reviewers only review the version they are assigned to.
+     */
+    public function testReviewerOfTheLatestVersionDoesNotSeeThePreviousOnes(): void
+    {
+        $token = $this->makeToken($this->makeUser(70));
+        $this->papersRepository->method('findLatestVersion')->willReturn($this->makePaper(10, reviewers: [70 => []]));
+
+        $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(10), [PapersVoter::PAPERS_VIEW]));
     }
 }

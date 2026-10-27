@@ -292,33 +292,34 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             $this->security->isGranted('ROLE_REVIEWER')
         ) { // only assigned papers
 
-            // Only a current assignment: the latest one of the user in this role, active (as
-            // Episciences_PapersManager::getEditors() and getReviewers() in the gpl)
-            $laterAssignment = $queryBuilder->getEntityManager()->createQueryBuilder()
-                ->select('laterAss.id')
-                ->from(UserAssignment::class, 'laterAss')
-                ->where('laterAss.itemid = uAss.itemid')
-                ->andWhere('laterAss.item = uAss.item')
-                ->andWhere('laterAss.uid = uAss.uid')
-                ->andWhere('laterAss.roleid = uAss.roleid')
-                ->andWhere('laterAss.when > uAss.when');
-
-            $assignment = $queryBuilder->getEntityManager()->createQueryBuilder()
-                ->select('uAss.id')
-                ->from(UserAssignment::class, 'uAss')
-                ->where("uAss.itemid = $alias.docid")
-                ->andWhere('uAss.item = :type')
-                ->andWhere('uAss.uid = :to')
-                ->andWhere('uAss.status = :activeAssignment')
-                ->andWhere($queryBuilder->expr()->not($queryBuilder->expr()->exists($laterAssignment->getDQL())));
+            // The papers they are currently assigned to, and, for the editors and copy editors, the
+            // previous versions of the papers whose latest version they are assigned to
+            // (Episciences_Paper::isAssignedEditorOrCopyEditor in the gpl)
+            $latestVersionAssignment = $queryBuilder->getEntityManager()->createQueryBuilder()
+                ->select('latestVersion.docid')
+                ->from(Paper::class, 'latestVersion')
+                ->where("latestVersion.paperid = $alias.paperid")
+                ->andWhere($expr->not($expr->exists(
+                    $queryBuilder->getEntityManager()->createQueryBuilder()
+                        ->select('newerVersion.docid')
+                        ->from(Paper::class, 'newerVersion')
+                        ->where('newerVersion.paperid = latestVersion.paperid')
+                        ->andWhere('newerVersion.when > latestVersion.when')
+                        ->getDQL()
+                )))
+                ->andWhere($expr->exists($this->currentAssignmentDql($queryBuilder, 'vAss', 'latestVersion.docid', true)));
 
             $queryBuilder
                 ->setParameter('type', UserAssignment::ITEM_PAPER)
                 ->setParameter('to', $currentUser->getUid())
                 ->setParameter('activeAssignment', UserAssignment::STATUS_ACTIVE)
+                ->setParameter('latestVersionRoles', [UserAssignment::ROLE_EDITOR, UserAssignment::ROLE_COPY_EDITOR])
                 ->orderBy("$alias.when", \SortDirection::Descending);
 
-            return $access->add($expr->exists($assignment->getDQL()));
+            return $access->add($expr->orX(
+                $expr->exists($this->currentAssignmentDql($queryBuilder, 'uAss', "$alias.docid")),
+                $expr->exists($latestVersionAssignment->getDQL())
+            ));
         }
 
         // papers of the author: submitted by them, or of which they are a co-author
@@ -339,6 +340,42 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             "$alias.user= :currentUser",
             $expr->exists($coAuthorAssignment->getDQL())
         ));
+    }
+
+    /**
+     * DQL of the current assignments of the connected user (:to) to a paper: the latest assignment of
+     * the user in a role, active (as Episciences_PapersManager::getEditors() and getReviewers() in the
+     * gpl), restricted to the editors and copy editors (:latestVersionRoles) when asked.
+     */
+    private function currentAssignmentDql(QueryBuilder $queryBuilder, string $assignmentAlias, string $docIdExpression, bool $editorsOnly = false): string
+    {
+        $expr = $queryBuilder->expr();
+        $later = "later_$assignmentAlias";
+
+        $assignment = $queryBuilder->getEntityManager()->createQueryBuilder()
+            ->select("$assignmentAlias.id")
+            ->from(UserAssignment::class, $assignmentAlias)
+            ->where("$assignmentAlias.itemid = $docIdExpression")
+            ->andWhere("$assignmentAlias.item = :type")
+            ->andWhere("$assignmentAlias.uid = :to")
+            ->andWhere("$assignmentAlias.status = :activeAssignment")
+            ->andWhere($expr->not($expr->exists(
+                $queryBuilder->getEntityManager()->createQueryBuilder()
+                    ->select("$later.id")
+                    ->from(UserAssignment::class, $later)
+                    ->where("$later.itemid = $assignmentAlias.itemid")
+                    ->andWhere("$later.item = $assignmentAlias.item")
+                    ->andWhere("$later.uid = $assignmentAlias.uid")
+                    ->andWhere("$later.roleid = $assignmentAlias.roleid")
+                    ->andWhere("$later.when > $assignmentAlias.when")
+                    ->getDQL()
+            )));
+
+        if ($editorsOnly) {
+            $assignment->andWhere("$assignmentAlias.roleid IN (:latestVersionRoles)");
+        }
+
+        return $assignment->getDQL();
     }
 
     /**

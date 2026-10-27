@@ -236,9 +236,28 @@ class PaperPrivateCollectionTest extends TestCase
         $where = $this->where($queryBuilder);
 
         self::assertStringContainsString('uAss.status = :activeAssignment', $where);
-        self::assertStringContainsString('NOT(EXISTS(SELECT laterAss.id', $where);
-        self::assertStringContainsString('laterAss.roleid = uAss.roleid AND laterAss.when > uAss.when', $where);
+        self::assertStringContainsString('NOT(EXISTS(SELECT later_uAss.id', $where);
+        self::assertStringContainsString('later_uAss.roleid = uAss.roleid AND later_uAss.when > uAss.when', $where);
         self::assertSame(UserAssignment::STATUS_ACTIVE, $this->parameter($queryBuilder, 'activeAssignment'));
+    }
+
+    /**
+     * As Episciences_Paper::isAssignedEditorOrCopyEditor in the gpl, the editors and copy editors of
+     * the latest version of a paper also read its previous versions.
+     */
+    public function testEditorAlsoSeesThePreviousVersionsOfTheLatestVersionTheyAreAssignedTo(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_EDITOR']));
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('latestVersion.paperid = o.paperid', $where);
+        self::assertStringContainsString('newerVersion.when > latestVersion.when', $where);
+        self::assertStringContainsString('vAss.itemid = latestVersion.docid', $where);
+        self::assertStringContainsString('vAss.roleid IN (:latestVersionRoles)', $where);
+        self::assertSame(
+            [UserAssignment::ROLE_EDITOR, UserAssignment::ROLE_COPY_EDITOR],
+            $this->parameter($queryBuilder, 'latestVersionRoles')
+        );
     }
 
     public function testAuthorOnlySeesOwnPapersOfTheTokenJournal(): void

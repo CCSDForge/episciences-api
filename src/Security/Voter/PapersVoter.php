@@ -7,6 +7,7 @@ use App\Entity\PaperConflicts;
 use App\Entity\User;
 use App\Entity\UserAssignment;
 use App\Repository\PaperConflictsRepository;
+use App\Repository\PapersRepository;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
@@ -25,8 +26,12 @@ class PapersVoter extends Voter
     private const string SETTING_ENCAPSULATE_EDITORS = 'encapsulateEditors';
     private const string SETTING_ENCAPSULATE_COPY_EDITORS = 'encapsulateCopyEditors';
 
+    /** @var array<int, Paper|null> latest version of the papers already voted on, by docid */
+    private array $latestVersions = [];
+
     public function __construct(
-        private readonly PaperConflictsRepository $paperConflictsRepository
+        private readonly PaperConflictsRepository $paperConflictsRepository,
+        private readonly PapersRepository $papersRepository
     ) {
     }
 
@@ -80,9 +85,9 @@ class PapersVoter extends Voter
     private function canView(User $authenticatedUser, Paper $paper): bool
     {
 
-        $isEditor = $this->isAssigned($authenticatedUser, $paper->getEditors());
+        $isEditor = $this->isAssignedEditor($authenticatedUser, $paper);
         $isReviewer = $this->isAssigned($authenticatedUser, $paper->getReviewers());
-        $isCopyEditor = $this->isAssigned($authenticatedUser, $paper->getCopyEditors());
+        $isCopyEditor = $this->isAssignedCopyEditor($authenticatedUser, $paper);
 
         // As on the member page of the paper in the gpl, its author always sees its details; its
         // co-authors only open the page (isAllowedToSeeNoPublicDetails: isOwner, not isCoauthor)
@@ -106,8 +111,8 @@ class PapersVoter extends Voter
     {
         // Editors and copy editors only handle the papers they are assigned to, whatever the
         // encapsulation settings of the journal: below the secretaries, no role covers every paper.
-        $isEditor = $this->isAssigned($authenticatedUser, $paper->getEditors());
-        $isCopyEditor = $this->isAssigned($authenticatedUser, $paper->getCopyEditors());
+        $isEditor = $this->isAssignedEditor($authenticatedUser, $paper);
+        $isCopyEditor = $this->isAssignedCopyEditor($authenticatedUser, $paper);
 
         return
 
@@ -126,7 +131,7 @@ class PapersVoter extends Voter
 
     private function canReview(User $authenticatedUser, Paper $paper): bool
     {
-        $isEditor = $this->isAssigned($authenticatedUser, $paper->getEditors());
+        $isEditor = $this->isAssignedEditor($authenticatedUser, $paper);
         $isReviewer = $this->isAssigned($authenticatedUser, $paper->getReviewers());
 
         return
@@ -152,6 +157,50 @@ class PapersVoter extends Voter
     private function canManage(User $authenticatedUser, Paper $paper): bool
     {
         return $paper->getUid() !== $authenticatedUser->getUid() && $this->canEdit($authenticatedUser, $paper);
+    }
+
+    /**
+     * Editor currently assigned to the paper, or to its latest version (Episciences_Paper::
+     * isAssignedEditorOrCopyEditor in the gpl): the editor of the latest version handles the previous ones.
+     */
+    private function isAssignedEditor(User $authenticatedUser, Paper $paper): bool
+    {
+        if ($this->isAssigned($authenticatedUser, $paper->getEditors())) {
+            return true;
+        }
+
+        $latestVersion = $this->latestVersion($paper);
+
+        return $latestVersion !== null && $this->isAssigned($authenticatedUser, $latestVersion->getEditors());
+    }
+
+    /**
+     * Copy editor currently assigned to the paper, or to its latest version (see isAssignedEditor()).
+     */
+    private function isAssignedCopyEditor(User $authenticatedUser, Paper $paper): bool
+    {
+        if ($this->isAssigned($authenticatedUser, $paper->getCopyEditors())) {
+            return true;
+        }
+
+        $latestVersion = $this->latestVersion($paper);
+
+        return $latestVersion !== null && $this->isAssigned($authenticatedUser, $latestVersion->getCopyEditors());
+    }
+
+    private function latestVersion(Paper $paper): ?Paper
+    {
+        $docId = $paper->getDocid();
+
+        if ($docId === null) {
+            return $this->papersRepository->findLatestVersion($paper);
+        }
+
+        if (!array_key_exists($docId, $this->latestVersions)) {
+            $this->latestVersions[$docId] = $this->papersRepository->findLatestVersion($paper);
+        }
+
+        return $this->latestVersions[$docId];
     }
 
     /**

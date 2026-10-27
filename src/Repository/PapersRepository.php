@@ -51,6 +51,21 @@ class PapersRepository extends ServiceEntityRepository
     }
 
     /**
+     * The latest version of a paper (same paperid, latest submission date), null when the paper is
+     * itself the latest version or has no paperid (Episciences_Paper::findLatestVersion in the gpl).
+     */
+    public function findLatestVersion(Paper $paper): ?Paper
+    {
+        if ($paper->getPaperid() === null) {
+            return null;
+        }
+
+        $latest = $this->findOneBy(['paperid' => $paper->getPaperid()], ['when' => 'DESC']);
+
+        return $latest instanceof Paper && $latest->getDocid() !== $paper->getDocid() ? $latest : null;
+    }
+
+    /**
      * Submissions query
      * @param array $filters
      * @param bool $excludeTmpVersions
