@@ -28,6 +28,10 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 {
     use QueryTrait;
 
+    /** Journal settings restricting the editors (copy editors) to the papers they are assigned to */
+    private const string SETTING_ENCAPSULATE_EDITORS = 'encapsulateEditors';
+    private const string SETTING_ENCAPSULATE_COPY_EDITORS = 'encapsulateCopyEditors';
+
     public function __construct(private Security $security)
     {
     }
@@ -262,6 +266,28 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         }
     }
 
+    /**
+     * Whether the editor (copy editor) reads every paper of the journal of the token, assigned or not:
+     * when the journal explicitly sets their encapsulation to "0", a setting never saved counting as
+     * restrictive (DefaultController::isEditorialStaffOfEveryPaper in the gpl).
+     */
+    private function isEditorialStaffOfEveryPaper(QueryBuilder $queryBuilder, User $currentUser): bool
+    {
+        $isEditor = $this->security->isGranted('ROLE_EDITOR');
+        $isCopyEditor = $this->security->isGranted('ROLE_COPYEDITOR');
+
+        if (!$isEditor && !$isCopyEditor) {
+            return false;
+        }
+
+        /** @var Review|null $journal */
+        $journal = $queryBuilder->getEntityManager()->getRepository(Review::class)->findOneBy(['rvid' => $currentUser->getCurrentJournalID()]);
+
+        return
+            ($isEditor && $journal?->getSetting(self::SETTING_ENCAPSULATE_EDITORS) === '0') ||
+            ($isCopyEditor && $journal?->getSetting(self::SETTING_ENCAPSULATE_COPY_EDITORS) === '0');
+    }
+
     private function privateAccessProcess(
         QueryBuilder  $queryBuilder,
         string        $alias,
@@ -294,6 +320,12 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                         ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $currentUser->getCurrentJournalID())
                         ->orderBy("$alias.when", \SortDirection::Descending);
 
+
+                } elseif ($this->isEditorialStaffOfEveryPaper($queryBuilder, $currentUser)) {
+
+                    $queryBuilder
+                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $currentUser->getCurrentJournalID())
+                        ->orderBy("$alias.when", \SortDirection::Descending);
 
                 } elseif (
                     $this->security->isGranted('ROLE_EDITOR') ||

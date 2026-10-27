@@ -32,6 +32,9 @@ class PaperPrivateCollectionTest extends TestCase
 
     private EntityManagerInterface&MockObject $entityManager;
 
+    /** @var array<string, ?string> settings of the journal of the token */
+    private array $tokenJournalSettings = [];
+
     protected function setUp(): void
     {
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
@@ -44,6 +47,18 @@ class PaperPrivateCollectionTest extends TestCase
         $repository->method('getJournalByIdentifier')->willReturnCallback(function (string $code): Review {
             $journal = $this->createMock(Review::class);
             $journal->method('getRvid')->willReturn($code === 'dev' ? self::TOKEN_JOURNAL : self::OTHER_JOURNAL);
+
+            return $journal;
+        });
+        $repository->method('findOneBy')->willReturnCallback(function (array $criteria): ?Review {
+            if ($criteria !== ['rvid' => self::TOKEN_JOURNAL]) {
+                return null;
+            }
+
+            $journal = $this->createMock(Review::class);
+            $journal->method('getSetting')->willReturnCallback(
+                fn(string $key): ?string => $this->tokenJournalSettings[$key] ?? null
+            );
 
             return $journal;
         });
@@ -153,6 +168,46 @@ class PaperPrivateCollectionTest extends TestCase
         self::assertStringContainsString('uAss.uid = :to', $this->where($queryBuilder));
         self::assertStringNotContainsString('o.user', $this->where($queryBuilder));
         self::assertSame(self::UID, $this->parameter($queryBuilder, 'to'));
+    }
+
+    /**
+     * @return iterable<string, array{string[], array<string, ?string>, bool}> roles, journal settings, every paper of the journal
+     */
+    public static function encapsulationProvider(): iterable
+    {
+        yield 'editor, encapsulation disabled ("0")' => [['ROLE_EDITOR'], ['encapsulateEditors' => '0'], true];
+        yield 'editor, encapsulation enabled' => [['ROLE_EDITOR'], ['encapsulateEditors' => '1'], false];
+        yield 'editor, empty setting' => [['ROLE_EDITOR'], ['encapsulateEditors' => ''], false];
+        yield 'editor, setting not set' => [['ROLE_EDITOR'], [], false];
+        yield 'editor, only the copy editors not encapsulated' => [['ROLE_EDITOR'], ['encapsulateCopyEditors' => '0'], false];
+        yield 'copy editor, encapsulation disabled ("0")' => [['ROLE_COPYEDITOR'], ['encapsulateCopyEditors' => '0'], true];
+        yield 'copy editor, setting not set' => [['ROLE_COPYEDITOR'], [], false];
+        yield 'guest editor' => [['ROLE_GUEST_EDITOR'], ['encapsulateEditors' => '0'], false];
+    }
+
+    /**
+     * As isEditorialStaffOfEveryPaper in the gpl, an editor (copy editor) reads every paper of the journal
+     * only when the journal sets their encapsulation to "0"; otherwise, only the papers they are assigned to.
+     *
+     * @param string[] $roles
+     * @param array<string, ?string> $settings
+     */
+    #[DataProvider('encapsulationProvider')]
+    public function testEditorReadsEveryPaperOnlyWhenNotEncapsulated(array $roles, array $settings, bool $everyPaper): void
+    {
+        $this->tokenJournalSettings = $settings;
+        $queryBuilder = $this->apply($this->security($this->user(), $roles));
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('o.rvid = :rvId', $where);
+        self::assertSame(self::TOKEN_JOURNAL, $this->parameter($queryBuilder, 'rvId'));
+
+        if ($everyPaper) {
+            self::assertStringNotContainsString('uAss.uid', $where);
+            self::assertStringNotContainsString('o.user', $where);
+        } else {
+            self::assertStringContainsString('uAss.uid = :to', $where);
+        }
     }
 
     public function testAuthorOnlySeesOwnPapersOfTheTokenJournal(): void
