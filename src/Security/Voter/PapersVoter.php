@@ -20,6 +20,10 @@ class PapersVoter extends Voter
 
     public const PAPERS_FOLLOW = 'papers_follow';
 
+    /** Journal settings restricting the editors (copy editors) to the papers they are assigned to */
+    private const string SETTING_ENCAPSULATE_EDITORS = 'encapsulateEditors';
+    private const string SETTING_ENCAPSULATE_COPY_EDITORS = 'encapsulateCopyEditors';
+
     public function __construct(
         private readonly PaperConflictsRepository $paperConflictsRepository
     ) {
@@ -79,7 +83,7 @@ class PapersVoter extends Voter
         return
             !$this->hasConflict($authenticatedUser, $paper) &&
             (
-                $this->isSecretary($authenticatedUser, $paper) ||
+                $this->isEditorialStaffOfEveryPaper($authenticatedUser, $paper) ||
                 (
                     $isCopyEditor ||
                     $isReviewer ||
@@ -90,7 +94,8 @@ class PapersVoter extends Voter
 
     private function canEdit(User $authenticatedUser, Paper $paper): bool
     {
-        $isSecretary = $this->isSecretary($authenticatedUser, $paper);
+        // Editors and copy editors only handle the papers they are assigned to, whatever the
+        // encapsulation settings of the journal: below the secretaries, no role covers every paper.
         $isEditor = array_key_exists($authenticatedUser->getUid(), $paper->getEditors());
         $isCopyEditor = array_key_exists($authenticatedUser->getUid(), $paper->getCopyEditors());
 
@@ -99,7 +104,7 @@ class PapersVoter extends Voter
             (
                 !$this->hasConflict($authenticatedUser, $paper) &&
                 (
-                    $isSecretary ||
+                    $this->isSecretary($authenticatedUser, $paper) ||
                     $paper->getUid() === $authenticatedUser->getUid() ||
                     $isCopyEditor ||
                     $isEditor
@@ -195,6 +200,30 @@ class PapersVoter extends Voter
     private function isEditor(User $authenticatedUser, Paper $paper): bool
     {
         return $this->is($authenticatedUser, $paper, User::ROLE_EDITOR) || $this->isAdministrator($authenticatedUser, $paper);
+    }
+
+    private function isCopyEditor(User $authenticatedUser, Paper $paper): bool
+    {
+        return $this->is($authenticatedUser, $paper, User::ROLE_COPY_EDITOR);
+    }
+
+    /**
+     * Editorial staff of every paper of the journal for viewing the details of a paper, assigned or
+     * not (DefaultController::isEditorialStaffOfEveryPaper in the gpl): the secretaries, and the
+     * editors (copy editors) when the journal explicitly sets their encapsulation to "0" (a setting
+     * never saved counts as restrictive). Managing a paper still requires being assigned to it.
+     */
+    private function isEditorialStaffOfEveryPaper(User $authenticatedUser, Paper $paper): bool
+    {
+        return
+            $this->isSecretary($authenticatedUser, $paper) ||
+            ($this->journalSetting($paper, self::SETTING_ENCAPSULATE_EDITORS) === '0' && $this->isEditor($authenticatedUser, $paper)) ||
+            ($this->journalSetting($paper, self::SETTING_ENCAPSULATE_COPY_EDITORS) === '0' && $this->isCopyEditor($authenticatedUser, $paper));
+    }
+
+    private function journalSetting(Paper $paper, string $setting): ?string
+    {
+        return $paper->getReview()?->getSetting($setting);
     }
 
     /**

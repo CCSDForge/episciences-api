@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Repository\PaperConflictsRepository;
 use App\Security\Voter\PapersVoter;
 use Doctrine\Common\Collections\ArrayCollection;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -42,6 +43,7 @@ class PapersVoterTest extends TestCase
      * @param array<int, mixed> $coAuthors   uid => anything
      * @param bool              $coiEnabled
      * @param ArrayCollection   $conflicts
+     * @param array<string, ?string> $settings journal settings
      */
     private function makePaper(
         int $uid,
@@ -52,12 +54,14 @@ class PapersVoterTest extends TestCase
         array $coAuthors = [],
         bool $coiEnabled = false,
         ?ArrayCollection $conflicts = null,
-        int $paperid = 1
+        int $paperid = 1,
+        array $settings = []
     ): Paper&MockObject {
+        $settings += ['isCoiEnabled' => $coiEnabled ? '1' : null];
         $review = $this->createMock(Review::class);
-        $review->method('getSetting')
-            ->with('isCoiEnabled')
-            ->willReturn($coiEnabled ? '1' : null);
+        $review->method('getSetting')->willReturnCallback(
+            static fn(string $key): ?string => $settings[$key] ?? null
+        );
 
         $paper = $this->createMock(Paper::class);
         $paper->method('getUid')->willReturn($uid);
@@ -675,5 +679,70 @@ class PapersVoterTest extends TestCase
         $token = $this->makeToken($this->makeUser(10, ['ROLE_SECRETARY']));
 
         $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(10), [PapersVoter::PAPERS_MANAGE]));
+    }
+
+    // ------------------------------------------------------------------ editors encapsulation (journal settings)
+
+    /**
+     * @return array<string, array{list<string>, array<string, ?string>, int}> roles, journal settings, expected papers_view vote
+     */
+    public static function notAssignedEditorProvider(): array
+    {
+        return [
+            'editor, encapsulation enabled' => [['ROLE_EDITOR'], ['encapsulateEditors' => '1'], -1],
+            'editor, encapsulation disabled' => [['ROLE_EDITOR'], ['encapsulateEditors' => '0'], 1],
+            'editor, empty setting' => [['ROLE_EDITOR'], ['encapsulateEditors' => ''], -1],
+            'editor, setting not set' => [['ROLE_EDITOR'], [], -1],
+            'copy editor, encapsulation disabled' => [['ROLE_COPYEDITOR'], ['encapsulateCopyEditors' => '0'], 1],
+            'copy editor, encapsulation enabled' => [['ROLE_COPYEDITOR'], ['encapsulateCopyEditors' => '1'], -1],
+            'copy editor, setting not set' => [['ROLE_COPYEDITOR'], [], -1],
+            'guest editor' => [['ROLE_GUEST_EDITOR'], ['encapsulateEditors' => '0'], -1],
+        ];
+    }
+
+    /**
+     * An editor (copy editor) not assigned to a paper views its details only when the journal sets
+     * their encapsulation to "0" (DefaultController::isEditorialStaffOfEveryPaper in the gpl), and
+     * never manages it, whatever the encapsulation settings.
+     *
+     * @param list<string> $roles
+     * @param array<string, ?string> $settings
+     */
+    #[DataProvider('notAssignedEditorProvider')]
+    public function testNotAssignedEditorViewsDependingOnEncapsulationButNeverManages(array $roles, array $settings, int $expectedView): void
+    {
+        $token = $this->makeToken($this->makeUser(70, $roles));
+        $paper = $this->makePaper(10, settings: $settings);
+
+        $this->assertSame($expectedView, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+
+        foreach ([PapersVoter::PAPERS_EDIT, PapersVoter::PAPERS_MANAGE] as $attribute) {
+            $this->assertSame(-1, $this->voter->vote($token, $paper, [$attribute]), $attribute);
+        }
+    }
+
+    public function testAssignedEditorViewsAndManagesWhateverTheEncapsulation(): void
+    {
+        $token = $this->makeToken($this->makeUser(70, ['ROLE_EDITOR']));
+        $paper = $this->makePaper(10, editors: [70 => []], settings: ['encapsulateEditors' => '1']);
+
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_MANAGE]));
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+    }
+
+    public function testAssignedCopyEditorManagesWhateverTheEncapsulation(): void
+    {
+        $token = $this->makeToken($this->makeUser(70, ['ROLE_COPYEDITOR']));
+        $paper = $this->makePaper(10, copyEditors: [70 => []], settings: ['encapsulateCopyEditors' => '1']);
+
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_MANAGE]));
+    }
+
+    public function testSecretaryManagesEveryPaperWhateverTheEncapsulation(): void
+    {
+        $token = $this->makeToken($this->makeUser(70, ['ROLE_SECRETARY']));
+        $paper = $this->makePaper(10, settings: ['encapsulateEditors' => '1']);
+
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_MANAGE]));
     }
 }
