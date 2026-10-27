@@ -297,7 +297,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
                 } elseif (
                     $this->security->isGranted('ROLE_EDITOR') ||
-                    $this->security->isGranted('ROLE_COPY_EDITOR') ||
+                    $this->security->isGranted('ROLE_COPYEDITOR') ||
                     $this->security->isGranted('ROLE_GUEST_EDITOR') ||
                     $this->security->isGranted('ROLE_REVIEWER')
                 ) { // only assigned papers

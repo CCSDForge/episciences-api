@@ -139,6 +139,18 @@ class PaperPrivateCollectionTest extends TestCase
         self::assertSame(self::TOKEN_JOURNAL, $this->parameter($queryBuilder, 'rvId'));
     }
 
+    /**
+     * The role of a copy editor is ROLE_COPYEDITOR (role id "copyeditor").
+     */
+    public function testCopyEditorOnlySeesAssignedPapersOfTheTokenJournal(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_COPYEDITOR']));
+
+        self::assertStringContainsString('uAss.uid = :to', $this->where($queryBuilder));
+        self::assertStringNotContainsString('o.user', $this->where($queryBuilder));
+        self::assertSame(self::UID, $this->parameter($queryBuilder, 'to'));
+    }
+
     public function testAuthorOnlySeesOwnPapersOfTheTokenJournal(): void
     {
         $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_MEMBER']));

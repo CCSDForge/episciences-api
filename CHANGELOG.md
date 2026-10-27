@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Papers voter: the editors, guest editors and copy editors only view the details of a paper and manage it (`papers_view`, `papers_edit`, `papers_manage`) when they are assigned to it, whatever the encapsulation settings of the journal (`encapsulateEditors`, `encapsulateCopyEditors`); the secretaries and the roles above handle every paper of their journal.
 - Papers voter: as on the page of a paper in Episciences, its non-public details (`papers_view`) are shown to its author, not to its co-authors.
 - Papers voter: as on the page of a paper in Episciences, the editors (copy editors) not assigned to it view its details (`papers_view`) when the journal sets `encapsulateEditors` (`encapsulateCopyEditors`) to "0"; managing it still requires being assigned to it.
+- `GET /api/papers`: the copy editors see the papers they are assigned to; their role is `ROLE_COPYEDITOR` (role id `copyeditor`), also in the role hierarchy, instead of `ROLE_COPY_EDITOR`, which no user held.
 ### Added
 ### Changed
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.
