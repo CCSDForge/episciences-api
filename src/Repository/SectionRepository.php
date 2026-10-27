@@ -41,7 +41,7 @@ class SectionRepository extends ServiceEntityRepository
     {
         $sections = [];
 
-        $result = $this->getEntityManager()->createQueryBuilder()
+        $qb = $this->getEntityManager()->createQueryBuilder()
             ->select('assignment.uid AS UID', 'assignment.rvid AS RVID', 'section.sid AS SID', 'section.titles AS titles', 'section.descriptions AS descriptions', 'section.position AS POSITION')
             ->addSelect(sprintf('(SELECT COUNT(published.docid) FROM %s published WHERE published.rvid = section.rvid AND published.sid = section.sid AND published.status = :published) AS %s', Paper::class, PapersRepository::TOTAL_ARTICLE))
             ->distinct()
@@ -49,14 +49,11 @@ class SectionRepository extends ServiceEntityRepository
             // a removed section is not returned
             ->leftJoin(Section::class, 'section', Join::WITH, 'section.rvid = assignment.rvid AND section.sid = assignment.itemid')
             ->andWhere('assignment.uid IN (:uids)')
-            ->andWhere(self::latestActiveEditorAssignment('assignment'))
-            ->setParameter('rvid', $rvId)
             ->setParameter('uids', array_map('intval', (array)$uid), ArrayParameterType::INTEGER)
-            ->setParameter('item', 'section')
-            ->setParameter('editor', 'editor')
-            ->setParameter('active', 'active')
             ->setParameter('published', Paper::STATUS_PUBLISHED)
-            ->orderBy('section.position', 'ASC')
+            ->orderBy('section.position', 'ASC');
+
+        $result = self::whereLatestActiveEditorAssignment($qb, 'assignment', $rvId, 'section')
             ->getQuery()
             ->getScalarResult();
 

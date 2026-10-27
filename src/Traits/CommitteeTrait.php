@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Entity\UserAssignment;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr\Join;
+use Doctrine\ORM\QueryBuilder;
 
 /**
  * The editors of the sections and of the volumes, from their assignments
@@ -26,23 +27,37 @@ trait CommitteeTrait
      */
     private function committee(int $rvId, int $itemId, string $item, string $itemClass, string $itemIdField): array
     {
-        return $this->getEntityManager()->createQueryBuilder()
+        $qb = $this->getEntityManager()->createQueryBuilder()
             ->select('editor.civ AS civ', 'editor.screenName AS screenName', 'editor.orcid AS orcid')
             ->from(UserAssignment::class, 'assignment')
             // the item exists
             ->innerJoin($itemClass, 'item', Join::WITH, sprintf('item.rvid = assignment.rvid AND item.%s = assignment.itemid', $itemIdField))
             ->innerJoin(User::class, 'editor', Join::WITH, 'editor.uid = assignment.uid')
             ->andWhere('assignment.itemid = :itemId')
-            ->andWhere(self::latestActiveEditorAssignment('assignment'))
-            ->setParameter('rvid', $rvId)
             ->setParameter('itemId', $itemId)
-            ->setParameter('item', $item)
-            ->setParameter('editor', 'editor')
-            ->setParameter('active', 'active')
             ->groupBy('editor.uid', 'editor.civ', 'editor.screenName', 'editor.orcid', 'editor.lastname')
-            ->orderBy('editor.lastname', 'ASC')
+            ->orderBy('editor.lastname', 'ASC');
+
+        return self::whereLatestActiveEditorAssignment($qb, 'assignment', $rvId, $item)
             ->getQuery()
             ->getScalarResult();
+    }
+
+    /**
+     * Keeps the active editor assignments to the items of the journal which are the latest assignment
+     * of their editor to their item (see latestActiveEditorAssignment())
+     *
+     * @param string $alias alias of the assignment (UserAssignment)
+     * @param string $item 'section' or 'volume'
+     */
+    private static function whereLatestActiveEditorAssignment(QueryBuilder $qb, string $alias, int $rvId, string $item): QueryBuilder
+    {
+        return $qb
+            ->andWhere(self::latestActiveEditorAssignment($alias))
+            ->setParameter('rvid', $rvId)
+            ->setParameter('item', $item)
+            ->setParameter('editor', 'editor')
+            ->setParameter('active', 'active');
     }
 
     /**
