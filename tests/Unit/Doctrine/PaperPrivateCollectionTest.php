@@ -11,6 +11,7 @@ use App\Doctrine\AppQueryItemCollectionExtension;
 use App\Entity\Paper;
 use App\Entity\Review;
 use App\Entity\User;
+use App\Entity\UserAssignment;
 use App\Repository\ReviewRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr;
@@ -35,6 +36,9 @@ class PaperPrivateCollectionTest extends TestCase
     {
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
         $this->entityManager->method('getExpressionBuilder')->willReturn(new Expr());
+        $this->entityManager->method('createQueryBuilder')->willReturnCallback(
+            fn(): QueryBuilder => new QueryBuilder($this->entityManager)
+        );
 
         $repository = $this->createMock(ReviewRepository::class);
         $repository->method('getJournalByIdentifier')->willReturnCallback(function (string $code): Review {
@@ -159,6 +163,21 @@ class PaperPrivateCollectionTest extends TestCase
         self::assertStringContainsString('o.rvid = :rvId', $this->where($queryBuilder));
         self::assertSame(self::UID, $this->parameter($queryBuilder, 'currentUser'));
         self::assertSame(self::TOKEN_JOURNAL, $this->parameter($queryBuilder, 'rvId'));
+    }
+
+    /**
+     * As isRestrictedAccess in the gpl, an author also sees the papers of which they are a co-author.
+     */
+    public function testAuthorAlsoSeesThePapersOfWhichTheyAreCoAuthor(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_MEMBER']));
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('o.user= :currentUser OR (EXISTS(', $where);
+        self::assertStringContainsString('coAuthorAss.itemid = o.docid', $where);
+        self::assertStringContainsString('coAuthorAss.uid = :currentUser', $where);
+        self::assertSame(UserAssignment::ROLE_CO_AUTHOR, $this->parameter($queryBuilder, 'coAuthorRole'));
+        self::assertSame(UserAssignment::ITEM_PAPER, $this->parameter($queryBuilder, 'coAuthorItem'));
     }
 
     /**

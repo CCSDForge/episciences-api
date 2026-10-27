@@ -310,11 +310,24 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                         ->orderBy("$alias.when", \SortDirection::Descending);
 
 
-                } else { // author's papers
+                } else { // papers of the author: submitted by them, or of which they are a co-author (as isRestrictedAccess in the gpl)
 
-                    $queryBuilder->
-                    andWhere("$alias.user= :currentUser")->
-                    setParameter('currentUser', $currentUser->getUid())
+                    $coAuthorAssignment = $queryBuilder->getEntityManager()->createQueryBuilder()
+                        ->select('coAuthorAss.id')
+                        ->from(UserAssignment::class, 'coAuthorAss')
+                        ->where("coAuthorAss.itemid = $alias.docid")
+                        ->andWhere('coAuthorAss.item = :coAuthorItem')
+                        ->andWhere('coAuthorAss.roleid = :coAuthorRole')
+                        ->andWhere('coAuthorAss.uid = :currentUser');
+
+                    $queryBuilder
+                        ->andWhere($queryBuilder->expr()->orX(
+                            "$alias.user= :currentUser",
+                            $queryBuilder->expr()->exists($coAuthorAssignment->getDQL())
+                        ))
+                        ->setParameter('currentUser', $currentUser->getUid())
+                        ->setParameter('coAuthorItem', UserAssignment::ITEM_PAPER)
+                        ->setParameter('coAuthorRole', UserAssignment::ROLE_CO_AUTHOR)
                         ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $currentUser->getCurrentJournalID());
 
                 }
