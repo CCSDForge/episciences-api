@@ -250,6 +250,17 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
 
     /**
+     * Scope of the papers listed to a connected user (`scope` query parameter, validated by its schema):
+     * the papers opened by their role by default.
+     */
+    private function paperScope(array $context): string
+    {
+        $scope = $context['filters'][Paper::SCOPE_PARAM] ?? null;
+
+        return is_string($scope) && in_array($scope, Paper::SCOPES, true) ? $scope : Paper::SCOPE_WORKSPACE;
+    }
+
+    /**
      * Applies the journal (rvcode) and publication year filters to the papers visible to a connected user.
      * The papers are already restricted to the journal of the token: a journal other than this one returns no paper.
      */
@@ -447,19 +458,32 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
             if ($resourceClass === Paper::class) {
 
+                $isItem = isset($context[AppConstants::IS_APP_ITEM]) && filter_var($context[AppConstants::IS_APP_ITEM], FILTER_VALIDATE_BOOLEAN);
+                $scope = $isItem ? Paper::SCOPE_ALL : $this->paperScope($context);
+
+                if ($scope === Paper::SCOPE_PUBLISHED) { // the published papers, as in offline mode
+                    $this->publicAccessProcess($queryBuilder, $alias, $resourceClass, $context);
+                    return;
+                }
+
                 if ($isOnlyAccepted) {
                     $this->adnWhereAcceptedOnly($queryBuilder, $alias);
                 }
 
                 $access = $this->paperAccessCondition($queryBuilder, $alias, $currentUser);
-                $isItem = isset($context[AppConstants::IS_APP_ITEM]) && filter_var($context[AppConstants::IS_APP_ITEM], FILTER_VALIDATE_BOOLEAN);
 
-                if ($isItem) {
+                if ($scope === Paper::SCOPE_ALL) {
                     // As isRestrictedAccess in the gpl, a published paper is open to everyone, whatever
                     // the journal of the token; its confidential fields stay protected by the voter.
                     $queryBuilder
                         ->andWhere($queryBuilder->expr()->orX("$alias.status = :publishedStatus", $access))
                         ->setParameter('publishedStatus', Paper::STATUS_PUBLISHED);
+
+                    if (!$isItem) {
+                        $queryBuilder
+                            ->orderBy("$alias.publicationDate", \SortDirection::Descending)
+                            ->addOrderBy("$alias.when", \SortDirection::Descending);
+                    }
                 } else {
                     $queryBuilder->andWhere($access);
                 }

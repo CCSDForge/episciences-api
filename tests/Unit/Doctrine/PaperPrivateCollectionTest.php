@@ -396,4 +396,77 @@ class PaperPrivateCollectionTest extends TestCase
         self::assertStringNotContainsString(':publishedStatus', $this->where($queryBuilder));
         self::assertNull($queryBuilder->getParameter('publishedStatus'));
     }
+
+    // ------------------------------------------------------------------ GET /api/papers?scope=
+
+    /**
+     * @return iterable<string, array{?string}>
+     */
+    public static function workspaceScopeProvider(): iterable
+    {
+        yield 'no scope' => [null];
+        yield 'workspace' => [Paper::SCOPE_WORKSPACE];
+        yield 'unknown value (refused by the schema of the parameter)' => ['foo'];
+    }
+
+    /**
+     * Without scope (or with scope=workspace), the list keeps holding the papers opened by the role.
+     */
+    #[DataProvider('workspaceScopeProvider')]
+    public function testWorkspaceScopeListsThePapersOpenedByTheRole(?string $scope): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_EDITOR']), $scope === null ? [] : ['scope' => $scope]);
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('uAss.uid = :to', $where);
+        self::assertStringNotContainsString(':publishedStatus', $where);
+        self::assertStringNotContainsString(':published', $where);
+    }
+
+    /**
+     * scope=published lists the published papers, as in offline mode, whatever the role.
+     *
+     * @param string[] $roles
+     */
+    #[DataProvider('itemRolesProvider')]
+    public function testPublishedScopeListsThePublishedPapersAsInOfflineMode(array $roles): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), $roles), ['scope' => Paper::SCOPE_PUBLISHED, 'rvcode' => 'other']);
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('o.status= :published', $where);
+        self::assertSame(Paper::STATUS_PUBLISHED, $this->parameter($queryBuilder, 'published'));
+        self::assertStringContainsString('o.rvid = :rvId', $where);
+        self::assertSame(self::OTHER_JOURNAL, $this->parameter($queryBuilder, 'rvId'));
+        self::assertStringNotContainsString('uAss', $where);
+        self::assertStringNotContainsString('o.user', $where);
+    }
+
+    /**
+     * scope=all lists the published papers and those opened by the role, as GET /api/papers/{docid}.
+     *
+     * @param string[] $roles
+     */
+    #[DataProvider('itemRolesProvider')]
+    public function testAllScopeListsThePublishedPapersAndThoseOpenedByTheRole(array $roles): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), $roles), ['scope' => Paper::SCOPE_ALL]);
+        $where = $this->where($queryBuilder);
+
+        self::assertStringStartsWith('o.status = :publishedStatus OR ', $where);
+        self::assertStringContainsString('o.rvid = :rvId', $where);
+        self::assertSame(Paper::STATUS_PUBLISHED, $this->parameter($queryBuilder, 'publishedStatus'));
+        self::assertSame('o.publicationDate DESC, o.when DESC', implode(', ', array_map('strval', $queryBuilder->getDQLPart('orderBy'))));
+    }
+
+    /**
+     * The scope is ignored in offline mode.
+     */
+    public function testScopeIsIgnoredInOfflineMode(): void
+    {
+        $queryBuilder = $this->apply($this->security(null), ['scope' => Paper::SCOPE_ALL]);
+
+        self::assertStringContainsString('o.status= :published', $this->where($queryBuilder));
+        self::assertNull($queryBuilder->getParameter('publishedStatus'));
+    }
 }

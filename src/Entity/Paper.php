@@ -11,6 +11,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
@@ -59,7 +60,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['paper']],
                 summary: 'All Papers (In offline mode: only published papers )',
-                description: 'List the papers. In offline mode only published papers are returned. In connected mode the papers of the journal of the token are returned according to the role: all of them for an administrator, a chief editor or a secretary, the assigned ones for an editor, a copy editor or a reviewer, and only their own papers for an author (an empty list if they have none). The journal (rvcode), paper type(s) and publication year(s) filters apply in both modes; in connected mode a journal other than the one of the token returns an empty list.',
+                description: 'List the papers. In offline mode only published papers are returned. In connected mode the papers of the journal of the token are returned according to the role (`scope=workspace`, default): all of them for an administrator, a chief editor or a secretary, the assigned ones for an editor, a copy editor or a reviewer, and only their own papers for an author (an empty list if they have none); `scope=published` lists the published papers as in offline mode, `scope=all` both. The journal (rvcode), paper type(s) and publication year(s) filters apply in both modes; in connected mode a journal other than the one of the token returns an empty list.',
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -118,7 +119,13 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
             ),
             normalizationContext: [
                 'groups' => ['read:Papers']
-            ]
+            ],
+            parameters: [
+                self::SCOPE_PARAM => new QueryParameter(
+                    schema: ['type' => 'string', 'enum' => self::SCOPES, 'default' => self::SCOPE_WORKSPACE],
+                    description: 'Connected mode only (ignored in offline mode): `workspace` (default) the papers opened by the role of the user in the journal of the token; `published` the published papers, as in offline mode; `all` both, the published papers and those opened by the role.',
+                ),
+            ],
         ),
     ],
     order: ['rvid' => 'DESC'],
@@ -161,6 +168,16 @@ class Paper implements UserOwnedInterface
      */
     public const DATE_FILTER_PROPERTIES = ['submissionDate', 'publicationDate'];
     public const COLLECTION_NAME = '_api_/papers/_get_collection';
+
+    /**
+     * Scope of the papers listed to a connected user (GET /papers/?scope=): the papers opened by their
+     * role (default), the published papers, or both.
+     */
+    public const SCOPE_PARAM = 'scope';
+    public const SCOPE_WORKSPACE = 'workspace';
+    public const SCOPE_PUBLISHED = 'published';
+    public const SCOPE_ALL = 'all';
+    public const SCOPES = [self::SCOPE_WORKSPACE, self::SCOPE_PUBLISHED, self::SCOPE_ALL];
 
     public const TABLE = 'PAPERS';
     public const URI_TEMPLATE = '/papers/';
