@@ -11,6 +11,7 @@ use App\Doctrine\AppQueryItemCollectionExtension;
 use App\Entity\Paper;
 use App\Entity\Review;
 use App\Entity\User;
+use App\Entity\UserAssignment;
 use App\Repository\ReviewRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr;
@@ -31,15 +32,33 @@ class PaperPrivateCollectionTest extends TestCase
 
     private EntityManagerInterface&MockObject $entityManager;
 
+    /** @var array<string, ?string> settings of the journal of the token */
+    private array $tokenJournalSettings = [];
+
     protected function setUp(): void
     {
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
         $this->entityManager->method('getExpressionBuilder')->willReturn(new Expr());
+        $this->entityManager->method('createQueryBuilder')->willReturnCallback(
+            fn(): QueryBuilder => new QueryBuilder($this->entityManager)
+        );
 
         $repository = $this->createMock(ReviewRepository::class);
         $repository->method('getJournalByIdentifier')->willReturnCallback(function (string $code): Review {
             $journal = $this->createMock(Review::class);
             $journal->method('getRvid')->willReturn($code === 'dev' ? self::TOKEN_JOURNAL : self::OTHER_JOURNAL);
+
+            return $journal;
+        });
+        $repository->method('findOneBy')->willReturnCallback(function (array $criteria): ?Review {
+            if ($criteria !== ['rvid' => self::TOKEN_JOURNAL]) {
+                return null;
+            }
+
+            $journal = $this->createMock(Review::class);
+            $journal->method('getSetting')->willReturnCallback(
+                fn(string $key): ?string => $this->tokenJournalSettings[$key] ?? null
+            );
 
             return $journal;
         });
@@ -102,6 +121,23 @@ class PaperPrivateCollectionTest extends TestCase
         return $queryBuilder;
     }
 
+    private function applyToItem(Security $security): QueryBuilder
+    {
+        $queryBuilder = (new QueryBuilder($this->entityManager))->select('o')->from(Paper::class, 'o')
+            ->andWhere('o.docid = :docid')->setParameter('docid', 42);
+
+        (new AppQueryItemCollectionExtension($security))->applyToItem(
+            $queryBuilder,
+            $this->createMock(QueryNameGeneratorInterface::class),
+            Paper::class,
+            ['docid' => 42],
+            null,
+            []
+        );
+
+        return $queryBuilder;
+    }
+
     private function where(QueryBuilder $queryBuilder): string
     {
         return (string)$queryBuilder->getDQLPart('where');
@@ -139,6 +175,115 @@ class PaperPrivateCollectionTest extends TestCase
         self::assertSame(self::TOKEN_JOURNAL, $this->parameter($queryBuilder, 'rvId'));
     }
 
+    /**
+     * The role of a copy editor is ROLE_COPYEDITOR (role id "copyeditor").
+     */
+    public function testCopyEditorSeesAssignedPapersOfTheTokenJournal(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_COPYEDITOR']));
+
+        self::assertStringContainsString('uAss.uid = :to', $this->where($queryBuilder));
+        self::assertSame(self::UID, $this->parameter($queryBuilder, 'to'));
+    }
+
+    /**
+     * @return iterable<string, array{string[], array<string, ?string>, bool}> roles, journal settings, every paper of the journal
+     */
+    public static function encapsulationProvider(): iterable
+    {
+        yield 'editor, encapsulation disabled ("0")' => [['ROLE_EDITOR'], ['encapsulateEditors' => '0'], true];
+        yield 'editor, encapsulation enabled' => [['ROLE_EDITOR'], ['encapsulateEditors' => '1'], false];
+        yield 'editor, empty setting' => [['ROLE_EDITOR'], ['encapsulateEditors' => ''], false];
+        yield 'editor, setting not set' => [['ROLE_EDITOR'], [], false];
+        yield 'editor, only the copy editors not encapsulated' => [['ROLE_EDITOR'], ['encapsulateCopyEditors' => '0'], false];
+        yield 'copy editor, encapsulation disabled ("0")' => [['ROLE_COPYEDITOR'], ['encapsulateCopyEditors' => '0'], true];
+        yield 'copy editor, setting not set' => [['ROLE_COPYEDITOR'], [], false];
+        yield 'guest editor' => [['ROLE_GUEST_EDITOR'], ['encapsulateEditors' => '0'], false];
+    }
+
+    /**
+     * As isEditorialStaffOfEveryPaper in the gpl, an editor (copy editor) reads every paper of the journal
+     * only when the journal sets their encapsulation to "0"; otherwise, only the papers they are assigned to.
+     *
+     * @param string[] $roles
+     * @param array<string, ?string> $settings
+     */
+    #[DataProvider('encapsulationProvider')]
+    public function testEditorReadsEveryPaperOnlyWhenNotEncapsulated(array $roles, array $settings, bool $everyPaper): void
+    {
+        $this->tokenJournalSettings = $settings;
+        $queryBuilder = $this->apply($this->security($this->user(), $roles));
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('o.rvid = :rvId', $where);
+        self::assertSame(self::TOKEN_JOURNAL, $this->parameter($queryBuilder, 'rvId'));
+
+        if ($everyPaper) {
+            self::assertStringNotContainsString('uAss.uid', $where);
+            self::assertStringNotContainsString('o.user', $where);
+        } else {
+            self::assertStringContainsString('uAss.uid = :to', $where);
+        }
+    }
+
+    /**
+     * As in the gpl, only a current assignment counts: the latest one of the user in a role, active.
+     */
+    public function testEditorOnlySeesTheCurrentAssignments(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_EDITOR']));
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('uAss.status = :activeAssignment', $where);
+        self::assertStringContainsString('NOT(EXISTS(SELECT later_uAss.id', $where);
+        self::assertStringContainsString('later_uAss.roleid = uAss.roleid AND (later_uAss.when > uAss.when OR (later_uAss.when = uAss.when AND later_uAss.id > uAss.id))', $where);
+        self::assertSame(UserAssignment::STATUS_ACTIVE, $this->parameter($queryBuilder, 'activeAssignment'));
+    }
+
+    /**
+     * As Episciences_Paper::isAssignedEditorOrCopyEditor in the gpl, the editors and copy editors of
+     * the latest version of a paper also read its previous versions.
+     */
+    public function testEditorAlsoSeesThePreviousVersionsOfTheLatestVersionTheyAreAssignedTo(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_EDITOR']));
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('o.paperid IN(SELECT latestVersion.paperid FROM App\\Entity\\UserAssignment vAss', $where);
+        self::assertStringContainsString('newerVersion.when > latestVersion.when', $where);
+        self::assertStringContainsString('latestVersion.docid = vAss.itemid', $where);
+        self::assertStringContainsString('vAss.roleid IN (:managingRoles)', $where);
+        self::assertSame(
+            [UserAssignment::ROLE_EDITOR, UserAssignment::ROLE_COPY_EDITOR],
+            $this->parameter($queryBuilder, 'managingRoles')
+        );
+    }
+
+    /**
+     * As in the gpl, a deleted or removed paper is closed to its author and co-authors.
+     */
+    public function testAuthorNoLongerSeesTheirDeletedOrRemovedPapers(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_MEMBER']));
+
+        self::assertStringContainsString('o.status NOT IN (:closedStatuses)', $this->where($queryBuilder));
+        self::assertSame([Paper::STATUS_DELETED, Paper::STATUS_REMOVED], $this->parameter($queryBuilder, 'closedStatuses'));
+    }
+
+    /**
+     * A deleted or removed paper stays readable by its editors and copy editors (administration page of
+     * the gpl), not by its reviewers.
+     */
+    public function testOnlyTheEditorsStillSeeTheDeletedOrRemovedPapersTheyAreAssignedTo(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_REVIEWER']));
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('(o.status NOT IN (:closedStatuses) AND (o.docid IN(SELECT uAss.itemid', $where);
+        self::assertStringContainsString('eAss.roleid IN (:managingRoles)', $where);
+        self::assertSame([Paper::STATUS_DELETED, Paper::STATUS_REMOVED], $this->parameter($queryBuilder, 'closedStatuses'));
+    }
+
     public function testAuthorOnlySeesOwnPapersOfTheTokenJournal(): void
     {
         $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_MEMBER']));
@@ -147,6 +292,54 @@ class PaperPrivateCollectionTest extends TestCase
         self::assertStringContainsString('o.rvid = :rvId', $this->where($queryBuilder));
         self::assertSame(self::UID, $this->parameter($queryBuilder, 'currentUser'));
         self::assertSame(self::TOKEN_JOURNAL, $this->parameter($queryBuilder, 'rvId'));
+    }
+
+    /**
+     * As isRestrictedAccess in the gpl, an author also sees the papers of which they are a co-author.
+     */
+    public function testAuthorAlsoSeesThePapersOfWhichTheyAreCoAuthor(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_MEMBER']));
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('o.user= :currentUser OR (EXISTS(', $where);
+        self::assertStringContainsString('coAuthorAss.itemid = o.docid', $where);
+        self::assertStringContainsString('coAuthorAss.uid = :currentUser', $where);
+        self::assertSame(UserAssignment::ROLE_CO_AUTHOR, $this->parameter($queryBuilder, 'coAuthorRole'));
+        self::assertSame(UserAssignment::ITEM_PAPER, $this->parameter($queryBuilder, 'coAuthorItem'));
+    }
+
+    /**
+     * @return iterable<string, array{string[]}>
+     */
+    public static function assignedRolesProvider(): iterable
+    {
+        yield 'editor' => [['ROLE_EDITOR']];
+        yield 'copy editor' => [['ROLE_COPYEDITOR']];
+        yield 'guest editor' => [['ROLE_GUEST_EDITOR', 'ROLE_REVIEWER']];
+        yield 'reviewer' => [['ROLE_REVIEWER']];
+    }
+
+    /**
+     * As isRestrictedAccess in the gpl, the users limited to the papers they are assigned to also see
+     * the papers they submitted or co-authored, in the list and on the page of a paper.
+     *
+     * @param string[] $roles
+     */
+    #[DataProvider('assignedRolesProvider')]
+    public function testAssignedRolesAlsoSeeTheirOwnPapers(array $roles): void
+    {
+        foreach ([
+            $this->apply($this->security($this->user(), $roles)),
+            $this->applyToItem($this->security($this->user(), $roles)),
+        ] as $queryBuilder) {
+            $where = $this->where($queryBuilder);
+
+            self::assertStringContainsString('uAss.uid = :to', $where);
+            self::assertStringContainsString('((o.user= :currentUser OR (EXISTS(', $where);
+            self::assertStringContainsString('coAuthorAss.uid = :currentUser', $where);
+            self::assertSame(self::UID, $this->parameter($queryBuilder, 'currentUser'));
+        }
     }
 
     /**
@@ -189,5 +382,152 @@ class PaperPrivateCollectionTest extends TestCase
 
         self::assertNull($queryBuilder->getParameter('requestedRvId'));
         self::assertStringNotContainsString('YEAR(', $this->where($queryBuilder));
+    }
+
+    // ------------------------------------------------------------------ GET /api/papers/{docid}
+
+    /**
+     * @return iterable<string, array{string[]}>
+     */
+    public static function itemRolesProvider(): iterable
+    {
+        yield 'secretary' => [['ROLE_SECRETARY']];
+        yield 'editor' => [['ROLE_EDITOR']];
+        yield 'reviewer' => [['ROLE_REVIEWER']];
+        yield 'author' => [['ROLE_MEMBER']];
+    }
+
+    /**
+     * As isRestrictedAccess in the gpl, a published paper is open to every connected user, whatever the
+     * journal of their token; the other papers stay restricted to what their role opens.
+     *
+     * @param string[] $roles
+     */
+    #[DataProvider('itemRolesProvider')]
+    public function testItemIsReadableWhenPublishedOrOpenedByTheRole(array $roles): void
+    {
+        $queryBuilder = $this->applyToItem($this->security($this->user(), $roles));
+        $where = $this->where($queryBuilder);
+
+        self::assertStringStartsWith('o.docid = :docid AND (o.status IN (:publicStatuses) OR ', $where);
+        self::assertStringContainsString('o.rvid = :rvId', $where);
+        // As in offline mode, an accepted paper can be read too
+        self::assertSame(array_values(array_merge(Paper::STATUS_ACCEPTED, [Paper::STATUS_PUBLISHED])), $this->parameter($queryBuilder, 'publicStatuses'));
+        self::assertSame(self::TOKEN_JOURNAL, $this->parameter($queryBuilder, 'rvId'));
+    }
+
+    /**
+     * The collection keeps listing the papers opened by the role only (the workspace of the user).
+     *
+     * @param string[] $roles
+     */
+    #[DataProvider('itemRolesProvider')]
+    public function testCollectionDoesNotAddThePublishedPapers(array $roles): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), $roles));
+
+        self::assertStringNotContainsString(':publicStatuses', $this->where($queryBuilder));
+        self::assertNull($queryBuilder->getParameter('publicStatuses'));
+    }
+
+    // ------------------------------------------------------------------ GET /api/papers?scope=
+
+    /**
+     * @return iterable<string, array{?string}>
+     */
+    public static function workspaceScopeProvider(): iterable
+    {
+        yield 'no scope' => [null];
+        yield 'workspace' => [Paper::SCOPE_WORKSPACE];
+        yield 'unknown value (refused by the schema of the parameter)' => ['foo'];
+    }
+
+    /**
+     * Without scope (or with scope=workspace), the list keeps holding the papers opened by the role.
+     */
+    #[DataProvider('workspaceScopeProvider')]
+    public function testWorkspaceScopeListsThePapersOpenedByTheRole(?string $scope): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_EDITOR']), $scope === null ? [] : ['scope' => $scope]);
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('uAss.uid = :to', $where);
+        self::assertStringNotContainsString(':publicStatuses', $where);
+        self::assertStringNotContainsString(':published', $where);
+    }
+
+    /**
+     * scope=public lists the papers as in offline mode, whatever the role.
+     *
+     * @param string[] $roles
+     */
+    #[DataProvider('itemRolesProvider')]
+    public function testPublicScopeListsThePapersAsInOfflineMode(array $roles): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), $roles), ['scope' => Paper::SCOPE_PUBLIC, 'rvcode' => 'other']);
+        $where = $this->where($queryBuilder);
+
+        self::assertStringContainsString('o.status= :published', $where);
+        self::assertSame(Paper::STATUS_PUBLISHED, $this->parameter($queryBuilder, 'published'));
+        self::assertStringContainsString('o.rvid = :rvId', $where);
+        self::assertSame(self::OTHER_JOURNAL, $this->parameter($queryBuilder, 'rvId'));
+        self::assertStringNotContainsString('uAss', $where);
+        self::assertStringNotContainsString('o.user', $where);
+    }
+
+    /**
+     * scope=all lists the published papers and those opened by the role, as GET /api/papers/{docid}.
+     *
+     * @param string[] $roles
+     */
+    #[DataProvider('itemRolesProvider')]
+    public function testAllScopeListsThePublishedPapersAndThoseOpenedByTheRole(array $roles): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), $roles), ['scope' => Paper::SCOPE_ALL]);
+        $where = $this->where($queryBuilder);
+
+        self::assertStringStartsWith('o.status IN (:publicStatuses) OR ', $where);
+        self::assertStringContainsString('o.rvid = :rvId', $where);
+        self::assertSame([Paper::STATUS_PUBLISHED], $this->parameter($queryBuilder, 'publicStatuses'));
+        self::assertSame('o.publicationDate DESC, o.when DESC', implode(', ', array_map('strval', $queryBuilder->getDQLPart('orderBy'))));
+    }
+
+    /**
+     * The scope is ignored in offline mode.
+     */
+    public function testScopeIsIgnoredInOfflineMode(): void
+    {
+        $queryBuilder = $this->apply($this->security(null), ['scope' => Paper::SCOPE_ALL]);
+
+        self::assertStringContainsString('o.status= :published', $this->where($queryBuilder));
+        self::assertNull($queryBuilder->getParameter('publicStatuses'));
+    }
+
+    // ------------------------------------------------------------------ scope and only_accepted
+
+    /**
+     * scope=public with only_accepted lists the accepted papers, as in offline mode.
+     */
+    public function testPublicScopeWithOnlyAcceptedListsTheAcceptedPapers(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_EDITOR']), ['scope' => Paper::SCOPE_PUBLIC, 'only_accepted' => 'true']);
+        $where = $this->where($queryBuilder);
+
+        self::assertStringNotContainsString('o.status= :published', $where);
+        self::assertStringNotContainsString('uAss', $where);
+        foreach (Paper::STATUS_ACCEPTED as $status) {
+            self::assertStringContainsString("o.status = $status", $where);
+        }
+    }
+
+    /**
+     * scope=all with only_accepted: the accepted papers of the public view, and those opened by the role.
+     */
+    public function testAllScopeWithOnlyAcceptedListsThePublicAcceptedPapersAndThoseOpenedByTheRole(): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_EDITOR']), ['scope' => Paper::SCOPE_ALL, 'only_accepted' => 'true']);
+
+        self::assertStringContainsString('o.status IN (:publicStatuses) OR ', $this->where($queryBuilder));
+        self::assertSame(array_values(Paper::STATUS_ACCEPTED), $this->parameter($queryBuilder, 'publicStatuses'));
     }
 }

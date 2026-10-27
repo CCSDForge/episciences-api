@@ -11,6 +11,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
@@ -59,7 +60,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['paper']],
                 summary: 'All Papers (In offline mode: only published papers )',
-                description: 'List the papers. In offline mode only published papers are returned. In connected mode the papers of the journal of the token are returned according to the role: all of them for an administrator, a chief editor or a secretary, the assigned ones for an editor, a copy editor or a reviewer, and only their own papers for an author (an empty list if they have none). The journal (rvcode), paper type(s) and publication year(s) filters apply in both modes; in connected mode a journal other than the one of the token returns an empty list.',
+                description: 'List the papers. In offline mode only published papers are returned. In connected mode the papers of the journal of the token are returned according to the role (`scope=workspace`, default): all of them for an administrator, a chief editor or a secretary, the assigned ones for an editor, a copy editor or a reviewer, and only their own papers for an author (an empty list if they have none); `scope=public` lists the papers as in offline mode (the published papers, or the accepted ones with `only_accepted`), `scope=all` both. The journal (rvcode), paper type(s) and publication year(s) filters apply in both modes; in connected mode a journal other than the one of the token returns an empty list.',
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -71,6 +72,16 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                         schema: [
                             'type' => 'string',
                         ]
+                    ),
+                    // Documentation of the scope parameter (validated by the QueryParameter below), next to only_accepted
+                    new Parameter(
+                        name: self::SCOPE_PARAM,
+                        in: 'query',
+                        description: 'Connected mode only (ignored in offline mode): `workspace` (default) the papers opened by the role of the user in the journal of the token; `public` the papers listed in offline mode (the published papers, or the accepted ones with `only_accepted`); `all` both, the public papers and those opened by the role.',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: self::SCOPE_SCHEMA
                     ),
                     new Parameter(
                         name: 'only_accepted',
@@ -118,7 +129,11 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
             ),
             normalizationContext: [
                 'groups' => ['read:Papers']
-            ]
+            ],
+            parameters: [
+                // Validates the scope parameter, documented with the other parameters of the operation
+                self::SCOPE_PARAM => new QueryParameter(schema: self::SCOPE_SCHEMA),
+            ],
         ),
     ],
     order: ['rvid' => 'DESC'],
@@ -161,6 +176,17 @@ class Paper implements UserOwnedInterface
      */
     public const DATE_FILTER_PROPERTIES = ['submissionDate', 'publicationDate'];
     public const COLLECTION_NAME = '_api_/papers/_get_collection';
+
+    /**
+     * Scope of the papers listed to a connected user (GET /papers/?scope=): the papers opened by their
+     * role (default), the papers listed in offline mode (public), or both.
+     */
+    public const SCOPE_PARAM = 'scope';
+    public const SCOPE_WORKSPACE = 'workspace';
+    public const SCOPE_PUBLIC = 'public';
+    public const SCOPE_ALL = 'all';
+    public const SCOPES = [self::SCOPE_WORKSPACE, self::SCOPE_PUBLIC, self::SCOPE_ALL];
+    private const SCOPE_SCHEMA = ['type' => 'string', 'enum' => self::SCOPES, 'default' => self::SCOPE_WORKSPACE];
 
     public const TABLE = 'PAPERS';
     public const URI_TEMPLATE = '/papers/';
