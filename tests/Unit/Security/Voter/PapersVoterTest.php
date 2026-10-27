@@ -551,7 +551,7 @@ class PapersVoterTest extends TestCase
 
     public function testV2ArticleLoadsConflictsByPaperIdWhenCoiEnabled(): void
     {
-        $user  = $this->makeUser(70);
+        $user  = $this->makeUser(70, ['ROLE_EDITOR']);
         $token = $this->makeToken($user);
 
         // v2 article: docid (D2) differs from paperid (P1, shared by all versions).
@@ -559,12 +559,12 @@ class PapersVoterTest extends TestCase
         $paperid    = 1234;
         $noConflict = new PaperConflicts()->setPaperId($paperid)->setBy(70)->setAnswer('no');
 
-        $this->paperConflictsRepository->method('findByPaperId')
+        $this->paperConflictsRepository->expects($this->once())->method('findByPaperId')
             ->with($paperid)
             ->willReturn([$noConflict]);
 
-        // user 70 is co-author and declared 'no' conflict → no conflict → can view
-        $paper = $this->makePaper(10, coAuthors: [70 => []], coiEnabled: true, paperid: $paperid);
+        // user 70 is an assigned editor and declared 'no' conflict → no conflict → can view
+        $paper = $this->makePaper(10, editors: [70 => []], coiEnabled: true, paperid: $paperid);
 
         $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
     }
@@ -646,5 +646,30 @@ class PapersVoterTest extends TestCase
         $paper = $this->makePaper(10, coiEnabled: true, conflicts: $conflicts);
 
         $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+    }
+
+    // ------------------------------------------------------------------ author of the paper
+
+    /**
+     * As on the member page of the paper in the gpl, the author always sees its details,
+     * even when they hold an editorial role and are in conflict of interest.
+     */
+    public function testAuthorInConflictStillViewsOwnPaper(): void
+    {
+        $token = $this->makeToken($this->makeUser(10, ['ROLE_EDITOR']));
+        $conflicts = new ArrayCollection(['yes' => [10 => new PaperConflicts()]]);
+        $paper = $this->makePaper(10, coiEnabled: true, conflicts: $conflicts);
+
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_VIEW]));
+    }
+
+    /**
+     * Viewing is not managing: the author never manages their own paper.
+     */
+    public function testAuthorStillCannotManageOwnPaper(): void
+    {
+        $token = $this->makeToken($this->makeUser(10, ['ROLE_SECRETARY']));
+
+        $this->assertSame(-1, $this->voter->vote($token, $this->makePaper(10), [PapersVoter::PAPERS_MANAGE]));
     }
 }

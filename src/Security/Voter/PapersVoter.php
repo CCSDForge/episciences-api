@@ -71,12 +71,16 @@ class PapersVoter extends Voter
         $isCopyEditor = array_key_exists($authenticatedUser->getUid(), $paper->getCopyEditors());
         $isCoAuthor = array_key_exists($authenticatedUser->getUid(), $paper->getCoAuthors());
 
+        // As on the member page of the paper in the gpl, its author always sees its details
+        if ($paper->getUid() === $authenticatedUser->getUid()) {
+            return true;
+        }
+
         return
             !$this->hasConflict($authenticatedUser, $paper) &&
             (
                 $this->isSecretary($authenticatedUser, $paper) ||
                 (
-                    $paper->getUid() === $authenticatedUser->getUid() ||
                     $isCoAuthor ||
                     $isCopyEditor ||
                     $isReviewer ||
