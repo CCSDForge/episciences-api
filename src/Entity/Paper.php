@@ -73,6 +73,16 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                             'type' => 'string',
                         ]
                     ),
+                    // Documentation of the scope parameter (validated by the QueryParameter below), next to only_accepted
+                    new Parameter(
+                        name: self::SCOPE_PARAM,
+                        in: 'query',
+                        description: 'Connected mode only (ignored in offline mode): `workspace` (default) the papers opened by the role of the user in the journal of the token; `public` the papers listed in offline mode (the published papers, or the accepted ones with `only_accepted`); `all` both, the public papers and those opened by the role.',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: self::SCOPE_SCHEMA
+                    ),
                     new Parameter(
                         name: 'only_accepted',
                         in: 'query',
@@ -121,10 +131,8 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                 'groups' => ['read:Papers']
             ],
             parameters: [
-                self::SCOPE_PARAM => new QueryParameter(
-                    schema: ['type' => 'string', 'enum' => self::SCOPES, 'default' => self::SCOPE_WORKSPACE],
-                    description: 'Connected mode only (ignored in offline mode): `workspace` (default) the papers opened by the role of the user in the journal of the token; `public` the papers listed in offline mode (the published papers, or the accepted ones with `only_accepted`); `all` both, the public papers and those opened by the role.',
-                ),
+                // Validates the scope parameter, documented with the other parameters of the operation
+                self::SCOPE_PARAM => new QueryParameter(schema: self::SCOPE_SCHEMA),
             ],
         ),
     ],
@@ -178,6 +186,7 @@ class Paper implements UserOwnedInterface
     public const SCOPE_PUBLIC = 'public';
     public const SCOPE_ALL = 'all';
     public const SCOPES = [self::SCOPE_WORKSPACE, self::SCOPE_PUBLIC, self::SCOPE_ALL];
+    private const SCOPE_SCHEMA = ['type' => 'string', 'enum' => self::SCOPES, 'default' => self::SCOPE_WORKSPACE];
 
     public const TABLE = 'PAPERS';
     public const URI_TEMPLATE = '/papers/';
