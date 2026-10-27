@@ -16,6 +16,11 @@ use Symfony\Contracts\Service\ResetInterface;
 class PapersVoter extends Voter implements ResetInterface
 {
     public const PAPERS_EDIT = 'papers_edit';
+    /**
+     * Details of the paper that are not public. The papers open to everyone are listed by the collection
+     * extension (AppQueryItemCollectionExtension), whatever the journal of the token: this attribute does not
+     * tell whether a paper is visible.
+     */
     public const PAPERS_VIEW = 'papers_view';
 
     public const PAPERS_MANAGE = 'papers_manage';
@@ -261,17 +266,16 @@ class PapersVoter extends Voter implements ResetInterface
 
     /**
      * Roles held by the user in the journal of the paper (role ids, e.g. "secretary"). The roles of a
-     * token are those of its journal (rvId claim), whatever the journal asked to User::getRoles():
-     * the user has none in another journal.
+     * token are those of its journal (rvId claim): voteOnAttribute() only gets here when the paper is of
+     * the journal of the token.
      *
      * @return list<string>
      */
     private function journalRoles(User $authenticatedUser, Paper $paper): array
     {
         $rvId = $paper->getRvid();
-        $currentJournalId = $authenticatedUser->getCurrentJournalID();
 
-        if ($rvId === null || ($currentJournalId !== null && $currentJournalId !== $rvId)) {
+        if ($rvId === null) {
             return [];
         }
 

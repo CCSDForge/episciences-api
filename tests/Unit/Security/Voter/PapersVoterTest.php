@@ -457,9 +457,6 @@ class PapersVoterTest extends TestCase
     }
 
     /**
-     * A user loaded from the database who is epiadmin of another journal only.
-     */
-    /**
      * @return array<string, array{list<string>, int, array<string, mixed>}> roles of the token, uid, paper arguments
      */
     public static function tokenWithoutJournalProvider(): array
