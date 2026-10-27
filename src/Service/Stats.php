@@ -658,6 +658,7 @@ class Stats
      *
      * With $rvId set, the result is indexed [rvId => [year => [as => int]]]; with $rvId null
      * it is a raw row list (one entry per journal/year).
+     * The shape depends on $rvId: use getSubmittedSameYearByYear(), which gives [year => [as => int]] in both cases.
      *
      * @param int|null $rvId                Journal identifier, or null for the whole platform.
      * @param string   $as                  Figure key (e.g. self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR).
