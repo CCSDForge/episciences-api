@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `GET /api/papers`: the copy editors see the papers they are assigned to; their role is `ROLE_COPYEDITOR` (role id `copyeditor`), also in the role hierarchy, instead of `ROLE_COPY_EDITOR`, which no user held.
 - `GET /api/papers` and `GET /api/papers/{docid}`: as on Episciences, a connected author also reads the papers of their journal of which they are a co-author, not only those they submitted.
 - `GET /api/papers` and `GET /api/papers/{docid}`: as on Episciences, an editor (copy editor) reads every paper of their journal when it sets `encapsulateEditors` (`encapsulateCopyEditors`) to "0", and only the papers they are assigned to otherwise (a setting never saved counts as restrictive).
+- `GET /api/papers/{docid}`: as on Episciences, a published paper is readable by every connected user, whatever the journal of their token (it returned a `404` while readable anonymously); its confidential fields stay reserved to the users allowed to manage it. `GET /api/papers` keeps listing, with a token, the papers opened by the role of the user.
 ### Added
 ### Changed
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.

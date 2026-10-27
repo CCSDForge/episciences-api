@@ -121,6 +121,23 @@ class PaperPrivateCollectionTest extends TestCase
         return $queryBuilder;
     }
 
+    private function applyToItem(Security $security): QueryBuilder
+    {
+        $queryBuilder = (new QueryBuilder($this->entityManager))->select('o')->from(Paper::class, 'o')
+            ->andWhere('o.docid = :docid')->setParameter('docid', 42);
+
+        (new AppQueryItemCollectionExtension($security))->applyToItem(
+            $queryBuilder,
+            $this->createMock(QueryNameGeneratorInterface::class),
+            Paper::class,
+            ['docid' => 42],
+            null,
+            []
+        );
+
+        return $queryBuilder;
+    }
+
     private function where(QueryBuilder $queryBuilder): string
     {
         return (string)$queryBuilder->getDQLPart('where');
@@ -275,5 +292,50 @@ class PaperPrivateCollectionTest extends TestCase
 
         self::assertNull($queryBuilder->getParameter('requestedRvId'));
         self::assertStringNotContainsString('YEAR(', $this->where($queryBuilder));
+    }
+
+    // ------------------------------------------------------------------ GET /api/papers/{docid}
+
+    /**
+     * @return iterable<string, array{string[]}>
+     */
+    public static function itemRolesProvider(): iterable
+    {
+        yield 'secretary' => [['ROLE_SECRETARY']];
+        yield 'editor' => [['ROLE_EDITOR']];
+        yield 'reviewer' => [['ROLE_REVIEWER']];
+        yield 'author' => [['ROLE_MEMBER']];
+    }
+
+    /**
+     * As isRestrictedAccess in the gpl, a published paper is open to every connected user, whatever the
+     * journal of their token; the other papers stay restricted to what their role opens.
+     *
+     * @param string[] $roles
+     */
+    #[DataProvider('itemRolesProvider')]
+    public function testItemIsReadableWhenPublishedOrOpenedByTheRole(array $roles): void
+    {
+        $queryBuilder = $this->applyToItem($this->security($this->user(), $roles));
+        $where = $this->where($queryBuilder);
+
+        self::assertStringStartsWith('o.docid = :docid AND (o.status = :publishedStatus OR ', $where);
+        self::assertStringContainsString('o.rvid = :rvId', $where);
+        self::assertSame(Paper::STATUS_PUBLISHED, $this->parameter($queryBuilder, 'publishedStatus'));
+        self::assertSame(self::TOKEN_JOURNAL, $this->parameter($queryBuilder, 'rvId'));
+    }
+
+    /**
+     * The collection keeps listing the papers opened by the role only (the workspace of the user).
+     *
+     * @param string[] $roles
+     */
+    #[DataProvider('itemRolesProvider')]
+    public function testCollectionDoesNotAddThePublishedPapers(array $roles): void
+    {
+        $queryBuilder = $this->apply($this->security($this->user(), $roles));
+
+        self::assertStringNotContainsString(':publishedStatus', $this->where($queryBuilder));
+        self::assertNull($queryBuilder->getParameter('publishedStatus'));
     }
 }

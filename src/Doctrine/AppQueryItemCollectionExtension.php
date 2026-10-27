@@ -21,6 +21,7 @@ use App\Entity\UserOwnedInterface;
 use App\Entity\Volume;
 use App\Exception\ResourceNotFoundException;
 use App\Traits\QueryTrait;
+use Doctrine\ORM\Query\Expr\Andx;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\SecurityBundle\Security;
 
@@ -267,6 +268,66 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     }
 
     /**
+     * Papers of the journal of the token that the role of the connected user opens to them: every paper
+     * for the secretaries (and the roles above) and the editors (copy editors) who are not encapsulated,
+     * the assigned papers for the other editorial roles and the reviewers, the papers submitted or
+     * co-authored for the others (as isRestrictedAccess in the gpl).
+     */
+    private function paperAccessCondition(QueryBuilder $queryBuilder, string $alias, User $currentUser): Andx
+    {
+        $expr = $queryBuilder->expr();
+        $access = $expr->andX("$alias.rvid = :rvId");
+        $queryBuilder->setParameter('rvId', $currentUser->getCurrentJournalID());
+
+        if ($this->security->isGranted('ROLE_SECRETARY') || $this->isEditorialStaffOfEveryPaper($queryBuilder, $currentUser)) {
+            $queryBuilder->orderBy("$alias.when", \SortDirection::Descending);
+
+            return $access;
+        }
+
+        if (
+            $this->security->isGranted('ROLE_EDITOR') ||
+            $this->security->isGranted('ROLE_COPYEDITOR') ||
+            $this->security->isGranted('ROLE_GUEST_EDITOR') ||
+            $this->security->isGranted('ROLE_REVIEWER')
+        ) { // only assigned papers
+
+            $assignment = $queryBuilder->getEntityManager()->createQueryBuilder()
+                ->select('uAss.id')
+                ->from(UserAssignment::class, 'uAss')
+                ->where("uAss.itemid = $alias.docid")
+                ->andWhere('uAss.item = :type')
+                ->andWhere('uAss.uid = :to');
+
+            $queryBuilder
+                ->setParameter('type', UserAssignment::ITEM_PAPER)
+                ->setParameter('to', $currentUser->getUid())
+                ->orderBy("$alias.when", \SortDirection::Descending);
+
+            return $access->add($expr->exists($assignment->getDQL()));
+        }
+
+        // papers of the author: submitted by them, or of which they are a co-author
+        $coAuthorAssignment = $queryBuilder->getEntityManager()->createQueryBuilder()
+            ->select('coAuthorAss.id')
+            ->from(UserAssignment::class, 'coAuthorAss')
+            ->where("coAuthorAss.itemid = $alias.docid")
+            ->andWhere('coAuthorAss.item = :coAuthorItem')
+            ->andWhere('coAuthorAss.roleid = :coAuthorRole')
+            ->andWhere('coAuthorAss.uid = :currentUser');
+
+        $queryBuilder
+            ->setParameter('currentUser', $currentUser->getUid())
+            ->setParameter('coAuthorItem', UserAssignment::ITEM_PAPER)
+            ->setParameter('coAuthorRole', UserAssignment::ROLE_CO_AUTHOR);
+
+        return $access->add($expr->orX(
+            "$alias.user= :currentUser",
+            $expr->exists($coAuthorAssignment->getDQL())
+        ));
+    }
+
+    /**
      * Whether the editor (copy editor) reads every paper of the journal of the token, assigned or not:
      * when the journal explicitly sets their encapsulation to "0", a setting never saved counting as
      * restrictive (DefaultController::isEditorialStaffOfEveryPaper in the gpl).
@@ -314,54 +375,17 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
                     $this->adnWhereAcceptedOnly($queryBuilder, $alias);
                 }
 
-                if ($this->security->isGranted('ROLE_SECRETARY')) {
+                $access = $this->paperAccessCondition($queryBuilder, $alias, $currentUser);
+                $isItem = isset($context[AppConstants::IS_APP_ITEM]) && filter_var($context[AppConstants::IS_APP_ITEM], FILTER_VALIDATE_BOOLEAN);
 
+                if ($isItem) {
+                    // As isRestrictedAccess in the gpl, a published paper is open to everyone, whatever
+                    // the journal of the token; its confidential fields stay protected by the voter.
                     $queryBuilder
-                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $currentUser->getCurrentJournalID())
-                        ->orderBy("$alias.when", \SortDirection::Descending);
-
-
-                } elseif ($this->isEditorialStaffOfEveryPaper($queryBuilder, $currentUser)) {
-
-                    $queryBuilder
-                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $currentUser->getCurrentJournalID())
-                        ->orderBy("$alias.when", \SortDirection::Descending);
-
-                } elseif (
-                    $this->security->isGranted('ROLE_EDITOR') ||
-                    $this->security->isGranted('ROLE_COPYEDITOR') ||
-                    $this->security->isGranted('ROLE_GUEST_EDITOR') ||
-                    $this->security->isGranted('ROLE_REVIEWER')
-                ) { // only assigned papers
-
-                    $queryBuilder
-                        ->join(UserAssignment::class, 'uAss', 'ON', "$alias.docid = uAss.itemid")
-                        ->andWhere("uAss.item = :type")->setParameter('type', 'paper')
-                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $currentUser->getCurrentJournalID())
-                        ->andWhere("uAss.uid = :to")->setParameter('to', $currentUser->getUid())
-                        ->orderBy("$alias.when", \SortDirection::Descending);
-
-
-                } else { // papers of the author: submitted by them, or of which they are a co-author (as isRestrictedAccess in the gpl)
-
-                    $coAuthorAssignment = $queryBuilder->getEntityManager()->createQueryBuilder()
-                        ->select('coAuthorAss.id')
-                        ->from(UserAssignment::class, 'coAuthorAss')
-                        ->where("coAuthorAss.itemid = $alias.docid")
-                        ->andWhere('coAuthorAss.item = :coAuthorItem')
-                        ->andWhere('coAuthorAss.roleid = :coAuthorRole')
-                        ->andWhere('coAuthorAss.uid = :currentUser');
-
-                    $queryBuilder
-                        ->andWhere($queryBuilder->expr()->orX(
-                            "$alias.user= :currentUser",
-                            $queryBuilder->expr()->exists($coAuthorAssignment->getDQL())
-                        ))
-                        ->setParameter('currentUser', $currentUser->getUid())
-                        ->setParameter('coAuthorItem', UserAssignment::ITEM_PAPER)
-                        ->setParameter('coAuthorRole', UserAssignment::ROLE_CO_AUTHOR)
-                        ->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $currentUser->getCurrentJournalID());
-
+                        ->andWhere($queryBuilder->expr()->orX("$alias.status = :publishedStatus", $access))
+                        ->setParameter('publishedStatus', Paper::STATUS_PUBLISHED);
+                } else {
+                    $queryBuilder->andWhere($access);
                 }
 
                 $this->applyPrivatePaperFilters($queryBuilder, $alias, $context);
