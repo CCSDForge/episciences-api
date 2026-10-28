@@ -24,8 +24,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Runs the queries of the evaluation statistics (reviews requested and received) against a real MySQL database:
- * the requested reviews are the invitations whatever their answer (except the cancelled ones), and both queries
- * follow the "year" and "startAfterDate" filters.
+ * the requested reviews are the invitations whatever their answer (except the cancelled ones), the received reports
+ * are dated by their validation, and both queries follow the "year" and "startAfterDate" filters.
  *
  * Requires TEST_DATABASE_URL (set in CI, see docker-compose.ci.yml); skipped otherwise.
  * The test creates and drops the PAPERS, REVIEW, USER_ASSIGNMENT, USER_INVITATION and REVIEWER_REPORT tables:
@@ -124,13 +124,27 @@ class EvaluationQueriesDatabaseTest extends TestCase
     }
 
     /**
-     * One row by completed report (paper and reviewer): the report in progress is not received.
+     * One row by completed report (paper version and reviewer): the report in progress is not received.
+     * A report is dated by its validation: the report started in 2023 and validated in 2024 is a report of 2024.
      */
-    public function testReceivedReportsFollowTheYearAndTheStartDate(): void
+    public function testReceivedReportsFollowTheYearAndTheStartDateOfTheirValidation(): void
     {
-        $this->assertSame(3, $this->countReceivedReports(['rvid' => self::RVID]));
+        $this->assertSame(4, $this->countReceivedReports(['rvid' => self::RVID]));
         $this->assertSame(2, $this->countReceivedReports(['rvid' => self::RVID, 'year' => [2023]]));
-        $this->assertSame(1, $this->countReceivedReports(['rvid' => self::RVID, 'startAfterDate' => '2024-01-01']));
+        $this->assertSame(2, $this->countReceivedReports(['rvid' => self::RVID, 'year' => [2024]]));
+        $this->assertSame(2, $this->countReceivedReports(['rvid' => self::RVID, 'startAfterDate' => '2024-01-01']));
+    }
+
+    /**
+     * Each report gives its paper: the reports of the two versions of paper 10 are the reports of the same paper.
+     */
+    public function testReceivedReportsGiveTheirPaper(): void
+    {
+        $rows = $this->reportRepository->getReceivedReports(['rvid' => self::RVID, 'report-status' => ReviewerReport::STATUS_COMPLETED])->getQuery()->getArrayResult();
+        $paperIds = array_map('intval', array_column($rows, 'paperid'));
+        sort($paperIds);
+
+        $this->assertSame([10, 10, 10, 11], $paperIds);
     }
 
     /**
@@ -163,9 +177,10 @@ class EvaluationQueriesDatabaseTest extends TestCase
 
         $paperDefaults = $this->requiredColumnDefaults(Paper::TABLE);
 
-        foreach ([10 => self::RVID, 11 => self::RVID, 12 => self::DISABLED_RVID] as $docId => $rvId) {
+        // docid => paperid, rvid: docid 13 is the second version of paper 10
+        foreach ([10 => [10, self::RVID], 11 => [11, self::RVID], 12 => [12, self::DISABLED_RVID], 13 => [10, self::RVID]] as $docId => [$paperId, $rvId]) {
             // WHEN is a reserved word
-            $connection->insert(Paper::TABLE, $quote(array_merge($paperDefaults, ['DOCID' => $docId, 'PAPERID' => $docId, 'RVID' => $rvId, 'STATUS' => Paper::STATUS_BEING_REVIEWED])));
+            $connection->insert(Paper::TABLE, $quote(array_merge($paperDefaults, ['DOCID' => $docId, 'PAPERID' => $paperId, 'RVID' => $rvId, 'STATUS' => Paper::STATUS_BEING_REVIEWED])));
         }
 
         $invitations = [
@@ -198,18 +213,26 @@ class EvaluationQueriesDatabaseTest extends TestCase
         }
 
         $reports = [
-            // uid, docid, status, creation date
+            // uid, docid, status, creation date[, update date: the validation of a completed report]
             [101, 10, ReviewerReport::STATUS_COMPLETED, '2023-05-01'],
-            [102, 10, ReviewerReport::STATUS_COMPLETED, '2023-06-01'],
+            [102, 10, ReviewerReport::STATUS_COMPLETED, '2023-05-20', '2023-06-01'],
             [103, 11, ReviewerReport::STATUS_COMPLETED, '2024-02-15'],
             [104, 11, ReviewerReport::STATUS_WIP, '2024-03-15'],
             [105, 12, ReviewerReport::STATUS_COMPLETED, '2024-03-15'], // disabled journal
+            [101, 13, ReviewerReport::STATUS_COMPLETED, '2023-12-20', '2024-01-10'], // started in 2023, validated in 2024
         ];
 
         $reportDefaults = $this->requiredColumnDefaults(ReviewerReport::TABLE);
 
-        foreach ($reports as [$uid, $docId, $status, $date]) {
-            $connection->insert(ReviewerReport::TABLE, array_merge($reportDefaults, ['UID' => $uid, 'DOCID' => $docId, 'STATUS' => $status, 'CREATION_DATE' => $date . ' 10:00:00']));
+        foreach ($reports as $report) {
+            [$uid, $docId, $status, $date] = $report;
+            $connection->insert(ReviewerReport::TABLE, array_merge($reportDefaults, [
+                'UID' => $uid,
+                'DOCID' => $docId,
+                'STATUS' => $status,
+                'CREATION_DATE' => $date . ' 10:00:00',
+                'UPDATE_DATE' => isset($report[4]) ? $report[4] . ' 10:00:00' : null,
+            ]));
         }
     }
 

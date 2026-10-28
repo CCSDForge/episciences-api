@@ -604,14 +604,19 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         return $rows;
     }
 
+    /**
+     * The number of reports of each paper, all its versions together (the papers without report are not listed)
+     *
+     * @return int[]
+     */
     private function processResult(array $result = []): array
     {
 
         $processed = [];
 
         foreach ($result as $values) {
-            $docId = $values['docid'];
-            $processed[$docId] = isset($processed[$docId]) ? $processed[$docId] + $values['count'] : ($values['count']);
+            $paperId = $values['paperid'];
+            $processed[$paperId] = ($processed[$paperId] ?? 0) + $values['count'];
         }
 
         return array_values($processed);

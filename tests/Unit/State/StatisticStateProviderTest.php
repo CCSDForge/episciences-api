@@ -116,6 +116,28 @@ class StatisticStateProviderTest extends TestCase
         $this->assertSame(2.0, $statistics[0]->getValue());
     }
 
+    /**
+     * The median number of reviews is computed by paper, all its versions together: paper 1 has 4 reports
+     * (2 on each of its versions), paper 2 has 1 report, paper 3 has 3 reports. By version, it would be 2.
+     */
+    public function testMedianNumberOfReviewsIsComputedByPaper(): void
+    {
+        $reports = [
+            ['docid' => 1, 'paperid' => 1, 'count' => 1],
+            ['docid' => 1, 'paperid' => 1, 'count' => 1],
+            ['docid' => 2, 'paperid' => 1, 'count' => 1],
+            ['docid' => 2, 'paperid' => 1, 'count' => 1],
+            ['docid' => 3, 'paperid' => 2, 'count' => 1],
+            ['docid' => 4, 'paperid' => 3, 'count' => 1],
+            ['docid' => 4, 'paperid' => 3, 'count' => 1],
+            ['docid' => 4, 'paperid' => 3, 'count' => 1],
+        ];
+
+        $statistics = iterator_to_array($this->provideEvaluation(filters: ['indicator' => ['reviews-received', 'median-reviews-number']], reports: $reports));
+
+        $this->assertSame([8.0, 3.0], array_map(static fn(Statistic $statistic): ?float => $statistic->getValue(), $statistics));
+    }
+
     public function testStartAfterDateFiltersTheEvaluation(): void
     {
         $repositoryOptions = [];
@@ -456,9 +478,9 @@ class StatisticStateProviderTest extends TestCase
         // completed reports by paper (docid) and reviewer; invitations sent to the reviewers
         $reviewerReportRepository = $this->createStub(ReviewerReportRepository::class);
         $reviewerReportRepository->method('getReceivedReports')->willReturn($this->createQueryBuilder([
-            ['rvid' => 1, 'docid' => 10, 'count' => 2],
-            ['rvid' => 1, 'docid' => 10, 'count' => 1],
-            ['rvid' => 1, 'docid' => 11, 'count' => 1],
+            ['rvid' => 1, 'docid' => 10, 'paperid' => 5, 'count' => 2],
+            ['rvid' => 1, 'docid' => 10, 'paperid' => 5, 'count' => 1],
+            ['rvid' => 1, 'docid' => 11, 'paperid' => 6, 'count' => 1],
         ]));
 
         $userInvitationRepository = $this->createStub(UserInvitationRepository::class);
@@ -488,16 +510,17 @@ class StatisticStateProviderTest extends TestCase
     /**
      * @param array<int, array<string, mixed>> $invitations rows of the requested reviews
      * @param array<string, array<string, mixed>> $repositoryOptions the options given to the repositories, by method
+     * @param array<int, array<string, mixed>> $reports rows of the received reports (by paper version and reviewer)
      */
-    private function provideEvaluation(string $pagination = 'true', int $maxItemsPerPage = 30, array $filters = [], array $invitations = [], array &$repositoryOptions = []): iterable
+    private function provideEvaluation(string $pagination = 'true', int $maxItemsPerPage = 30, array $filters = [], array $invitations = [], array &$repositoryOptions = [], array $reports = []): iterable
     {
         $papersRepository = $this->createStub(PapersRepository::class);
         $papersRepository->method('getYearRange')->willReturn([]);
 
         $reviewerReportRepository = $this->createStub(ReviewerReportRepository::class);
-        $reviewerReportRepository->method('getReceivedReports')->willReturnCallback(function (array $options) use (&$repositoryOptions): QueryBuilder {
+        $reviewerReportRepository->method('getReceivedReports')->willReturnCallback(function (array $options) use (&$repositoryOptions, $reports): QueryBuilder {
             $repositoryOptions['getReceivedReports'] = $options;
-            return $this->createQueryBuilder();
+            return $this->createQueryBuilder($reports);
         });
 
         $userInvitationRepository = $this->createStub(UserInvitationRepository::class);

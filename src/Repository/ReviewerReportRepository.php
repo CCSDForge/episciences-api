@@ -24,6 +24,16 @@ class ReviewerReportRepository extends ServiceEntityRepository
         parent::__construct($registry, ReviewerReport::class);
     }
 
+    /**
+     * Date of a report: its latest save (UPDATE_DATE), which is its validation for a completed report
+     * (STATUS = 2, a report reopened then validated again gets the new date); its creation if it was saved once.
+     */
+    public const string REPORT_DATE = 'COALESCE(r.updateDate, r.creationDate)';
+
+    /**
+     * The reports of the reviewers: one row by paper version (docid) and by reviewer, with the paper (paperid),
+     * filtered on the year and the start date of the report (REPORT_DATE)
+     */
     public function getReceivedReports(array $options = []): QueryBuilder
     {
         $rvId = $options['rvid'] ?? null;
@@ -38,6 +48,7 @@ class ReviewerReportRepository extends ServiceEntityRepository
         $qb->from(ReviewerReport::class, 'r');
         //$qb->addSelect('p.rvid');
         $qb->addSelect('r.docid');
+        $qb->addSelect('p.paperid');
         $qb->addSelect('COUNT(r.docid) as count');
 
         //$qb->addSelect('r.uid');
@@ -65,11 +76,11 @@ class ReviewerReportRepository extends ServiceEntityRepository
 
 
         if ($years) {
-            $this->andOrExp($qb, 'YEAR(r.creationDate)', $years);
+            $this->andOrExp($qb, sprintf('YEAR(%s)', self::REPORT_DATE), $years);
         }
 
         if ($startAfterDate) {
-            $qb->andWhere('r.creationDate >= :startAfterDate')->setParameter('startAfterDate', $startAfterDate);
+            $qb->andWhere(sprintf('%s >= :startAfterDate', self::REPORT_DATE))->setParameter('startAfterDate', $startAfterDate);
         }
 
         $qb->innerJoin(Paper::class, 'p', Join::ON, 'p.docid = r.docid');
@@ -81,6 +92,7 @@ class ReviewerReportRepository extends ServiceEntityRepository
         $qb->groupBy('p.rvid');
         $qb->addGroupBy('r.status');
         $qb->addGroupBy('r.docid');
+        $qb->addGroupBy('p.paperid');
         $qb->addGroupBy('r.uid');
 
         return $qb;
