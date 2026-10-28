@@ -49,6 +49,8 @@ class ReviewerReportRepository extends ServiceEntityRepository
         //$qb->addSelect('p.rvid');
         $qb->addSelect('r.docid');
         $qb->addSelect('p.paperid');
+        // date of the report (one report by version and reviewer)
+        $qb->addSelect(sprintf('MAX(%s) AS date', self::REPORT_DATE));
         $qb->addSelect('COUNT(r.docid) as count');
 
         //$qb->addSelect('r.uid');

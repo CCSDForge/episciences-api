@@ -277,6 +277,52 @@ class StatisticStateProviderTest extends TestCase
         $this->assertSame(0, $statistics[0]->getHiddenPapers());
     }
 
+    /**
+     * The evaluation lists the reviews counted, without the reviewers: one item by invitation (with its answer; a pending
+     * invitation past its expiration is expired) or by completed report, with the DOCID of the paper version.
+     */
+    public function testReviewsAreListedForAnAdministratorOfTheJournal(): void
+    {
+        $statistics = $this->provideWithPapers([], $this->administrator(1), operationName: self::EVALUATION_OPERATION);
+
+        $this->assertSame(['reviews-requested', 'reviews-received', 'median-reviews-number'], array_map(static fn(Statistic $statistic): string => $statistic->getName(), $statistics));
+        $this->assertSame([
+            ['docid' => 201, 'date' => '2024-03-01', 'answer' => 'accepted'],
+            ['docid' => 203, 'date' => '2024-05-02', 'answer' => 'declined'],
+            ['docid' => 204, 'date' => '2024-07-03', 'answer' => 'expired'],
+        ], $statistics[0]->getReviews());
+        $this->assertSame(0, $statistics[0]->getHiddenReviews());
+        $this->assertSame([['docid' => 201, 'date' => '2024-03-20'], ['docid' => 203, 'date' => '2024-05-20']], $statistics[1]->getReviews());
+        // the median is not a number of reviews: no list
+        $this->assertNull($statistics[2]->getReviews());
+        $this->assertNull($statistics[2]->getPapers());
+    }
+
+    public function testReviewsOfAPaperWithADeclaredConflictAreHidden(): void
+    {
+        $statistics = $this->provideWithPapers(['indicator' => ['reviews-requested', 'reviews-received']], $this->administrator(1), coiEnabled: true, conflicts: [3], operationName: self::EVALUATION_OPERATION);
+
+        $this->assertSame([201, 204], array_column($statistics[0]->getReviews(), 'docid'));
+        $this->assertSame(1, $statistics[0]->getHiddenReviews());
+        $this->assertSame([201], array_column($statistics[1]->getReviews(), 'docid'));
+        $this->assertSame(1, $statistics[1]->getHiddenReviews());
+    }
+
+    public function testReviewsAreDeniedToTheOtherUsers(): void
+    {
+        $this->expectException(AccessDeniedException::class);
+
+        $this->provideWithPapers([], new User()->setUid(7)->setCurrentJournalID(1), administrator: false, operationName: self::EVALUATION_OPERATION);
+    }
+
+    public function testNoReviewsWithoutWithPapers(): void
+    {
+        $statistics = iterator_to_array($this->provideEvaluation(filters: ['indicator' => ['reviews-requested']]));
+
+        $this->assertNull($statistics[0]->getReviews());
+        $this->assertNull($statistics[0]->getHiddenReviews());
+    }
+
     public function testNoPapersWithoutWithPapers(): void
     {
         $statistics = iterator_to_array($this->provideCollection(['indicator' => 'nb-submissions']));
@@ -323,7 +369,7 @@ class StatisticStateProviderTest extends TestCase
      * @param int[] $conflicts papers for which the user has declared a conflict
      * @return Statistic[]
      */
-    private function provideWithPapers(array $filters, ?User $user, bool $administrator = true, bool $epiAdmin = false, bool $coiEnabled = false, array $conflicts = []): array
+    private function provideWithPapers(array $filters, ?User $user, bool $administrator = true, bool $epiAdmin = false, bool $coiEnabled = false, array $conflicts = [], string $operationName = self::COLLECTION_OPERATION): array
     {
         $journal = $this->createStub(Review::class);
         $journal->method('getRvid')->willReturn(1);
@@ -351,12 +397,30 @@ class StatisticStateProviderTest extends TestCase
             $conflicts
         ));
 
+        // invitations: one row by assignment (invitation 1 is accepted: two assignments); invitation 3 is still pending, expired
+        $userInvitationRepository = $this->createStub(UserInvitationRepository::class);
+        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder([
+            ['id' => 1, 'itemid' => 201, 'paperid' => 1, 'status' => 'accepted', 'date' => new \DateTime('2024-03-01 10:00:00'), 'expirationDate' => new \DateTime('2024-04-01')],
+            ['id' => 1, 'itemid' => 201, 'paperid' => 1, 'status' => 'accepted', 'date' => new \DateTime('2024-03-01 10:00:00'), 'expirationDate' => new \DateTime('2024-04-01')],
+            ['id' => 2, 'itemid' => 203, 'paperid' => 3, 'status' => 'declined', 'date' => new \DateTime('2024-05-02 10:00:00'), 'expirationDate' => new \DateTime('2024-06-02')],
+            ['id' => 3, 'itemid' => 204, 'paperid' => 4, 'status' => 'pending', 'date' => new \DateTime('2024-07-03 10:00:00'), 'expirationDate' => new \DateTime('2024-08-03')],
+        ]));
+
+        // reports: one row by version and reviewer
+        $reviewerReportRepository = $this->createStub(ReviewerReportRepository::class);
+        $reviewerReportRepository->method('getReceivedReports')->willReturn($this->createQueryBuilder([
+            ['docid' => 201, 'paperid' => 1, 'count' => 1, 'date' => '2024-03-20 10:00:00'],
+            ['docid' => 203, 'paperid' => 3, 'count' => 1, 'date' => '2024-05-20 10:00:00'],
+        ]));
+
         $entityManager = $this->createStub(EntityManagerInterface::class);
         $entityManager->method('getRepository')->willReturnMap([
             [Paper::class, $papersRepository],
             [PaperLog::class, $paperLogRepository],
             [Review::class, $reviewRepository],
             [PaperConflicts::class, $paperConflictsRepository],
+            [UserInvitation::class, $userInvitationRepository],
+            [ReviewerReport::class, $reviewerReportRepository],
         ]);
 
         $security = $this->createStub(Security::class);
@@ -371,7 +435,7 @@ class StatisticStateProviderTest extends TestCase
         });
 
         $provider = new StatisticStateProvider($entityManager, $this->createStub(LoggerInterface::class), new Pagination(['client_enabled' => true]), $this->createStub(Stats::class), new StatisticPapers($entityManager, $security));
-        $operation = new GetCollection(class: Statistic::class, name: self::COLLECTION_OPERATION, paginationMaximumItemsPerPage: 30);
+        $operation = new GetCollection(class: Statistic::class, name: $operationName, paginationMaximumItemsPerPage: 30);
         // the given filters override the defaults; a null filter is removed (e.g. no rvcode)
         $filters = array_filter(array_merge(['pagination' => 'true', 'rvcode' => 'dmtcs', 'withPapers' => 'true', 'unit' => 'day'], $filters), static fn($value): bool => $value !== null);
 

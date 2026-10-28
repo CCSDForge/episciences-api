@@ -556,6 +556,19 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         ],
                     ),
                     new Parameter(
+                        name: self::WITH_PAPERS_PARAM,
+                        in: 'query',
+                        description: self::WITH_REVIEWS_DESCRIPTION,
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
+                        explode: false,
+                        allowReserved: false
+                    ),
+                    new Parameter(
                         name: self::GROUP_BY_PARAM,
                         in: 'query',
                         description: self::GROUP_BY_DESCRIPTION,
@@ -605,6 +618,7 @@ class Statistic
     public const NB_SUBMISSIONS_DETAILS = 'nb-submissions-details';
     public const WITH_PAPERS_PARAM = 'withPapers';
     public const WITH_PAPERS_DESCRIPTION = 'Adds `papers`, the papers counted by each statistic (not for `evaluation`): one DOCID by paper, its latest version, computed with the same queries as the figures. Only with `rvcode`, without `groupBy`, for the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number is in `hiddenPapers`';
+    public const WITH_REVIEWS_DESCRIPTION = 'Adds `reviews` to `reviews-requested` and `reviews-received`: the invitations or the completed reports counted, without the reviewers, computed with the same queries as the figures. Only with `rvcode`, without `groupBy`, for the administrators of the journal (JWT); the reviews of the papers for which the user has declared a conflict of interest are not listed, their number is in `hiddenReviews`';
     public const GROUP_BY_PARAM = 'groupBy';
     public const GROUP_BY_JOURNAL = 'journal';
     public const STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER = '/api/statistics/';
@@ -648,6 +662,14 @@ class Statistic
     #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
     #[ApiProperty(description: 'With `withPapers`: the number of papers not listed in `papers` because of a conflict of interest (by figure for a statistic made of several figures)', schema: ['type' => ['integer', 'object'], 'example' => 0])]
     private int|array|null $hiddenPapers = null;
+    #[groups(['read:Statistic'])]
+    #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
+    #[ApiProperty(description: 'With `withPapers`, for `reviews-requested` and `reviews-received`: the reviews counted, without the reviewers: one item by invitation (`date` of sending, `answer`: pending, accepted, declined or expired) or by completed report (`date` of validation), with the DOCID of the paper version', schema: ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['docid' => ['type' => 'integer'], 'date' => ['type' => ['string', 'null'], 'format' => 'date'], 'answer' => ['type' => 'string', 'enum' => ['pending', 'accepted', 'declined', 'expired']]]], 'example' => [['docid' => 18910, 'date' => '2024-03-01', 'answer' => 'accepted']]])]
+    private ?array $reviews = null;
+    #[groups(['read:Statistic'])]
+    #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
+    #[ApiProperty(description: 'With `withPapers`: the number of reviews not listed in `reviews` because of a conflict of interest on their paper', schema: ['type' => 'integer', 'example' => 0])]
+    private ?int $hiddenReviews = null;
 
     public function getName(): string
     {
@@ -706,6 +728,28 @@ class Statistic
     public function setPapers(?array $papers): self
     {
         $this->papers = $papers;
+        return $this;
+    }
+
+    public function getReviews(): ?array
+    {
+        return $this->reviews;
+    }
+
+    public function setReviews(?array $reviews): self
+    {
+        $this->reviews = $reviews;
+        return $this;
+    }
+
+    public function getHiddenReviews(): ?int
+    {
+        return $this->hiddenReviews;
+    }
+
+    public function setHiddenReviews(?int $hiddenReviews): self
+    {
+        $this->hiddenReviews = $hiddenReviews;
         return $this;
     }
 

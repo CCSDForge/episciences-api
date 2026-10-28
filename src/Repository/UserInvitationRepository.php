@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\AppConstants;
+use App\Entity\Paper;
 use App\Entity\UserAssignment;
 use App\Entity\UserInvitation;
 use App\Traits\QueryTrait;
@@ -44,10 +45,14 @@ class UserInvitationRepository extends ServiceEntityRepository
         $qb->addSelect('i.status');
         $qb->addSelect('i.id');
         $qb->addSelect('i.sendingDate as date');
+        $qb->addSelect('i.expirationDate as expirationDate');
+        // the paper of the invitation (the declared conflicts of interest are by paper); none if the version was removed
+        $qb->addSelect('p.paperid');
 
 
         $qb->from(UserAssignment::class, 'ua');
         $qb->innerJoin(UserInvitation::class, 'i', Join::ON, 'ua.invitationId = i.id');
+        $qb->leftJoin(Paper::class, 'p', Join::ON, 'p.docid = ua.itemid');
 
         $qb->andWhere('ua.item =:item')->setParameter('item', UserAssignment::ITEM_PAPER);
 

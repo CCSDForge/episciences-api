@@ -11,6 +11,7 @@ use App\Entity\Paper;
 use App\Entity\PaperLog;
 use App\Entity\Review;
 use App\Entity\ReviewerReport;
+use App\Entity\UserAssignment;
 use App\Entity\UserInvitation;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\PaperLogRepository;
@@ -308,7 +309,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             return null;
         }
 
-        if ($operationName !== '_get_collection' || !$journal instanceof Review || $groupBy !== null) {
+        if (!in_array($operationName, ['_get_collection', 'evaluation_get_collection'], true) || !$journal instanceof Review || $groupBy !== null) {
             throw new ResourceNotFoundException(sprintf('Oops! %s is only available on %s, with rvcode and without %s', Statistic::WITH_PAPERS_PARAM, Statistic::STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::GROUP_BY_PARAM));
         }
 
@@ -317,7 +318,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
     /**
      * Adds to each statistic the papers it counts (one DOCID by paper, its latest version), computed with the same queries
-     * as the figures (not for the evaluation).
+     * as the figures; for the requested and received reviews, the reviews counted (see getReviews()).
      *
      * @param Statistic[] $statistics
      * @param array<int, true> $conflictedPapers papers not to list
@@ -332,6 +333,12 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $figures = PaperLogRepository::PAPER_IDS_FIGURES;
 
         foreach ($statistics as $statistic) {
+            if (in_array($statistic->getName(), [Statistic::EVAL_INDICATORS['reviews-requested_get'], Statistic::EVAL_INDICATORS['reviews-received_get']], true)) {
+                [$reviews, $hidden] = $this->getReviews($statistic->getName(), $filters, $conflictedPapers);
+                $statistic->setReviews($reviews)->setHiddenReviews($hidden);
+                continue;
+            }
+
             $papers = match ($statistic->getName()) {
                 Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'] => $paperRepo->getSubmissionPaperIds(['is' => $filters]),
                 Statistic::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get'] => [
@@ -349,7 +356,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                     'being-to-publish.accepted' => $paperLogRepo->getPaperIds($figures['accepted-not-yet-published'], $rvId, $years, $startAfterDate),
                     'being-to-publish.other-status' => $paperRepo->getSubmissionsAwaitingDecisionPaperIds($rvId, $startAfterDate, $years),
                 ],
-                default => null, // evaluation: reviews, not papers
+                default => null, // the median number of reviews: no list
             };
 
             if ($papers === null) {
@@ -365,6 +372,55 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             [$docIds, $hidden] = $this->statisticPapers->toDocIds($papers, $conflictedPapers);
             $statistic->setPapers($docIds)->setHiddenPapers($hidden);
         }
+    }
+
+    /**
+     * The reviews counted by a figure of the evaluation, computed with the same queries as the figure, without the
+     * reviewers: one item by invitation (reviews-requested: date of sending, answer) or by report (reviews-received:
+     * date of validation), with the DOCID of the paper version. The reviews of the papers for which the user has declared
+     * a conflict of interest are not listed, only counted.
+     *
+     * @param array<int, true> $conflictedPapers papers not to list (PAPERID => true)
+     * @return array{0: list<array{docid: int, date: ?string, answer?: string}>, 1: int} the reviews listed, the number of reviews not listed
+     */
+    private function getReviews(string $indicator, array $filters, array $conflictedPapers): array
+    {
+        $isRequested = $indicator === Statistic::EVAL_INDICATORS['reviews-requested_get'];
+        $rows = $isRequested
+            ? $this->getReviewsRequestedRows($filters)
+            : $this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($filters, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult();
+
+        $reviews = [];
+        $hidden = 0;
+        $now = new \DateTimeImmutable();
+
+        foreach ($rows as $row) {
+            if (isset($row['paperid']) && isset($conflictedPapers[(int)$row['paperid']])) {
+                $hidden++;
+                continue;
+            }
+
+            $review = ['docid' => (int)($isRequested ? $row['itemid'] : $row['docid']), 'date' => self::toDate($row['date'] ?? null)];
+
+            if ($isRequested) {
+                $expiration = $row['expirationDate'] ?? null;
+                $isExpired = $row['status'] === UserAssignment::STATUS_PENDING && $expiration instanceof \DateTimeInterface && $expiration < $now;
+                $review['answer'] = $isExpired ? UserAssignment::STATUS_EXPIRED : (string)$row['status'];
+            }
+
+            $reviews[] = $review;
+        }
+
+        return [$reviews, $hidden];
+    }
+
+    private static function toDate(mixed $date): ?string
+    {
+        if ($date instanceof \DateTimeInterface) {
+            return $date->format('Y-m-d');
+        }
+
+        return is_string($date) && $date !== '' ? substr($date, 0, 10) : null;
     }
 
     /**
