@@ -38,6 +38,16 @@ class DelegatedTokenScopeSubscriberTest extends TestCase
         }
     }
 
+    /**
+     * The statistics page of Episciences lists the papers of the dashboard and the reviews of the evaluation.
+     */
+    public function testDelegatedTokenIsValidOnTheEvaluation(): void
+    {
+        $this->authenticate(['scope' => DelegatedTokenIssuer::SCOPE], 'GET', '_api_/statistics/evaluation_get_collection');
+
+        $this->addToAssertionCount(1);
+    }
+
     #[DataProvider('refusedUseProvider')]
     public function testDelegatedTokenIsRefusedAnywhereElse(array $payload, string $method, string $route): void
     {

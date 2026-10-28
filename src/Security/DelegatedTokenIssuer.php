@@ -27,7 +27,7 @@ final readonly class DelegatedTokenIssuer
     public const int MAX_CLOCK_SKEW = 60;
     public const int MIN_SECRET_LENGTH = 32;
     /** Routes a delegated token can be used on (GET only) */
-    public const array ALLOWED_ROUTES = ['get_stats_dashboard_item', '_api_/statistics/_get_collection'];
+    public const array ALLOWED_ROUTES = ['get_stats_dashboard_item', '_api_/statistics/_get_collection', '_api_/statistics/evaluation_get_collection'];
 
     private const string NONCE_CACHE_PREFIX = 'delegated_token_nonce_';
 
