@@ -106,6 +106,26 @@ class StatisticStateProviderTest extends TestCase
         $this->provideCollection(['indicator' => ['median-submission-publication', 'foo']]);
     }
 
+    public function testAnInvitationIsRequestedOnce(): void
+    {
+        // an accepted invitation has two assignments (pending, then active)
+        $invitations = [['rvid' => 1, 'id' => 7, 'status' => 'accepted'], ['rvid' => 1, 'id' => 7, 'status' => 'accepted'], ['rvid' => 1, 'id' => 8, 'status' => 'pending']];
+
+        $statistics = iterator_to_array($this->provideEvaluation(filters: ['indicator' => ['reviews-requested']], invitations: $invitations));
+
+        $this->assertSame(2.0, $statistics[0]->getValue());
+    }
+
+    public function testStartAfterDateFiltersTheEvaluation(): void
+    {
+        $repositoryOptions = [];
+
+        iterator_to_array($this->provideEvaluation(filters: ['startAfterDate' => '2023-01-31'], repositoryOptions: $repositoryOptions));
+
+        $this->assertSame('2023-01-31', $repositoryOptions['getReviewsRequested']['startAfterDate'] ?? null);
+        $this->assertSame('2023-01-31', $repositoryOptions['getReceivedReports']['startAfterDate'] ?? null);
+    }
+
     public function testValidStartAfterDateIsAccepted(): void
     {
         $result = $this->provideEvaluation(filters: ['startAfterDate' => '2023-01-31']);
@@ -442,7 +462,7 @@ class StatisticStateProviderTest extends TestCase
         ]));
 
         $userInvitationRepository = $this->createStub(UserInvitationRepository::class);
-        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder([['rvid' => 1], ['rvid' => 1], ['rvid' => 3]]));
+        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder([['rvid' => 1, 'id' => 1], ['rvid' => 1, 'id' => 2], ['rvid' => 3, 'id' => 3]]));
 
         $entityManager->method('getRepository')->willReturnMap([
             [Paper::class, $papersRepository],
@@ -465,16 +485,26 @@ class StatisticStateProviderTest extends TestCase
         return $provider->provide($operation, [], ['operation' => $operation, 'filters' => ['pagination' => 'true'] + $filters, 'request' => $this->request]);
     }
 
-    private function provideEvaluation(string $pagination = 'true', int $maxItemsPerPage = 30, array $filters = []): iterable
+    /**
+     * @param array<int, array<string, mixed>> $invitations rows of the requested reviews
+     * @param array<string, array<string, mixed>> $repositoryOptions the options given to the repositories, by method
+     */
+    private function provideEvaluation(string $pagination = 'true', int $maxItemsPerPage = 30, array $filters = [], array $invitations = [], array &$repositoryOptions = []): iterable
     {
         $papersRepository = $this->createStub(PapersRepository::class);
         $papersRepository->method('getYearRange')->willReturn([]);
 
         $reviewerReportRepository = $this->createStub(ReviewerReportRepository::class);
-        $reviewerReportRepository->method('getReceivedReports')->willReturn($this->createQueryBuilder());
+        $reviewerReportRepository->method('getReceivedReports')->willReturnCallback(function (array $options) use (&$repositoryOptions): QueryBuilder {
+            $repositoryOptions['getReceivedReports'] = $options;
+            return $this->createQueryBuilder();
+        });
 
         $userInvitationRepository = $this->createStub(UserInvitationRepository::class);
-        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder());
+        $userInvitationRepository->method('getReviewsRequested')->willReturnCallback(function (array $options) use (&$repositoryOptions, $invitations): QueryBuilder {
+            $repositoryOptions['getReviewsRequested'] = $options;
+            return $this->createQueryBuilder($invitations);
+        });
 
         $entityManager = $this->createStub(EntityManagerInterface::class);
         $entityManager->method('getRepository')->willReturnMap([

@@ -477,7 +477,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Evaluation",
-                description: 'Statistics of the editorial evaluation: the number of reviews requested (`reviews-requested`), the number of reviews received (`reviews-received`) and the median number of reviews per article (`median-reviews-number`), for all the journals or for one journal with `rvcode`. Filter by year(s) of invitation or report; `groupBy=journal` returns one figure by journal.',
+                description: 'Statistics of the editorial evaluation: the number of reviews requested (`reviews-requested`: the invitations sent to the reviewers, whatever their answer, except the cancelled ones), the number of reviews received (`reviews-received`) and the median number of reviews per article (`median-reviews-number`), for all the journals or for one journal with `rvcode`. Filter by year(s) of invitation or report; `groupBy=journal` returns one figure by journal.',
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -542,6 +542,18 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         explode: true,
                         allowReserved: false,
 
+                    ),
+                    new Parameter(
+                        name: AppConstants::START_AFTER_DATE,
+                        in: 'query',
+                        description: 'Start statistics after date [YYYY-MM-DD], on the date of the invitation or of the report: a wrong format is rejected (404)',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: self::GROUP_BY_PARAM,

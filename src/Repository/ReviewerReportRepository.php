@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\AppConstants;
 use App\Entity\Paper;
 use App\Entity\ReviewerReport;
 use App\Traits\QueryTrait;
@@ -31,6 +32,7 @@ class ReviewerReportRepository extends ServiceEntityRepository
         $uid = $options['uid'] ?? null;
 
         $years = $options['year'] ?? null;
+        $startAfterDate = $options[AppConstants::START_AFTER_DATE] ?? null;
 
         $qb = $this->getEntityManager()->createQueryBuilder();
         $qb->from(ReviewerReport::class, 'r');
@@ -64,6 +66,10 @@ class ReviewerReportRepository extends ServiceEntityRepository
 
         if ($years) {
             $this->andOrExp($qb, 'YEAR(r.creationDate)', $years);
+        }
+
+        if ($startAfterDate) {
+            $qb->andWhere('r.creationDate >= :startAfterDate')->setParameter('startAfterDate', $startAfterDate);
         }
 
         $qb->innerJoin(Paper::class, 'p', Join::ON, 'p.docid = r.docid');

@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): with `withDetails`, `details` now also gives the median delays of each year (`submissionAcceptanceTimeMedian`, `submissionPublicationTimeMedian`), in the shape of the average delays.
 - Journal dashboard: the delays of each year in `details` (average and median) now give `count`, the number of articles the delay is computed from.
+### Fixed
+- Statistics of the evaluation (`GET /api/statistics/evaluation`, `evaluation` of `GET /api/statistics/`): `reviews-requested` counts the invitations sent to the reviewers whatever their answer (pending, accepted or declined; the cancelled ones are left out), once each; it only counted the invitations still pending. `startAfterDate` is now applied to the three indicators (date of the invitation or of the report), as to the other statistics; it was accepted but ignored.
+
 ### Changed
 - Journal dashboard: the average and the median delays are computed from the same delay of each article, in two queries instead of four.
 - Statistics: the average delays are always computed from the delay of each article, as the median delays (same figures): the SQL query of the average delays is removed.
