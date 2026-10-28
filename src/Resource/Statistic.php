@@ -477,7 +477,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Evaluation",
-                description: 'Statistics of the editorial evaluation: the number of reviews requested (`reviews-requested`: the invitations sent to the reviewers, whatever their answer, except the cancelled ones), the number of reviews received (`reviews-received`: the completed reports, dated by their validation) and the median number of reviews per reviewed article (`median-reviews-number`: the completed reports of each article, all its versions together, among the articles having at least one), for all the journals or for one journal with `rvcode`. Filter by year(s) of invitation or of validation of the report; `groupBy=journal` returns one figure by journal.',
+                description: 'Statistics of the editorial evaluation: the number of reviews requested (`reviews-requested`: the invitations sent to the reviewers for a paper, whatever their answer, except the cancelled ones), the number of reviews received (`reviews-received`: the completed reports, dated by their validation) and the median number of reviews per reviewed article (`median-reviews-number`: the completed reports of each article, all its versions together, among the articles having at least one), for all the journals or for one journal with `rvcode`. Filter by year(s) of invitation or of validation of the report; `groupBy=journal` returns one figure by journal.',
                 parameters: [
                     new Parameter(
                         name: 'rvcode',

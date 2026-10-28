@@ -96,7 +96,8 @@ class EvaluationQueriesDatabaseTest extends TestCase
     }
 
     /**
-     * Pending, accepted and declined invitations are requested reviews; the cancelled one is not.
+     * Pending, accepted and declined invitations are requested reviews; the cancelled one is not, nor the invitation
+     * without paper.
      */
     public function testRequestedReviewsAreTheInvitationsWhateverTheirAnswer(): void
     {
@@ -215,6 +216,7 @@ class EvaluationQueriesDatabaseTest extends TestCase
             [3, 'declined', '2024-02-01', 11, ['pending', 'declined']],
             [4, 'cancelled', '2024-03-01', 11, ['cancelled']],
             [5, 'accepted', '2024-03-01', 12, ['pending', 'active']], // disabled journal
+            [6, 'pending', '2024-04-01', 0, ['pending']], // no paper (ITEMID = 0): not a review requested
         ];
 
         $invitationDefaults = $this->requiredColumnDefaults(UserInvitation::TABLE);

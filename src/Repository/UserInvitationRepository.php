@@ -25,8 +25,8 @@ class UserInvitationRepository extends ServiceEntityRepository
     }
 
     /**
-     * The invitations sent to the reviewers (one row by assignment: an answered invitation has several assignments,
-     * count the distinct invitations "id"). Without "invitation-status", all of them except the cancelled ones.
+     * The invitations sent to the reviewers for a paper (one row by assignment: an answered invitation has several
+     * assignments, count the distinct invitations "id"). Without "invitation-status", all of them except the cancelled ones.
      */
     public function getReviewsRequested(array $options = []): QueryBuilder
     {
@@ -46,13 +46,15 @@ class UserInvitationRepository extends ServiceEntityRepository
         $qb->addSelect('i.id');
         $qb->addSelect('i.sendingDate as date');
         $qb->addSelect('i.expirationDate as expirationDate');
-        // the paper of the invitation (the declared conflicts of interest are by paper); none if the version was removed
+        // the paper of the invitation (the declared conflicts of interest are by paper)
         $qb->addSelect('p.paperid');
 
 
         $qb->from(UserAssignment::class, 'ua');
         $qb->innerJoin(UserInvitation::class, 'i', Join::ON, 'ua.invitationId = i.id');
-        $qb->leftJoin(Paper::class, 'p', Join::ON, 'p.docid = ua.itemid');
+        // an invitation is a review requested for a paper: an invitation without paper (e.g. ITEMID = 0) is not counted,
+        // as the reports (see ReviewerReportRepository::getReceivedReports())
+        $qb->innerJoin(Paper::class, 'p', Join::ON, 'p.docid = ua.itemid');
 
         $qb->andWhere('ua.item =:item')->setParameter('item', UserAssignment::ITEM_PAPER);
 
