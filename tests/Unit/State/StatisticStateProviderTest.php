@@ -315,6 +315,54 @@ class StatisticStateProviderTest extends TestCase
         $this->provideWithPapers([], new User()->setUid(7)->setCurrentJournalID(1), administrator: false, operationName: self::EVALUATION_OPERATION);
     }
 
+    /**
+     * On /api/statistics/, indicator=evaluation returns the three statistics of the evaluation: the same reviews as on
+     * /api/statistics/evaluation.
+     */
+    public function testReviewsAreListedWithTheEvaluationIndicatorOfTheCollection(): void
+    {
+        $statistics = $this->provideWithPapers(['indicator' => 'evaluation'], $this->administrator(1));
+
+        $this->assertSame(['reviews-requested', 'reviews-received', 'median-reviews-number'], array_map(static fn(Statistic $statistic): string => $statistic->getName(), $statistics));
+        $this->assertSame([201, 203, 204], array_column($statistics[0]->getReviews(), 'docid'));
+        $this->assertSame([201, 203], array_column($statistics[1]->getReviews(), 'docid'));
+        $this->assertNull($statistics[2]->getReviews());
+    }
+
+    /**
+     * Only a pending invitation expires: an answered invitation keeps its answer once its expiration date is past.
+     */
+    public function testOnlyAPendingInvitationPastItsExpirationIsExpired(): void
+    {
+        $invitation = static fn(int $id, string $status, ?string $expiration): array => [
+            'id' => $id, 'itemid' => 200 + $id, 'paperid' => $id, 'status' => $status,
+            'date' => new \DateTime('2024-03-01 10:00:00'), 'expirationDate' => $expiration === null ? null : new \DateTime($expiration),
+        ];
+
+        $statistics = $this->provideWithPapers(['indicator' => 'reviews-requested'], $this->administrator(1), operationName: self::EVALUATION_OPERATION, invitations: [
+            $invitation(1, 'accepted', '2024-04-01'),
+            $invitation(2, 'declined', '2024-04-01'),
+            $invitation(3, 'pending', '2024-04-01'),
+            $invitation(4, 'pending', '+1 month'),
+            $invitation(5, 'pending', null),
+        ]);
+
+        $this->assertSame(['accepted', 'declined', 'expired', 'pending', 'pending'], array_column($statistics[0]->getReviews(), 'answer'));
+    }
+
+    /**
+     * As for the papers, the platform administrators are not subject to the conflicts.
+     */
+    public function testPlatformAdministratorSeesAllTheReviews(): void
+    {
+        $statistics = $this->provideWithPapers(['indicator' => ['reviews-requested', 'reviews-received']], null, epiAdmin: true, coiEnabled: true, conflicts: [3], operationName: self::EVALUATION_OPERATION);
+
+        $this->assertSame([201, 203, 204], array_column($statistics[0]->getReviews(), 'docid'));
+        $this->assertSame(0, $statistics[0]->getHiddenReviews());
+        $this->assertSame([201, 203], array_column($statistics[1]->getReviews(), 'docid'));
+        $this->assertSame(0, $statistics[1]->getHiddenReviews());
+    }
+
     public function testNoReviewsWithoutWithPapers(): void
     {
         $statistics = iterator_to_array($this->provideEvaluation(filters: ['indicator' => ['reviews-requested']]));
@@ -347,17 +395,22 @@ class StatisticStateProviderTest extends TestCase
     }
 
     #[DataProvider('invalidWithPapersProvider')]
-    public function testInvalidWithPapersIsRejected(array $filters): void
+    public function testInvalidWithPapersIsRejected(array $filters, string $operationName): void
     {
         $this->expectException(ResourceNotFoundException::class);
 
-        $this->provideWithPapers($filters, $this->administrator(1));
+        $this->provideWithPapers($filters, $this->administrator(1), operationName: $operationName);
     }
 
     public static function invalidWithPapersProvider(): iterable
     {
-        yield 'not a boolean' => [['withPapers' => 'abc']];
-        yield 'without rvcode' => [['withPapers' => 'true', 'rvcode' => null]];
+        foreach (['collection' => self::COLLECTION_OPERATION, 'evaluation' => self::EVALUATION_OPERATION] as $label => $operationName) {
+            yield "$label: not a boolean" => [['withPapers' => 'abc'], $operationName];
+            yield "$label: without rvcode" => [['withPapers' => 'true', 'rvcode' => null], $operationName];
+            // groupBy=journal is not combined with rvcode, which withPapers needs
+            yield "$label: with groupBy" => [['groupBy' => 'journal'], $operationName];
+            yield "$label: with groupBy, without rvcode" => [['groupBy' => 'journal', 'rvcode' => null], $operationName];
+        }
     }
 
     private function administrator(int $journal): User
@@ -367,9 +420,10 @@ class StatisticStateProviderTest extends TestCase
 
     /**
      * @param int[] $conflicts papers for which the user has declared a conflict
+     * @param array|null $invitations rows of getReviewsRequested(), the default ones if null
      * @return Statistic[]
      */
-    private function provideWithPapers(array $filters, ?User $user, bool $administrator = true, bool $epiAdmin = false, bool $coiEnabled = false, array $conflicts = [], string $operationName = self::COLLECTION_OPERATION): array
+    private function provideWithPapers(array $filters, ?User $user, bool $administrator = true, bool $epiAdmin = false, bool $coiEnabled = false, array $conflicts = [], string $operationName = self::COLLECTION_OPERATION, ?array $invitations = null): array
     {
         $journal = $this->createStub(Review::class);
         $journal->method('getRvid')->willReturn(1);
@@ -399,7 +453,7 @@ class StatisticStateProviderTest extends TestCase
 
         // invitations: one row by assignment (invitation 1 is accepted: two assignments); invitation 3 is still pending, expired
         $userInvitationRepository = $this->createStub(UserInvitationRepository::class);
-        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder([
+        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder($invitations ?? [
             ['id' => 1, 'itemid' => 201, 'paperid' => 1, 'status' => 'accepted', 'date' => new \DateTime('2024-03-01 10:00:00'), 'expirationDate' => new \DateTime('2024-04-01')],
             ['id' => 1, 'itemid' => 201, 'paperid' => 1, 'status' => 'accepted', 'date' => new \DateTime('2024-03-01 10:00:00'), 'expirationDate' => new \DateTime('2024-04-01')],
             ['id' => 2, 'itemid' => 203, 'paperid' => 3, 'status' => 'declined', 'date' => new \DateTime('2024-05-02 10:00:00'), 'expirationDate' => new \DateTime('2024-06-02')],
