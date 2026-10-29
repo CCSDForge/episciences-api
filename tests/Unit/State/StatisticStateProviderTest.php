@@ -106,10 +106,12 @@ class StatisticStateProviderTest extends TestCase
         $this->provideCollection(['indicator' => ['median-submission-publication', 'foo']]);
     }
 
-    public function testAnInvitationIsRequestedOnce(): void
+    /**
+     * The repository returns one row by invitation (see EvaluationQueriesDatabaseTest): each row is a review requested.
+     */
+    public function testEachInvitationIsARequestedReview(): void
     {
-        // an accepted invitation has two assignments (pending, then active)
-        $invitations = [['rvid' => 1, 'id' => 7, 'status' => 'accepted'], ['rvid' => 1, 'id' => 7, 'status' => 'accepted'], ['rvid' => 1, 'id' => 8, 'status' => 'pending']];
+        $invitations = [['rvid' => 1, 'id' => 7, 'status' => 'accepted'], ['rvid' => 1, 'id' => 8, 'status' => 'pending']];
 
         $statistics = iterator_to_array($this->provideEvaluation(filters: ['indicator' => ['reviews-requested']], invitations: $invitations));
 
@@ -501,14 +503,13 @@ class StatisticStateProviderTest extends TestCase
             $conflicts
         ));
 
-        // invitations: one row by assignment (invitation 1 is accepted: two assignments); invitation 3 is still pending, expired
+        // invitations: one row by invitation; invitation 3 is still pending, expired
         $userInvitationRepository = $this->createStub(UserInvitationRepository::class);
         $queries = ['getReviewsRequested' => 0, 'getReceivedReports' => 0];
         $userInvitationRepository->method('getReviewsRequested')->willReturnCallback(function () use (&$queries, $invitations): QueryBuilder {
             $queries['getReviewsRequested']++;
 
             return $this->createQueryBuilder($invitations ?? [
-            ['id' => 1, 'itemid' => 201, 'paperid' => 1, 'status' => 'accepted', 'date' => new \DateTime('2024-03-01 10:00:00'), 'expirationDate' => new \DateTime('2024-04-01')],
             ['id' => 1, 'itemid' => 201, 'paperid' => 1, 'status' => 'accepted', 'date' => new \DateTime('2024-03-01 10:00:00'), 'expirationDate' => new \DateTime('2024-04-01')],
             ['id' => 2, 'itemid' => 203, 'paperid' => 3, 'status' => 'declined', 'date' => new \DateTime('2024-05-02 10:00:00'), 'expirationDate' => new \DateTime('2024-06-02')],
             ['id' => 3, 'itemid' => 204, 'paperid' => 4, 'status' => 'pending', 'date' => new \DateTime('2024-07-03 10:00:00'), 'expirationDate' => new \DateTime('2024-08-03')],
@@ -661,14 +662,8 @@ class StatisticStateProviderTest extends TestCase
         ]));
 
         $userInvitationRepository = $this->createStub(UserInvitationRepository::class);
-        // An answered invitation has two assignments, so it is returned twice
-        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder([
-            ['rvid' => 1, 'id' => 1],
-            ['rvid' => 1, 'id' => 1],
-            ['rvid' => 1, 'id' => 2],
-            ['rvid' => 3, 'id' => 3],
-            ['rvid' => 3, 'id' => 3],
-        ]));
+        // one row by invitation
+        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder([['rvid' => 1, 'id' => 1], ['rvid' => 1, 'id' => 2], ['rvid' => 3, 'id' => 3]]));
 
         $entityManager->method('getRepository')->willReturnMap([
             [Paper::class, $papersRepository],
