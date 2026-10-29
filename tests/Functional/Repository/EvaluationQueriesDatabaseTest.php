@@ -174,11 +174,11 @@ class EvaluationQueriesDatabaseTest extends TestCase
     }
 
     /**
-     * @return int[] the distinct invitations of the requested reviews
+     * @return int[] the invitations of the rows of the requested reviews, not deduplicated: one row by invitation
      */
     private function requestedInvitations(array $options = []): array
     {
-        $ids = array_values(array_unique(array_map('intval', array_column($this->invitationRepository->getReviewsRequested($options)->getQuery()->getResult(), 'id'))));
+        $ids = array_map('intval', array_column($this->invitationRepository->getReviewsRequested($options)->getQuery()->getResult(), 'id'));
         sort($ids);
 
         return $ids;
@@ -210,11 +210,12 @@ class EvaluationQueriesDatabaseTest extends TestCase
         }
 
         $invitations = [
-            // id, status, sending date, docid, statuses of the assignments
+            // id, status, sending date, docid, statuses of the assignments: as on Episciences, the first one (pending) created
+            // the invitation (USER_INVITATION.AID), an answer or a cancellation adds another one; all refer to the invitation
             [1, 'pending', '2023-03-01', 10, ['pending']],
             [2, 'accepted', '2023-04-01', 10, ['pending', 'active']], // an answered invitation has two assignments
             [3, 'declined', '2024-02-01', 11, ['pending', 'declined']],
-            [4, 'cancelled', '2024-03-01', 11, ['cancelled']],
+            [4, 'cancelled', '2024-03-01', 11, ['pending', 'cancelled']],
             [5, 'accepted', '2024-03-01', 12, ['pending', 'active']], // disabled journal
             [6, 'pending', '2024-04-01', 0, ['pending']], // no paper (ITEMID = 0): not a review requested
         ];
@@ -223,7 +224,7 @@ class EvaluationQueriesDatabaseTest extends TestCase
         $assignmentDefaults = $this->requiredColumnDefaults(self::USER_ASSIGNMENT_TABLE);
 
         foreach ($invitations as [$id, $status, $date, $docId, $assignments]) {
-            $connection->insert(UserInvitation::TABLE, array_merge($invitationDefaults, ['ID' => $id, 'STATUS' => $status, 'SENDING_DATE' => $date . ' 10:00:00', 'EXPIRATION_DATE' => $date . ' 10:00:00']));
+            $aid = null;
 
             foreach ($assignments as $assignmentStatus) {
                 $connection->insert(self::USER_ASSIGNMENT_TABLE, $quote(array_merge($assignmentDefaults, [
@@ -236,7 +237,10 @@ class EvaluationQueriesDatabaseTest extends TestCase
                     'STATUS' => $assignmentStatus,
                     'WHEN' => $date . ' 10:00:00',
                 ])));
+                $aid ??= (int)$connection->lastInsertId();
             }
+
+            $connection->insert(UserInvitation::TABLE, array_merge($invitationDefaults, ['ID' => $id, 'AID' => $aid, 'STATUS' => $status, 'SENDING_DATE' => $date . ' 10:00:00', 'EXPIRATION_DATE' => $date . ' 10:00:00']));
         }
 
         $reports = [

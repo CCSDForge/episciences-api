@@ -653,25 +653,14 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     }
 
     /**
-     * One row by invitation: an answered invitation has several assignments (pending, then active or declined)
-     *
-     * @return array<int, array<string, mixed>> indexed by invitation identifier
+     * The invitations: one row by invitation (see UserInvitationRepository::getReviewsRequested())
      */
     private function getReviewsRequestedRows(array $options): array
     {
-        $key = 'requested' . serialize($options);
-
-        if (!isset($this->evaluationRows[$key])) {
-            $rows = [];
-
-            foreach ($this->entityManager->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult() as $row) {
-                $rows[$row['id']] ??= $row;
-            }
-
-            $this->evaluationRows[$key] = $rows;
-        }
-
-        return $this->evaluationRows[$key];
+        return $this->evaluationRows['requested' . serialize($options)] ??= $this->entityManager->getRepository(UserInvitation::class)
+            ->getReviewsRequested($options)
+            ->getQuery()
+            ->getResult();
     }
 
     /**

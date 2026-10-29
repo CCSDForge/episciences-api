@@ -25,8 +25,8 @@ class UserInvitationRepository extends ServiceEntityRepository
     }
 
     /**
-     * The invitations sent to the reviewers for a paper (one row by assignment: an answered invitation has several
-     * assignments, count the distinct invitations "id"). Without "invitation-status", all of them except the cancelled ones.
+     * The invitations sent to the reviewers for a paper, one row by invitation. Without "invitation-status", all of them
+     * except the cancelled ones.
      */
     public function getReviewsRequested(array $options = []): QueryBuilder
     {
@@ -51,7 +51,9 @@ class UserInvitationRepository extends ServiceEntityRepository
 
 
         $qb->from(UserAssignment::class, 'ua');
-        $qb->innerJoin(UserInvitation::class, 'i', Join::ON, 'ua.invitationId = i.id');
+        // the assignment that created the invitation (USER_INVITATION.AID, the pending one), not all the assignments that
+        // refer to it (USER_ASSIGNMENT.INVITATION_ID: an answered or cancelled invitation has another one): one row by invitation
+        $qb->innerJoin(UserInvitation::class, 'i', Join::ON, 'i.aid = ua.id');
         // an invitation is a review requested for a paper: an invitation without paper (e.g. ITEMID = 0) is not counted,
         // as the reports (see ReviewerReportRepository::getReceivedReports())
         $qb->innerJoin(Paper::class, 'p', Join::ON, 'p.docid = ua.itemid');
