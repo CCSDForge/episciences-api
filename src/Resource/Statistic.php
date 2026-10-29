@@ -477,7 +477,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Evaluation",
-                description: 'Statistics of the editorial evaluation: the number of reviews requested (`reviews-requested`), the number of reviews received (`reviews-received`) and the median number of reviews per article (`median-reviews-number`), for all the journals or for one journal with `rvcode`. Filter by year(s) of invitation or report; `groupBy=journal` returns one figure by journal.',
+                description: 'Statistics of the editorial evaluation: the number of reviews requested (`reviews-requested`: the invitations sent to the reviewers, whatever their answer, except the cancelled ones), the number of reviews received (`reviews-received`: the completed reports, dated by their validation) and the median number of reviews per reviewed article (`median-reviews-number`: the completed reports of each article, all its versions together, among the articles having at least one), for all the journals or for one journal with `rvcode`. Filter by year(s) of invitation or of validation of the report; `groupBy=journal` returns one figure by journal.',
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -516,7 +516,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'Year of the invitation (reviews-requested) or of the report (reviews-received, median-reviews-number)',
+                        description: 'Year of the invitation (reviews-requested) or of the validation of the report (reviews-received, median-reviews-number)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -542,6 +542,18 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                         explode: true,
                         allowReserved: false,
 
+                    ),
+                    new Parameter(
+                        name: AppConstants::START_AFTER_DATE,
+                        in: 'query',
+                        description: 'Start statistics after date [YYYY-MM-DD], on the date of the invitation or of the validation of the report: a wrong format is rejected (404)',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: true,
+                        schema: [
+                            'type' => 'string',
+                            'format' => 'date',
+                        ],
                     ),
                     new Parameter(
                         name: self::GROUP_BY_PARAM,
@@ -575,7 +587,7 @@ class Statistic
     public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles.";
     public const MEDIAN_DELAY_DESCRIPTION = 'The delay runs from the first submission of the article to its latest publication (or acceptance), truncated to the unit (13 days = 1 week). `count` is the number of articles.';
     public const OTHER_STATUS_DESCRIPTION = 'In `nb-submissions-details`, `being-to-publish.other-status` is the number of articles awaiting an editorial decision (neither published, accepted, refused, deleted nor removed; an abandoned article is only paused).';
-    public const YEAR_COLLECTION_DESCRIPTION = 'Year of: submission for `nb-submissions` (and the submitted, imported and awaiting-decision articles of `nb-submissions-details`); decision for `acceptance-rate` (and the published, accepted and refused articles); publication or acceptance for the median delays; invitation or report for `evaluation`';
+    public const YEAR_COLLECTION_DESCRIPTION = 'Year of: submission for `nb-submissions` (and the submitted, imported and awaiting-decision articles of `nb-submissions-details`); decision for `acceptance-rate` (and the published, accepted and refused articles); publication or acceptance for the median delays; invitation or validation of the report for `evaluation`';
     /** Values of the "indicator" parameter (lists for the OpenAPI enums) */
     public const PUBLICATION_INDICATOR_VALUES = [
         self::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'],

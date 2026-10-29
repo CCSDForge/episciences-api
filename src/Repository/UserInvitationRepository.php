@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\AppConstants;
 use App\Entity\UserAssignment;
 use App\Entity\UserInvitation;
 use App\Traits\QueryTrait;
@@ -22,11 +23,16 @@ class UserInvitationRepository extends ServiceEntityRepository
         parent::__construct($registry, UserInvitation::class);
     }
 
+    /**
+     * The invitations sent to the reviewers (one row by assignment: an answered invitation has several assignments,
+     * count the distinct invitations "id"). Without "invitation-status", all of them except the cancelled ones.
+     */
     public function getReviewsRequested(array $options = []): QueryBuilder
     {
 
         $rvId = $options['rvid'] ?? null;
-        $invitationStatus = $options['invitation-status'] ?? UserAssignment::STATUS_PENDING;
+        $invitationStatus = $options['invitation-status'] ?? null;
+        $startAfterDate = $options[AppConstants::START_AFTER_DATE] ?? null;
 
         $docId = $options['docId'] ?? null;
         $uid = $options['uid'] ?? null;
@@ -49,6 +55,10 @@ class UserInvitationRepository extends ServiceEntityRepository
             $this->andOrExp($qb, 'YEAR(i.sendingDate)', $years);
         }
 
+        if ($startAfterDate) {
+            $qb->andWhere('i.sendingDate >= :startAfterDate')->setParameter('startAfterDate', $startAfterDate);
+        }
+
         $qb->andWhere('ua.roleid =:role')->setParameter('role', UserAssignment::ROLE_REVIEWER);
 
         if ($rvId) {
@@ -59,6 +69,8 @@ class UserInvitationRepository extends ServiceEntityRepository
 
         if ($invitationStatus) {
             $qb->andWhere('i.status = :status')->setParameter('status', $invitationStatus);
+        } else {
+            $qb->andWhere('i.status != :cancelled')->setParameter('cancelled', UserAssignment::STATUS_CANCELLED);
         }
 
         if ($docId) {

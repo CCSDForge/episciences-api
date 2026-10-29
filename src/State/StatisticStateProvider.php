@@ -491,7 +491,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     {
         $requested = [];
 
-        foreach ($this->entityManager->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult() as $row) {
+        foreach ($this->getReviewsRequestedRows($options) as $row) {
             $requested[(int)$row['rvid']] = ($requested[(int)$row['rvid']] ?? 0) + 1;
         }
 
@@ -562,7 +562,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             $result = $this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult();
             $processed = $this->processResult($result);
             return [
-                Statistic::EVAL_INDICATORS['reviews-requested_get'] => count($this->entityManager->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult()),
+                Statistic::EVAL_INDICATORS['reviews-requested_get'] => count($this->getReviewsRequestedRows($options)),
                 Statistic::EVAL_INDICATORS['reviews-received_get'] => count($result),
                 Statistic::EVAL_INDICATORS['median-reviews-number_get'] => $this->getMedian($processed),
             ];
@@ -572,7 +572,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $result = null;
 
         if ($indicator === Statistic::EVAL_INDICATORS['reviews-requested_get']) {
-            $result = count($this->entityManager->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult());
+            $result = count($this->getReviewsRequestedRows($options));
 
         } elseif ($indicator === Statistic::EVAL_INDICATORS['reviews-received_get']) {
             $result = count($this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult());
@@ -588,14 +588,35 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
     }
 
+    /**
+     * One row by invitation: an answered invitation has several assignments (pending, then active or declined)
+     *
+     * @return array<int, array<string, mixed>> indexed by invitation identifier
+     */
+    private function getReviewsRequestedRows(array $options): array
+    {
+        $rows = [];
+
+        foreach ($this->entityManager->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult() as $row) {
+            $rows[$row['id']] ??= $row;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The number of reports of each paper, all its versions together (the papers without report are not listed)
+     *
+     * @return int[]
+     */
     private function processResult(array $result = []): array
     {
 
         $processed = [];
 
         foreach ($result as $values) {
-            $docId = $values['docid'];
-            $processed[$docId] = isset($processed[$docId]) ? $processed[$docId] + $values['count'] : ($values['count']);
+            $paperId = $values['paperid'];
+            $processed[$paperId] = ($processed[$paperId] ?? 0) + $values['count'];
         }
 
         return array_values($processed);
