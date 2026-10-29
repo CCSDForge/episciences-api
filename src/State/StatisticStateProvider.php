@@ -27,6 +27,9 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     /** Units accepted by the delay indicators (MySQL TIMESTAMPDIFF units) */
     public const array AVAILABLE_UNITS = ['second', 'minute', 'hour', 'day', 'week', 'month', 'quarter', 'year'];
 
+    /** Rows of the evaluation queries, by query and filters: the lists of withPapers reuse the rows of the figures */
+    private array $evaluationRows = [];
+
     public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger, protected Pagination $pagination, protected Stats $statsService, private readonly StatisticPapers $statisticPapers)
     {
         parent::__construct($entityManager, $logger, $pagination);
@@ -41,6 +44,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $prefix = '_api_/statistics/';
 
         $currentFilters = [];
+        $this->evaluationRows = [];
 
         $this->checkAndProcessFilters($context);
 
@@ -310,7 +314,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         }
 
         if (!in_array($operationName, ['_get_collection', 'evaluation_get_collection'], true) || !$journal instanceof Review || $groupBy !== null) {
-            throw new ResourceNotFoundException(sprintf('Oops! %s is only available on %s, with rvcode and without %s', Statistic::WITH_PAPERS_PARAM, Statistic::STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::GROUP_BY_PARAM));
+            throw new ResourceNotFoundException(sprintf('Oops! %s is only available on %s and %s, with rvcode and without %s', Statistic::WITH_PAPERS_PARAM, Statistic::STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::EVALUATION_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::GROUP_BY_PARAM));
         }
 
         return $this->statisticPapers->getConflictedPapers($journal);
@@ -388,14 +392,15 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $isRequested = $indicator === Statistic::EVAL_INDICATORS['reviews-requested_get'];
         $rows = $isRequested
             ? $this->getReviewsRequestedRows($filters)
-            : $this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($filters, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult();
+            : $this->getReceivedReportRows($filters);
 
         $reviews = [];
         $hidden = 0;
         $now = new \DateTimeImmutable();
 
         foreach ($rows as $row) {
-            if (isset($row['paperid']) && isset($conflictedPapers[(int)$row['paperid']])) {
+            // a review whose paper is unknown is not listed either
+            if (!isset($row['paperid']) || isset($conflictedPapers[(int)$row['paperid']])) {
                 $hidden++;
                 continue;
             }
@@ -410,6 +415,9 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
             $reviews[] = $review;
         }
+
+        // as the papers, by DOCID; then by date
+        usort($reviews, static fn(array $a, array $b): int => [$a['docid'], $a['date']] <=> [$b['docid'], $b['date']]);
 
         return [$reviews, $hidden];
     }
@@ -615,7 +623,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     private function getEvaluationStats(array $options = [], ?string $indicator = null): null|float|array
     {
         if (!$indicator) {
-            $result = $this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult();
+            $result = $this->getReceivedReportRows($options);
             $processed = $this->processResult($result);
             return [
                 Statistic::EVAL_INDICATORS['reviews-requested_get'] => count($this->getReviewsRequestedRows($options)),
@@ -631,11 +639,11 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             $result = count($this->getReviewsRequestedRows($options));
 
         } elseif ($indicator === Statistic::EVAL_INDICATORS['reviews-received_get']) {
-            $result = count($this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult());
+            $result = count($this->getReceivedReportRows($options));
 
 
         } elseif ($indicator === Statistic::EVAL_INDICATORS['median-reviews-number_get']) {
-            $processed = $this->processResult($this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult());
+            $processed = $this->processResult($this->getReceivedReportRows($options));
             $result = $this->getMedian($processed);
 
         }
@@ -651,13 +659,30 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
      */
     private function getReviewsRequestedRows(array $options): array
     {
-        $rows = [];
+        $key = 'requested' . serialize($options);
 
-        foreach ($this->entityManager->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult() as $row) {
-            $rows[$row['id']] ??= $row;
+        if (!isset($this->evaluationRows[$key])) {
+            $rows = [];
+
+            foreach ($this->entityManager->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult() as $row) {
+                $rows[$row['id']] ??= $row;
+            }
+
+            $this->evaluationRows[$key] = $rows;
         }
 
-        return $rows;
+        return $this->evaluationRows[$key];
+    }
+
+    /**
+     * The completed reports: one row by version and reviewer
+     */
+    private function getReceivedReportRows(array $options): array
+    {
+        return $this->evaluationRows['received' . serialize($options)] ??= $this->entityManager->getRepository(ReviewerReport::class)
+            ->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))
+            ->getQuery()
+            ->getArrayResult();
     }
 
     /**

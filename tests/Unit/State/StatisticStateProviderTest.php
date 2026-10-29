@@ -363,6 +363,54 @@ class StatisticStateProviderTest extends TestCase
         $this->assertSame(0, $statistics[1]->getHiddenReviews());
     }
 
+    /**
+     * The lists reuse the rows of the figures: each query of the evaluation runs once.
+     */
+    public function testTheEvaluationQueriesRunOnceWithTheLists(): void
+    {
+        $queries = [];
+        $this->provideWithPapers([], $this->administrator(1), operationName: self::EVALUATION_OPERATION, queries: $queries);
+
+        $this->assertSame(['getReviewsRequested' => 1, 'getReceivedReports' => 1], $queries);
+    }
+
+    public function testReviewsAreSortedByDocIdThenDate(): void
+    {
+        $statistics = $this->provideWithPapers(['indicator' => 'reviews-received'], $this->administrator(1), operationName: self::EVALUATION_OPERATION, reports: [
+            ['docid' => 203, 'paperid' => 3, 'count' => 1, 'date' => '2024-05-20 10:00:00'],
+            ['docid' => 201, 'paperid' => 1, 'count' => 1, 'date' => '2024-03-21 10:00:00'],
+            ['docid' => 201, 'paperid' => 1, 'count' => 1, 'date' => '2024-03-20 10:00:00'],
+        ]);
+
+        $this->assertSame([
+            ['docid' => 201, 'date' => '2024-03-20'],
+            ['docid' => 201, 'date' => '2024-03-21'],
+            ['docid' => 203, 'date' => '2024-05-20'],
+        ], $statistics[0]->getReviews());
+    }
+
+    /**
+     * A review whose paper is unknown cannot be checked against the conflicts: it is counted, not listed.
+     */
+    public function testAReviewWithoutPaperIsNotListed(): void
+    {
+        $statistics = $this->provideWithPapers(['indicator' => 'reviews-received'], $this->administrator(1), operationName: self::EVALUATION_OPERATION, reports: [
+            ['docid' => 201, 'paperid' => 1, 'count' => 1, 'date' => '2024-03-20 10:00:00'],
+            ['docid' => 205, 'count' => 1, 'date' => '2024-03-21 10:00:00'],
+        ]);
+
+        $this->assertSame([201], array_column($statistics[0]->getReviews(), 'docid'));
+        $this->assertSame(1, $statistics[0]->getHiddenReviews());
+    }
+
+    public function testWithPapersErrorNamesBothRoutes(): void
+    {
+        $this->expectException(ResourceNotFoundException::class);
+        $this->expectExceptionMessage('withPapers is only available on /api/statistics/ and /api/statistics/evaluation');
+
+        $this->provideWithPapers(['rvcode' => null], $this->administrator(1), operationName: self::EVALUATION_OPERATION);
+    }
+
     public function testNoReviewsWithoutWithPapers(): void
     {
         $statistics = iterator_to_array($this->provideEvaluation(filters: ['indicator' => ['reviews-requested']]));
@@ -421,9 +469,11 @@ class StatisticStateProviderTest extends TestCase
     /**
      * @param int[] $conflicts papers for which the user has declared a conflict
      * @param array|null $invitations rows of getReviewsRequested(), the default ones if null
+     * @param array|null $reports rows of getReceivedReports(), the default ones if null
+     * @param array<string, int> $queries number of calls of getReviewsRequested() and getReceivedReports()
      * @return Statistic[]
      */
-    private function provideWithPapers(array $filters, ?User $user, bool $administrator = true, bool $epiAdmin = false, bool $coiEnabled = false, array $conflicts = [], string $operationName = self::COLLECTION_OPERATION, ?array $invitations = null): array
+    private function provideWithPapers(array $filters, ?User $user, bool $administrator = true, bool $epiAdmin = false, bool $coiEnabled = false, array $conflicts = [], string $operationName = self::COLLECTION_OPERATION, ?array $invitations = null, ?array $reports = null, array &$queries = []): array
     {
         $journal = $this->createStub(Review::class);
         $journal->method('getRvid')->willReturn(1);
@@ -453,19 +503,28 @@ class StatisticStateProviderTest extends TestCase
 
         // invitations: one row by assignment (invitation 1 is accepted: two assignments); invitation 3 is still pending, expired
         $userInvitationRepository = $this->createStub(UserInvitationRepository::class);
-        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder($invitations ?? [
+        $queries = ['getReviewsRequested' => 0, 'getReceivedReports' => 0];
+        $userInvitationRepository->method('getReviewsRequested')->willReturnCallback(function () use (&$queries, $invitations): QueryBuilder {
+            $queries['getReviewsRequested']++;
+
+            return $this->createQueryBuilder($invitations ?? [
             ['id' => 1, 'itemid' => 201, 'paperid' => 1, 'status' => 'accepted', 'date' => new \DateTime('2024-03-01 10:00:00'), 'expirationDate' => new \DateTime('2024-04-01')],
             ['id' => 1, 'itemid' => 201, 'paperid' => 1, 'status' => 'accepted', 'date' => new \DateTime('2024-03-01 10:00:00'), 'expirationDate' => new \DateTime('2024-04-01')],
             ['id' => 2, 'itemid' => 203, 'paperid' => 3, 'status' => 'declined', 'date' => new \DateTime('2024-05-02 10:00:00'), 'expirationDate' => new \DateTime('2024-06-02')],
             ['id' => 3, 'itemid' => 204, 'paperid' => 4, 'status' => 'pending', 'date' => new \DateTime('2024-07-03 10:00:00'), 'expirationDate' => new \DateTime('2024-08-03')],
-        ]));
+            ]);
+        });
 
         // reports: one row by version and reviewer
         $reviewerReportRepository = $this->createStub(ReviewerReportRepository::class);
-        $reviewerReportRepository->method('getReceivedReports')->willReturn($this->createQueryBuilder([
+        $reviewerReportRepository->method('getReceivedReports')->willReturnCallback(function () use (&$queries, $reports): QueryBuilder {
+            $queries['getReceivedReports']++;
+
+            return $this->createQueryBuilder($reports ?? [
             ['docid' => 201, 'paperid' => 1, 'count' => 1, 'date' => '2024-03-20 10:00:00'],
             ['docid' => 203, 'paperid' => 3, 'count' => 1, 'date' => '2024-05-20 10:00:00'],
-        ]));
+            ]);
+        });
 
         $entityManager = $this->createStub(EntityManagerInterface::class);
         $entityManager->method('getRepository')->willReturnMap([
