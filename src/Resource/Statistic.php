@@ -477,7 +477,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Evaluation",
-                description: 'Statistics of the editorial evaluation: the number of reviews requested (`reviews-requested`: the invitations sent to the reviewers, whatever their answer, except the cancelled ones), the number of reviews received (`reviews-received`: the completed reports, dated by their validation) and the median number of reviews per reviewed article (`median-reviews-number`: the completed reports of each article, all its versions together, among the articles having at least one), for all the journals or for one journal with `rvcode`. Filter by year(s) of invitation or of validation of the report; `groupBy=journal` returns one figure by journal.',
+                description: 'Statistics of the editorial evaluation: the number of reviews requested (`reviews-requested`: the invitations sent to the reviewers for a paper, whatever their answer, a pending invitation past its expiration date included, except the cancelled ones), the number of reviews received (`reviews-received`: the completed reports, dated by their validation) and the median number of reviews per reviewed article (`median-reviews-number`: the completed reports of each article, all its versions together, among the articles having at least one), for all the journals or for one journal with `rvcode`. Filter by year(s) of invitation or of validation of the report; `groupBy=journal` returns one figure by journal.',
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
@@ -516,7 +516,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'Year of the invitation (reviews-requested) or of the validation of the report (reviews-received, median-reviews-number)',
+                        description: 'Year of the invitation (reviews-requested) or of the validation of the report (reviews-received, median-reviews-number): for `median-reviews-number`, only the reports validated in the period are counted, so an article whose reports were validated in different years counts a part of its reports in each year',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -546,7 +546,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD], on the date of the invitation or of the validation of the report: a wrong format is rejected (404)',
+                        description: 'Start statistics after date [YYYY-MM-DD], on the date of the invitation or of the validation of the report (for `median-reviews-number`, only the reports validated after the date are counted): a wrong format is rejected (404)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -554,6 +554,19 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                             'type' => 'string',
                             'format' => 'date',
                         ],
+                    ),
+                    new Parameter(
+                        name: self::WITH_PAPERS_PARAM,
+                        in: 'query',
+                        description: self::WITH_REVIEWS_DESCRIPTION,
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
+                        explode: false,
+                        allowReserved: false
                     ),
                     new Parameter(
                         name: self::GROUP_BY_PARAM,
@@ -587,7 +600,7 @@ class Statistic
     public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles.";
     public const MEDIAN_DELAY_DESCRIPTION = 'The delay runs from the first submission of the article to its latest publication (or acceptance), truncated to the unit (13 days = 1 week). `count` is the number of articles.';
     public const OTHER_STATUS_DESCRIPTION = 'In `nb-submissions-details`, `being-to-publish.other-status` is the number of articles awaiting an editorial decision (neither published, accepted, refused, deleted nor removed; an abandoned article is only paused).';
-    public const YEAR_COLLECTION_DESCRIPTION = 'Year of: submission for `nb-submissions` (and the submitted, imported and awaiting-decision articles of `nb-submissions-details`); decision for `acceptance-rate` (and the published, accepted and refused articles); publication or acceptance for the median delays; invitation or validation of the report for `evaluation`';
+    public const YEAR_COLLECTION_DESCRIPTION = 'Year of: submission for `nb-submissions` (and the submitted, imported and awaiting-decision articles of `nb-submissions-details`); decision for `acceptance-rate` (and the published, accepted and refused articles); publication or acceptance for the median delays; invitation or validation of the report for `evaluation` (the median number of reviews only counts the reports validated in the year: an article whose reports were validated in different years counts a part of its reports in each year)';
     /** Values of the "indicator" parameter (lists for the OpenAPI enums) */
     public const PUBLICATION_INDICATOR_VALUES = [
         self::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'],
@@ -604,7 +617,8 @@ class Statistic
     public const GROUP_BY_DESCRIPTION = 'Returns the statistics of each active journal: one item by journal and by indicator, with the journal code in `journal`, sorted by code. Only the journals having data are returned. Not with `rvcode`';
     public const NB_SUBMISSIONS_DETAILS = 'nb-submissions-details';
     public const WITH_PAPERS_PARAM = 'withPapers';
-    public const WITH_PAPERS_DESCRIPTION = 'Adds `papers`, the papers counted by each statistic (not for `evaluation`): one DOCID by paper, its latest version, computed with the same queries as the figures. Only with `rvcode`, without `groupBy`, for the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number is in `hiddenPapers`';
+    public const WITH_PAPERS_DESCRIPTION = 'Adds `papers`, the papers counted by each statistic: one DOCID by paper, its latest version, computed with the same queries as the figures. With `indicator=evaluation`, `reviews-requested` and `reviews-received` get `reviews` instead, as on /api/statistics/evaluation; the `evaluation` statistic returned without `indicator` gets no list. Only with `rvcode`, without `groupBy`, for the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number is in `hiddenPapers` (`hiddenReviews` for the reviews)';
+    public const WITH_REVIEWS_DESCRIPTION = 'Adds `reviews` to `reviews-requested` and `reviews-received`: the invitations or the completed reports counted, without the reviewers, computed with the same queries as the figures, sorted by DOCID then date. The lists are not paginated: all the reviews counted are returned, use `year` or `startAfterDate` to limit them. Only with `rvcode`, without `groupBy`, for the administrators of the journal (JWT); the reviews of the papers for which the user has declared a conflict of interest are not listed, their number is in `hiddenReviews`';
     public const GROUP_BY_PARAM = 'groupBy';
     public const GROUP_BY_JOURNAL = 'journal';
     public const STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER = '/api/statistics/';
@@ -648,6 +662,14 @@ class Statistic
     #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
     #[ApiProperty(description: 'With `withPapers`: the number of papers not listed in `papers` because of a conflict of interest (by figure for a statistic made of several figures)', schema: ['type' => ['integer', 'object'], 'example' => 0])]
     private int|array|null $hiddenPapers = null;
+    #[groups(['read:Statistic'])]
+    #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
+    #[ApiProperty(description: 'With `withPapers`, for `reviews-requested` and `reviews-received`: the reviews counted, without the reviewers: one item by invitation (`date` of sending, `answer`: pending, accepted, declined or expired) or by completed report (`date` of validation), with the DOCID of the paper version', schema: ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['docid' => ['type' => 'integer'], 'date' => ['type' => ['string', 'null'], 'format' => 'date'], 'answer' => ['type' => 'string', 'enum' => ['pending', 'accepted', 'declined', 'expired']]]], 'example' => [['docid' => 18910, 'date' => '2024-03-01', 'answer' => 'accepted']]])]
+    private ?array $reviews = null;
+    #[groups(['read:Statistic'])]
+    #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
+    #[ApiProperty(description: 'With `withPapers`: the number of reviews not listed in `reviews` because of a conflict of interest on their paper', schema: ['type' => 'integer', 'example' => 0])]
+    private ?int $hiddenReviews = null;
 
     public function getName(): string
     {
@@ -706,6 +728,28 @@ class Statistic
     public function setPapers(?array $papers): self
     {
         $this->papers = $papers;
+        return $this;
+    }
+
+    public function getReviews(): ?array
+    {
+        return $this->reviews;
+    }
+
+    public function setReviews(?array $reviews): self
+    {
+        $this->reviews = $reviews;
+        return $this;
+    }
+
+    public function getHiddenReviews(): ?int
+    {
+        return $this->hiddenReviews;
+    }
+
+    public function setHiddenReviews(?int $hiddenReviews): self
+    {
+        $this->hiddenReviews = $hiddenReviews;
         return $this;
     }
 

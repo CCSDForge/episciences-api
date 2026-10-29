@@ -96,7 +96,8 @@ class EvaluationQueriesDatabaseTest extends TestCase
     }
 
     /**
-     * Pending, accepted and declined invitations are requested reviews; the cancelled one is not.
+     * Pending, accepted and declined invitations are requested reviews; the cancelled one is not, nor the invitation
+     * without paper.
      */
     public function testRequestedReviewsAreTheInvitationsWhateverTheirAnswer(): void
     {
@@ -148,6 +149,31 @@ class EvaluationQueriesDatabaseTest extends TestCase
     }
 
     /**
+     * The rows give what the lists of the reviews need: the paper of the invitation (conflicts of interest), its expiration;
+     * the date of validation of the report.
+     */
+    public function testRowsGiveThePaperAndTheDateOfTheReview(): void
+    {
+        $invitations = [];
+
+        foreach ($this->invitationRepository->getReviewsRequested(['rvid' => self::RVID])->getQuery()->getResult() as $row) {
+            $invitations[(int)$row['id']] = [(int)$row['paperid'], $row['expirationDate']->format('Y-m-d')];
+        }
+
+        ksort($invitations);
+        $this->assertSame([1 => [10, '2023-03-01'], 2 => [10, '2023-04-01'], 3 => [11, '2024-02-01']], $invitations);
+
+        $reports = [];
+
+        foreach ($this->reportRepository->getReceivedReports(['rvid' => self::RVID, 'report-status' => ReviewerReport::STATUS_COMPLETED])->getQuery()->getArrayResult() as $row) {
+            $reports[] = [(int)$row['docid'], substr((string)$row['date'], 0, 10)];
+        }
+
+        sort($reports);
+        $this->assertSame([[10, '2023-05-01'], [10, '2023-06-01'], [11, '2024-02-15'], [13, '2024-01-10']], $reports);
+    }
+
+    /**
      * @return int[] the distinct invitations of the requested reviews
      */
     private function requestedInvitations(array $options = []): array
@@ -190,6 +216,7 @@ class EvaluationQueriesDatabaseTest extends TestCase
             [3, 'declined', '2024-02-01', 11, ['pending', 'declined']],
             [4, 'cancelled', '2024-03-01', 11, ['cancelled']],
             [5, 'accepted', '2024-03-01', 12, ['pending', 'active']], // disabled journal
+            [6, 'pending', '2024-04-01', 0, ['pending']], // no paper (ITEMID = 0): not a review requested
         ];
 
         $invitationDefaults = $this->requiredColumnDefaults(UserInvitation::TABLE);

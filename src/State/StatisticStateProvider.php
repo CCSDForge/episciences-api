@@ -26,6 +26,9 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     /** Units accepted by the delay indicators (MySQL TIMESTAMPDIFF units) */
     public const array AVAILABLE_UNITS = ['second', 'minute', 'hour', 'day', 'week', 'month', 'quarter', 'year'];
 
+    /** Rows of the evaluation queries, by query and filters: the lists of withPapers reuse the rows of the figures */
+    private array $evaluationRows = [];
+
     public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger, protected Pagination $pagination, protected Stats $statsService, private readonly StatisticPapers $statisticPapers)
     {
         parent::__construct($entityManager, $logger, $pagination);
@@ -40,6 +43,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $prefix = '_api_/statistics/';
 
         $currentFilters = [];
+        $this->evaluationRows = [];
 
         $this->checkAndProcessFilters($context);
 
@@ -308,8 +312,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             return null;
         }
 
-        if ($operationName !== '_get_collection' || !$journal instanceof Review || $groupBy !== null) {
-            throw new ResourceNotFoundException(sprintf('Oops! %s is only available on %s, with rvcode and without %s', Statistic::WITH_PAPERS_PARAM, Statistic::STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::GROUP_BY_PARAM));
+        if (!in_array($operationName, ['_get_collection', 'evaluation_get_collection'], true) || !$journal instanceof Review || $groupBy !== null) {
+            throw new ResourceNotFoundException(sprintf('Oops! %s is only available on %s and %s, with rvcode and without %s', Statistic::WITH_PAPERS_PARAM, Statistic::STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::EVALUATION_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::GROUP_BY_PARAM));
         }
 
         return $this->statisticPapers->getConflictedPapers($journal);
@@ -317,7 +321,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
     /**
      * Adds to each statistic the papers it counts (one DOCID by paper, its latest version), computed with the same queries
-     * as the figures (not for the evaluation).
+     * as the figures; for the requested and received reviews, the reviews counted (see getReviews()).
      *
      * @param Statistic[] $statistics
      * @param array<int, true> $conflictedPapers papers not to list
@@ -332,6 +336,12 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $figures = PaperLogRepository::PAPER_IDS_FIGURES;
 
         foreach ($statistics as $statistic) {
+            if (in_array($statistic->getName(), [Statistic::EVAL_INDICATORS['reviews-requested_get'], Statistic::EVAL_INDICATORS['reviews-received_get']], true)) {
+                [$reviews, $hidden] = $this->getReviews($statistic->getName(), $filters, $conflictedPapers);
+                $statistic->setReviews($reviews)->setHiddenReviews($hidden);
+                continue;
+            }
+
             $papers = match ($statistic->getName()) {
                 Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'] => $paperRepo->getSubmissionPaperIds(['is' => $filters]),
                 Statistic::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get'] => [
@@ -349,7 +359,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                     'being-to-publish.accepted' => $paperLogRepo->getPaperIds($figures['accepted-not-yet-published'], $rvId, $years, $startAfterDate),
                     'being-to-publish.other-status' => $paperRepo->getSubmissionsAwaitingDecisionPaperIds($rvId, $startAfterDate, $years),
                 ],
-                default => null, // evaluation: reviews, not papers
+                default => null, // the median number of reviews: no list
             };
 
             if ($papers === null) {
@@ -365,6 +375,60 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             [$docIds, $hidden] = $this->statisticPapers->toDocIds($papers, $conflictedPapers);
             $statistic->setPapers($docIds)->setHiddenPapers($hidden);
         }
+    }
+
+    /**
+     * The reviews counted by a figure of the evaluation, computed with the same queries as the figure, without the
+     * reviewers: one item by invitation (reviews-requested: date of sending, answer) or by report (reviews-received:
+     * date of validation), with the DOCID of the paper version. The reviews of the papers for which the user has declared
+     * a conflict of interest are not listed, only counted.
+     *
+     * @param array<int, true> $conflictedPapers papers not to list (PAPERID => true)
+     * @return array{0: list<array{docid: int, date: ?string, answer?: string}>, 1: int} the reviews listed, the number of reviews not listed
+     */
+    private function getReviews(string $indicator, array $filters, array $conflictedPapers): array
+    {
+        $isRequested = $indicator === Statistic::EVAL_INDICATORS['reviews-requested_get'];
+        $rows = $isRequested
+            ? $this->getReviewsRequestedRows($filters)
+            : $this->getReceivedReportRows($filters);
+
+        $reviews = [];
+        $hidden = 0;
+        $now = new \DateTimeImmutable();
+
+        foreach ($rows as $row) {
+            // a review whose paper is unknown is not listed either
+            if (!isset($row['paperid']) || isset($conflictedPapers[(int)$row['paperid']])) {
+                $hidden++;
+                continue;
+            }
+
+            $review = ['docid' => (int)($isRequested ? $row['itemid'] : $row['docid']), 'date' => self::toDate($row['date'] ?? null)];
+
+            if ($isRequested) {
+                $expiration = $row['expirationDate'] ?? null;
+                // "expired" is not stored by Episciences: a pending invitation past its expiration date (see UserInvitation)
+                $isExpired = $row['status'] === UserInvitation::STATUS_PENDING && $expiration instanceof \DateTimeInterface && $expiration < $now;
+                $review['answer'] = $isExpired ? UserInvitation::STATUS_EXPIRED : (string)$row['status'];
+            }
+
+            $reviews[] = $review;
+        }
+
+        // as the papers, by DOCID; then by date
+        usort($reviews, static fn(array $a, array $b): int => [$a['docid'], $a['date']] <=> [$b['docid'], $b['date']]);
+
+        return [$reviews, $hidden];
+    }
+
+    private static function toDate(mixed $date): ?string
+    {
+        if ($date instanceof \DateTimeInterface) {
+            return $date->format('Y-m-d');
+        }
+
+        return is_string($date) && $date !== '' ? substr($date, 0, 10) : null;
     }
 
     /**
@@ -559,7 +623,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     private function getEvaluationStats(array $options = [], ?string $indicator = null): null|float|array
     {
         if (!$indicator) {
-            $result = $this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult();
+            $result = $this->getReceivedReportRows($options);
             $processed = $this->processResult($result);
             return [
                 Statistic::EVAL_INDICATORS['reviews-requested_get'] => count($this->getReviewsRequestedRows($options)),
@@ -575,11 +639,11 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             $result = count($this->getReviewsRequestedRows($options));
 
         } elseif ($indicator === Statistic::EVAL_INDICATORS['reviews-received_get']) {
-            $result = count($this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult());
+            $result = count($this->getReceivedReportRows($options));
 
 
         } elseif ($indicator === Statistic::EVAL_INDICATORS['median-reviews-number_get']) {
-            $processed = $this->processResult($this->entityManager->getRepository(ReviewerReport::class)->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))->getQuery()->getArrayResult());
+            $processed = $this->processResult($this->getReceivedReportRows($options));
             $result = $this->getMedian($processed);
 
         }
@@ -595,17 +659,36 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
      */
     private function getReviewsRequestedRows(array $options): array
     {
-        $rows = [];
+        $key = 'requested' . serialize($options);
 
-        foreach ($this->entityManager->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult() as $row) {
-            $rows[$row['id']] ??= $row;
+        if (!isset($this->evaluationRows[$key])) {
+            $rows = [];
+
+            foreach ($this->entityManager->getRepository(UserInvitation::class)->getReviewsRequested($options)->getQuery()->getResult() as $row) {
+                $rows[$row['id']] ??= $row;
+            }
+
+            $this->evaluationRows[$key] = $rows;
         }
 
-        return $rows;
+        return $this->evaluationRows[$key];
     }
 
     /**
-     * The number of reports of each paper, all its versions together (the papers without report are not listed)
+     * The completed reports: one row by version and reviewer
+     */
+    private function getReceivedReportRows(array $options): array
+    {
+        return $this->evaluationRows['received' . serialize($options)] ??= $this->entityManager->getRepository(ReviewerReport::class)
+            ->getReceivedReports(array_merge($options, ['report-status' => ReviewerReport::STATUS_COMPLETED]))
+            ->getQuery()
+            ->getArrayResult();
+    }
+
+    /**
+     * The number of reports of each paper, all its versions together (the papers without report are not listed).
+     * Only the reports of the rows given are counted: with year or startAfterDate, the reports validated in the period,
+     * so a paper whose reports were validated in different years counts a part of its reports in each year.
      *
      * @return int[]
      */

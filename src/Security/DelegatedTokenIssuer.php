@@ -14,7 +14,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Delegated token: Episciences gets a short-lived JWT on behalf of the connected user, to display the papers
- * of the statistics to the journal administrators. The request is signed with a secret shared by both applications;
+ * and the reviews of the statistics (withPapers) to the journal administrators. The request is signed with a secret shared by both applications;
  * the API keeps the control of the rights (roles of the journal) and of the conflicts of interest.
  * The token is only valid on the statistics (see DelegatedTokenScopeSubscriber).
  */
@@ -27,7 +27,7 @@ final readonly class DelegatedTokenIssuer
     public const int MAX_CLOCK_SKEW = 60;
     public const int MIN_SECRET_LENGTH = 32;
     /** Routes a delegated token can be used on (GET only) */
-    public const array ALLOWED_ROUTES = ['get_stats_dashboard_item', '_api_/statistics/_get_collection'];
+    public const array ALLOWED_ROUTES = ['get_stats_dashboard_item', '_api_/statistics/_get_collection', '_api_/statistics/evaluation_get_collection'];
 
     private const string NONCE_CACHE_PREFIX = 'delegated_token_nonce_';
 

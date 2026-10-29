@@ -277,6 +277,148 @@ class StatisticStateProviderTest extends TestCase
         $this->assertSame(0, $statistics[0]->getHiddenPapers());
     }
 
+    /**
+     * The evaluation lists the reviews counted, without the reviewers: one item by invitation (with its answer; a pending
+     * invitation past its expiration is expired) or by completed report, with the DOCID of the paper version.
+     */
+    public function testReviewsAreListedForAnAdministratorOfTheJournal(): void
+    {
+        $statistics = $this->provideWithPapers([], $this->administrator(1), operationName: self::EVALUATION_OPERATION);
+
+        $this->assertSame(['reviews-requested', 'reviews-received', 'median-reviews-number'], array_map(static fn(Statistic $statistic): string => $statistic->getName(), $statistics));
+        $this->assertSame([
+            ['docid' => 201, 'date' => '2024-03-01', 'answer' => 'accepted'],
+            ['docid' => 203, 'date' => '2024-05-02', 'answer' => 'declined'],
+            ['docid' => 204, 'date' => '2024-07-03', 'answer' => 'expired'],
+        ], $statistics[0]->getReviews());
+        $this->assertSame(0, $statistics[0]->getHiddenReviews());
+        $this->assertSame([['docid' => 201, 'date' => '2024-03-20'], ['docid' => 203, 'date' => '2024-05-20']], $statistics[1]->getReviews());
+        // the median is not a number of reviews: no list
+        $this->assertNull($statistics[2]->getReviews());
+        $this->assertNull($statistics[2]->getPapers());
+    }
+
+    public function testReviewsOfAPaperWithADeclaredConflictAreHidden(): void
+    {
+        $statistics = $this->provideWithPapers(['indicator' => ['reviews-requested', 'reviews-received']], $this->administrator(1), coiEnabled: true, conflicts: [3], operationName: self::EVALUATION_OPERATION);
+
+        $this->assertSame([201, 204], array_column($statistics[0]->getReviews(), 'docid'));
+        $this->assertSame(1, $statistics[0]->getHiddenReviews());
+        $this->assertSame([201], array_column($statistics[1]->getReviews(), 'docid'));
+        $this->assertSame(1, $statistics[1]->getHiddenReviews());
+    }
+
+    public function testReviewsAreDeniedToTheOtherUsers(): void
+    {
+        $this->expectException(AccessDeniedException::class);
+
+        $this->provideWithPapers([], new User()->setUid(7)->setCurrentJournalID(1), administrator: false, operationName: self::EVALUATION_OPERATION);
+    }
+
+    /**
+     * On /api/statistics/, indicator=evaluation returns the three statistics of the evaluation: the same reviews as on
+     * /api/statistics/evaluation.
+     */
+    public function testReviewsAreListedWithTheEvaluationIndicatorOfTheCollection(): void
+    {
+        $statistics = $this->provideWithPapers(['indicator' => 'evaluation'], $this->administrator(1));
+
+        $this->assertSame(['reviews-requested', 'reviews-received', 'median-reviews-number'], array_map(static fn(Statistic $statistic): string => $statistic->getName(), $statistics));
+        $this->assertSame([201, 203, 204], array_column($statistics[0]->getReviews(), 'docid'));
+        $this->assertSame([201, 203], array_column($statistics[1]->getReviews(), 'docid'));
+        $this->assertNull($statistics[2]->getReviews());
+    }
+
+    /**
+     * Only a pending invitation expires: an answered invitation keeps its answer once its expiration date is past.
+     */
+    public function testOnlyAPendingInvitationPastItsExpirationIsExpired(): void
+    {
+        $invitation = static fn(int $id, string $status, ?string $expiration): array => [
+            'id' => $id, 'itemid' => 200 + $id, 'paperid' => $id, 'status' => $status,
+            'date' => new \DateTime('2024-03-01 10:00:00'), 'expirationDate' => $expiration === null ? null : new \DateTime($expiration),
+        ];
+
+        $statistics = $this->provideWithPapers(['indicator' => 'reviews-requested'], $this->administrator(1), operationName: self::EVALUATION_OPERATION, invitations: [
+            $invitation(1, 'accepted', '2024-04-01'),
+            $invitation(2, 'declined', '2024-04-01'),
+            $invitation(3, 'pending', '2024-04-01'),
+            $invitation(4, 'pending', '+1 month'),
+            $invitation(5, 'pending', null),
+        ]);
+
+        $this->assertSame(['accepted', 'declined', 'expired', 'pending', 'pending'], array_column($statistics[0]->getReviews(), 'answer'));
+    }
+
+    /**
+     * As for the papers, the platform administrators are not subject to the conflicts.
+     */
+    public function testPlatformAdministratorSeesAllTheReviews(): void
+    {
+        $statistics = $this->provideWithPapers(['indicator' => ['reviews-requested', 'reviews-received']], null, epiAdmin: true, coiEnabled: true, conflicts: [3], operationName: self::EVALUATION_OPERATION);
+
+        $this->assertSame([201, 203, 204], array_column($statistics[0]->getReviews(), 'docid'));
+        $this->assertSame(0, $statistics[0]->getHiddenReviews());
+        $this->assertSame([201, 203], array_column($statistics[1]->getReviews(), 'docid'));
+        $this->assertSame(0, $statistics[1]->getHiddenReviews());
+    }
+
+    /**
+     * The lists reuse the rows of the figures: each query of the evaluation runs once.
+     */
+    public function testTheEvaluationQueriesRunOnceWithTheLists(): void
+    {
+        $queries = [];
+        $this->provideWithPapers([], $this->administrator(1), operationName: self::EVALUATION_OPERATION, queries: $queries);
+
+        $this->assertSame(['getReviewsRequested' => 1, 'getReceivedReports' => 1], $queries);
+    }
+
+    public function testReviewsAreSortedByDocIdThenDate(): void
+    {
+        $statistics = $this->provideWithPapers(['indicator' => 'reviews-received'], $this->administrator(1), operationName: self::EVALUATION_OPERATION, reports: [
+            ['docid' => 203, 'paperid' => 3, 'count' => 1, 'date' => '2024-05-20 10:00:00'],
+            ['docid' => 201, 'paperid' => 1, 'count' => 1, 'date' => '2024-03-21 10:00:00'],
+            ['docid' => 201, 'paperid' => 1, 'count' => 1, 'date' => '2024-03-20 10:00:00'],
+        ]);
+
+        $this->assertSame([
+            ['docid' => 201, 'date' => '2024-03-20'],
+            ['docid' => 201, 'date' => '2024-03-21'],
+            ['docid' => 203, 'date' => '2024-05-20'],
+        ], $statistics[0]->getReviews());
+    }
+
+    /**
+     * A review whose paper is unknown cannot be checked against the conflicts: it is counted, not listed.
+     */
+    public function testAReviewWithoutPaperIsNotListed(): void
+    {
+        $statistics = $this->provideWithPapers(['indicator' => 'reviews-received'], $this->administrator(1), operationName: self::EVALUATION_OPERATION, reports: [
+            ['docid' => 201, 'paperid' => 1, 'count' => 1, 'date' => '2024-03-20 10:00:00'],
+            ['docid' => 205, 'count' => 1, 'date' => '2024-03-21 10:00:00'],
+        ]);
+
+        $this->assertSame([201], array_column($statistics[0]->getReviews(), 'docid'));
+        $this->assertSame(1, $statistics[0]->getHiddenReviews());
+    }
+
+    public function testWithPapersErrorNamesBothRoutes(): void
+    {
+        $this->expectException(ResourceNotFoundException::class);
+        $this->expectExceptionMessage('withPapers is only available on /api/statistics/ and /api/statistics/evaluation');
+
+        $this->provideWithPapers(['rvcode' => null], $this->administrator(1), operationName: self::EVALUATION_OPERATION);
+    }
+
+    public function testNoReviewsWithoutWithPapers(): void
+    {
+        $statistics = iterator_to_array($this->provideEvaluation(filters: ['indicator' => ['reviews-requested']]));
+
+        $this->assertNull($statistics[0]->getReviews());
+        $this->assertNull($statistics[0]->getHiddenReviews());
+    }
+
     public function testNoPapersWithoutWithPapers(): void
     {
         $statistics = iterator_to_array($this->provideCollection(['indicator' => 'nb-submissions']));
@@ -301,17 +443,22 @@ class StatisticStateProviderTest extends TestCase
     }
 
     #[DataProvider('invalidWithPapersProvider')]
-    public function testInvalidWithPapersIsRejected(array $filters): void
+    public function testInvalidWithPapersIsRejected(array $filters, string $operationName): void
     {
         $this->expectException(ResourceNotFoundException::class);
 
-        $this->provideWithPapers($filters, $this->administrator(1));
+        $this->provideWithPapers($filters, $this->administrator(1), operationName: $operationName);
     }
 
     public static function invalidWithPapersProvider(): iterable
     {
-        yield 'not a boolean' => [['withPapers' => 'abc']];
-        yield 'without rvcode' => [['withPapers' => 'true', 'rvcode' => null]];
+        foreach (['collection' => self::COLLECTION_OPERATION, 'evaluation' => self::EVALUATION_OPERATION] as $label => $operationName) {
+            yield "$label: not a boolean" => [['withPapers' => 'abc'], $operationName];
+            yield "$label: without rvcode" => [['withPapers' => 'true', 'rvcode' => null], $operationName];
+            // groupBy=journal is not combined with rvcode, which withPapers needs
+            yield "$label: with groupBy" => [['groupBy' => 'journal'], $operationName];
+            yield "$label: with groupBy, without rvcode" => [['groupBy' => 'journal', 'rvcode' => null], $operationName];
+        }
     }
 
     private function administrator(int $journal): User
@@ -321,9 +468,12 @@ class StatisticStateProviderTest extends TestCase
 
     /**
      * @param int[] $conflicts papers for which the user has declared a conflict
+     * @param array|null $invitations rows of getReviewsRequested(), the default ones if null
+     * @param array|null $reports rows of getReceivedReports(), the default ones if null
+     * @param array<string, int> $queries number of calls of getReviewsRequested() and getReceivedReports()
      * @return Statistic[]
      */
-    private function provideWithPapers(array $filters, ?User $user, bool $administrator = true, bool $epiAdmin = false, bool $coiEnabled = false, array $conflicts = []): array
+    private function provideWithPapers(array $filters, ?User $user, bool $administrator = true, bool $epiAdmin = false, bool $coiEnabled = false, array $conflicts = [], string $operationName = self::COLLECTION_OPERATION, ?array $invitations = null, ?array $reports = null, array &$queries = []): array
     {
         $journal = $this->createStub(Review::class);
         $journal->method('getRvid')->willReturn(1);
@@ -351,12 +501,39 @@ class StatisticStateProviderTest extends TestCase
             $conflicts
         ));
 
+        // invitations: one row by assignment (invitation 1 is accepted: two assignments); invitation 3 is still pending, expired
+        $userInvitationRepository = $this->createStub(UserInvitationRepository::class);
+        $queries = ['getReviewsRequested' => 0, 'getReceivedReports' => 0];
+        $userInvitationRepository->method('getReviewsRequested')->willReturnCallback(function () use (&$queries, $invitations): QueryBuilder {
+            $queries['getReviewsRequested']++;
+
+            return $this->createQueryBuilder($invitations ?? [
+            ['id' => 1, 'itemid' => 201, 'paperid' => 1, 'status' => 'accepted', 'date' => new \DateTime('2024-03-01 10:00:00'), 'expirationDate' => new \DateTime('2024-04-01')],
+            ['id' => 1, 'itemid' => 201, 'paperid' => 1, 'status' => 'accepted', 'date' => new \DateTime('2024-03-01 10:00:00'), 'expirationDate' => new \DateTime('2024-04-01')],
+            ['id' => 2, 'itemid' => 203, 'paperid' => 3, 'status' => 'declined', 'date' => new \DateTime('2024-05-02 10:00:00'), 'expirationDate' => new \DateTime('2024-06-02')],
+            ['id' => 3, 'itemid' => 204, 'paperid' => 4, 'status' => 'pending', 'date' => new \DateTime('2024-07-03 10:00:00'), 'expirationDate' => new \DateTime('2024-08-03')],
+            ]);
+        });
+
+        // reports: one row by version and reviewer
+        $reviewerReportRepository = $this->createStub(ReviewerReportRepository::class);
+        $reviewerReportRepository->method('getReceivedReports')->willReturnCallback(function () use (&$queries, $reports): QueryBuilder {
+            $queries['getReceivedReports']++;
+
+            return $this->createQueryBuilder($reports ?? [
+            ['docid' => 201, 'paperid' => 1, 'count' => 1, 'date' => '2024-03-20 10:00:00'],
+            ['docid' => 203, 'paperid' => 3, 'count' => 1, 'date' => '2024-05-20 10:00:00'],
+            ]);
+        });
+
         $entityManager = $this->createStub(EntityManagerInterface::class);
         $entityManager->method('getRepository')->willReturnMap([
             [Paper::class, $papersRepository],
             [PaperLog::class, $paperLogRepository],
             [Review::class, $reviewRepository],
             [PaperConflicts::class, $paperConflictsRepository],
+            [UserInvitation::class, $userInvitationRepository],
+            [ReviewerReport::class, $reviewerReportRepository],
         ]);
 
         $security = $this->createStub(Security::class);
@@ -371,7 +548,7 @@ class StatisticStateProviderTest extends TestCase
         });
 
         $provider = new StatisticStateProvider($entityManager, $this->createStub(LoggerInterface::class), new Pagination(['client_enabled' => true]), $this->createStub(Stats::class), new StatisticPapers($entityManager, $security));
-        $operation = new GetCollection(class: Statistic::class, name: self::COLLECTION_OPERATION, paginationMaximumItemsPerPage: 30);
+        $operation = new GetCollection(class: Statistic::class, name: $operationName, paginationMaximumItemsPerPage: 30);
         // the given filters override the defaults; a null filter is removed (e.g. no rvcode)
         $filters = array_filter(array_merge(['pagination' => 'true', 'rvcode' => 'dmtcs', 'withPapers' => 'true', 'unit' => 'day'], $filters), static fn($value): bool => $value !== null);
 
