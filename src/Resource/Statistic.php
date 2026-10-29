@@ -516,7 +516,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'Year of the invitation (reviews-requested) or of the validation of the report (reviews-received, median-reviews-number)',
+                        description: 'Year of the invitation (reviews-requested) or of the validation of the report (reviews-received, median-reviews-number): for `median-reviews-number`, only the reports validated in the period are counted, so an article whose reports were validated in different years counts a part of its reports in each year',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -546,7 +546,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD], on the date of the invitation or of the validation of the report: a wrong format is rejected (404)',
+                        description: 'Start statistics after date [YYYY-MM-DD], on the date of the invitation or of the validation of the report (for `median-reviews-number`, only the reports validated after the date are counted): a wrong format is rejected (404)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -600,7 +600,7 @@ class Statistic
     public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles.";
     public const MEDIAN_DELAY_DESCRIPTION = 'The delay runs from the first submission of the article to its latest publication (or acceptance), truncated to the unit (13 days = 1 week). `count` is the number of articles.';
     public const OTHER_STATUS_DESCRIPTION = 'In `nb-submissions-details`, `being-to-publish.other-status` is the number of articles awaiting an editorial decision (neither published, accepted, refused, deleted nor removed; an abandoned article is only paused).';
-    public const YEAR_COLLECTION_DESCRIPTION = 'Year of: submission for `nb-submissions` (and the submitted, imported and awaiting-decision articles of `nb-submissions-details`); decision for `acceptance-rate` (and the published, accepted and refused articles); publication or acceptance for the median delays; invitation or validation of the report for `evaluation`';
+    public const YEAR_COLLECTION_DESCRIPTION = 'Year of: submission for `nb-submissions` (and the submitted, imported and awaiting-decision articles of `nb-submissions-details`); decision for `acceptance-rate` (and the published, accepted and refused articles); publication or acceptance for the median delays; invitation or validation of the report for `evaluation` (the median number of reviews only counts the reports validated in the year: an article whose reports were validated in different years counts a part of its reports in each year)';
     /** Values of the "indicator" parameter (lists for the OpenAPI enums) */
     public const PUBLICATION_INDICATOR_VALUES = [
         self::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'],

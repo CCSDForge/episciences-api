@@ -686,7 +686,9 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     }
 
     /**
-     * The number of reports of each paper, all its versions together (the papers without report are not listed)
+     * The number of reports of each paper, all its versions together (the papers without report are not listed).
+     * Only the reports of the rows given are counted: with year or startAfterDate, the reports validated in the period,
+     * so a paper whose reports were validated in different years counts a part of its reports in each year.
      *
      * @return int[]
      */
