@@ -25,8 +25,12 @@ class UserInvitationRepository extends ServiceEntityRepository
     }
 
     /**
-     * The invitations sent to the reviewers for a paper, one row by invitation. Without "invitation-status", all of them
-     * except the cancelled ones.
+     * The invitations sent to the reviewers for a paper, one row by invitation, with its current status. Without
+     * "invitation-status", all of them except the cancelled ones.
+     *
+     * Episciences inserts a USER_INVITATION row on each answer or cancellation of an invitation, with the same AID (the
+     * pending assignment created with the invitation): the first row is the invitation (sending and expiration dates),
+     * the latest one gives its status.
      */
     public function getReviewsRequested(array $options = []): QueryBuilder
     {
@@ -42,7 +46,7 @@ class UserInvitationRepository extends ServiceEntityRepository
         $qb->addSelect('ua.rvid');
         $qb->addSelect('ua.itemid');
         $qb->addSelect('ua.uid');
-        $qb->addSelect('i.status');
+        $qb->addSelect('c.status');
         $qb->addSelect('i.id');
         $qb->addSelect('i.sendingDate as date');
         $qb->addSelect('i.expirationDate as expirationDate');
@@ -51,9 +55,10 @@ class UserInvitationRepository extends ServiceEntityRepository
 
 
         $qb->from(UserAssignment::class, 'ua');
-        // the assignment that created the invitation (USER_INVITATION.AID, the pending one), not all the assignments that
-        // refer to it (USER_ASSIGNMENT.INVITATION_ID: an answered or cancelled invitation has another one): one row by invitation
-        $qb->innerJoin(UserInvitation::class, 'i', Join::ON, 'i.aid = ua.id');
+        // the assignment that created the invitation and its first row: one row by invitation
+        $qb->innerJoin(UserInvitation::class, 'i', Join::ON, 'i.aid = ua.id AND i.id = ua.invitationId');
+        // the latest row of the invitation: its current status
+        $qb->innerJoin(UserInvitation::class, 'c', Join::ON, sprintf('c.id = (SELECT MAX(i2.id) FROM %s i2 WHERE i2.aid = ua.id)', UserInvitation::class));
         // an invitation is a review requested for a paper: an invitation without paper (e.g. ITEMID = 0) is not counted,
         // as the reports (see ReviewerReportRepository::getReceivedReports())
         $qb->innerJoin(Paper::class, 'p', Join::ON, 'p.docid = ua.itemid');
@@ -77,9 +82,9 @@ class UserInvitationRepository extends ServiceEntityRepository
         }
 
         if ($invitationStatus) {
-            $qb->andWhere('i.status = :status')->setParameter('status', $invitationStatus);
+            $qb->andWhere('c.status = :status')->setParameter('status', $invitationStatus);
         } else {
-            $qb->andWhere('i.status != :cancelled')->setParameter('cancelled', UserInvitation::STATUS_CANCELLED);
+            $qb->andWhere('c.status != :cancelled')->setParameter('cancelled', UserInvitation::STATUS_CANCELLED);
         }
 
         if ($docId) {

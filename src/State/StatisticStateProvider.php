@@ -654,6 +654,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
     /**
      * The invitations: one row by invitation (see UserInvitationRepository::getReviewsRequested())
+     *
+     * @return list<array<string, mixed>>
      */
     private function getReviewsRequestedRows(array $options): array
     {

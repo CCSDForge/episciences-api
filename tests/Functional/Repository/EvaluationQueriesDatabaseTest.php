@@ -96,8 +96,8 @@ class EvaluationQueriesDatabaseTest extends TestCase
     }
 
     /**
-     * Pending, accepted and declined invitations are requested reviews; the cancelled one is not, nor the invitation
-     * without paper.
+     * Pending, accepted and declined invitations are requested reviews, once each; the cancelled ones are not (even
+     * cancelled after an answer), nor the invitation without paper.
      */
     public function testRequestedReviewsAreTheInvitationsWhateverTheirAnswer(): void
     {
@@ -106,8 +106,10 @@ class EvaluationQueriesDatabaseTest extends TestCase
 
     public function testRequestedReviewsCanBeFilteredOnTheStatusOfTheInvitation(): void
     {
-        $this->assertSame([4], $this->requestedInvitations(['rvid' => self::RVID, 'invitation-status' => 'cancelled']));
+        $this->assertSame([4, 7], $this->requestedInvitations(['rvid' => self::RVID, 'invitation-status' => 'cancelled']));
+        // the first row of an answered invitation stays pending: only the invitation without answer is pending
         $this->assertSame([1], $this->requestedInvitations(['rvid' => self::RVID, 'invitation-status' => 'pending']));
+        $this->assertSame([2], $this->requestedInvitations(['rvid' => self::RVID, 'invitation-status' => 'accepted']));
     }
 
     public function testRequestedReviewsFollowTheYearAndTheStartDate(): void
@@ -149,19 +151,23 @@ class EvaluationQueriesDatabaseTest extends TestCase
     }
 
     /**
-     * The rows give what the lists of the reviews need: the paper of the invitation (conflicts of interest), its expiration;
-     * the date of validation of the report.
+     * The rows give what the lists of the reviews need: the paper of the invitation (conflicts of interest), its sending
+     * date and its expiration (of the invitation, not of its answer), its current status; the date of validation of the report.
      */
     public function testRowsGiveThePaperAndTheDateOfTheReview(): void
     {
         $invitations = [];
 
         foreach ($this->invitationRepository->getReviewsRequested(['rvid' => self::RVID])->getQuery()->getResult() as $row) {
-            $invitations[(int)$row['id']] = [(int)$row['paperid'], $row['expirationDate']->format('Y-m-d')];
+            $invitations[(int)$row['id']] = [(int)$row['paperid'], $row['date']->format('Y-m-d'), $row['expirationDate']->format('Y-m-d'), $row['status']];
         }
 
         ksort($invitations);
-        $this->assertSame([1 => [10, '2023-03-01'], 2 => [10, '2023-04-01'], 3 => [11, '2024-02-01']], $invitations);
+        $this->assertSame([
+            1 => [10, '2023-03-01', '2023-03-01', 'pending'],
+            2 => [10, '2023-04-01', '2023-04-01', 'accepted'],
+            3 => [11, '2024-02-01', '2024-02-01', 'declined'],
+        ], $invitations);
 
         $reports = [];
 
@@ -210,37 +216,51 @@ class EvaluationQueriesDatabaseTest extends TestCase
         }
 
         $invitations = [
-            // id, status, sending date, docid, statuses of the assignments: as on Episciences, the first one (pending) created
-            // the invitation (USER_INVITATION.AID), an answer or a cancellation adds another one; all refer to the invitation
-            [1, 'pending', '2023-03-01', 10, ['pending']],
-            [2, 'accepted', '2023-04-01', 10, ['pending', 'active']], // an answered invitation has two assignments
-            [3, 'declined', '2024-02-01', 11, ['pending', 'declined']],
-            [4, 'cancelled', '2024-03-01', 11, ['pending', 'cancelled']],
-            [5, 'accepted', '2024-03-01', 12, ['pending', 'active']], // disabled journal
-            [6, 'pending', '2024-04-01', 0, ['pending']], // no paper (ITEMID = 0): not a review requested
+            // id, sending date, docid, answers (status, date): as on Episciences, the invitation is the row created with the
+            // pending assignment (USER_INVITATION.AID); each answer or cancellation inserts another row with the same AID,
+            // referred to by an assignment of its own: the latest row gives the status of the invitation
+            [1, '2023-03-01', 10, []],
+            [2, '2023-04-01', 10, [['accepted', '2024-01-05']]], // sent in 2023, answered in 2024: an invitation of 2023
+            [3, '2024-02-01', 11, [['declined', '2024-02-10']]],
+            [4, '2024-03-01', 11, [['cancelled', '2024-03-05']]],
+            [5, '2024-03-01', 12, [['accepted', '2024-03-02']]], // disabled journal
+            [6, '2024-04-01', 0, []], // no paper (ITEMID = 0): not a review requested
+            [7, '2023-05-01', 10, [['accepted', '2023-05-02'], ['cancelled', '2023-06-01']]], // accepted, then cancelled
         ];
+
+        // status of the invitation => status of the assignment
+        $assignmentStatuses = ['pending' => 'pending', 'accepted' => 'active', 'declined' => 'declined', 'cancelled' => 'cancelled'];
 
         $invitationDefaults = $this->requiredColumnDefaults(UserInvitation::TABLE);
         $assignmentDefaults = $this->requiredColumnDefaults(self::USER_ASSIGNMENT_TABLE);
 
-        foreach ($invitations as [$id, $status, $date, $docId, $assignments]) {
+        foreach ($invitations as [$id, $date, $docId, $answers]) {
             $aid = null;
 
-            foreach ($assignments as $assignmentStatus) {
+            // the invitation (pending), then its answers: rows 21, 22... for invitation 2
+            foreach ([['pending', $date], ...$answers] as $step => [$status, $stepDate]) {
+                $invitationId = $step === 0 ? $id : $id * 10 + $step;
+
                 $connection->insert(self::USER_ASSIGNMENT_TABLE, $quote(array_merge($assignmentDefaults, [
-                    'INVITATION_ID' => $id,
+                    'INVITATION_ID' => $invitationId,
                     'RVID' => $docId === 12 ? self::DISABLED_RVID : self::RVID,
                     'ITEMID' => $docId,
                     'ITEM' => UserAssignment::ITEM_PAPER,
                     'UID' => 100 + $id,
                     'ROLEID' => UserAssignment::ROLE_REVIEWER,
-                    'STATUS' => $assignmentStatus,
-                    'WHEN' => $date . ' 10:00:00',
+                    'STATUS' => $assignmentStatuses[$status],
+                    'WHEN' => $stepDate . ' 10:00:00',
                 ])));
                 $aid ??= (int)$connection->lastInsertId();
-            }
 
-            $connection->insert(UserInvitation::TABLE, array_merge($invitationDefaults, ['ID' => $id, 'AID' => $aid, 'STATUS' => $status, 'SENDING_DATE' => $date . ' 10:00:00', 'EXPIRATION_DATE' => $date . ' 10:00:00']));
+                $connection->insert(UserInvitation::TABLE, array_merge($invitationDefaults, [
+                    'ID' => $invitationId,
+                    'AID' => $aid,
+                    'STATUS' => $status,
+                    'SENDING_DATE' => $stepDate . ' 10:00:00',
+                    'EXPIRATION_DATE' => $stepDate . ' 10:00:00',
+                ]));
+            }
         }
 
         $reports = [
