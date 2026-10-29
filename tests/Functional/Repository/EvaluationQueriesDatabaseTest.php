@@ -97,7 +97,7 @@ class EvaluationQueriesDatabaseTest extends TestCase
 
     /**
      * Pending, accepted and declined invitations are requested reviews, once each; the cancelled ones are not (even
-     * cancelled after an answer), nor the invitation without paper.
+     * cancelled after an answer, or by a cancelled assignment only), nor the invitation without paper.
      */
     public function testRequestedReviewsAreTheInvitationsWhateverTheirAnswer(): void
     {
@@ -106,7 +106,9 @@ class EvaluationQueriesDatabaseTest extends TestCase
 
     public function testRequestedReviewsCanBeFilteredOnTheStatusOfTheInvitation(): void
     {
-        $this->assertSame([4, 7], $this->requestedInvitations(['rvid' => self::RVID, 'invitation-status' => 'cancelled']));
+        // invitation 8 has no cancelled row, only a cancelled assignment
+        $this->assertSame([4, 7, 8], $this->requestedInvitations(['rvid' => self::RVID, 'invitation-status' => 'cancelled']));
+        $this->assertSame(['cancelled'], array_values(array_unique(array_column($this->invitationRepository->getReviewsRequested(['rvid' => self::RVID, 'invitation-status' => 'cancelled'])->getQuery()->getResult(), 'status'))));
         // the first row of an answered invitation stays pending: only the invitation without answer is pending
         $this->assertSame([1], $this->requestedInvitations(['rvid' => self::RVID, 'invitation-status' => 'pending']));
         $this->assertSame([2], $this->requestedInvitations(['rvid' => self::RVID, 'invitation-status' => 'accepted']));
@@ -226,6 +228,8 @@ class EvaluationQueriesDatabaseTest extends TestCase
             [5, '2024-03-01', 12, [['accepted', '2024-03-02']]], // disabled journal
             [6, '2024-04-01', 0, []], // no paper (ITEMID = 0): not a review requested
             [7, '2023-05-01', 10, [['accepted', '2023-05-02'], ['cancelled', '2023-06-01']]], // accepted, then cancelled
+            // without answer, cancelled when the paper was accepted: a cancelled assignment on the first row, no new row
+            [8, '2023-06-01', 10, [], '2023-07-01'],
         ];
 
         // status of the invitation => status of the assignment
@@ -234,7 +238,9 @@ class EvaluationQueriesDatabaseTest extends TestCase
         $invitationDefaults = $this->requiredColumnDefaults(UserInvitation::TABLE);
         $assignmentDefaults = $this->requiredColumnDefaults(self::USER_ASSIGNMENT_TABLE);
 
-        foreach ($invitations as [$id, $date, $docId, $answers]) {
+        foreach ($invitations as $invitation) {
+            [$id, $date, $docId, $answers] = $invitation;
+            $cancellationDate = $invitation[4] ?? null;
             $aid = null;
 
             // the invitation (pending), then its answers: rows 21, 22... for invitation 2
@@ -260,6 +266,19 @@ class EvaluationQueriesDatabaseTest extends TestCase
                     'SENDING_DATE' => $stepDate . ' 10:00:00',
                     'EXPIRATION_DATE' => $stepDate . ' 10:00:00',
                 ]));
+            }
+
+            if ($cancellationDate !== null) {
+                $connection->insert(self::USER_ASSIGNMENT_TABLE, $quote(array_merge($assignmentDefaults, [
+                    'INVITATION_ID' => $id,
+                    'RVID' => self::RVID,
+                    'ITEMID' => $docId,
+                    'ITEM' => UserAssignment::ITEM_PAPER,
+                    'UID' => 100 + $id,
+                    'ROLEID' => UserAssignment::ROLE_REVIEWER,
+                    'STATUS' => UserAssignment::STATUS_CANCELLED,
+                    'WHEN' => $cancellationDate . ' 10:00:00',
+                ])));
             }
         }
 

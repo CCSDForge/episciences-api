@@ -30,7 +30,7 @@ class UserInvitationRepository extends ServiceEntityRepository
      *
      * Episciences inserts a USER_INVITATION row on each answer or cancellation of an invitation, with the same AID (the
      * pending assignment created with the invitation): the first row is the invitation (sending and expiration dates),
-     * the latest one gives its status.
+     * the latest one gives its status. An invitation is also cancelled when an assignment cancelled it without a new row.
      */
     public function getReviewsRequested(array $options = []): QueryBuilder
     {
@@ -46,7 +46,16 @@ class UserInvitationRepository extends ServiceEntityRepository
         $qb->addSelect('ua.rvid');
         $qb->addSelect('ua.itemid');
         $qb->addSelect('ua.uid');
-        $qb->addSelect('c.status');
+        // cancelled by its latest row, or by an assignment cancelled on this row without a new row (Episciences cancelled the
+        // invitations without answer of an accepted paper this way); one subquery alias by use, as an alias is unique in DQL
+        $isCancelled = static fn(string $alias): string => sprintf(
+            '(c.status = :cancelledInvitation OR EXISTS (SELECT %2$s.id FROM %1$s %2$s WHERE %2$s.invitationId = c.id AND %2$s.status = :cancelledAssignment))',
+            UserAssignment::class,
+            $alias
+        );
+        $qb->addSelect(sprintf('CASE WHEN %s THEN :cancelledInvitation ELSE c.status END AS status', $isCancelled('cancelledBy')));
+        $qb->setParameter('cancelledInvitation', UserInvitation::STATUS_CANCELLED);
+        $qb->setParameter('cancelledAssignment', UserAssignment::STATUS_CANCELLED);
         $qb->addSelect('i.id');
         $qb->addSelect('i.sendingDate as date');
         $qb->addSelect('i.expirationDate as expirationDate');
@@ -81,10 +90,12 @@ class UserInvitationRepository extends ServiceEntityRepository
             $this->andActiveJournals($qb, 'ua.rvid');
         }
 
-        if ($invitationStatus) {
-            $qb->andWhere('c.status = :status')->setParameter('status', $invitationStatus);
+        if ($invitationStatus === UserInvitation::STATUS_CANCELLED) {
+            $qb->andWhere($isCancelled('cancelledWith'));
+        } elseif ($invitationStatus) {
+            $qb->andWhere(sprintf('c.status = :status AND NOT %s', $isCancelled('cancelledWith')))->setParameter('status', $invitationStatus);
         } else {
-            $qb->andWhere('c.status != :cancelled')->setParameter('cancelled', UserInvitation::STATUS_CANCELLED);
+            $qb->andWhere(sprintf('NOT %s', $isCancelled('cancelledWith')));
         }
 
         if ($docId) {
