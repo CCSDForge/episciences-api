@@ -484,7 +484,14 @@ class StatisticStateProviderTest extends TestCase
         ]));
 
         $userInvitationRepository = $this->createStub(UserInvitationRepository::class);
-        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder([['rvid' => 1, 'id' => 1], ['rvid' => 1, 'id' => 2], ['rvid' => 3, 'id' => 3]]));
+        // An answered invitation has two assignments, so it is returned twice
+        $userInvitationRepository->method('getReviewsRequested')->willReturn($this->createQueryBuilder([
+            ['rvid' => 1, 'id' => 1],
+            ['rvid' => 1, 'id' => 1],
+            ['rvid' => 1, 'id' => 2],
+            ['rvid' => 3, 'id' => 3],
+            ['rvid' => 3, 'id' => 3],
+        ]));
 
         $entityManager->method('getRepository')->willReturnMap([
             [Paper::class, $papersRepository],
