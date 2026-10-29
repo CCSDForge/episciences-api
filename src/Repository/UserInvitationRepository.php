@@ -77,7 +77,7 @@ class UserInvitationRepository extends ServiceEntityRepository
         if ($invitationStatus) {
             $qb->andWhere('i.status = :status')->setParameter('status', $invitationStatus);
         } else {
-            $qb->andWhere('i.status != :cancelled')->setParameter('cancelled', UserAssignment::STATUS_CANCELLED);
+            $qb->andWhere('i.status != :cancelled')->setParameter('cancelled', UserInvitation::STATUS_CANCELLED);
         }
 
         if ($docId) {

@@ -11,7 +11,6 @@ use App\Entity\Paper;
 use App\Entity\PaperLog;
 use App\Entity\Review;
 use App\Entity\ReviewerReport;
-use App\Entity\UserAssignment;
 use App\Entity\UserInvitation;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\PaperLogRepository;
@@ -409,8 +408,9 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
             if ($isRequested) {
                 $expiration = $row['expirationDate'] ?? null;
-                $isExpired = $row['status'] === UserAssignment::STATUS_PENDING && $expiration instanceof \DateTimeInterface && $expiration < $now;
-                $review['answer'] = $isExpired ? UserAssignment::STATUS_EXPIRED : (string)$row['status'];
+                // "expired" is not stored by Episciences: a pending invitation past its expiration date (see UserInvitation)
+                $isExpired = $row['status'] === UserInvitation::STATUS_PENDING && $expiration instanceof \DateTimeInterface && $expiration < $now;
+                $review['answer'] = $isExpired ? UserInvitation::STATUS_EXPIRED : (string)$row['status'];
             }
 
             $reviews[] = $review;
