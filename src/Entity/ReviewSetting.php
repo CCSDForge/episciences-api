@@ -3,7 +3,6 @@
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Entity]
@@ -15,6 +14,10 @@ class ReviewSetting
     // todo to be implemented: new setting "allowBrowseAcceptedDocuments"
     public const ALLOW_BROWSE_ACCEPTED_ARTICLE = 'allowBrowseAcceptedDocuments';
     public const DISPLAY_EMPTY_VOLUMES = 'displayEmptyVolumes';
+    /** Visibility of the statistics of the journal: hidden (absent, empty or "0", default), editorial secretaries ("2"), public (any other value, "1") */
+    public const DISPLAY_STATISTICS = 'displayStatistics';
+    public const DISPLAY_STATISTICS_PUBLIC = '1';
+    public const DISPLAY_STATISTICS_SECRETARIES = '2';
 
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
@@ -24,22 +27,7 @@ class ReviewSetting
     #[ORM\Column(name: 'SETTING', type: \Doctrine\DBAL\Types\Types::STRING, length: 200, nullable: false)]
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]
-    #[Groups(
-        [
-            'read:Review',
-            'read:Reviews'
-        ]
-
-    )]
-
     private string $setting;
-    #[Groups(
-        [
-            'read:Review',
-            'read:Reviews'
-        ]
-
-    )]
 
     #[ORM\Column(name: 'VALUE', type: \Doctrine\DBAL\Types\Types::TEXT, length: 65535, nullable: true)]
     private ?string $value = null;

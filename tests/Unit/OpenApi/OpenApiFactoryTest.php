@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Unit\OpenApi;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
 use ApiPlatform\Metadata\Resource\Factory\ResourceNameCollectionFactoryInterface;
 use ApiPlatform\Metadata\Resource\ResourceMetadataCollection;
@@ -13,6 +15,7 @@ use ApiPlatform\Metadata\Resource\ResourceNameCollection;
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
 use ApiPlatform\OpenApi\Model\Components;
 use ApiPlatform\OpenApi\Model\Info;
+use ApiPlatform\OpenApi\Model\MediaType;
 use ApiPlatform\OpenApi\Model\Operation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\PathItem;
@@ -22,10 +25,15 @@ use ApiPlatform\OpenApi\Model\Schema;
 use ApiPlatform\OpenApi\OpenApi;
 use App\AppConstants;
 use App\Controller\BoardsController;
+use App\Entity\Paper;
 use App\Entity\Review;
 use App\EventSubscriber\TruncatedCollectionSubscriber;
+use App\Metadata\SingleValueQueryParametersResourceMetadataCollectionFactory;
 use App\OpenApi\OpenApiFactory;
+use App\OpenApi\QueryParameters;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Validator\Constraints\Choice;
+use Symfony\Component\Validator\Constraints\Type;
 
 class OpenApiFactoryTest extends TestCase
 {
@@ -50,6 +58,10 @@ class OpenApiFactoryTest extends TestCase
         $headers = $get->getResponses()[200]->getHeaders();
         $this->assertArrayHasKey(TruncatedCollectionSubscriber::TRUNCATED_HEADER, $headers);
         $this->assertSame(['type' => 'integer'], $headers[TruncatedCollectionSubscriber::TRUNCATED_HEADER]['schema']);
+
+        $this->assertSame('Invalid pagination parameter (e.g. `page` lower than 1)', $get->getResponses()[400]->getDescription());
+        $this->assertSame('#/components/schemas/Error.jsonld', $get->getResponses()[400]->getContent()['application/ld+json']->getSchema()['$ref']);
+        $this->assertSame('#/components/schemas/Error', $get->getResponses()[400]->getContent()['application/json']->getSchema()['$ref']);
     }
 
     public function testCollectionServedByAControllerIsUnchanged(): void
@@ -58,6 +70,7 @@ class OpenApiFactoryTest extends TestCase
 
         $this->assertSame('Enable or disable pagination', $get->getParameters()[0]->getDescription());
         $this->assertNull($get->getResponses()[200]->getHeaders());
+        $this->assertArrayNotHasKey(400, $get->getResponses());
     }
 
     public function testOperationWithoutPaginationIsUnchanged(): void
@@ -104,6 +117,142 @@ class OpenApiFactoryTest extends TestCase
         // 401: /api/volumes accepts an optional JWT
         $this->assertSame([200, 404, 401], array_keys($byJournal));
         $this->assertSame([200], array_keys($withoutJournal));
+    }
+
+    public function testInvalidFiltersOfTheStatisticsAreDocumentedAsUnprocessableEntity(): void
+    {
+        $paths = $this->createAuthOpenApi()->getPaths();
+        $statistics = $paths->getPath('/api/statistics/')?->getGet()?->getResponses();
+
+        // the 404 is the one of the journal
+        $this->assertSame('Journal not found', $statistics[404]->getDescription());
+        // the error body of the response is kept
+        $this->assertSame('#/components/schemas/Error', $statistics[404]->getContent()['application/problem+json']->getSchema()['$ref']);
+        $this->assertSame('Invalid `year` or `startAfterDate` (see the accepted values)', $statistics[422]->getDescription());
+        $this->assertSame('Invalid `year` (see the accepted values)', $paths->getPath('/api/statistics/evaluation')?->getGet()?->getResponses()[422]->getDescription());
+        // without a checked filter: only an unknown parameter can be rejected
+        $nbUsers = $paths->getPath('/api/journals/stats/nb-users/{code}')?->getGet()?->getResponses();
+        $this->assertSame('Not found', $nbUsers[404]->getDescription());
+        $this->assertSame('An unknown parameter', $nbUsers[422]->getDescription());
+        $this->assertSame('Journal not found', $paths->getPath('/api/volumes')?->getGet()?->getResponses()[404]->getDescription());
+    }
+
+    public function testUnknownParameterOfTheJournalStatisticsIsDocumented(): void
+    {
+        $responses = $this->createAuthOpenApi()->getPaths()->getPath('/api/journals/stats/nb-submissions/{code}')?->getGet()?->getResponses();
+
+        $this->assertSame('Invalid `year` (see the accepted values), or an unknown parameter', $responses[422]->getDescription());
+    }
+
+    public function testSingleAndListFormsOfAFilterAreDocumentedOnce(): void
+    {
+        $parameters = $this->documentParameters([
+            new Parameter('page', 'query'),
+            new Parameter('vid', 'query', 'Volume identifier', schema: ['type' => 'integer']),
+            new Parameter('vid[]', 'query', schema: ['type' => 'array', 'items' => ['type' => 'integer']], explode: true),
+        ]);
+
+        $this->assertSame(['page', 'vid[]'], array_map(static fn(Parameter $parameter): string => $parameter->getName(), $parameters));
+        $this->assertSame('Volume identifier. One or several values: `vid[]=…&vid[]=…`, or `vid=…` for a single one.', $parameters[1]->getDescription());
+        $this->assertSame(['type' => 'array', 'items' => ['type' => 'integer']], $parameters[1]->getSchema());
+        $this->assertSame('form', $parameters[1]->getStyle());
+        $this->assertTrue($parameters[1]->getExplode());
+    }
+
+    public function testListFormOfAFilterTakesTheItemSchemaOfItsSingleForm(): void
+    {
+        $parameters = $this->documentParameters([
+            new Parameter('indicator', 'query', schema: ['type' => 'string', 'enum' => ['a', 'b']]),
+            new Parameter('indicator[]', 'query', 'Several indicators', schema: ['type' => 'array']),
+        ]);
+
+        $this->assertSame(['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['a', 'b']]], $parameters[0]->getSchema());
+        // the description of the list form when the single form has none
+        $this->assertStringStartsWith('Several indicators. One or several values: ', $parameters[0]->getDescription());
+    }
+
+    public function testListFormDeclaredAloneGetsTheSyntaxNote(): void
+    {
+        $parameters = $this->documentParameters([new Parameter('year[]', 'query', 'Publication year(s).', schema: ['type' => 'array', 'items' => ['type' => 'integer']])]);
+
+        $this->assertSame('Publication year(s). One or several values: `year[]=…&year[]=…`, or `year=…` for a single one.', $parameters[0]->getDescription());
+    }
+
+    public function testJournalCodeStaysASingleValue(): void
+    {
+        $parameters = $this->documentParameters([new Parameter('rvcode', 'query'), new Parameter('rvcode[]', 'query', schema: ['type' => 'array'])]);
+
+        $this->assertCount(1, $parameters);
+        $this->assertSame('rvcode', $parameters[0]->getName());
+        $this->assertSame(QueryParameters::JOURNAL_CODE_DESCRIPTION, $parameters[0]->getDescription());
+    }
+
+    public function testFilterParametersWithoutDescriptionGetOne(): void
+    {
+        $parameters = $this->documentParameters([
+            new Parameter('vid', 'query'),
+            new Parameter('vid[]', 'query', schema: ['type' => 'array', 'items' => ['type' => 'integer']]),
+            new Parameter('publicationDate[strictly_after]', 'query'),
+            new Parameter('unknown', 'query'),
+        ]);
+
+        $this->assertStringStartsWith(QueryParameters::FILTER_DESCRIPTIONS['vid'] . '. One or several values: ', $parameters[0]->getDescription());
+        $this->assertSame('Only the items whose `publicationDate` is after this date (YYYY-MM-DD)', $parameters[1]->getDescription());
+        $this->assertSame('', $parameters[2]->getDescription());
+    }
+
+    public function testDeclaredDescriptionIsKept(): void
+    {
+        $parameters = $this->documentParameters([new Parameter('vid', 'query', 'Volume of the paper')]);
+
+        $this->assertSame('Volume of the paper', $parameters[0]->getDescription());
+    }
+
+    public function testOtherParametersAreUnchanged(): void
+    {
+        $parameters = [
+            new Parameter('docid', 'path', 'Paper identifier', true),
+            new Parameter('order[title]', 'query'),
+            new Parameter('code', 'query', 'Code of the journal'),
+        ];
+
+        $this->assertEquals($parameters, $this->documentParameters($parameters));
+    }
+
+    public function testUnprocessableEntityDescribesTheValidatedParametersDocumentedByTheOperation(): void
+    {
+        $responses = $this->createValidationOpenApi()->getPaths()->getPath('/api/papers/')?->getGet()?->getResponses();
+
+        // `letter` is validated but not documented by the operation
+        $this->assertSame('Invalid `scope` (see the accepted values), or `rvcode` or `page` given as a list (`name[]=…`): a single value is expected', $responses[422]->getDescription());
+        // the response documented by API Platform (ConstraintViolation schema) is kept, after the success response
+        $this->assertSame('#/components/schemas/ConstraintViolation', $responses[422]->getContent()['application/problem+json']->getSchema()['$ref']);
+        $this->assertGreaterThan(array_search(200, array_keys($responses), true), array_search(422, array_keys($responses), true));
+    }
+
+    public function testItemGetsTheUnprocessableEntityOfTheCollections(): void
+    {
+        $responses = $this->createValidationOpenApi()->getPaths()->getPath('/api/volumes/{vid}')?->getGet()?->getResponses();
+
+        $this->assertSame('`rvcode` given as a list (`name[]=…`): a single value is expected', $responses[422]->getDescription());
+        $this->assertSame('#/components/schemas/ConstraintViolation', $responses[422]->getContent()['application/problem+json']->getSchema()['$ref']);
+    }
+
+    public function testUnprocessableEntityIsRemovedWithoutDocumentedValidatedParameter(): void
+    {
+        $responses = $this->createValidationOpenApi()->getPaths()->getPath('/api/feed/rss/{code}')?->getGet()?->getResponses();
+
+        $this->assertArrayNotHasKey(422, $responses);
+    }
+
+    public function testErrorResponsesWithoutBodyGetTheErrorBody(): void
+    {
+        $responses = $this->createAuthOpenApi()->getPaths()->getPath('/api/me')?->getGet()?->getResponses();
+
+        // 403 declared without body
+        $this->assertSame('#/components/schemas/Error.jsonld', $responses[403]->getContent()['application/ld+json']->getSchema()['$ref']);
+        // 401: body of the JWT authentication, not documented
+        $this->assertNull($responses[401]->getContent());
     }
 
     public function testOptionalJwtIsDocumentedOnDoubleModeOperations(): void
@@ -234,6 +383,22 @@ class OpenApiFactoryTest extends TestCase
             responses: [200 => new Response('OK')],
             parameters: [new Parameter('rvcode', 'query')]
         )));
+        $paths->addPath('/api/statistics/', new PathItem(get: new Operation(
+            responses: [200 => new Response('OK')],
+            parameters: [new Parameter('rvcode', 'query'), new Parameter('year', 'query'), new Parameter('year[]', 'query'), new Parameter('startAfterDate', 'query')]
+        )));
+        $paths->addPath('/api/statistics/evaluation', new PathItem(get: new Operation(
+            responses: [200 => new Response('OK')],
+            parameters: [new Parameter('rvcode', 'query'), new Parameter('year[]', 'query')]
+        )));
+        $paths->addPath('/api/journals/stats/nb-submissions/{code}', new PathItem(get: new Operation(
+            responses: [200 => new Response('OK'), 404 => new Response('Not found')],
+            parameters: [new Parameter('code', 'path'), new Parameter('year', 'query')]
+        )));
+        $paths->addPath('/api/journals/stats/nb-users/{code}', new PathItem(get: new Operation(
+            responses: [200 => new Response('OK'), 404 => new Response('Not found')],
+            parameters: [new Parameter('code', 'path'), new Parameter('withDetails', 'query')]
+        )));
 
         $decorated = $this->createStub(OpenApiFactoryInterface::class);
         $decorated->method('__invoke')->willReturn(
@@ -244,6 +409,86 @@ class OpenApiFactoryTest extends TestCase
         $resourceNameCollectionFactory->method('create')->willReturn(new ResourceNameCollection([]));
 
         return new OpenApiFactory($decorated, $resourceNameCollectionFactory, $this->createStub(ResourceMetadataCollectionFactoryInterface::class))();
+    }
+
+    /**
+     * Parameters of an operation as documented by the factory (query parameters tests).
+     *
+     * @param Parameter[] $parameters
+     * @return Parameter[]
+     */
+    private function documentParameters(array $parameters): array
+    {
+        $paths = new Paths();
+        $paths->addPath('/api/resources', new PathItem(get: new Operation(responses: [200 => new Response('OK')], parameters: $parameters)));
+
+        $decorated = $this->createStub(OpenApiFactoryInterface::class);
+        $decorated->method('__invoke')->willReturn(
+            new OpenApi(new Info('Episciences API', '1.0'), [], $paths, new Components(schemas: new \ArrayObject(), securitySchemes: new \ArrayObject()))
+        );
+
+        $resourceNameCollectionFactory = $this->createStub(ResourceNameCollectionFactoryInterface::class);
+        $resourceNameCollectionFactory->method('create')->willReturn(new ResourceNameCollection([]));
+
+        $openApi = new OpenApiFactory($decorated, $resourceNameCollectionFactory, $this->createStub(ResourceMetadataCollectionFactoryInterface::class))();
+
+        return $openApi->getPaths()->getPath('/api/resources')?->getGet()?->getParameters() ?? [];
+    }
+
+    /**
+     * Operations validating query parameters (QueryParameter with constraints) and their documentation
+     */
+    private function createValidationOpenApi(): OpenApi
+    {
+        $unprocessableEntity = new Response('An error occurred', new \ArrayObject([
+            'application/problem+json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/ConstraintViolation'])),
+        ]));
+
+        $paths = new Paths();
+        $paths->addPath('/api/papers/', new PathItem(get: new Operation(
+            responses: [422 => $unprocessableEntity, 200 => new Response('OK')],
+            parameters: [new Parameter('rvcode', 'query'), new Parameter('scope', 'query'), new Parameter('page', 'query'), new Parameter('year[]', 'query')]
+        )));
+        $paths->addPath('/api/volumes/{vid}', new PathItem(get: new Operation(
+            responses: [200 => new Response('OK')],
+            parameters: [new Parameter('vid', 'path'), new Parameter('rvcode', 'query')]
+        )));
+        $paths->addPath('/api/feed/rss/{code}', new PathItem(get: new Operation(
+            responses: [422 => $unprocessableEntity, 200 => new Response('OK')],
+            parameters: [new Parameter('code', 'path')]
+        )));
+
+        $decorated = $this->createStub(OpenApiFactoryInterface::class);
+        $decorated->method('__invoke')->willReturn(
+            new OpenApi(new Info('Episciences API', '1.0'), [], $paths, new Components(schemas: new \ArrayObject(), securitySchemes: new \ArrayObject()))
+        );
+
+        $singleValue = static fn(string $key): QueryParameter => new QueryParameter(
+            key: $key,
+            constraints: [new Type('string')],
+            extraProperties: [SingleValueQueryParametersResourceMetadataCollectionFactory::SINGLE_VALUE => true]
+        );
+
+        $resourceNameCollectionFactory = $this->createStub(ResourceNameCollectionFactoryInterface::class);
+        $resourceNameCollectionFactory->method('create')->willReturn(new ResourceNameCollection([Paper::class]));
+
+        $resourceMetadataCollectionFactory = $this->createStub(ResourceMetadataCollectionFactoryInterface::class);
+        $resourceMetadataCollectionFactory->method('create')->willReturn(new ResourceMetadataCollection(Paper::class, [
+            new ApiResource(operations: [
+                'papers' => new GetCollection(uriTemplate: '/papers/{._format}', parameters: [
+                    'rvcode' => $singleValue('rvcode'),
+                    'page' => $singleValue('page'),
+                    'letter' => $singleValue('letter'),
+                    'scope' => new QueryParameter(key: 'scope', constraints: [new Choice(choices: ['all'])]),
+                    // not validated
+                    'year' => new QueryParameter(key: 'year'),
+                ]),
+                'volume' => new Get(uriTemplate: '/volumes/{vid}{._format}', parameters: ['rvcode' => $singleValue('rvcode')]),
+                'feed' => new GetCollection(uriTemplate: '/feed/rss/{code}', parameters: ['rvcode' => $singleValue('rvcode')]),
+            ]),
+        ]));
+
+        return new OpenApiFactory($decorated, $resourceNameCollectionFactory, $resourceMetadataCollectionFactory)();
     }
 
     /**

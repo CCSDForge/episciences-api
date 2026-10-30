@@ -5,19 +5,25 @@ namespace App\DataProvider;
 use ApiPlatform\Metadata\Operation;
 use App\AppConstants;
 use App\Entity\Paper;
+use ApiPlatform\Validator\Exception\ValidationException;
+use App\Exception\InvalidQueryParameter;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\AbstractStatResource;
+use App\Resource\Statistic;
+use App\Service\StatisticPapers;
 use App\Service\Stats;
 use App\Traits\CheckExistingResourceTrait;
+use App\Traits\QueryTrait;
 use App\Traits\ToolsTrait;
 use Doctrine\ORM\EntityManagerInterface;
 
 abstract class AbstractDataProvider
 {
     use CheckExistingResourceTrait;
+    use QueryTrait;
     use ToolsTrait;
 
-    public function __construct(private readonly EntityManagerInterface $entityManagerInterface, private readonly Stats $statsService)
+    public function __construct(private readonly EntityManagerInterface $entityManagerInterface, private readonly Stats $statsService, private readonly StatisticPapers $statisticPapers)
     {
 
     }
@@ -46,6 +52,21 @@ abstract class AbstractDataProvider
 
             $this->addFilters($filters['is'], $operation->getName(), $cFilters);
 
+            $isDashboard = $operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][0];
+            $withPapers = StatisticPapers::isRequested($cFilters[Statistic::WITH_PAPERS_PARAM] ?? null);
+
+            if ($withPapers && !$isDashboard) {
+                throw InvalidQueryParameter::exception(Statistic::WITH_PAPERS_PARAM, 'Only available on the dashboard.', $cFilters[Statistic::WITH_PAPERS_PARAM]);
+            }
+
+            // before any computation
+            if ($isDashboard) {
+                $this->statisticPapers->denyAccessUnlessDashboardIsVisible($journal);
+            }
+
+            // reserved for the administrators of the journal
+            $conflictedPapers = $withPapers ? $this->statisticPapers->getConflictedPapers($journal) : null;
+
             if ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][1]) {
                 $result = $this->statsService->getSubmissionsStat($filters);
 
@@ -53,8 +74,13 @@ abstract class AbstractDataProvider
                 $result = $this->statsService->getDelayBetweenSubmissionAndLatestStatus($filters);
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][3]) {
                 $result = $this->statsService->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED);
-            } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][0]) {
+            } elseif ($isDashboard) {
                 $result = $this->statsService->getDashboard($context, $filters);
+
+                if ($conflictedPapers !== null && is_array($result->getValue())) {
+                    [$papers, $hiddenPapers] = $this->statisticPapers->toDocIds($this->statsService->getDashboardPaperIds($filters), $conflictedPapers);
+                    $result->setValue(array_merge($result->getValue(), ['papers' => $papers, 'hiddenPapers' => $hiddenPapers]));
+                }
             } elseif ($operation->getName() === AppConstants::APP_CONST['custom_operations']['items']['review'][4]) {
                 $result = $this->statsService->getUserStats($filters['is']);
             }
@@ -70,7 +96,7 @@ abstract class AbstractDataProvider
 
 
     /**
-     * @throws ResourceNotFoundException an invalid startAfterDate, as for /api/statistics/*
+     * @throws ValidationException an invalid startAfterDate or year (422), as for /api/statistics/*
      */
     private function addFilters(array &$availableFilters, string $operationName, array &$contextFilters = []): void
     {
@@ -80,7 +106,7 @@ abstract class AbstractDataProvider
             $startDate = is_string($startDate) ? urldecode($startDate) : null;
 
             if ($startDate === null || !self::isValidDate($startDate)) {
-                throw new ResourceNotFoundException(sprintf('Oops! invalid %s: the expected format is YYYY-MM-DD', AppConstants::START_AFTER_DATE));
+                throw InvalidQueryParameter::exception(AppConstants::START_AFTER_DATE, 'The expected format is YYYY-MM-DD.', $contextFilters[AppConstants::START_AFTER_DATE]);
             }
 
             $availableFilters[AppConstants::START_AFTER_DATE] = $startDate;
@@ -90,8 +116,16 @@ abstract class AbstractDataProvider
             $availableFilters[AppConstants::WITH_DETAILS] = true;
         }
 
-        if (isset($contextFilters[AppConstants::YEAR_PARAM])) {
-            $availableFilters['submissionDate'] = $contextFilters[AppConstants::YEAR_PARAM];
+        $years = $contextFilters[AppConstants::YEAR_PARAM] ?? '';
+
+        if ($years !== '' && $years !== []) {
+            $years = is_array($years) || is_string($years) || is_int($years) ? self::toValidYears($years) : null;
+
+            if ($years === null) {
+                throw InvalidQueryParameter::exception(AppConstants::YEAR_PARAM, 'The expected format is YYYY.', $contextFilters[AppConstants::YEAR_PARAM]);
+            }
+
+            $availableFilters['submissionDate'] = $years;
         }
 
         // by operation name: enable additional filters

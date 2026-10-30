@@ -16,6 +16,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
+use App\OpenApi\QueryParameters;
 
 /**
  * Section
@@ -31,6 +32,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Consult a particular Section',
+                description: 'Consult a particular Section, including its papers, by its identifier (sid).',
 
             ),
 
@@ -44,11 +46,12 @@ use Symfony\Component\Serializer\Attribute\Groups;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Sections list',
+                description: 'List the sections of the journals, optionally filtered by journal code (rvcode).',
                 parameters: [
                     new Parameter(
                         name: 'rvcode',
                         in: 'query',
-                        description: 'Journal Code (ex. epijinfo)',
+                        description: QueryParameters::JOURNAL_CODE_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -88,6 +91,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(description: 'Identifier of the section')]
     private int $sid;
 
     /**
@@ -101,6 +105,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(description: 'Identifier of the journal (review) the section belongs to')]
     private int $rvid;
 
     /**
@@ -114,6 +119,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(description: 'Position of the section in the journal (ordering)')]
     private int $position;
 
     #[ORM\Column(name: 'titles', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
@@ -125,7 +131,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
+    #[ApiProperty(description: 'Titles of the section translated by language code', schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $titles = null;
 
     #[ORM\Column(name: 'descriptions', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
@@ -136,7 +142,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
+    #[ApiProperty(description: 'Descriptions of the section translated by language code', schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $descriptions = null;
 
     #[ORM\OneToMany(mappedBy: 'section', targetEntity: Paper::class)]
@@ -148,6 +154,7 @@ class Section extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(description: 'Papers of the section')]
     private Collection $papers;
     #[ORM\OneToMany(mappedBy: 'section', targetEntity: SectionSetting::class)]
     #[ApiProperty(security: "is_granted('ROLE_SECRETARY')")]

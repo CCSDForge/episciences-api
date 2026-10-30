@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\OpenApi\OpenApiSchemas;
+use App\OpenApi\QueryParameters;
 use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
@@ -11,6 +12,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
@@ -45,6 +47,7 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['paper']],
                 summary: 'The paper identified by docid or paperid',
+                description: 'Consult a particular paper by its document identifier (docid) or paper identifier (paperid).',
             ),
             normalizationContext: [
                 'groups' => self::ITEM_NORMALIZATION_GROUPS,
@@ -58,66 +61,23 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['paper']],
                 summary: 'All Papers (In offline mode: only published papers )',
-                description: 'List the papers. In offline mode only published papers are returned. In connected mode the papers of the journal of the token are returned according to the role: all of them for an administrator, a chief editor or a secretary, the assigned ones for an editor, a copy editor or a reviewer, and only their own papers for an author (an empty list if they have none). The journal (rvcode) and publication year filters apply in both modes; in connected mode a journal other than the one of the token returns an empty list.',
+                description: 'List the papers. In offline mode only published papers are returned. In connected mode the papers of the journal of the token are returned according to the role (`scope=workspace`, default): all of them for an administrator, a chief editor or a secretary, the assigned ones for an editor, a copy editor or a reviewer, and only their own papers for an author (an empty list if they have none); `scope=public` lists the papers as in offline mode (the published papers, or the accepted ones with `only_accepted`), `scope=all` both. The journal (rvcode), paper type(s) and publication year(s) filters apply in both modes; in connected mode a journal other than the one of the token returns an empty list.',
                 parameters: [
-                    new Parameter(
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal Code (ex. epijinfo)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ]
-                    ),
-                    new Parameter(
-                        name: 'only_accepted',
-                        in: 'query',
-                        description: 'If true, only accepted documents will be returned.',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'boolean',
-                        ]
-                    ),
-                    new Parameter(
-                        name: 'type',
-                        in: 'query',
-                        description: 'Paper type(s). Repeat parameter: ?type=a&type=b',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'string',
-                            ],
-                        ],
-                        explode: true
-                    ),
-                    new Parameter(
-                        name: AppConstants::YEAR_PARAM,
-                        in: 'query',
-                        description: 'Publication year(s). Repeat parameter: ?year=2023&year=2024',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ],
-                        ],
-                        explode: true,
-                        allowReserved: false
-                    ),
+                    new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
+                    // Documentation of the scope parameter (validated by the QueryParameter below), next to only_accepted
+                    new Parameter(name: self::SCOPE_PARAM, in: 'query', description: 'Connected mode only (ignored in offline mode): `workspace` (default) the papers opened by the role of the user in the journal of the token; `public` the papers listed in offline mode (the published papers, or the accepted ones with `only_accepted`); `all` both, the public papers and those opened by the role.', schema: self::SCOPE_SCHEMA),
+                    new Parameter(name: 'only_accepted', in: 'query', description: 'If true, only accepted documents will be returned.', schema: QueryParameters::BOOLEAN),
+                    new Parameter(name: 'type[]', in: 'query', description: 'Paper type(s)', schema: QueryParameters::STRINGS),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Publication year(s)', schema: QueryParameters::INTEGERS),
                 ],
             ),
             normalizationContext: [
                 'groups' => ['read:Papers']
-            ]
+            ],
+            parameters: [
+                // Validates the scope parameter, documented with the other parameters of the operation
+                self::SCOPE_PARAM => new QueryParameter(schema: self::SCOPE_SCHEMA),
+            ],
         ),
     ],
     order: ['rvid' => 'DESC'],
@@ -161,8 +121,22 @@ class Paper implements UserOwnedInterface
     public const DATE_FILTER_PROPERTIES = ['submissionDate', 'publicationDate'];
     public const COLLECTION_NAME = '_api_/papers/_get_collection';
 
+    /**
+     * Scope of the papers listed to a connected user (GET /papers/?scope=): the papers opened by their
+     * role (default), the papers listed in offline mode (public), or both.
+     */
+    public const SCOPE_PARAM = 'scope';
+    public const SCOPE_WORKSPACE = 'workspace';
+    public const SCOPE_PUBLIC = 'public';
+    public const SCOPE_ALL = 'all';
+    public const SCOPES = [self::SCOPE_WORKSPACE, self::SCOPE_PUBLIC, self::SCOPE_ALL];
+    private const SCOPE_SCHEMA = ['type' => 'string', 'enum' => self::SCOPES, 'default' => self::SCOPE_WORKSPACE];
+
     public const TABLE = 'PAPERS';
     public const URI_TEMPLATE = '/papers/';
+    // key prefix of a temporary reviewer (invited without account) among the reviewers, as in the gpl
+    public const TMP_REVIEWER_KEY_PREFIX = 'tmp_';
+    private const REVIEWERS_DESCRIPTION = 'Reviewers assigned to the paper: the history of the assignments of each reviewer, by uid; a temporary reviewer (invited without account, `tmpUser`) is under the key `tmp_<id>`, as its id comes from another table than the uid of the users';
     public const STATUS_SUBMITTED = 0;
     public const STATUS_OK_FOR_REVIEWING = 1; // reviewers have been assigned, but did not start their reports
     public const STATUS_BEING_REVIEWED = 2; // rating has begun (at least one reviewer has starter working on his rating report)
@@ -283,14 +257,17 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
+    #[ApiProperty(description: 'Unique identifier of the paper (document identifier)')]
     private ?int $docid = null;
 
 
     #[ORM\Column(name: 'PAPERID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true, options: ['unsigned' => true])]
     #[groups(self::PAPERS_GROUPS)]
+    #[ApiProperty(description: 'Identifier of the paper representing all its versions')]
     private ?int $paperid = null;
 
     #[ORM\Column(name: 'TYPE', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
+    #[ApiProperty(description: 'Type(s) of the paper')]
     private ?array $type = null;
 
     #[ORM\Column(name: 'DOI', type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: true)]
@@ -299,6 +276,7 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
+    #[ApiProperty(description: 'Digital Object Identifier (DOI) of the paper')]
     private ?string $doi = null;
 
 
@@ -336,6 +314,7 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
+    #[ApiProperty(description: 'Workflow status of the paper (see the STATUS_* constants)')]
     private int $status = 0;
 
 
@@ -361,7 +340,7 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         ]
     )]
-    #[ApiProperty(schema: OpenApiSchemas::OBJECT)]
+    #[ApiProperty(description: 'Document metadata of the paper (title, abstract, authors, files...)', schema: OpenApiSchemas::OBJECT)]
     private array $document;
     #[ORM\Column(name: 'CONCEPT_IDENTIFIER', type: \Doctrine\DBAL\Types\Types::STRING, length: 500, nullable: true, options: ['comment' => 'This identifier represents all versions'])]
     private ?string $conceptIdentifier = null;
@@ -397,7 +376,7 @@ class Paper implements UserOwnedInterface
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         ])]
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Submitting user of the paper')]
     private UserInterface $user;
 
 
@@ -408,6 +387,7 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
         ]
     )]
+    #[ApiProperty(description: 'Journal (Review) the paper belongs to')]
     private Review $review;
 
     #[ORM\ManyToOne(targetEntity: Section::class, inversedBy: 'papers')]
@@ -425,23 +405,30 @@ class Paper implements UserOwnedInterface
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
     ])]
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Editors assigned to the paper')]
     private array $editors = [];
 
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
     ])]
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", schema: [
+        // keyed by uid or "tmp_<id>": a JSON object, or an empty array without reviewers
+        'type' => ['object', 'array'],
+        'maxItems' => 0,
+        'additionalProperties' => ['type' => 'array', 'items' => ['type' => 'object']],
+        // an explicit schema replaces the description of the property
+        'description' => self::REVIEWERS_DESCRIPTION,
+    ], description: self::REVIEWERS_DESCRIPTION)]
     private array $reviewers = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
     ])]
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Copy editors assigned to the paper')]
     private array $copyEditors = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
     ])]
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Co-authors of the paper')]
     private array $coAuthors = [];
 
     #[groups(
@@ -449,7 +436,7 @@ class Paper implements UserOwnedInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
         ]
     )]
-    #[ApiProperty(security: "is_granted('papers_manage', object)")]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Conflicts of interest reported for the paper')]
     private ?Collection $conflicts = null;
 
     private bool $conflictsLoaded = false;
@@ -807,7 +794,8 @@ class Paper implements UserOwnedInterface
     }
 
     /**
-     * @return array
+     * @return array<int|string, list<UserAssignment>> the assignments of each reviewer, by uid, or by "tmp_<id>" for a
+     *                                                temporary reviewer (invited without account)
      */
     public function getReviewers(): array
     {
@@ -839,6 +827,17 @@ class Paper implements UserOwnedInterface
         /** @var UserAssignment $assignment */
 
         foreach ($this->assignments as $assignment) {
+
+            // a temporary user (reviewer invited without account) has an id of another table than the uid of the users:
+            // its assignments get a key of their own among the reviewers ("tmp_<id>", as Episciences_PapersManager::getReviewers()
+            // in the gpl), so that they are never taken for those of the user of the same uid (see PapersVoter::isAssigned())
+            if ($assignment->getTmpUser()) {
+                if ($assignment->getRoleid() === UserAssignment::ROLE_REVIEWER) {
+                    $reviewers[self::TMP_REVIEWER_KEY_PREFIX . $assignment->getUid()][] = $assignment;
+                }
+
+                continue;
+            }
 
             if ($assignment->getRoleid() === UserAssignment::ROLE_EDITOR) {
                 $editors[$assignment->getUid()][] = $assignment;

@@ -16,11 +16,16 @@ DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then ech
 OPENAPI_SPEC ?= var/openapi.json
 REDOCLY_CLI ?= @redocly/cli@2.66.0
 
+# Database tests (make test-db): a throwaway MySQL container, as in CI
+TEST_DB_IMAGE ?= mysql:8.4
+TEST_DB_CONTAINER ?= episciences-api_mysql_test
+TEST_DB_PORT ?= 33306
+
 # Default target
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install test test-unit test-coverage cov test-file validate clean phpstan rector local-rector check docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer docker-composer-update docker-validate openapi-lint setup-help deploy deploy-branch deploy-tag
+.PHONY: help check-prereqs install test test-unit test-coverage cov test-file test-db validate clean phpstan rector local-rector check docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer docker-composer-update docker-validate openapi-lint setup-help deploy deploy-branch deploy-tag
 
 # Help target - displays all available commands
 help:
@@ -36,6 +41,7 @@ help:
 	@echo "  $(BOLD)test-unit$(NC)         Run only unit tests"
 	@echo "  $(BOLD)test-coverage$(NC)     Run tests with coverage report"
 	@echo "  $(BOLD)test-file$(NC)         Run specific test file (usage: make test-file FILE=path/to/TestFile.php)"
+	@echo "  $(BOLD)test-db$(NC)           Run the database tests (tests/Functional) against a throwaway MySQL container"
 	@echo "  $(BOLD)phpstan$(NC)           Run PHPStan in container (usage: make phpstan LEVEL=1 TARGET=src DRY_RUN=1)"
 	@echo "  $(BOLD)rector$(NC)            Run Rector in container (usage: make rector TARGET=src DRY_RUN=1)"
 	@echo "  $(BOLD)local-rector$(NC)      Run Rector on host (usage: make local-rector TARGET=src DRY_RUN=1)"
@@ -196,6 +202,26 @@ test-file: check-prereqs
 	@echo "$(BOLD)Running test file: $(FILE)$(NC)"
 	php8.4 vendor/bin/phpunit $(FILE)
 	@echo "$(GREEN)✓ Test file completed$(NC)"
+
+# Run the tests that need a database (TEST_DATABASE_URL, skipped otherwise) against a throwaway MySQL container,
+# removed afterwards. Usage: make test-db [FILE=tests/Functional/...] [TEST_DB_PORT=33306]
+test-db: check-prereqs
+	@if [ ! -d "vendor" ]; then \
+		echo "$(RED)Dependencies not installed. Run: make install$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(BOLD)Starting $(TEST_DB_IMAGE) on 127.0.0.1:$(TEST_DB_PORT)...$(NC)"
+	@docker run -d --rm --name $(TEST_DB_CONTAINER) -p 127.0.0.1:$(TEST_DB_PORT):3306 \
+		-e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=episciences_test -e MYSQL_USER=episciences -e MYSQL_PASSWORD=episciences \
+		$(TEST_DB_IMAGE) >/dev/null
+	@for i in $$(seq 1 60); do \
+		docker exec $(TEST_DB_CONTAINER) mysql -h 127.0.0.1 -uepisciences -pepisciences -e 'SELECT 1' episciences_test >/dev/null 2>&1 && break; \
+		sleep 2; \
+	done
+	@TEST_DATABASE_URL=mysql://episciences:episciences@127.0.0.1:$(TEST_DB_PORT)/episciences_test php8.4 vendor/bin/phpunit $${FILE:-tests/Functional}; \
+		status=$$?; \
+		docker stop $(TEST_DB_CONTAINER) >/dev/null; \
+		exit $$status
 
 # Validate PHP syntax of test files
 validate:

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\OpenApi;
 
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
 use ApiPlatform\Metadata\Resource\Factory\ResourceNameCollectionFactoryInterface;
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
@@ -17,6 +18,8 @@ use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use ApiPlatform\OpenApi\OpenApi;
 use App\AppConstants;
 use App\EventSubscriber\TruncatedCollectionSubscriber;
+use App\Metadata\SingleValueQueryParametersResourceMetadataCollectionFactory;
+use App\Resource\Statistic;
 use Symfony\Component\HttpFoundation\Response;
 
 final readonly class OpenApiFactory implements OpenApiFactoryInterface
@@ -41,6 +44,23 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
 
     /** Parameters holding a journal code: an unknown journal returns a 404 */
     private const array JOURNAL_CODE_PARAMETERS = ['code', 'rvcode'];
+
+    /** Statistics paths: their filters are checked by their providers */
+    private const array STATISTICS_PATH_PREFIXES = ['/api/statistics', '/api/journals/stats/'];
+
+    /** Statistics paths rejecting an unknown parameter (StatResourceSubscriber) */
+    private const string JOURNAL_STATISTICS_PATH_PREFIX = '/api/journals/stats/';
+
+    /** Filters of the statistics checked by their providers: an invalid value returns a 422, as a QueryParameter */
+    private const array STATISTICS_CHECKED_FILTERS = [
+        AppConstants::YEAR_PARAM,
+        AppConstants::START_AFTER_DATE,
+        AppConstants::PAPER_STATUS,
+        'indicator',
+        'unit',
+        Statistic::GROUP_BY_PARAM,
+        Statistic::WITH_PAPERS_PARAM,
+    ];
 
     public const string NOTE_PAPERS_MANAGE = 'Confidential field: only returned to the users allowed to manage the paper (`papers_manage` voter).';
     public const string NOTE_ROLE_SECRETARY = 'Confidential field: only returned to the editorial secretaries (ROLE_SECRETARY).';
@@ -95,25 +115,33 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
 
         $openApi = $this->filterHiddenEndpoints($openApi);
 
+        $openApi = $this->documentQueryParameters($openApi);
+
         $openApi = $this->addMissingResponse(
             $openApi,
             Response::HTTP_UNAUTHORIZED,
-            'Authentication required, or invalid or expired JWT token',
+            new OpenApiResponse('Authentication required, or invalid or expired JWT token'),
             $this->requiresBearerAuth(...)
         );
 
         $openApi = $this->addMissingResponse(
             $openApi,
             Response::HTTP_NOT_FOUND,
-            'Journal not found',
+            $this->errorResponse('Journal not found'),
             $this->hasJournalCodeParameter(...)
         );
+
+        $openApi = $this->documentStatisticsNotFound($openApi);
+
+        $openApi = $this->addErrorBodies($openApi);
 
         $openApi = $this->addAuthSchemas($openApi);
 
         $openApi = $this->addAuthPaths($openApi);
 
         $openApi = $this->documentUnpaginatedCap($openApi);
+
+        $openApi = $this->documentQueryParametersValidation($openApi);
 
         $openApi = $this->documentOptionalAuthMode($openApi);
 
@@ -128,6 +156,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     /**
      * Documents, on the collections that can be requested without pagination, the cap
      * applied to ?pagination=false and the TRUNCATED_HEADER response header.
+     * They also return a 400 for an invalid pagination parameter.
      * The collections served by a Symfony controller are not capped: they are skipped.
      */
     private function documentUnpaginatedCap(OpenApi $openApi): OpenApi
@@ -160,7 +189,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             ), '. '));
 
             $paths->addPath($key, $path->withGet(
-                $get->withParameters($parameters)->withResponses($this->withTruncatedHeader($get->getResponses() ?? []))
+                $get->withParameters($parameters)->withResponses($this->withInvalidPaginationResponse($this->withTruncatedHeader($get->getResponses() ?? [])))
             ));
         }
 
@@ -185,6 +214,19 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         }
 
         return $uriTemplates;
+    }
+
+    /**
+     * An invalid pagination parameter returns a 400 (see InvalidPaginationSubscriber)
+     *
+     * @param array<int|string, mixed> $responses
+     * @return array<int|string, mixed>
+     */
+    private function withInvalidPaginationResponse(array $responses): array
+    {
+        $responses[Response::HTTP_BAD_REQUEST] ??= $this->errorResponse('Invalid pagination parameter (e.g. `page` lower than 1)');
+
+        return $responses;
     }
 
     /**
@@ -278,6 +320,8 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             '/api/volumes/{vid}' => 'Volume',
             '/api/sections' => 'Sections',
             '/api/sections/{sid}' => 'Section',
+            '/api/statistics/' => 'Statistics', // withPapers: administrators of the journal
+            '/api/journals/stats/dashboard/{code}' => 'Dashboard', // idem
         ];
     }
 
@@ -382,6 +426,181 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     }
 
     // -----------------------------------
+    // VALIDATION OF THE QUERY PARAMETERS
+    // -----------------------------------
+    /**
+     * Describes the 422 returned by API Platform when a query parameter it validates (QueryParameter with constraints)
+     * is invalid: the parameters taking a single value given as a list (added by
+     * SingleValueQueryParametersResourceMetadataCollectionFactory), the others declared with a schema (e.g. `scope`).
+     * Only the parameters documented by the operation are listed (without any, no 422 is documented). The collections
+     * declare the validation error, which API Platform documents with its schema; the items get the same response.
+     */
+    private function documentQueryParametersValidation(OpenApi $openApi): OpenApi
+    {
+        $paths = $openApi->getPaths();
+        $validatedParameters = $this->getValidatedQueryParameters();
+        $unprocessableEntity = $this->findUnprocessableEntityResponse($openApi);
+
+        foreach ($paths->getPaths() as $key => $path) {
+            foreach (self::HTTP_METHODS as $method) {
+                $operation = $path->{'get' . $method}();
+                $validated = $this->findValidatedQueryParameters((string)$key, strtoupper($method), $validatedParameters);
+                $isStatistics = array_filter(self::STATISTICS_PATH_PREFIXES, static fn(string $prefix): bool => str_starts_with((string)$key, $prefix)) !== [];
+
+                if (!$operation instanceof Operation || ($validated === null && !$isStatistics)) {
+                    continue;
+                }
+
+                $documented = [];
+
+                foreach ($operation->getParameters() ?? [] as $parameter) {
+                    if ($parameter->getIn() === 'query') {
+                        $documented[] = $parameter->getName();
+                    }
+                }
+
+                // the filters of the statistics checked by their providers (documented as `name` or `name[]`)
+                $checkedByProvider = $isStatistics ? array_intersect(self::STATISTICS_CHECKED_FILTERS, array_map(static fn(string $name): string => rtrim($name, '[]'), $documented)) : [];
+
+                $description = $this->unprocessableEntityDescription(
+                    array_values(array_intersect($validated['singleValue'] ?? [], $documented)),
+                    [...array_intersect($validated['others'] ?? [], $documented), ...$checkedByProvider],
+                    str_starts_with((string)$key, self::JOURNAL_STATISTICS_PATH_PREFIX)
+                );
+                $responses = $operation->getResponses() ?? [];
+                // without a 422 documented by API Platform, the error body of the other errors
+                $response = $responses[Response::HTTP_UNPROCESSABLE_ENTITY] ?? $unprocessableEntity ?? $this->errorResponse('');
+
+                if ($description === null) {
+                    // no documented parameter can be invalid: the declared validation error is not documented
+                    unset($responses[Response::HTTP_UNPROCESSABLE_ENTITY]);
+                } elseif ($response instanceof OpenApiResponse) {
+                    // after the success response (API Platform documents the declared errors first)
+                    unset($responses[Response::HTTP_UNPROCESSABLE_ENTITY]);
+                    $responses[Response::HTTP_UNPROCESSABLE_ENTITY] = $response->withDescription($description);
+                }
+
+                $path = $path->{'with' . $method}($operation->withResponses($responses));
+            }
+
+            $paths->addPath($key, $path);
+        }
+
+        return $openApi->withPaths($paths);
+    }
+
+    /**
+     * @param list<string> $singleValue
+     * @param list<string> $others
+     */
+    private function unprocessableEntityDescription(array $singleValue, array $others, bool $unknownParameters = false): ?string
+    {
+        $descriptions = [];
+
+        if ($others !== []) {
+            $descriptions[] = sprintf('Invalid %s (see the accepted values)', self::listOfNames($others));
+        }
+
+        if ($singleValue !== []) {
+            $descriptions[] = sprintf('%s given as a list (`name[]=…`): a single value is expected', self::listOfNames($singleValue));
+        }
+
+        // an unknown parameter is rejected even without a documented filter
+        if ($unknownParameters) {
+            $descriptions[] = 'an unknown parameter';
+        }
+
+        return $descriptions === [] ? null : ucfirst(implode(', or ', $descriptions));
+    }
+
+    /**
+     * @param list<string> $names
+     */
+    private static function listOfNames(array $names): string
+    {
+        $names = array_map(static fn(string $name): string => "`$name`", array_values(array_unique($names)));
+        $last = array_pop($names);
+
+        return $names === [] ? (string)$last : implode(', ', $names) . " or $last";
+    }
+
+    /**
+     * The 422 documented by API Platform on the operations declaring the validation error (ConstraintViolation schema)
+     */
+    private function findUnprocessableEntityResponse(OpenApi $openApi): ?OpenApiResponse
+    {
+        foreach ($openApi->getPaths()->getPaths() as $path) {
+            foreach (self::HTTP_METHODS as $method) {
+                $response = ($path->{'get' . $method}()?->getResponses() ?? [])[Response::HTTP_UNPROCESSABLE_ENTITY] ?? null;
+
+                if ($response instanceof OpenApiResponse && $response->getContent() !== null) {
+                    return $response;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<array{method: string, uriTemplate: string, singleValue: list<string>, others: list<string>}>
+     *         The query parameters validated by API Platform, by operation (URI template without the format)
+     */
+    private function getValidatedQueryParameters(): array
+    {
+        $validated = [];
+
+        foreach ($this->resourceNameCollectionFactory->create() as $resourceClass) {
+            foreach ($this->resourceMetadataCollectionFactory->create($resourceClass) as $resource) {
+                foreach ($resource->getOperations() ?? [] as $operation) {
+                    if ($operation->getUriTemplate() === null) {
+                        continue;
+                    }
+
+                    $parameters = ['singleValue' => [], 'others' => []];
+
+                    foreach ($operation->getParameters() ?? [] as $parameter) {
+                        if ($parameter instanceof QueryParameter && $parameter->getConstraints()) {
+                            $kind = ($parameter->getExtraProperties()[SingleValueQueryParametersResourceMetadataCollectionFactory::SINGLE_VALUE] ?? false) ? 'singleValue' : 'others';
+                            $parameters[$kind][] = (string)$parameter->getKey();
+                        }
+                    }
+
+                    $validated[] = [
+                        'method' => $operation->getMethod(),
+                        'uriTemplate' => str_replace('{._format}', '', $operation->getUriTemplate()),
+                    ] + $parameters;
+                }
+            }
+        }
+
+        return $validated;
+    }
+
+    /**
+     * The parameters validated on the operation of the path: the one with the longest URI template ending the path
+     *
+     * @param list<array{method: string, uriTemplate: string, singleValue: list<string>, others: list<string>}> $validatedParameters
+     * @return array{method: string, uriTemplate: string, singleValue: list<string>, others: list<string>}|null
+     */
+    private function findValidatedQueryParameters(string $path, string $method, array $validatedParameters): ?array
+    {
+        $found = null;
+
+        foreach ($validatedParameters as $validated) {
+            if (
+                $validated['method'] === $method &&
+                str_ends_with($path, $validated['uriTemplate']) &&
+                strlen($validated['uriTemplate']) > strlen($found['uriTemplate'] ?? '')
+            ) {
+                $found = $validated;
+            }
+        }
+
+        return $found;
+    }
+
+    // -----------------------------------
     // REMOVE HIDDEN ENDPOINTS
     // -----------------------------------
     private function filterHiddenEndpoints(OpenApi $openApi): OpenApi
@@ -400,12 +619,125 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     }
 
     // -----------------------------------
+    // QUERY PARAMETERS
+    // -----------------------------------
+    /**
+     * Documents each multi-value filter once, as `name[]` (the only syntax PHP reads as a list: a repeated
+     * `name=` keeps the last value): a `name` / `name[]` pair, as generated by the search filters, is merged
+     * at the place of `name`, with its description, and every `name[]` gets the same syntax note.
+     * The journal code stays a single value (a single journal is read from it). The parameters generated without
+     * description (search and date filters) get one.
+     */
+    private function documentQueryParameters(OpenApi $openApi): OpenApi
+    {
+        $paths = $openApi->getPaths();
+
+        foreach ($paths->getPaths() as $key => $path) {
+            foreach (self::HTTP_METHODS as $method) {
+                $operation = $path->{'get' . $method}();
+
+                if ($operation instanceof Operation && $operation->getParameters()) {
+                    $path = $path->{'with' . $method}($operation->withParameters($this->queryParameters($operation->getParameters())));
+                }
+            }
+
+            $paths->addPath($key, $path);
+        }
+
+        return $openApi->withPaths($paths);
+    }
+
+    /**
+     * @param Parameter[] $parameters
+     * @return Parameter[]
+     */
+    private function queryParameters(array $parameters): array
+    {
+        $parameters = array_map($this->withDefaultDescription(...), $parameters);
+        $queryParameters = [];
+
+        foreach ($parameters as $parameter) {
+            if ($parameter->getIn() === 'query') {
+                $queryParameters[$parameter->getName()] = $parameter;
+            }
+        }
+
+        $documented = [];
+
+        foreach ($parameters as $parameter) {
+            $name = $parameter->getName();
+            $singleName = str_ends_with($name, '[]') ? substr($name, 0, -2) : null;
+
+            if ($parameter->getIn() !== 'query') {
+                $documented[] = $parameter;
+            } elseif (in_array($name, self::JOURNAL_CODE_PARAMETERS, true)) {
+                $documented[] = $parameter;
+            } elseif ($singleName !== null) {
+                // documented at the place of its single value form, when there is one
+                if (!isset($queryParameters[$singleName]) && !in_array($singleName, self::JOURNAL_CODE_PARAMETERS, true)) {
+                    $documented[] = $this->multiValueParameter($parameter);
+                }
+            } elseif (isset($queryParameters["{$name}[]"])) {
+                $documented[] = $this->multiValueParameter($queryParameters["{$name}[]"], $parameter);
+            } else {
+                $documented[] = $parameter;
+            }
+        }
+
+        return $documented;
+    }
+
+    /**
+     * The query parameter with a description when it has none: journal code, search filter (QueryParameters::FILTER_DESCRIPTIONS)
+     * or date filter (`property[comparison]`)
+     */
+    private function withDefaultDescription(Parameter $parameter): Parameter
+    {
+        if ($parameter->getIn() !== 'query' || $parameter->getDescription() !== '') {
+            return $parameter;
+        }
+
+        $name = $parameter->getName();
+        $property = str_ends_with($name, '[]') ? substr($name, 0, -2) : $name;
+
+        if (in_array($property, self::JOURNAL_CODE_PARAMETERS, true)) {
+            return $parameter->withDescription(QueryParameters::JOURNAL_CODE_DESCRIPTION);
+        }
+
+        if (isset(QueryParameters::FILTER_DESCRIPTIONS[$property])) {
+            return $parameter->withDescription(QueryParameters::FILTER_DESCRIPTIONS[$property]);
+        }
+
+        if (preg_match('/^(.+)\[(\w+)]$/', $name, $matches) && isset(QueryParameters::DATE_COMPARISONS[$matches[2]])) {
+            return $parameter->withDescription(sprintf('Only the items whose `%s` is %s this date (YYYY-MM-DD)', $matches[1], QueryParameters::DATE_COMPARISONS[$matches[2]]));
+        }
+
+        return $parameter;
+    }
+
+    /**
+     * The `name[]` parameter, with the description and the item schema of its single value form when given
+     */
+    private function multiValueParameter(Parameter $multiple, ?Parameter $single = null): Parameter
+    {
+        $name = substr($multiple->getName(), 0, -2);
+        $description = rtrim($single?->getDescription() ?: $multiple->getDescription(), '. ');
+        $note = sprintf('One or several values: `%1$s[]=…&%1$s[]=…`, or `%1$s=…` for a single one.', $name);
+
+        return $multiple
+            ->withDescription(ltrim("$description. $note", '. '))
+            ->withSchema(['type' => 'array', 'items' => $multiple->getSchema()['items'] ?? $single?->getSchema() ?? []])
+            ->withStyle('form')
+            ->withExplode(true);
+    }
+
+    // -----------------------------------
     // RESPONSES MISSING FROM THE OPERATIONS
     // -----------------------------------
     /**
      * @param callable(Operation): bool $isConcerned
      */
-    private function addMissingResponse(OpenApi $openApi, int $status, string $description, callable $isConcerned): OpenApi
+    private function addMissingResponse(OpenApi $openApi, int $status, OpenApiResponse $response, callable $isConcerned): OpenApi
     {
         $paths = $openApi->getPaths();
 
@@ -423,7 +755,93 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
                     continue;
                 }
 
-                $responses[$status] = new OpenApiResponse($description);
+                $responses[$status] = $response;
+                $path = $path->{'with' . $method}($operation->withResponses($responses));
+            }
+
+            $paths->addPath($key, $path);
+        }
+
+        return $openApi->withPaths($paths);
+    }
+
+    /**
+     * On the statistics filtered by year or start date, the 404 is the one of the journal (an invalid filter returns a 422)
+     */
+    private function documentStatisticsNotFound(OpenApi $openApi): OpenApi
+    {
+        $paths = $openApi->getPaths();
+
+        foreach ($paths->getPaths() as $key => $path) {
+            $isStatistics = array_filter(self::STATISTICS_PATH_PREFIXES, static fn(string $prefix): bool => str_starts_with((string)$key, $prefix)) !== [];
+            $operation = $path->getGet();
+
+            if (!$isStatistics || !$operation instanceof Operation || !isset(($operation->getResponses() ?? [])[Response::HTTP_NOT_FOUND])) {
+                continue;
+            }
+
+            foreach ($operation->getParameters() ?? [] as $parameter) {
+                if (in_array(rtrim($parameter->getName(), '[]'), [AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE], true)) {
+                    $responses = $operation->getResponses();
+                    $responses[Response::HTTP_NOT_FOUND] = $responses[Response::HTTP_NOT_FOUND]->withDescription('Journal not found');
+                    $paths->addPath($key, $path->withGet($operation->withResponses($responses)));
+
+                    break;
+                }
+            }
+        }
+
+        return $openApi->withPaths($paths);
+    }
+
+    /**
+     * Error response with the body of the API Platform errors (as the responses it documents itself)
+     */
+    private function errorResponse(string $description): OpenApiResponse
+    {
+        return new OpenApiResponse($description, self::errorContent());
+    }
+
+    /**
+     * @return \ArrayObject<string, MediaType>
+     */
+    private static function errorContent(): \ArrayObject
+    {
+        return new \ArrayObject([
+            'application/ld+json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/Error.jsonld'])),
+            'application/problem+json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/Error'])),
+            'application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/Error'])),
+        ]);
+    }
+
+    /**
+     * The 4xx responses declared without body (e.g. in the #[ApiResource] attributes) get the body of the API Platform errors.
+     * The 401 are skipped: they are returned by the JWT authentication, with another body.
+     */
+    private function addErrorBodies(OpenApi $openApi): OpenApi
+    {
+        $paths = $openApi->getPaths();
+
+        foreach ($paths->getPaths() as $key => $path) {
+            foreach (self::HTTP_METHODS as $method) {
+                $operation = $path->{'get' . $method}();
+
+                if (!$operation instanceof Operation) {
+                    continue;
+                }
+
+                $responses = $operation->getResponses() ?? [];
+
+                foreach ($responses as $status => $response) {
+                    if ((int)$status < 400 || (int)$status >= 500 || (int)$status === Response::HTTP_UNAUTHORIZED) {
+                        continue;
+                    }
+
+                    if ($response instanceof OpenApiResponse && ($response->getContent() === null || count($response->getContent()) === 0)) {
+                        $responses[$status] = $response->withContent(self::errorContent());
+                    }
+                }
+
                 $path = $path->{'with' . $method}($operation->withResponses($responses));
             }
 
@@ -513,7 +931,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
                 tags: [self::OAF_TAGS['auth']],
                 responses: $this->tokenResponse('User token created', 'Invalid credentials'),
                 summary: 'Get a JWT token',
-                description: 'The lifetime of the token is 1 hour',
+                description: 'Exchanges the user\'s credentials (login and API password) for a JWT token and its refresh token. The `code` is optional: provide it to authenticate against a specific journal and get the corresponding roles. The lifetime of the token is 1 hour.',
                 requestBody: $this->requestBody('#/components/schemas/Credentials')
             )
         );
@@ -530,7 +948,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
                 tags: [self::OAF_TAGS['auth']],
                 responses: $this->tokenResponse('User token refreshed', 'Invalid or expired refresh token'),
                 summary: 'Refresh a JWT token',
-                description: 'The lifetime of the new token will be extended by one month',
+                description: 'Exchanges a still valid refresh token for a new JWT token and a new refresh token. The lifetime of the new token will be extended by one month.',
                 requestBody: $this->requestBody('#/components/schemas/RefreshTokenCredential')
             )
         );
@@ -582,17 +1000,22 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     {
         return new \ArrayObject([
             'type' => 'object',
+            'description' => 'Credentials of a user of the platform. The `code` of the journal is optional: it scopes the authentication to that journal and grants the corresponding roles.',
             'properties' => [
                 'username' => [
                     'type' => 'string',
+                    'description' => 'Login of the user',
                     'example' => 'Your login',
                 ],
                 'password' => [
                     'type' => 'string',
+                    'format' => 'password',
+                    'description' => 'API password of the user (different from the password used on the website)',
                     'example' => 'Your API password',
                 ],
                 'code' => [
                     'type' => ['string', 'null'],
+                    'description' => 'Code of the journal to authenticate against (optional)',
                     'example' => "Journal's code",
                 ],
             ],
@@ -607,12 +1030,15 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     {
         return new \ArrayObject([
             'type' => 'object',
+            'description' => 'Tokens returned after a successful authentication. Use the `token` as a Bearer token in the `Authorization` header of the protected endpoints. The `refresh_token` allows renewing the token before it expires (see `/api/token/refresh`).',
             'properties' => [
                 'token' => [
                     'type' => 'string',
+                    'description' => 'JWT access token, valid for 1 hour',
                 ],
                 'refresh_token' => [
                     'type' => 'string',
+                    'description' => 'JWT refresh token, valid about one month',
                 ],
             ],
             'required' => ['token'],
@@ -626,9 +1052,11 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     {
         return new \ArrayObject([
             'type' => 'object',
+            'description' => 'Payload of the `/api/token/refresh` endpoint: the still valid refresh token obtained at login or at the previous refresh.',
             'properties' => [
                 'refresh_token' => [
                     'type' => 'string',
+                    'description' => 'The refresh token to exchange for a new pair of tokens',
                     'example' => 'd50de0498e38b6489d7....',
                 ],
             ],

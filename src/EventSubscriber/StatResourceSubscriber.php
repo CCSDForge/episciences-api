@@ -4,6 +4,8 @@
 namespace App\EventSubscriber;
 
 use ApiPlatform\Symfony\EventListener\EventPriorities as EventPrioritiesAlias;
+use ApiPlatform\Validator\Exception\ValidationException;
+use App\Exception\InvalidQueryParameter;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\AbstractStatResource;
 use App\Traits\CheckExistingResourceTrait;
@@ -26,6 +28,7 @@ final class StatResourceSubscriber implements EventSubscriberInterface
 
     /**
      * @param ViewEvent $event
+     * @throws ValidationException an unknown parameter
      * @throws ResourceNotFoundException
      * @throws Exception
      */
@@ -50,7 +53,11 @@ final class StatResourceSubscriber implements EventSubscriberInterface
         }
 
         if (!empty($arrayDiff['arrayDiff']['out'])) {
-            throw new ResourceNotFoundException(sprintf('%s does not exist: Parameter(s) %s not available. The available parameters are: %s ', $statResource, json_encode(array_values($arrayDiff['arrayDiff']['out']), JSON_THROW_ON_ERROR), json_encode($statResource->getAvailableFilters(), JSON_THROW_ON_ERROR)));
+            // an unknown parameter is a client error, as an invalid value (422)
+            throw InvalidQueryParameter::exception(
+                array_values($arrayDiff['arrayDiff']['out']),
+                sprintf('Not available. The available parameters are: %s.', json_encode($statResource->getAvailableFilters(), JSON_THROW_ON_ERROR))
+            );
         }
 
         if ($statResource->getValue() === null) {

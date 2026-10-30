@@ -13,6 +13,7 @@ use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\OpenApi\OpenApiFactory;
+use App\OpenApi\QueryParameters;
 use App\Repository\VolumeRepository;
 use App\State\VolumeStateProvider;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -31,19 +32,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Consult a particular volume',
+                description: 'Retrieve a single volume (with its titles, metadata and sorted papers) by replacing {vid} with the volume identifier. The volume is displayed only if the journal allows it.',
                 parameters: [
-                    new Parameter( // To check whether the journal allows empty volumes to be displayed
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal Code (ex. epijinfo)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ],
-                        explode: false,
-                    )
+                    new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING), // to check whether the journal allows empty volumes to be displayed
                 ],
 
             ),
@@ -62,73 +53,12 @@ use Symfony\Component\Serializer\Attribute\Groups;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Volumes list',
+                description: 'Retrieve the list of volumes of the journals (titles, year, number, type...), ordered by position. Can be filtered by journal code, year(s) and volume type(s).',
 
                 parameters: [
-                    new Parameter(
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal Code (ex. epijinfo)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ],
-                        explode: false,
-                    ),
-                    new Parameter(
-                        name: AppConstants::YEAR_PARAM,
-                        in: 'query',
-                        description: 'The Year of creation',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'integer',
-                        ]
-                    ),
-                    new Parameter(
-                        name: 'year[]',
-                        in: 'query',
-                        description: 'The Year of creation',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ]
-                        ],
-                        explode: true
-                    ),
-                    new Parameter(
-                        name: 'type',
-                        in: 'query',
-                        description: 'Volume type',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ],
-                        explode: false
-                    ),
-                    new Parameter(
-                        name: 'type[]',
-                        in: 'query',
-                        description: 'Volume types',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'string'
-                            ]
-                        ],
-                        explode: true
-                    ),
+                    new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of the volume', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: 'type[]', in: 'query', description: 'Volume type(s): special_issue, proceedings', schema: QueryParameters::STRINGS),
                 ],
 
             ),
@@ -156,6 +86,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(description: 'Identifier of the volume')]
     private int $vid;
 
     /**
@@ -178,6 +109,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
 
     )]
 
+    #[ApiProperty(description: 'Identifier of the journal (review) the volume belongs to')]
     private int $rvid;
 
     #[Groups(
@@ -188,6 +120,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
 
     )]
     #[ORM\Column(name: 'vol_year', type: \Doctrine\DBAL\Types\Types::STRING, length: 9, nullable: true)]
+    #[ApiProperty(description: 'Year of the volume (e.g. "2023")')]
     private ?string $vol_year = null;
 
     #[ORM\Column(name: 'vol_num', type:\Doctrine\DBAL\Types\Types::STRING, length: 6, nullable: true)]
@@ -198,6 +131,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(description: 'Number of the volume (e.g. "1")')]
     private ?string $vol_num = null;
 
     #[Groups(
@@ -209,6 +143,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
     )]
 
     #[ApiProperty(
+        description: 'Type of the volume (special issue or conference proceedings)',
         schema: [
             'type' => ['array', 'null'],
             'items' => ['type' => 'string', 'enum' => ['special_issue', 'proceedings']],
@@ -225,6 +160,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
         ]
     )]
+    #[ApiProperty(description: 'Position of the volume in the journal (ordering)')]
     private int $position;
 
 
@@ -236,6 +172,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
+    #[ApiProperty(description: 'Bibliographical reference of the volume')]
     private string $bibReference;
 
 
@@ -247,7 +184,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
+    #[ApiProperty(description: 'Titles of the volume translated by language code', schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $titles = null;
     #[ORM\Column(name: 'descriptions', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[Groups(
@@ -257,7 +194,7 @@ class Volume extends AbstractVolumeSection implements EntityIdentifierInterface
         ]
 
     )]
-    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
+    #[ApiProperty(description: 'Descriptions of the volume translated by language code', schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $descriptions = null;
 
     #[ORM\OneToMany(mappedBy: 'volume', targetEntity: Paper::class)]

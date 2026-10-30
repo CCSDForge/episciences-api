@@ -13,6 +13,7 @@ use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use App\AppConstants;
 use App\Controller\BoardsController;
 use App\Controller\FeedController;
+use App\Resource\BoardMember;
 use App\Resource\DashboardOutput;
 use App\Resource\SubmissionAcceptanceDelayOutput;
 use App\Resource\SubmissionOutput;
@@ -28,6 +29,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use App\Repository\ReviewRepository;
 use App\OpenApi\OpenApiFactory;
+use App\Resource\Statistic;
 use App\Controller\IndexingDatabaseController;
 use App\Entity\IndexingDatabase;
 
@@ -56,8 +58,8 @@ use App\Entity\IndexingDatabase;
     // The html format renders Swagger UI, which is not supported by operations served by a custom controller
     formats: ['jsonld', 'json', 'xml'],
     controller: BoardsController::class,
-    // The controller returns the board members as users
-    output: User::class
+    // The controller returns a public view of the board members
+    output: BoardMember::class
 
 )]
 #[ApiResource(
@@ -158,12 +160,15 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Dashboard",
-                description: "",
+                description: 'Dashboard of a journal: submissions, decisions, rates, delays and users (by year with `withDetails`). Follows the setting `displayStatistics` of the journal: hidden by default, public, or reserved for the editorial secretaries of the journal (JWT).',
+                responses: [
+                    '403' => new OpenApiResponse(description: 'Statistics of the journal hidden, or reserved for its editorial secretaries (`displayStatistics` setting)'),
+                ],
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: self::DASHBOARD_YEAR_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -174,7 +179,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
+                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (422)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -190,6 +195,17 @@ use App\Entity\IndexingDatabase;
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
+                        schema: [
+                            'type' => 'boolean',
+                        ],
+                    ),
+                    new Parameter(
+                        name: Statistic::WITH_PAPERS_PARAM,
+                        in: 'query',
+                        description: self::DASHBOARD_WITH_PAPERS_DESCRIPTION,
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
                         schema: [
                             'type' => 'boolean',
                         ],
@@ -213,12 +229,12 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Total number of submissions",
-                description: "",
+                description: "Total number of submissions of the journal, optionally by year and with details.",
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'Year of submission of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -229,7 +245,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
+                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (422)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -273,7 +289,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'Year of acceptance of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -284,7 +300,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
+                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (422)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -328,7 +344,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
                         in: 'query',
-                        description: 'The Year of submission',
+                        description: 'Year of publication of the articles',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,
@@ -339,7 +355,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
+                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (422)',
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -443,6 +459,8 @@ class Review
     public const STATUS_DISABLED = 0;
     public const STATUS_ENABLED = 1;
     public const URI_TEMPLATE = '/journals/';
+    public const DASHBOARD_WITH_PAPERS_DESCRIPTION = 'Adds `papers` to the value, the papers counted by each figure (one DOCID by paper, its latest version; the delays: the papers of the average and median delays), computed with the same queries as the figures. For the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number by figure is in `hiddenPapers`';
+    public const DASHBOARD_YEAR_DESCRIPTION = 'Year of: submission for `nbSubmissions` and `nbImported`; decision (publication, acceptance, refusal) for `nbPublished`, `nbImportedPublished`, `nbAccepted`, `nbAcceptedNotYetPublished`, `nbRefused` and `rates`; publication or acceptance for the delays; both submission and decision for `total*SubmittedSameYear`. The users are not counted by year';
 
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
@@ -454,7 +472,7 @@ class Review
             'read:Reviews', 'read:Review'
         ]
     )]
-    #[ApiProperty(identifier: false)]
+    #[ApiProperty(identifier: false, description: 'Identifier of the journal')]
     private int $rvid;
 
 
@@ -466,35 +484,36 @@ class Review
             'read:Reviews', 'read:Review', 'read:Browse:Authors'
         ]
     )]
-    #[ApiProperty(identifier: true)]
+    #[ApiProperty(identifier: true, description: 'Code of the journal (ex. epijinfo)')]
     private string $code;
 
 
     #[ORM\Column(name: 'NAME', type: \Doctrine\DBAL\Types\Types::STRING, length: 2000, nullable: false)]
     #[Groups(['read:Reviews', 'read:Review'])]
+    #[ApiProperty(description: 'Name of the journal')]
     private string $name;
 
     #[ORM\Column(name: 'SUBTITLE', type: \Doctrine\DBAL\Types\Types::STRING, length: 255, nullable: true)]
     #[Groups(['read:Reviews', 'read:Review'])]
-    #[ApiProperty(description: 'Le sous-titre du journal', readable: true, writable: true)]
+    #[ApiProperty(description: 'Subtitle of the journal', readable: true, writable: true)]
     private ?string $subtitle = null;
 
     #[ORM\Column(name: 'STATUS', type: \Doctrine\DBAL\Types\Types::SMALLINT, nullable: false, options: ['unsigned' => true])]
     #[Groups(['read:Reviews'])]
-    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")] // Property viewable and writable only by users with ROLE_ADMIN
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')", description: 'Status of the journal (enabled/disabled)')] // Property viewable and writable only by users with ROLE_ADMIN
     private int $status;
 
 
     #[ORM\Column(name: 'CREATION', type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: false)]
     #[Groups(['read:Reviews'])]
-    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')", description: 'Date the journal was created on the platform')]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private DateTimeInterface $creation;
 
 
     #[ORM\Column(name: 'PIWIKID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[Groups(['read:Reviews'])]
-    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')", description: 'Piwik (Matomo) analytics identifier of the journal')]
     private int $piwikid;
 
 
@@ -502,13 +521,6 @@ class Review
     private Collection $papers;
 
     #[ORM\OneToMany(mappedBy: 'review', targetEntity: ReviewSetting::class, fetch: "EAGER")]
-    #[Groups(
-        [
-            'read:Review',
-            'read:Reviews'
-        ]
-
-    )]
     private Collection $settings;
 
     #[ORM\ManyToMany(targetEntity: IndexingDatabase::class, mappedBy: 'reviews')]

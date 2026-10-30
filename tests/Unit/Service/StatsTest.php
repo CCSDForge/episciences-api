@@ -17,8 +17,6 @@ use App\Resource\SubmissionOutput;
 use App\Resource\UsersStatsOutput;
 use App\Service\MetadataSources;
 use App\Service\Stats;
-use Doctrine\DBAL\Result;
-use Doctrine\DBAL\Statement;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
@@ -114,82 +112,123 @@ class StatsTest extends TestCase
         $this->assertNull($this->stats->getJournal(['code' => 'unknown']));
     }
 
+    /**
+     * /journals/stats/{code}: the journal is looked up among the active journals only (strict mode),
+     * so that a disabled journal returns a 404, as an unknown one.
+     */
+    public function testGetJournalOnlyLooksUpTheActiveJournals(): void
+    {
+        $this->reviewRepo
+            ->expects($this->once())
+            ->method('getJournalByIdentifier')
+            ->with('disabled', true)
+            ->willReturn(null);
+
+        $this->assertNull($this->stats->getJournal(['code' => 'disabled']));
+    }
+
+    // -------------------------------------------------------------------------
+    // getDashboardPaperIds()
+    // -------------------------------------------------------------------------
+
+    /**
+     * withPapers: the papers of each figure of the dashboard, with the filters of the figures (year: submissionDate).
+     */
+    public function testDashboardPaperIdsAreComputedForEachFigure(): void
+    {
+        $filters = ['is' => ['rvid' => '8', 'submissionDate' => '2025']];
+
+        $this->papersRepo->method('getSubmissionPaperIds')->willReturnCallback(
+            static fn(array $f, ?string $flag = null, string $date = 'submissionDate'): array => match (true) {
+                $flag === null => [1, 2, 3],
+                $date === 'publicationDate' => [9],
+                default => [8, 9],
+            }
+        );
+        $this->papersRepo->expects($this->once())->method('getSubmissionsAwaitingDecisionPaperIds')->with(8, null, ['2025'])->willReturn([3]);
+        $this->paperLogRepo->method('getPaperIds')->willReturnCallback(static fn(string $figure, int $rvId, array $years): array => match ($figure) {
+            'published' => [1],
+            'accepted' => [1, 2],
+            'refused' => [4],
+            default => [2],
+        });
+        $this->paperLogRepo->method('getSubmissionDelayPaperIds')->willReturnCallback(
+            static fn(int $rvId, ?array $years, ?string $start, string $operation): array => $operation === 'median-submission-publication' ? [1] : [1, 2]
+        );
+
+        $this->assertSame([
+            'nbSubmissions' => [1, 2, 3],
+            'nbImported' => [8, 9],
+            'nbImportedPublished' => [9],
+            'nbPublished' => [1],
+            'nbAccepted' => [1, 2],
+            'nbRefused' => [4],
+            'nbAcceptedNotYetPublished' => [2],
+            'nbOtherStatus' => [3],
+            'submissionAcceptanceTime' => [1, 2],
+            'submissionPublicationTime' => [1],
+        ], $this->stats->getDashboardPaperIds($filters));
+    }
+
+    public function testDashboardPaperIdsWithoutImportedPublishedWithAStartDateOnly(): void
+    {
+        $this->papersRepo->method('getSubmissionPaperIds')->willReturn([]);
+        $this->papersRepo->method('getSubmissionsAwaitingDecisionPaperIds')->willReturn([]);
+        $this->paperLogRepo->method('getPaperIds')->willReturn([]);
+        $this->paperLogRepo->method('getSubmissionDelayPaperIds')->willReturn([]);
+
+        $papers = $this->stats->getDashboardPaperIds(['is' => ['rvid' => '8', 'startAfterDate' => '2025-01-01']]);
+
+        $this->assertArrayNotHasKey('nbImportedPublished', $papers); // as in getDashboard()
+    }
+
     // -------------------------------------------------------------------------
     // getNbPapersByStatus()
     // -------------------------------------------------------------------------
 
-    public function testGetNbPapersByStatusReturnsEmptyArrayWhenStmtIsNull(): void
+    public function testGetNbPapersByStatusReturnsEmptyArrayOnADatabaseError(): void
     {
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn(null);
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn(null);
 
         $this->assertSame([], $this->stats->getNbPapersByStatus());
     }
 
-    /**
-     * Regression: executeQuery() must be called only ONCE when $rvId is null.
-     * Before the fix the method called $stmt->executeQuery() twice.
-     */
-    public function testGetNbPapersByStatusWithNoRvIdCallsExecuteQueryOnce(): void
+    public function testGetNbPapersByStatusWithNoRvIdGivesTheRowsOfAllTheJournals(): void
     {
-        $dbResult = [
+        $this->paperLogRepo->expects($this->once())
+            ->method('getSubmittedSameYear')
+            ->with(Paper::STATUS_STRICTLY_ACCEPTED, null)
+            ->willReturn([
+                ['rvid' => 5, 'year' => 2022, 'total' => '10'],
+                ['rvid' => 8, 'year' => 2023, 'total' => '3'],
+            ]);
+
+        $this->assertSame([
             ['rvid' => 5, 'year' => 2022, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 10],
             ['rvid' => 8, 'year' => 2023, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 3],
-        ];
-
-        $dbalResult = $this->createMock(Result::class);
-        $dbalResult->method('fetchAllAssociative')->willReturn($dbResult);
-
-        $stmt = $this->createMock(Statement::class);
-        $stmt->expects($this->once()) // must NOT be called twice
-            ->method('executeQuery')
-            ->willReturn($dbalResult);
-
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn($stmt);
-
-        $result = $this->stats->getNbPapersByStatus(null);
-
-        $this->assertSame($dbResult, $result);
+        ], $this->stats->getNbPapersByStatus(null));
     }
 
-    public function testGetNbPapersByStatusFiltersAndReformatsWhenRvIdSet(): void
+    public function testGetNbPapersByStatusReformatsByYearWhenRvIdSet(): void
     {
-        $dbResult = [
-            ['rvid' => 8, 'year' => 2022, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 5],
-            ['rvid' => 8, 'year' => 2023, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 7],
-            ['rvid' => 99, 'year' => 2023, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 1],
-        ];
-
-        $dbalResult = $this->createMock(Result::class);
-        $dbalResult->method('fetchAllAssociative')->willReturn($dbResult);
-
-        $stmt = $this->createMock(Statement::class);
-        $stmt->method('executeQuery')->willReturn($dbalResult);
-
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn($stmt);
+        // the query only gives the rows of the journal
+        $this->paperLogRepo->expects($this->once())
+            ->method('getSubmittedSameYear')
+            ->with(Paper::STATUS_STRICTLY_ACCEPTED, 8)
+            ->willReturn([
+                ['rvid' => 8, 'year' => 2022, 'total' => 5],
+                ['rvid' => 8, 'year' => 2023, 'total' => 7],
+            ]);
 
         $result = $this->stats->getNbPapersByStatus(8);
 
-        $this->assertArrayHasKey(8, $result);
-        $this->assertArrayHasKey(2022, $result[8]);
-        $this->assertArrayHasKey(2023, $result[8]);
-        $this->assertArrayNotHasKey(99, $result);
         $this->assertSame(['acceptedSubmittedSameYear' => 5], $result[8][2022]);
         $this->assertSame(['acceptedSubmittedSameYear' => 7], $result[8][2023]);
     }
 
-    public function testGetNbPapersByStatusReturnsFilteredEmptyWhenRvIdNotInData(): void
+    public function testGetNbPapersByStatusReturnsFilteredEmptyWhenRvIdHasNoRow(): void
     {
-        $dbResult = [
-            ['rvid' => 99, 'year' => 2023, Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 1],
-        ];
-
-        $dbalResult = $this->createMock(Result::class);
-        $dbalResult->method('fetchAllAssociative')->willReturn($dbResult);
-
-        $stmt = $this->createMock(Statement::class);
-        $stmt->method('executeQuery')->willReturn($dbalResult);
-
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn($stmt);
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn([]);
 
         $result = $this->stats->getNbPapersByStatus(8);
 
@@ -365,7 +404,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayReturnsAcceptanceDelayOutputByDefault(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(['is' => []]);
 
@@ -375,7 +414,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayReturnsPublicationDelayOutputForPublishedStatus(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => []],
@@ -388,7 +427,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayDefaultUnitIsDay(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(['is' => []]);
 
@@ -397,7 +436,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayAcceptsMonthUnitFromFilter(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => [Stats::STATS_UNIT => 'month']]
@@ -408,7 +447,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayIgnoresInvalidUnitFromFilterAndKeepsParameterUnit(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         // Invalid filter unit → stays at parameter-level default ('day' → 'DAY')
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
@@ -420,7 +459,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayWithInvalidParameterUnitNormalizesToWeek(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         // Passing 'fortnight' as $unit parameter → normalised to 'WEEK'
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
@@ -435,7 +474,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayMedianMethodAppendedToName(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => []],
@@ -448,13 +487,14 @@ class StatsTest extends TestCase
 
     public function testGetDelayComputesAverageOverAllRows(): void
     {
+        // the delay of each article, of the same journal and year
         $rows = [
-            ['delay' => 10],
-            ['delay' => 20],
-            ['delay' => 30],
+            ['year' => 2022, 'rvid' => 5, 'delay' => 10],
+            ['year' => 2022, 'rvid' => 5, 'delay' => 20],
+            ['year' => 2022, 'rvid' => 5, 'delay' => 30],
         ];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(['is' => []]);
 
@@ -464,7 +504,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayReturnsNullValueWhenNoRows(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $this->assertNull($this->stats->getDelayBetweenSubmissionAndLatestStatus(['is' => []])->getValue()['value']);
     }
@@ -477,7 +517,7 @@ class StatsTest extends TestCase
             ['rvid' => 8, 'year' => 2022, 'delay' => 22.0],
         ];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => ['submissionDate' => 2022]]
@@ -487,6 +527,79 @@ class StatsTest extends TestCase
         $this->assertEquals(18, $result->getValue()['value']);
     }
 
+    public function testGetDelayWithYearFilterAsArrayAveragesOnlyMatchingYearRows(): void
+    {
+        $rows = [
+            ['rvid' => 5, 'year' => 2022, 'delay' => 14.0],
+            ['rvid' => 5, 'year' => 2023, 'delay' => 7.0],
+            ['rvid' => 8, 'year' => 2022, 'delay' => 22.0],
+        ];
+
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['submissionDate' => [2022]]]
+        );
+
+        // avg(14, 22) = 18 (rounded to 0 precision)
+        $this->assertEquals(18, $result->getValue()['value']);
+    }
+
+    public function testGetDelayWithMultipleYearFilterAsArrayAveragesAllRequestedYears(): void
+    {
+        $rows = [
+            ['rvid' => 5, 'year' => 2022, 'delay' => 14.0],
+            ['rvid' => 5, 'year' => 2023, 'delay' => 7.0],
+            ['rvid' => 8, 'year' => 2022, 'delay' => 22.0],
+            ['rvid' => 8, 'year' => 2023, 'delay' => 5.0],
+        ];
+
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['submissionDate' => [2022, 2023]]]
+        );
+
+        // avg(14, 7, 22, 5) = 12 (rounded to 0 precision)
+        $this->assertEquals(12, $result->getValue()['value']);
+    }
+
+    public function testGetDelayWithRvIdAndYearFilterAsArrayDoesNotCrashAndAverages(): void
+    {
+        $rows = [
+            ['rvid' => 5, 'year' => 2022, 'delay' => 14.0],
+            ['rvid' => 5, 'year' => 2023, 'delay' => 20.0],
+            ['rvid' => 8, 'year' => 2022, 'delay' => 99.0],
+        ];
+
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['submissionDate' => [2022], 'rvid' => 5]]
+        );
+
+        // only year 2022 for rvid 5 -> avg(14) = 14
+        $this->assertEquals(14, $result->getValue()['value']);
+    }
+
+    public function testGetDelayWithRvIdAndMultipleYearFilterAsArrayAveragesAcrossYear(): void
+    {
+        $rows = [
+            ['rvid' => 5, 'year' => 2022, 'delay' => 14.0],
+            ['rvid' => 5, 'year' => 2023, 'delay' => 20.0],
+            ['rvid' => 8, 'year' => 2022, 'delay' => 99.0],
+        ];
+
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['submissionDate' => [2022, 2023], 'rvid' => 5]]
+        );
+
+        // avg(14, 20) = 17 for rvid 5
+        $this->assertEquals(17, $result->getValue()['value']);
+    }
+
     public function testGetDelayWithRvIdFilterAveragesOnlyMatchingRvIdRows(): void
     {
         $rows = [
@@ -494,7 +607,7 @@ class StatsTest extends TestCase
             ['rvid' => 8, 'year' => 2022, 'delay' => 40.0],
         ];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => ['rvid' => 5]]
@@ -505,7 +618,7 @@ class StatsTest extends TestCase
 
     public function testGetDelayMethodCanBeOverriddenFromFilter(): void
     {
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn([]);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => [Stats::STATS_METHOD => 'median']]
@@ -514,11 +627,116 @@ class StatsTest extends TestCase
         $this->assertSame('median', $result->getValue()[Stats::STATS_METHOD]);
     }
 
+    public function testGetDelayMedianWithDetailsGivesTheMedianOfEachYear(): void
+    {
+        $rows = [
+            ['rvid' => 5, 'year' => 2023, 'delay' => '30'],
+            ['rvid' => 5, 'year' => 2022, 'delay' => '10'],
+            ['rvid' => 5, 'year' => 2022, 'delay' => '40'],
+            ['rvid' => 5, 'year' => 2022, 'delay' => '20'],
+            ['rvid' => 5, 'year' => 2023, 'delay' => '15'],
+        ];
+
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['rvid' => 5, AppConstants::WITH_DETAILS => true]],
+            Paper::STATUS_STRICTLY_ACCEPTED,
+            Stats::MEDIAN_METHOD
+        );
+
+        $details = $result->getDetails();
+
+        // the years in ascending order: median(10, 20, 40) = 20, median(15, 30) = 22.5, rounded to 23
+        $this->assertSame([2022, 2023], array_keys($details));
+        $this->assertEquals(20, $details[2022]['delay']['value']);
+        $this->assertEquals(23, $details[2023]['delay']['value']);
+        $this->assertSame('DAY', $details[2022]['delay'][Stats::STATS_UNIT]);
+        $this->assertSame(Stats::MEDIAN_METHOD, $details[2022]['delay'][Stats::STATS_METHOD]);
+        $this->assertSame(3, $details[2022]['delay']['count']);
+        $this->assertSame(2, $details[2023]['delay']['count']);
+    }
+
+    public function testGetDelayAverageWithDetailsGivesTheNumberOfArticlesOfEachYear(): void
+    {
+        // the delay of each article
+        $rows = [
+            ['year' => 2022, 'rvid' => 5, 'delay' => '10'],
+            ['year' => 2022, 'rvid' => 5, 'delay' => '18'],
+            ['year' => 2022, 'rvid' => 5, 'delay' => '26'],
+            ['year' => 2023, 'rvid' => 5, 'delay' => '7'],
+        ];
+
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
+
+        $details = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['rvid' => 5, AppConstants::WITH_DETAILS => true]]
+        )->getDetails();
+
+        $this->assertEquals(18, $details[2022]['delay']['value']);
+        $this->assertSame(3, $details[2022]['delay']['count']);
+        $this->assertSame(1, $details[2023]['delay']['count']);
+    }
+
+    public function testGetDelayFromTheArticleDelaysDoesNotQuery(): void
+    {
+        $this->paperLogRepo->expects($this->never())->method('getArticleDelays');
+
+        $articleDelays = [
+            ['year' => '2022', 'rvid' => '5', 'delay' => '10'],
+            ['year' => '2022', 'rvid' => '5', 'delay' => '15'],
+            ['year' => '2023', 'rvid' => '5', 'delay' => '40'],
+        ];
+        $filters = ['is' => ['rvid' => 5, AppConstants::WITH_DETAILS => true]];
+
+        $average = $this->stats->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, Stats::DEFAULT_METHOD, 'day', $articleDelays);
+        $median = $this->stats->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, Stats::MEDIAN_METHOD, 'day', $articleDelays);
+
+        // average of each year as the query: 12.5 rounded half away from zero, with the number of articles
+        $this->assertEquals(13, $average->getDetails()['2022']['delay']['value']);
+        $this->assertSame(2, $average->getDetails()['2022']['delay']['count']);
+        $this->assertEquals(40, $average->getDetails()['2023']['delay']['value']);
+        // global average: the average of the yearly averages, as with the query
+        $this->assertEquals(27, $average->getValue()['value']);
+        $this->assertEquals(15, $median->getValue()['value']);
+        $this->assertEquals(13, $median->getDetails()['2022']['delay']['value']);
+    }
+
+    public function testGetDelayFromTheGivenArticleDelaysGivesTheSameAverageAsFromTheQuery(): void
+    {
+        $articleDelays = [
+            ['year' => '2022', 'rvid' => '5', 'delay' => '10'],
+            ['year' => '2022', 'rvid' => '5', 'delay' => '15'],
+            ['year' => '2023', 'rvid' => '5', 'delay' => '40'],
+        ];
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($articleDelays);
+        $filters = ['is' => ['rvid' => 5, 'submissionDate' => [2022, 2023], AppConstants::WITH_DETAILS => true]];
+
+        $fromQuery = $this->stats->getDelayBetweenSubmissionAndLatestStatus($filters);
+        $fromArticles = $this->stats->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, Stats::DEFAULT_METHOD, 'day', $articleDelays);
+
+        $this->assertEquals($fromQuery->getValue(), $fromArticles->getValue());
+        $this->assertEquals($fromQuery->getDetails(), $fromArticles->getDetails());
+    }
+
+    public function testGetDelayMedianWithoutDetailsHasNoDetails(): void
+    {
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([['rvid' => 5, 'year' => 2022, 'delay' => 10]]);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
+            ['is' => ['rvid' => 5]],
+            Paper::STATUS_STRICTLY_ACCEPTED,
+            Stats::MEDIAN_METHOD
+        );
+
+        $this->assertSame([], $result->getDetails());
+    }
+
     public function testGetDelayWithDetailsAndNoYearNorRvIdSetsDetailsToRawResult(): void
     {
         $rows = [['rvid' => 5, 'year' => 2022, 'delay' => 10.0]];
 
-        $this->paperLogRepo->method('delayBetweenSubmissionAndLatestStatus')->willReturn($rows);
+        $this->paperLogRepo->method('getArticleDelays')->willReturn($rows);
 
         $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(
             ['is' => [AppConstants::WITH_DETAILS => true]]
@@ -541,11 +759,10 @@ class StatsTest extends TestCase
         $this->papersRepo->method('submissionsQuery')->willReturn($this->makeScalarQb(10));
 
         // Submission counters are fetched once for all the years (not once per year)
-        $this->papersRepo->expects($this->exactly(2))->method('countSubmissionsByYear')->willReturnCallback(
-            // without imported papers: 8 submissions; all papers: 10 submissions
-            static fn(array $filters): array => isset($filters['is']['flag']) ? [2023 => 8] : [2023 => 10]
-        );
+        $this->papersRepo->expects($this->once())->method('countSubmissionsByYear')->willReturn([2023 => 10]);
         $this->papersRepo->expects($this->once())->method('countSubmissionsByYearAndRepository')->willReturn([2023 => [1 => 7]]);
+        // awaiting an editorial decision, counted directly (not "submissions - (accepted + refused)" = 8 - 7 = 1)
+        $this->papersRepo->expects($this->once())->method('getSubmissionsAwaitingDecisionByYear')->with($rvId, null)->willReturn([2023 => 3]);
 
         // PAPER_LOG counters are fetched once for all the years (not once per year)
         $this->paperLogRepo->expects($this->once())->method('getAcceptedByYear')->with($rvId, [2023])->willReturn([2023 => 5]);
@@ -553,7 +770,7 @@ class StatsTest extends TestCase
         $this->paperLogRepo->expects($this->once())->method('getPublishedByYear')->willReturn([2023 => 4]);
         $this->paperLogRepo->expects($this->once())->method('getAllAcceptedNotYetPublishedByYear')->willReturn([2023 => 1]);
         $this->paperLogRepo->method('getAcceptanceRate')->willReturn(71.4);
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn(null); // Simple case for getNbPapersByStatus
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn([]); // Simple case for getNbPapersByStatus
 
         $this->stats->getSubmissionByYearStats($filters, $rvId, $details);
 
@@ -564,12 +781,49 @@ class StatsTest extends TestCase
         $this->assertEquals(5, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['accepted']);
         $this->assertEquals(2, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['refused']);
         $this->assertEquals(1, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['acceptedNotYetPublished']);
-        $this->assertEquals(1, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['others']);
+        $this->assertEquals(3, $details[Stats::SUBMISSIONS_BY_YEAR][2023]['others']);
         
         $this->assertArrayHasKey('submissionsByRepo', $details);
         $this->assertArrayHasKey(2023, $details['submissionsByRepo']);
         $this->assertArrayHasKey('HAL', $details['submissionsByRepo'][2023]);
         $this->assertEquals(7, $details['submissionsByRepo'][2023]['HAL']['submissions']);
+    }
+
+    /**
+     * Regression: when no journal is selected ($rvId = null), the "accepted submitted same year"
+     * figure must be summed per year across all journals' raw rows, not keyed/indexed by $rvId
+     * (the previous null-$rvId path indexed by $rvId, producing no per-year values).
+     */
+    public function testGetSubmissionByYearStatsSumsSubmittedSameYearPerYearWithNoRvId(): void
+    {
+        $filters = ['is' => []];
+        $rvId = null;
+        $details = [];
+
+        $this->papersRepo->method('getSubmissionYearRange')->willReturn([2022]);
+        $this->papersRepo->method('getAvailableRepositories')->willReturn([]);
+        $this->papersRepo->method('submissionsQuery')->willReturn($this->makeScalarQb(10));
+        $this->papersRepo->method('countSubmissionsByYear')->willReturn([2022 => 10]);
+        $this->papersRepo->method('countSubmissionsByYearAndRepository')->willReturn([2022 => []]);
+        $this->papersRepo->method('getSubmissionsAwaitingDecisionByYear')->willReturn([2022 => 0]);
+        $this->paperLogRepo->method('getAcceptedByYear')->willReturn([2022 => 3]);
+        $this->paperLogRepo->method('getRefusedByYear')->willReturn([2022 => 1]);
+        $this->paperLogRepo->method('getPublishedByYear')->willReturn([2022 => 1]);
+        $this->paperLogRepo->method('getAllAcceptedNotYetPublishedByYear')->willReturn([2022 => 0]);
+        $this->paperLogRepo->method('getAcceptanceRate')->willReturn(40.0);
+
+        // Raw rows across multiple journals for the same year: must be summed per year.
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn([
+            ['rvid' => 5, 'year' => 2022, 'total' => 4],
+            ['rvid' => 8, 'year' => 2022, 'total' => 6],
+        ]);
+
+        $this->stats->getSubmissionByYearStats($filters, $rvId, $details);
+
+        $this->assertSame(
+            10,
+            $details[Stats::SUBMISSIONS_BY_YEAR][2022][Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR]
+        );
     }
 
     public function testGetSubmissionByYearStatsCountsImportedSubmissionsByYear(): void
@@ -583,7 +837,7 @@ class StatsTest extends TestCase
         $this->papersRepo->method('getSubmissionsWithoutImported')->willReturn(8);
         // Fetched once for all the years
         $this->papersRepo->expects($this->once())->method('getImportedByYear')->with($filters)->willReturn([2022 => 3]);
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn(null);
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn([]);
 
         $this->stats->getSubmissionByYearStats($filters, 8, $details);
 
@@ -607,7 +861,7 @@ class StatsTest extends TestCase
             ->method('getImportedByYear')
             ->with(['is' => ['rvid' => 8]]) // submissionDate removed by the service
             ->willReturn([2022 => 3, 2023 => 5]);
-        $this->paperLogRepo->method('totalNbPapersByStatusStatement')->willReturn(null);
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn([]);
 
         $this->stats->getSubmissionByYearStats($filters, 8, $details);
 

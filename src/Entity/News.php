@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\OpenApi\OpenApiSchemas;
+use App\OpenApi\QueryParameters;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
@@ -29,36 +30,9 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
             openapi: new OpenApiOperation(
                 summary: 'List of News',
-                description: 'Retrieving a list of News sorted in descending order',
+                description: 'Retrieve a list of news published by the journals, sorted in descending order of creation (most recent first). Can be filtered by the year of creation.',
                 parameters: [
-                    new Parameter(
-                        name: AppConstants::YEAR_PARAM,
-                        in: 'query',
-                        description: 'The Year of creation',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'integer',
-                        ],explode: false, allowReserved: false
-                    ),
-                    new Parameter(
-                        name: 'year[]',
-                        in: 'query',
-                        description: 'The Year of creation',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-
-                    ),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of creation', schema: QueryParameters::INTEGERS),
                 ]
             ),
             order: ['date_creation' => AppConstants::ORDER_DESC],
@@ -79,7 +53,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
             uriTemplate: '/news/{id}',
             openapi: new OpenApiOperation(
                 summary: 'Single News',
-                description: 'Retrieve a single News via a GET request by replacing {id} with News identifier',
+                description: 'Retrieve a single news item by replacing {id} with the news identifier',
             ),
             normalizationContext: [
                 'groups' => ['read:News']
@@ -115,6 +89,8 @@ class News
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
+    // Public: no IRI, it would expose the account identifier
+    #[ApiProperty(genId: false, description: 'User who created the news (embedded user information, not an IRI to avoid exposing the account identifier)')]
     private ?User $creator = null;
 
     #[ORM\Column(nullable: true)]
@@ -123,6 +99,7 @@ class News
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
+    #[ApiProperty(description: 'Code of the journal the news belongs to (e.g. "epijinfo")')]
     private ?string $rvcode = null;
 
     #[ORM\Column(name: 'uid', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
@@ -132,39 +109,42 @@ class News
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
-    #[ApiProperty(schema: OpenApiSchemas::TRANSLATED_TEXT)]
+    #[ApiProperty(description: 'News title translated by language code', schema: OpenApiSchemas::TRANSLATED_TEXT)]
     private array $title = [];
 
     #[ORM\Column(name: 'content', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
-    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
+    #[ApiProperty(description: 'Full news content (HTML), translated by language code', schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $content = null;
 
     #[ORM\Column(nullable: true)]
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
-    #[ApiProperty(schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
+    #[ApiProperty(description: 'External link associated with the news, translated by language code', schema: OpenApiSchemas::NULLABLE_TRANSLATED_TEXT)]
     private ?array $link = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
+    #[ApiProperty(description: 'Date the news was created', openapiContext: ['example' => '2024-01-15T10:30:00+00:00'])]
     private ?\DateTimeInterface $date_creation = null;
 
     #[ORM\Column(name: 'date_updated', type: Types::DATETIME_MUTABLE)]
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
+    #[ApiProperty(description: 'Date the news was last updated', openapiContext: ['example' => '2024-01-15T10:30:00+00:00'])]
     private ?\DateTimeInterface $date_updated = null;
 
     #[ORM\Column]
     #[groups(
         ['read:News']
     )]
+    #[ApiProperty(description: 'Audience of the news: index 0 indicates its status, e.g. ["public"]', schema: ['type' => 'array', 'maxItems' => 1, 'items' => ['type' => 'string'], 'example' => ['public']])]
     private array $visibility = [];
 
     /**

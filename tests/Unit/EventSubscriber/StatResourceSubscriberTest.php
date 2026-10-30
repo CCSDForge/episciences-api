@@ -2,6 +2,7 @@
 
 namespace App\Tests\Unit\EventSubscriber;
 
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\AppConstants;
 use App\EventSubscriber\StatResourceSubscriber;
 use App\Exception\ResourceNotFoundException;
@@ -107,9 +108,9 @@ class StatResourceSubscriberTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    // ------------------------------------------------------------------ unknown filter parameter → ResourceNotFoundException
+    // ------------------------------------------------------------------ unknown filter parameter → ValidationException (422)
 
-    public function testUnknownFilterParameterThrowsResourceNotFoundException(): void
+    public function testUnknownFilterParameterThrowsValidationException(): void
     {
         $resource = $this->makeStatResource(
             ['year'],
@@ -118,7 +119,7 @@ class StatResourceSubscriberTest extends TestCase
         );
         $event = $this->makeEvent($resource);
 
-        $this->expectException(ResourceNotFoundException::class);
+        $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('unknown_param');
 
         $this->subscriber->checkStatResourceAvailability($event);

@@ -6,12 +6,11 @@ namespace App\Repository;
 use App\AppConstants;
 use App\Entity\PaperLog;
 use App\Entity\Paper;
+use App\Entity\Review;
 use App\Service\Stats;
 use App\Traits\QueryTrait;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\DBAL\Exception;
-use Doctrine\DBAL\Statement;
 use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\NoResultException;
 use Doctrine\ORM\Query\Expr\Join;
@@ -30,11 +29,20 @@ use Psr\Log\LogLevel;
  */
 class PaperLogRepository extends ServiceEntityRepository
 {
+    /** Statuses of an accepted article in its history (see acceptedQuery) */
+    public const array ACCEPTED_STATUSES = [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED];
+    /** Figures whose papers can be listed (see getPaperIds()) */
+    public const array PAPER_IDS_FIGURES = ['accepted' => 'accepted', 'refused' => 'refused', 'published' => 'published', 'accepted-not-yet-published' => 'accepted-not-yet-published'];
+    /** Status of a refused article in its history (see refusedQuery) */
+    public const int REFUSED_STATUS = Paper::STATUS_REFUSED;
+
     use QueryTrait;
     use ToolsTrait;
 
     public const DELAY = 'delay';
     public const DEFAULT_UNIT = 'DAY';
+    /** Units of the delays (TIMESTAMPDIFF) */
+    public const array DELAY_UNITS = ['SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR'];
 
     public const AVAILABLE_FILTERS = [AppConstants::WITH_DETAILS, AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE];
 
@@ -44,200 +52,178 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
     /**
-     * Average number of days (or months) between submission and acceptance (or publication), by year and by journal
-     * @param string $unit
+     * Delay of each article between its first submission and its latest acceptance (or publication), imported articles excluded:
+     * rows [year (of the latest acceptance/publication), rvid, delay, PAPERID, min_date, max_date].
+     * The average and the median delays are computed from these rows (see Stats).
+     * @param string $unit one of DELAY_UNITS (an unsupported unit falls back to WEEK)
      * @param int $latestStatus
-     * @param string|null $startDate
-     * @param string|int|array|null $years
-     * @param string $method
-     * @param int|null $rvId
-     * @return array|null
+     * @param string|null $startDate the articles submitted before this date (Y-m-d) are left out; ignored if invalid
+     * @param string|int|array<int|string>|null $years years of the latest acceptance (or publication); an invalid year gives no result
+     * @param int|null $rvId without journal, the active journals
+     * @return list<array<string, mixed>>|null null on a database error
      */
-
-    public function delayBetweenSubmissionAndLatestStatus(string           $unit = self::DEFAULT_UNIT,
-                                                          int              $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED,
-                                                          ?string           $startDate = null,
-                                                          string|int|array|null $years = null,
-                                                          string           $method = Stats::DEFAULT_METHOD,
-                                                          ?int              $rvId = null
-    ): ?array
+    public function getArticleDelays(string $unit = self::DEFAULT_UNIT, int $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED, ?string $startDate = null, string|int|array|null $years = null, ?int $rvId = null): ?array
     {
-        $result = null;
-        try {
-            $conn = $this->getEntityManager()->getConnection();
-            $stmt = $conn->prepare($this->query($unit, $latestStatus, $startDate, $years, $rvId, $method));
-            $result = $stmt->executeQuery()->fetchAllAssociative();
+        $unit = strtoupper($unit);
 
+        // the unit is a keyword of the query: only a supported unit is accepted
+        if (!in_array($unit, self::DELAY_UNITS, true)) {
+            $unit = 'WEEK';
+        }
+
+        $validYears = null;
+
+        if (!($years === null || in_array($years, ['', '0', 0, []], true))) {
+            $validYears = self::toValidYears($years);
+
+            if ($validYears === null) {
+                return [];
+            }
+        }
+
+        // the first submission and the latest acceptance (or publication) of each article, in a single reading of its history
+        $latestStatuses = $latestStatus === Paper::STATUS_STRICTLY_ACCEPTED ? self::ACCEPTED_STATUSES : [$latestStatus];
+        $firstSubmission = 'MIN(CASE WHEN history.status = :submitted THEN history.date ELSE NULL END)';
+        $latestDecision = 'MAX(CASE WHEN history.status IN (:latestStatuses) THEN history.date ELSE NULL END)';
+
+        $qb = $this->getEntityManager()->createQueryBuilder()
+            ->select(
+                sprintf('YEAR(%s) AS year', $latestDecision),
+                'history.rvid AS rvid',
+                sprintf('TIMESTAMPDIFF(%s, %s, %s) AS delay', $unit, $firstSubmission, $latestDecision),
+                'history.paperid AS PAPERID',
+                sprintf('%s AS min_date', $firstSubmission),
+                sprintf('%s AS max_date', $latestDecision)
+            )
+            ->from(PaperLog::class, 'history')
+            ->andWhere('history.status IN (:statuses)')
+            ->setParameter('statuses', array_merge([Paper::STATUS_SUBMITTED], $latestStatuses))
+            ->setParameter('submitted', Paper::STATUS_SUBMITTED)
+            ->setParameter('latestStatuses', $latestStatuses)
+            ->groupBy('history.paperid', 'history.rvid')
+            // a submission and an acceptance (or publication) in the history of the article
+            ->having(sprintf('%s IS NOT NULL AND %s IS NOT NULL', $firstSubmission, $latestDecision));
+
+        // an article is left out if one of its versions is imported (or submitted before the start date)
+        $excluded = 'excluded.flag = :imported';
+
+        if (self::isValidDate($startDate)) {
+            $excluded .= ' OR excluded.submissionDate < :startDate';
+            $qb->setParameter('startDate', $startDate);
+        }
+
+        $qb->andWhere(sprintf('NOT EXISTS (SELECT excluded.docid FROM %s excluded WHERE excluded.paperid = history.paperid AND (%s))', Paper::class, $excluded))
+            ->setParameter('imported', 'imported');
+
+        if ($rvId) {
+            $qb->andWhere('history.rvid = :rvid')->setParameter('rvid', $rvId);
+        } else {
+            // the active journals, checked by article (in HAVING: the history is read from the index on the statuses)
+            $qb->andHaving(sprintf('history.rvid IN (SELECT activeJournal.rvid FROM %s activeJournal WHERE activeJournal.status = :activeJournalStatus)', Review::class))
+                ->setParameter('activeJournalStatus', Review::STATUS_ENABLED);
+        }
+
+        if ($validYears !== null) {
+            $qb->andHaving(sprintf('YEAR(%s) IN (:years)', $latestDecision))->setParameter('years', $validYears);
+        }
+
+        try {
+            return $qb->getQuery()->getScalarResult();
         } catch (\Exception $e) {
             $this->logger->log(LogLevel::CRITICAL, $e->getMessage(), ['Exception' => $e]);
         }
 
-
-        return $result;
-
+        return null;
     }
 
-    private function query(
-        string           $unit = self::DEFAULT_UNIT,
-        int              $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED,
-        ?string           $startStatsDate = null,
-        string|int|array|null $years = null,
-        ?int              $rvId = null,
-        string           $method = Stats::DEFAULT_METHOD,
-    ): string
+    /**
+     * Number of papers whose status (in their history) was given the year of their first submission
+     * (the oldest submission date of their versions), imported versions excluded, by journal and year:
+     * rows [rvid, year, total], by journal then from the latest year.
+     * As before, without journal, all the journals are counted.
+     * @param int $status
+     * @param int|null $rvId
+     * @return list<array{rvid: int|string, year: int|string, total: int|string}>|null null on a database error
+     */
+    public function getSubmittedSameYear(int $status, ?int $rvId = null): ?array
     {
-
-        if ($method === Stats::MEDIAN_METHOD) {
-            return $this->timeDiffByArticleQuery($unit, $latestStatus, $startStatsDate, $rvId, $years);
-        }
-
-        $sql = "SELECT year, rvid, ROUND(AVG(t3.delay), 0) AS delay FROM (";
-
-        $sql .= $this->timeDiffByArticleQuery($unit, $latestStatus, $startStatsDate, $rvId, $years);
-
-        $sql .= ") t3 GROUP BY rvid, year";
-
-        if ($years || $rvId) {
-
-            $sql .= ' HAVING';
-
-
-            if ($rvId) {
-                $sql .= " rvid = $rvId";
-            }
-
-            if ($years) {
-
-                $sql .= !$rvId . '' . ' AND';
-
-                if (is_array($years)) {
-                    $years = implode(',', $years);
-                    $sql .= " year IN ($years)";
-                } else {
-                    $sql .= " year = $years";
-                }
-
-            }
-        }
-
-        return $sql;
-
-    }
-
-
-    private function timeDiffByArticleQuery(string           $unit = self::DEFAULT_UNIT,
-                                            int              $latestStatus = Paper::STATUS_STRICTLY_ACCEPTED,
-                                            ?string           $startStatsDate = null,
-                                            ?int              $rvId = null,
-                                            array|string|int|null $years = null,
-
-    ): string
-    {
-
-        $referenceStatus = Paper::STATUS_SUBMITTED;
-
-        $sql = "SELECT YEAR(t2.max_date) AS year, t1.RVID AS rvid, TIMESTAMPDIFF($unit, min_date, max_date) AS delay, t1.PAPERID, t1.min_date, t2.max_date FROM (";
-        $sql .= "SELECT pl1.PAPERID, MIN(pl1.DATE) AS min_date, pl1.RVID FROM PAPER_LOG pl1 WHERE pl1.status = $referenceStatus";
+        $qb = $this->getEntityManager()->createQueryBuilder()
+            ->select('version.rvid AS rvid', 'YEAR(history.date) AS year', 'COUNT(DISTINCT version.paperid) AS total')
+            ->from(PaperLog::class, 'history')
+            ->innerJoin(Paper::class, 'version', Join::WITH, 'version.docid = history.docid')
+            ->andWhere('history.status = :status')
+            ->andWhere('version.flag = :submitted')
+            // the year of the first submission of the paper
+            ->andWhere(sprintf('YEAR(history.date) = (SELECT YEAR(MIN(firstVersion.submissionDate)) FROM %s firstVersion WHERE firstVersion.paperid = version.paperid)', Paper::class))
+            ->setParameter('status', $status)
+            ->setParameter('submitted', 'submitted')
+            ->groupBy('version.rvid', 'year')
+            ->orderBy('version.rvid', 'ASC')
+            ->addOrderBy('year', 'DESC');
 
         if ($rvId) {
-            $sql .= " AND pl1.rvid = $rvId";
+            $qb->andWhere('version.rvid = :rvid')->setParameter('rvid', $rvId);
         }
-
-
-        $sql .= " GROUP BY pl1.PAPERID, pl1.RVID ) t1 INNER JOIN(";
-        // IN (...) rather than "x OR y": the OR took precedence over the following "AND pl2.rvid", so the journal filter was ignored for the first status
-        $latestStatuses = $latestStatus === Paper::STATUS_STRICTLY_ACCEPTED ? [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED] : [$latestStatus];
-        $sql .= " SELECT pl2.PAPERID, MAX(pl2.DATE) AS max_date, pl2.RVID FROM PAPER_LOG pl2 WHERE pl2.status IN (" . implode(', ', $latestStatuses) . ")";
-
-        if ($rvId) {
-            $sql .= " AND pl2.rvid = $rvId";
-        }
-
-        $sql .= " GROUP BY pl2.PAPERID, pl2.RVID ) t2 ON t1.PAPERID = t2.PAPERID AND t1.RVID = t2.RVID";
-        $sql .= " WHERE NOT EXISTS (SELECT 1 FROM PAPERS p WHERE p.PAPERID = t1.PAPERID AND ( p.FLAG = 'imported'";
-
-        if ($startStatsDate && self::isValidDate($startStatsDate)) { // the date is concatenated into the SQL: only a valid date is accepted
-            $sql .= " OR p.SUBMISSION_DATE < '$startStatsDate'";
-            // This not includes the entire day of $startStatsDate (until 23:59:59)
-            // $sql .= " OR p.SUBMISSION_DATE < DATE_ADD('$startStatsDate', INTERVAL 1 DAY)";
-        }
-
-        $sql .= " ))";
-
-        $this->whereYears($sql, $years, 't2.max_date');
-
-        return $sql;
-    }
-
-
-    public function getNbPapersByStatusSql(bool $isSubmittedSameYear = true, $as = 'totalNumberOfPapersAccepted', int $status = 4, bool $withoutImported = true): string
-    {
-        $papers = 'PAPERS';
-        $paperLog = 'PAPER_LOG';
-
-        $year = $isSubmittedSameYear ? "pl.DATE" : "$papers.SUBMISSION_DATE";
-
-
-        $sql = "SELECT $papers.RVID AS rvid, YEAR($year) AS `year`, COUNT(DISTINCT($papers.PAPERID)) AS $as";
-        $sql .= " FROM $paperLog pl JOIN $papers ON $papers.DOCID = pl.DOCID AND YEAR($papers.SUBMISSION_DATE) = YEAR(pl.DATE)";
-        $sql .= " WHERE pl.status IS NOT NULL AND pl.status = $status";
-
-        if ($withoutImported) {
-            $sql .= " AND $papers.FLAG = 'submitted'";
-        }
-
-        $sql .= "GROUP BY rvid, `year`";
-        $sql .= "ORDER BY rvid, `year` DESC";
-
-
-        return $sql;
-
-    }
-
-    public function totalNbPapersByStatusStatement(bool $isSubmittedSameYear = true, $as = Stats::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): ?Statement
-    {
-
-        $conn = $this->getEntityManager()->getConnection();
 
         try {
-            return $conn->prepare($this->getNbPapersByStatusSql($isSubmittedSameYear, $as, $status));
-
-        } catch (Exception $e) {
+            return $qb->getQuery()->getScalarResult();
+        } catch (\Exception $e) {
             $this->logger->critical($e->getMessage());
         }
 
         return null;
-
-
     }
-
 
     public function getSubmissionMedianTimeByStatusQuery(?int $rvId = null, ?array $years = null, ?string $startAfterDate = null, string $operationName = 'median-submission-publication', string $unit = 'week'): float|int|null
     {
-        $unit = strtoupper($unit);
+        return $this->getSubmissionMedianTimeDetails($rvId, $years, $startAfterDate, $operationName, $unit)['median'];
+    }
 
-        if (!in_array($unit, ['SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR'])) {
-            $unit = 'WEEK';
+    /**
+     * Median delay and number of articles it is computed from.
+     *
+     * @return array{median: float|int|null, count: int}
+     */
+    public function getSubmissionMedianTimeDetails(?int $rvId = null, ?array $years = null, ?string $startAfterDate = null, string $operationName = 'median-submission-publication', string $unit = 'week'): array
+    {
+        return $this->medianDetails(array_column($this->getSubmissionDelays($rvId, $years, $startAfterDate, $operationName, $unit), self::DELAY));
+    }
+
+    /**
+     * Median delay and number of articles of each journal (one query for all the journals);
+     * the journals without any article are not returned.
+     *
+     * @return array<int, array{median: float|int|null, count: int}> indexed by journal identifier (rvid)
+     */
+    public function getSubmissionMedianTimeDetailsByJournal(?array $years = null, ?string $startAfterDate = null, string $operationName = 'median-submission-publication', string $unit = 'week'): array
+    {
+        $delaysByJournal = [];
+
+        foreach ($this->getSubmissionDelays(null, $years, $startAfterDate, $operationName, $unit) as $row) {
+            $delaysByJournal[(int)$row['rvid']][] = $row[self::DELAY];
         }
 
+        return array_map($this->medianDetails(...), $delaysByJournal);
+    }
+
+    /**
+     * Delay of each article between its first submission and its latest publication (or acceptance), imported articles excluded.
+     */
+    private function getSubmissionDelays(?int $rvId, ?array $years, ?string $startAfterDate, string $operationName, string $unit): array
+    {
         $status = $operationName !== 'median-submission-publication' ? Paper::STATUS_STRICTLY_ACCEPTED : Paper::STATUS_PUBLISHED;
 
-        $result = $this->delayBetweenSubmissionAndLatestStatus($unit, $status, $startAfterDate, $years, 'median', $rvId) ?? [];
+        return $this->getArticleDelays($unit, $status, $startAfterDate, $years, $rvId) ?? [];
+    }
 
-        $delay = array_column($result, self::DELAY);
+    /**
+     * @return array{median: float|int|null, count: int}
+     */
+    private function medianDetails(array $delays): array
+    {
+        $validValues = array_filter($delays, is_numeric(...));
 
-        $validValues = array_filter($delay, is_numeric(...));
-
-        try {
-            $median = $this->getMedian($validValues);
-
-        } catch (\LengthException $e) {
-            $this->logger->critical($e->getMessage());
-            $median = null;
-        }
-
-        return $median;
-
+        return ['median' => $this->getMedian($validValues), 'count' => count($validValues)];
     }
 
     private function commonQuery(?int $rvId = null, array $years = [], ?string $startAfterDate = null, int|array $status = [Paper::STATUS_STRICTLY_ACCEPTED], bool $ignoreImportedArticles = false): QueryBuilder
@@ -270,11 +256,15 @@ class PaperLogRepository extends ServiceEntityRepository
         }
 
         if (self::isValidDate($startAfterDate)) {
-            $qb->andWhere('p.submissionDate > :date')->setParameter('date', $startAfterDate);
+            // first submission of the paper (the oldest submission date of its versions), as for the submissions
+            $qb->andWhere(sprintf('p.paperid IN (SELECT firstSubmission.paperid FROM %s firstSubmission GROUP BY firstSubmission.paperid HAVING MIN(firstSubmission.submissionDate) > :date)', Paper::class))
+                ->setParameter('date', $startAfterDate);
         }
 
         if ($rvId) {
             $qb->andWhere('p.rvid = :rvid')->setParameter('rvid', $rvId);
+        } else {
+            $this->andActiveJournals($qb, 'p.rvid');
         }
 
         return $qb;
@@ -301,6 +291,26 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
     /**
+     * Same count as getAccepted(), for each journal (one query for all the journals)
+     *
+     * @return array<int, int> indexed by journal identifier (rvid); the journals without accepted paper are not returned
+     */
+    public function getAcceptedByJournal(array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
+    {
+        return $this->processResultByJournal($this->acceptedQuery(null, $years, $startAfterDate, $ignoreImportedArticles), $years);
+    }
+
+    /**
+     * Same count as getRefused(), for each journal (one query for all the journals)
+     *
+     * @return array<int, int> indexed by journal identifier (rvid); the journals without refused paper are not returned
+     */
+    public function getRefusedByJournal(array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
+    {
+        return $this->processResultByJournal($this->refusedQuery(null, $years, $startAfterDate, $ignoreImportedArticles), $years);
+    }
+
+    /**
      * @return array<int, int> number of refused papers indexed by year (one query for all the years)
      */
     public function getRefusedByYear(?int $rvId, array $years, ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
@@ -310,12 +320,12 @@ class PaperLogRepository extends ServiceEntityRepository
 
     private function acceptedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
     {
-        return $this->commonQuery($rvId, $years, $startAfterDate, [Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_TMP_VERSION_ACCEPTED], $ignoreImportedArticles);
+        return $this->commonQuery($rvId, $years, $startAfterDate, self::ACCEPTED_STATUSES, $ignoreImportedArticles);
     }
 
     private function refusedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
     {
-        return $this->commonQuery($rvId, $years, $startAfterDate, Paper::STATUS_REFUSED, $ignoreImportedArticles);
+        return $this->commonQuery($rvId, $years, $startAfterDate, self::REFUSED_STATUS, $ignoreImportedArticles);
     }
 
     private function publishedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
@@ -325,16 +335,86 @@ class PaperLogRepository extends ServiceEntityRepository
 
     private function processResult(QueryBuilder $qb, array $years = []): int
     {
-        if ($years === []) {
-            try {
-                return (int)$qb->getQuery()->getSingleScalarResult();
-            } catch (NoResultException|NonUniqueResultException  $e) {
-                $this->logger->critical($e->getMessage());
-                return 0;
+        // each paper is counted once over all the years, as in getPaperIds(): a paper decided in several years is counted in each of them by processResultByYear()
+        if ($years !== []) {
+            $qb->select('COUNT(DISTINCT(pl.paperid)) AS total');
+            $this->andOrExp($qb, 'YEAR(pl.date)', $years);
+        }
+
+        try {
+            return (int)$qb->getQuery()->getSingleScalarResult();
+        } catch (NoResultException|NonUniqueResultException  $e) {
+            $this->logger->critical($e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Identifiers (PAPERID) of the papers counted by getAccepted(), getRefused(), getPublished() and getAllAcceptedNotYetPublished()
+     *
+     * @param string $figure one of the PAPER_IDS_FIGURES
+     * @return list<int> sorted; with several years, a paper decided in several of them is listed once
+     */
+    public function getPaperIds(string $figure, int $rvId, array $years = [], ?string $startAfterDate = null, bool $ignoreImportedArticles = true): array
+    {
+        $qb = match ($figure) {
+            self::PAPER_IDS_FIGURES['accepted'] => $this->acceptedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles),
+            self::PAPER_IDS_FIGURES['refused'] => $this->refusedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles),
+            self::PAPER_IDS_FIGURES['published'] => $this->publishedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles),
+            self::PAPER_IDS_FIGURES['accepted-not-yet-published'] => $this->acceptedNotYetPublishedQuery($rvId, $years, $startAfterDate, $ignoreImportedArticles),
+            default => throw new \InvalidArgumentException(sprintf('Unknown figure "%s"', $figure)),
+        };
+
+        $qb->select('DISTINCT pl.paperid AS paperid')->orderBy('paperid');
+
+        if ($years !== []) {
+            $this->andOrExp($qb, 'YEAR(pl.date)', $years);
+        }
+
+        return array_map('intval', array_column($qb->getQuery()->getScalarResult(), 'paperid'));
+    }
+
+    /**
+     * Identifiers (PAPERID) of the papers a median delay is computed from (see getSubmissionMedianTimeDetails())
+     *
+     * @return list<int> sorted
+     */
+    public function getSubmissionDelayPaperIds(int $rvId, ?array $years = null, ?string $startAfterDate = null, string $operationName = 'median-submission-publication', string $unit = 'week'): array
+    {
+        $ids = [];
+
+        foreach ($this->getSubmissionDelays($rvId, $years, $startAfterDate, $operationName, $unit) as $row) {
+            if (is_numeric($row[self::DELAY])) {
+                $ids[] = (int)$row['PAPERID'];
             }
         }
 
-        return array_sum($this->processResultByYear($qb, $years));
+        $ids = array_values(array_unique($ids));
+        sort($ids);
+
+        return $ids;
+    }
+
+    /**
+     * Totals of each journal, computed as processResult(): with years, each paper is counted once over all the years.
+     *
+     * @return array<int, int> indexed by journal identifier (rvid)
+     */
+    private function processResultByJournal(QueryBuilder $qb, array $years): array
+    {
+        $qb->select('COUNT(DISTINCT(pl.paperid)) AS total, p.rvid AS rvid')->groupBy('rvid');
+
+        if ($years !== []) {
+            $this->andOrExp($qb, 'YEAR(pl.date)', $years);
+        }
+
+        $totals = [];
+
+        foreach ($qb->getQuery()->getResult() as $values) {
+            $totals[(int)$values['rvid']] = (int)$values['total'];
+        }
+
+        return $totals;
     }
 
     /**
@@ -393,7 +473,7 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
     /**
-     * Accepted papers that have been neither published, refused nor abandoned.
+     * Accepted papers that have been neither published nor refused (an abandoned paper is only paused: it is still counted).
      * One NOT EXISTS per status: with an OR on the status, MySQL materializes the subquery with a full scan of PAPER_LOG.
      */
     private function acceptedNotYetPublishedQuery(?int $rvId, array $years, ?string $startAfterDate, bool $ignoreImportedArticles): QueryBuilder
@@ -403,7 +483,6 @@ class PaperLogRepository extends ServiceEntityRepository
         $excludedStatuses = [
             'pStatus' => Paper::STATUS_PUBLISHED, // accepted and published
             'rStatus' => Paper::STATUS_REFUSED, // accepted and refused
-            'aStatus' => Paper::STATUS_ABANDONED, // accepted and abandoned
         ];
 
         foreach ($excludedStatuses as $parameter => $status) {

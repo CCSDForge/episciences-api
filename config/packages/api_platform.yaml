@@ -22,7 +22,7 @@ api_platform:
     # The title of the API.
     title: 'Episciences API'
     # The description of the API.
-    description: 'Episciences overlay journals API'
+    description: 'REST API of Episciences, the editorial platform of overlay journals. It exposes the published papers and journals (browse, full-text search, exports), the societies statistics, and the authenticated services of the personal workspace (Myspace) via a JWT bearer token.'
     # The version of the API.
     version: "%git_application_version%"
 
@@ -50,19 +50,19 @@ api_platform:
         # The contact information for the exposed API.
         contact:
             # The identifying name of the contact person/organization.
-            name:
+            name: 'Episciences - CCSD'
             # The URL pointing to the contact information. MUST be in the format of a URL.
-            url:
+            url: 'https://www.episciences.org'
             # The email address of the contact person/organization. MUST be in the format of an email address.
-            email:
+            email: 'contact@episciences.org'
         # A URL to the Terms of Service for the API. MUST be in the format of a URL.
         termsOfService: https://www.episciences.org/terms-of-use/
         # The license information for the exposed API.
         license:
             # The license name used for the API.
-            name:
+            name: 'GNU General Public License v3.0'
             # URL to the license used for the API. MUST be in the format of a URL.
-            url:
+            url: https://github.com/CCSDForge/episciences-api/blob/main/LICENSE
 
     mapping:
         # The list of paths with files or directories where the bundle will look for additional resource files.

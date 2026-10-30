@@ -11,11 +11,14 @@ use App\Exception\ResourceNotFoundException;
 use App\Repository\ReviewRepository;
 use App\Repository\SectionRepository;
 use App\Repository\UserRolesRepository;
+use App\Resource\BoardMember;
 use App\Service\Solr\SolrConstants;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Exception\ORMException;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 
 class BoardsController extends AbstractController
@@ -32,7 +35,12 @@ class BoardsController extends AbstractController
         USER::ROLE_COPY_EDITOR,
         USER::ROLE_WEBMASTER
     ];
-    public function __construct(private readonly \Doctrine\ORM\EntityManagerInterface $entityManager, private readonly \Psr\Log\LoggerInterface $logger)
+    public function __construct(
+        private readonly \Doctrine\ORM\EntityManagerInterface $entityManager,
+        private readonly \Psr\Log\LoggerInterface $logger,
+        #[Autowire(param: 'app.user.picture.path')]
+        private readonly ?string $picturePath = null
+    )
     {
     }
 
@@ -110,7 +118,7 @@ class BoardsController extends AbstractController
                     /** @var SectionRepository $sectionRepo */
                     $sectionRepo = $this->entityManager->getRepository(Section::class);
                     $assignedSections = $sectionRepo->getAssignedSection($journal->getRvid(), $boardIdentifies);
-                } catch (Exception|\JsonException  $e) {
+                } catch (Exception|ORMException|\JsonException $e) {
                     $assignedSections = [];
                     $this->logger->critical($e->getMessage());
 
@@ -132,7 +140,6 @@ class BoardsController extends AbstractController
                             'langueid' => $currentUser['langueid'],
                             'screenName' => $currentUser['screenName'],
                             'roles' => [$current['roles']],
-                            'email' => $currentUser['email'],
                             'civ' => ($currentUser['civ']),
                             'orcid' => $currentUser['orcid'],
                             'additionalProfileInformation' => $currentUser['additionalProfileInformation'],
@@ -141,7 +148,9 @@ class BoardsController extends AbstractController
                             'assignedSections' => $assignedSections[$uid] ?? null
                         ];
 
-                        $boards[] = new User($options);
+                        // The picture is resolved from the UUID, which is not exposed;
+                        // the id is the position in the whole list (unique across pages)
+                        $boards[] = BoardMember::fromUser((new User($options))->processPicturePath($this->picturePath), count($boards) + 1);
                     }
                 }
 

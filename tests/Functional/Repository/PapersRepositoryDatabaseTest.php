@@ -30,6 +30,8 @@ class PapersRepositoryDatabaseTest extends TestCase
 {
     private const int RVID = 1;
     private const int OTHER_RVID = 2;
+    /** Papers with versions submitted in different years, a temporary version and a change of repository */
+    private const int VERSIONS_RVID = 3;
 
     private EntityManagerInterface $entityManager;
     private PapersRepository $repository;
@@ -130,6 +132,40 @@ class PapersRepositoryDatabaseTest extends TestCase
     }
 
     /**
+     * A paper is counted once, in the year of its first submission (paper 10: v1 in 2023, v2 in 2024).
+     */
+    public function testPaperIsCountedInTheYearOfItsFirstSubmission(): void
+    {
+        $filters = ['is' => ['rvid' => self::VERSIONS_RVID]];
+
+        $this->assertSame([2023 => 1, 2024 => 1], $this->repository->countSubmissionsByYear($filters));
+        $this->assertSame([10], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::VERSIONS_RVID, 'year' => [2023]]]));
+        $this->assertSame([11], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::VERSIONS_RVID, 'year' => [2024]]]));
+        $this->assertSame(1, (int)$this->repository->submissionsQuery(['is' => ['rvid' => self::VERSIONS_RVID, 'year' => [2024]]])->getQuery()->getSingleScalarResult());
+        $this->assertSame([2023, 2024], $this->repository->getSubmissionYearRange($filters));
+    }
+
+    /**
+     * The start date is compared to the first submission: paper 10, first submitted in 2023, is not counted after 2024-01-01.
+     */
+    public function testStartAfterDateComparesTheFirstSubmission(): void
+    {
+        $this->assertSame([11], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::VERSIONS_RVID, 'startAfterDate' => '2024-01-01']]));
+    }
+
+    /**
+     * The temporary versions (local repository) are not counted by repository; paper 11, moved from repository 2
+     * to repository 1, is counted in the repository of its first version.
+     */
+    public function testSubmissionsByRepositoryIgnoreTheTemporaryVersions(): void
+    {
+        $filters = ['is' => ['rvid' => self::VERSIONS_RVID]];
+
+        $this->assertSame([2023 => [1 => 1], 2024 => [2 => 1]], $this->repository->countSubmissionsByYearAndRepository($filters));
+        $this->assertNotContains(PapersRepository::LOCAL_REPOSITORY, $this->repository->getAvailableRepositories($filters));
+    }
+
+    /**
      * @param array<string, mixed> $filters
      * @return array{is: array<string, mixed>}
      */
@@ -160,6 +196,13 @@ class PapersRepositoryDatabaseTest extends TestCase
             [5, 4, self::RVID, 2, Paper::STATUS_SUBMITTED, 'submitted', '2023-02-10'],
             [6, 5, self::RVID, 1, Paper::STATUS_DELETED, 'submitted', '2023-03-10'],
             [7, 6, self::OTHER_RVID, 1, Paper::STATUS_SUBMITTED, 'submitted', '2023-04-10'],
+            // paper 10: v1 in 2023, v2 in 2024 (other submission date), then a temporary version (local repository)
+            [10, 10, self::VERSIONS_RVID, 1, Paper::STATUS_OBSOLETE, 'submitted', '2023-11-10'],
+            [11, 10, self::VERSIONS_RVID, 1, Paper::STATUS_OBSOLETE, 'submitted', '2024-03-10'],
+            [12, 10, self::VERSIONS_RVID, PapersRepository::LOCAL_REPOSITORY, Paper::STATUS_TMP_VERSION, 'submitted', '2024-04-01'],
+            // paper 11: first in repository 2, then in repository 1
+            [13, 11, self::VERSIONS_RVID, 2, Paper::STATUS_OBSOLETE, 'submitted', '2024-05-01'],
+            [14, 11, self::VERSIONS_RVID, 1, Paper::STATUS_SUBMITTED, 'submitted', '2024-06-01'],
         ];
 
         $connection = $this->entityManager->getConnection();

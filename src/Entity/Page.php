@@ -28,7 +28,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new GetCollection(
             openapi: new OpenApiOperation(
                 summary: 'List of pages',
-                description: 'Retrieving a list of Pages',
+                description: 'Retrieve a list of the editorial pages of the journals (about, for authors, editorial board, etc.), with their translated title. Filter by journal code or page code.',
                 parameters: [
                     new Parameter(
                         name: 'pagination',
@@ -55,7 +55,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new Get(
             openapi: new OpenApiOperation(
                 summary: 'Single page',
-                description: 'Retrieve a single page via a GET request by replacing {id} with page identifier',
+                description: 'Retrieve a single editorial page (with its translated content) by replacing {id} with the page identifier',
             ),
 
             normalizationContext: [
@@ -95,6 +95,7 @@ class Page
     #[groups(
         ['read:Page', 'read:Pages']
     )]
+    #[ApiProperty(description: 'Machine-readable code identifying the page within the journal (e.g. "about", "for-authors")')]
     private string $page_code;
 
 
@@ -102,26 +103,28 @@ class Page
     #[groups(
         ['read:Page', 'read:Pages']
     )]
+    #[ApiProperty(description: 'Code of the journal the page belongs to (e.g. "epijinfo")')]
     private string $rvcode;
 
     #[ORM\Column(name: 'title', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     #[groups(
         ['read:Page', 'read:Pages']
     )]
-    #[ApiProperty(schema: OpenApiSchemas::TRANSLATED_TEXT)]
+    #[ApiProperty(description: 'Page title translated by language code', schema: OpenApiSchemas::TRANSLATED_TEXT)]
     private array $title = [];
 
     #[ORM\Column(name: 'content', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     #[groups(
         ['read:Page', 'read:Pages']
     )]
-    #[ApiProperty(schema: OpenApiSchemas::TRANSLATED_TEXT)]
+    #[ApiProperty(description: 'Page content (HTML), translated by language code', schema: OpenApiSchemas::TRANSLATED_TEXT)]
     private array $content = [];
 
     #[ORM\Column(name: 'visibility', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
     #[groups(
         ['read:Page']
     )]
+    #[ApiProperty(description: 'Audience of the page: index 0 indicates its status, e.g. ["public"]', schema: ['type' => 'array', 'maxItems' => 1, 'items' => ['type' => 'string'], 'example' => ['public']])]
     private array $visibility = [];
 
     /**
@@ -142,12 +145,14 @@ class Page
     #[groups(
         ['read:Page', 'read:Pages']
     )]
+    #[ApiProperty(description: 'Date the page was created', openapiContext: ['example' => '2024-01-15T10:30:00+00:00'])]
     private ?DateTimeInterface $date_creation = null;
 
     #[ORM\Column(name: 'date_updated', type: Types::DATETIME_MUTABLE, nullable: false)]
     #[groups(
         ['read:Page', 'read:Pages']
     )]
+    #[ApiProperty(description: 'Date the page was last updated', openapiContext: ['example' => '2024-01-15T10:30:00+00:00'])]
     private DateTimeInterface $date_updated;
 
     public function getId(): int
