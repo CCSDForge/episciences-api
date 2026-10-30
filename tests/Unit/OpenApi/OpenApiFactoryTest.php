@@ -25,6 +25,7 @@ use App\Controller\BoardsController;
 use App\Entity\Review;
 use App\EventSubscriber\TruncatedCollectionSubscriber;
 use App\OpenApi\OpenApiFactory;
+use App\OpenApi\QueryParameters;
 use PHPUnit\Framework\TestCase;
 
 class OpenApiFactoryTest extends TestCase
@@ -122,6 +123,60 @@ class OpenApiFactoryTest extends TestCase
         // without year nor startAfterDate
         $this->assertSame('Not found', $paths->getPath('/api/journals/stats/nb-users/{code}')?->getGet()?->getResponses()[404]->getDescription());
         $this->assertSame('Journal not found', $paths->getPath('/api/volumes')?->getGet()?->getResponses()[404]->getDescription());
+    }
+
+    public function testSingleAndListFormsOfAFilterAreDocumentedOnce(): void
+    {
+        $parameters = $this->documentParameters([
+            new Parameter('page', 'query'),
+            new Parameter('vid', 'query', 'Volume identifier', schema: ['type' => 'integer']),
+            new Parameter('vid[]', 'query', schema: ['type' => 'array', 'items' => ['type' => 'integer']], explode: true),
+        ]);
+
+        $this->assertSame(['page', 'vid[]'], array_map(static fn(Parameter $parameter): string => $parameter->getName(), $parameters));
+        $this->assertSame('Volume identifier. One or several values: `vid[]=…&vid[]=…`, or `vid=…` for a single one.', $parameters[1]->getDescription());
+        $this->assertSame(['type' => 'array', 'items' => ['type' => 'integer']], $parameters[1]->getSchema());
+        $this->assertSame('form', $parameters[1]->getStyle());
+        $this->assertTrue($parameters[1]->getExplode());
+    }
+
+    public function testListFormOfAFilterTakesTheItemSchemaOfItsSingleForm(): void
+    {
+        $parameters = $this->documentParameters([
+            new Parameter('indicator', 'query', schema: ['type' => 'string', 'enum' => ['a', 'b']]),
+            new Parameter('indicator[]', 'query', 'Several indicators', schema: ['type' => 'array']),
+        ]);
+
+        $this->assertSame(['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['a', 'b']]], $parameters[0]->getSchema());
+        // the description of the list form when the single form has none
+        $this->assertStringStartsWith('Several indicators. One or several values: ', $parameters[0]->getDescription());
+    }
+
+    public function testListFormDeclaredAloneGetsTheSyntaxNote(): void
+    {
+        $parameters = $this->documentParameters([new Parameter('year[]', 'query', 'Publication year(s).', schema: ['type' => 'array', 'items' => ['type' => 'integer']])]);
+
+        $this->assertSame('Publication year(s). One or several values: `year[]=…&year[]=…`, or `year=…` for a single one.', $parameters[0]->getDescription());
+    }
+
+    public function testJournalCodeStaysASingleValue(): void
+    {
+        $parameters = $this->documentParameters([new Parameter('rvcode', 'query'), new Parameter('rvcode[]', 'query', schema: ['type' => 'array'])]);
+
+        $this->assertCount(1, $parameters);
+        $this->assertSame('rvcode', $parameters[0]->getName());
+        $this->assertSame(QueryParameters::JOURNAL_CODE_DESCRIPTION, $parameters[0]->getDescription());
+    }
+
+    public function testOtherParametersAreUnchanged(): void
+    {
+        $parameters = [
+            new Parameter('docid', 'path', 'Paper identifier', true),
+            new Parameter('submissionDate[before]', 'query'),
+            new Parameter('code', 'query', 'Code of the journal'),
+        ];
+
+        $this->assertEquals($parameters, $this->documentParameters($parameters));
     }
 
     public function testErrorResponsesWithoutBodyGetTheErrorBody(): void
@@ -284,6 +339,30 @@ class OpenApiFactoryTest extends TestCase
         $resourceNameCollectionFactory->method('create')->willReturn(new ResourceNameCollection([]));
 
         return new OpenApiFactory($decorated, $resourceNameCollectionFactory, $this->createStub(ResourceMetadataCollectionFactoryInterface::class))();
+    }
+
+    /**
+     * Parameters of an operation as documented by the factory (query parameters tests).
+     *
+     * @param Parameter[] $parameters
+     * @return Parameter[]
+     */
+    private function documentParameters(array $parameters): array
+    {
+        $paths = new Paths();
+        $paths->addPath('/api/resources', new PathItem(get: new Operation(responses: [200 => new Response('OK')], parameters: $parameters)));
+
+        $decorated = $this->createStub(OpenApiFactoryInterface::class);
+        $decorated->method('__invoke')->willReturn(
+            new OpenApi(new Info('Episciences API', '1.0'), [], $paths, new Components(schemas: new \ArrayObject(), securitySchemes: new \ArrayObject()))
+        );
+
+        $resourceNameCollectionFactory = $this->createStub(ResourceNameCollectionFactoryInterface::class);
+        $resourceNameCollectionFactory->method('create')->willReturn(new ResourceNameCollection([]));
+
+        $openApi = new OpenApiFactory($decorated, $resourceNameCollectionFactory, $this->createStub(ResourceMetadataCollectionFactoryInterface::class))();
+
+        return $openApi->getPaths()->getPath('/api/resources')?->getGet()?->getParameters() ?? [];
     }
 
     /**

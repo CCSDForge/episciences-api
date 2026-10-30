@@ -13,6 +13,7 @@ use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\OpenApi\OpenApiFactory;
+use App\OpenApi\QueryParameters;
 use App\Repository\VolumeRepository;
 use App\State\VolumeStateProvider;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -33,18 +34,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
                 summary: 'Consult a particular volume',
                 description: 'Retrieve a single volume (with its titles, metadata and sorted papers) by replacing {vid} with the volume identifier. The volume is displayed only if the journal allows it.',
                 parameters: [
-                    new Parameter( // To check whether the journal allows empty volumes to be displayed
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal Code (ex. epijinfo)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ],
-                        explode: false,
-                    )
+                    new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING), // to check whether the journal allows empty volumes to be displayed
                 ],
 
             ),
@@ -66,71 +56,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
                 description: 'Retrieve the list of volumes of the journals (titles, year, number, type...), ordered by position. Can be filtered by journal code, year(s) and volume type(s).',
 
                 parameters: [
-                    new Parameter(
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal Code (ex. epijinfo)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ],
-                        explode: false,
-                    ),
-                    new Parameter(
-                        name: AppConstants::YEAR_PARAM,
-                        in: 'query',
-                        description: 'Year of the volume',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'integer',
-                        ]
-                    ),
-                    new Parameter(
-                        name: 'year[]',
-                        in: 'query',
-                        description: 'The year(s) of the volume, repeated for each year (e.g. ?year[]=2023&year[]=2024)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ]
-                        ],
-                        explode: true
-                    ),
-                    new Parameter(
-                        name: 'type',
-                        in: 'query',
-                        description: 'Volume type (special_issue or proceedings)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ],
-                        explode: false
-                    ),
-                    new Parameter(
-                        name: 'type[]',
-                        in: 'query',
-                        description: 'Volume type(s), repeated for each type (e.g. ?type[]=special_issue&type[]=proceedings)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'string'
-                            ]
-                        ],
-                        explode: true
-                    ),
+                    new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of the volume', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: 'type[]', in: 'query', description: 'Volume type(s): special_issue, proceedings', schema: QueryParameters::STRINGS),
                 ],
 
             ),

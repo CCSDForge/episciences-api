@@ -11,6 +11,7 @@ use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\OpenApi\OpenApiFactory;
+use App\OpenApi\QueryParameters;
 use App\State\StatisticStateProvider;
 use Symfony\Component\Serializer\Attribute\Context;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -26,125 +27,13 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                 summary: "Retrieve all available statistical indicators",
                 description: 'Statistics of all the journals, or of one journal with `rvcode`. ' . self::OTHER_STATUS_DESCRIPTION,
                 parameters: [
-                    new Parameter(
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal code (exp. epijinfo)',
-                        required: false,
-                        schema: [
-                            "type" => 'string'
-                        ]
-                    ),
-                    new Parameter(
-                        name: 'indicator',
-                        in: 'query',
-                        description: 'Indicator; all of them when omitted',
-                        required: false,
-                        schema: [
-                            "type" => 'string',
-                            'enum' => self::PUBLICATION_INDICATOR_VALUES,
-                        ]
-                    ),
-                    new Parameter(
-                        name: 'indicator[]',
-                        in: 'query',
-                        description: 'Several indicators, returned in this order',
-                        required: false,
-                        schema: [
-                            "type" => 'array',
-                            'items' => [
-                                'type' => 'string',
-                                'enum' => self::PUBLICATION_INDICATOR_VALUES,
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-                    ),
-                    new Parameter(
-                        name: AppConstants::YEAR_PARAM,
-                        in: 'query',
-                        description: self::YEAR_COLLECTION_DESCRIPTION,
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'integer',
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    ),
-                    new Parameter(
-                        name: 'year[]',
-                        in: 'query',
-                        description: 'Several years, with the same meaning as `year`; an article decided in several of them is counted once in the total',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-
-                    ),
-
-                    new Parameter(
-                        name: AppConstants::START_AFTER_DATE,
-                        in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: true,
-                        schema: [
-                            'type' => 'string',
-                            'format' => 'date',
-                        ],
-                    ),
-                    new Parameter(
-                        name: 'unit',
-                        in: 'query',
-                        description: 'The unit of the median delays (difference of two timestamps in MySQL)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                            'enum' => StatisticStateProvider::AVAILABLE_UNITS,
-                            'default' => 'week'
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    ),
-                    new Parameter(
-                        name: self::WITH_PAPERS_PARAM,
-                        in: 'query',
-                        description: self::WITH_PAPERS_DESCRIPTION,
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'boolean',
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    ),
-                    new Parameter(
-                        name: self::GROUP_BY_PARAM,
-                        in: 'query',
-                        description: self::GROUP_BY_DESCRIPTION,
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                            'enum' => [self::GROUP_BY_JOURNAL],
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    ),
+                    new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
+                    new Parameter(name: 'indicator[]', in: 'query', description: 'Indicator(s), returned in this order; all of them when omitted', schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => self::PUBLICATION_INDICATOR_VALUES]]),
+                    new Parameter(name: 'year[]', in: 'query', description: self::YEAR_COLLECTION_DESCRIPTION . '. With several years, an article decided in several of them is counted once in the total', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: QueryParameters::START_AFTER_DATE_DESCRIPTION, schema: QueryParameters::DATE),
+                    new Parameter(name: 'unit', in: 'query', description: 'The unit of the median delays (difference of two timestamps in MySQL)', schema: self::UNIT_SCHEMA),
+                    new Parameter(name: self::WITH_PAPERS_PARAM, in: 'query', description: self::WITH_PAPERS_DESCRIPTION, schema: QueryParameters::BOOLEAN),
+                    new Parameter(name: self::GROUP_BY_PARAM, in: 'query', description: self::GROUP_BY_DESCRIPTION, schema: ['type' => 'string', 'enum' => [self::GROUP_BY_JOURNAL]]),
                 ]
             ),
         ),
@@ -156,104 +45,15 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                 summary: "Total number of submissions",
                 description: 'Total number of submitted articles, for all the journals or for one journal with `rvcode`. Filter by year(s) of submission, by status and by flag; the imported articles are excluded. Returns the figure and, with `withDetails`, the number of articles in each status.',
                 parameters: [
-                    new Parameter(
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal code (exp. epijinfo)',
-                        required: false,
-                        schema: [
-                            "type" => 'string'
-                        ]
-                    ),
-                    new Parameter(
-                        name: AppConstants::YEAR_PARAM,
-                        in: 'query',
-                        description: 'Year of submission of the articles',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'integer',
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    ),
-                    new Parameter(
-                        name: 'year[]',
-                        in: 'query',
-                        description: 'Several years of submission',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-
-                    ),
-                    new Parameter(
-                        name: AppConstants::PAPER_STATUS,
-                        in: 'query',
-                        description: "Article's status",
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    ),
-                    new Parameter(
-                        name: 'status[]',
-                        in: 'query',
-                        description: "Article's status",
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'string',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-
-                    ),
-                    new Parameter(
-                        name: AppConstants::PAPER_FLAG,
-                        in: 'query',
-                        description: 'flag to be applied (accepted values: imported, submitted)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    ),
-                    new Parameter(
-                        name: AppConstants::START_AFTER_DATE,
-                        in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: true,
-                        schema: [
-                            'type' => 'string',
-                            'format' => 'date',
-                        ],
-                    ),
+                    new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of submission of the articles', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: 'status[]', in: 'query', description: "Status of the articles", schema: QueryParameters::STRINGS),
+                    new Parameter(name: AppConstants::PAPER_FLAG, in: 'query', description: 'Flag to be applied (accepted values: imported, submitted)', schema: QueryParameters::STRING),
+                    new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: QueryParameters::START_AFTER_DATE_DESCRIPTION, schema: QueryParameters::DATE),
                 ]
             ),
-
         ),
+
         new Get(
             uriTemplate: '/statistics/median-submission-publication',
             openapi: new OpenApiOperation(
@@ -261,72 +61,10 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                 summary: "Median Time submission-publication",
                 description: self::INDICATOR_DESCRIPTION . ' ' . self::MEDIAN_DELAY_DESCRIPTION,
                 parameters: [
-                    new Parameter(
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal code (exp. epijinfo)',
-                        required: false,
-                        schema: [
-                            "type" => 'string'
-                        ]
-                    ),
-                    new Parameter(
-                        name: AppConstants::YEAR_PARAM,
-                        in: 'query',
-                        description: 'Year of publication of the articles',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'integer',
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    ),
-                    new Parameter(
-                        name: 'year[]',
-                        in: 'query',
-                        description: 'Several years of publication',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-
-                    ),
-
-                    new Parameter(
-                        name: AppConstants::START_AFTER_DATE,
-                        in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: true,
-                        schema: [
-                            'type' => 'string',
-                            'format' => 'date',
-                        ],
-                    ),
-                    new Parameter(
-                        name: 'unit',
-                        in: 'query',
-                        description: 'The unit of the difference of two timestamps in MySQL',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                            'default' => 'week'
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    )
+                    new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of publication of the articles', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: QueryParameters::START_AFTER_DATE_DESCRIPTION, schema: QueryParameters::DATE),
+                    new Parameter(name: 'unit', in: 'query', description: self::UNIT_DESCRIPTION, schema: self::UNIT_SCHEMA),
                 ]
             ),
         ),
@@ -338,76 +76,13 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                 summary: "Median Time submission-acceptance",
                 description: self::INDICATOR_DESCRIPTION . ' ' . self::MEDIAN_DELAY_DESCRIPTION,
                 parameters: [
-                    new Parameter(
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal code (exp. epijinfo)',
-                        required: false,
-                        schema: [
-                            "type" => 'string'
-                        ]
-                    ),
-                    new Parameter(
-                        name: AppConstants::YEAR_PARAM,
-                        in: 'query',
-                        description: 'Year of acceptance of the articles',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'integer',
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    ),
-                    new Parameter(
-                        name: 'year[]',
-                        in: 'query',
-                        description: 'Several years of acceptance',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-
-                    ),
-
-                    new Parameter(
-                        name: AppConstants::START_AFTER_DATE,
-                        in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: true,
-                        schema: [
-                            'type' => 'string',
-                            'format' => 'date',
-                        ],
-                    ),
-                    new Parameter(
-                        name: 'unit',
-                        in: 'query',
-                        description: 'The unit of the difference of two timestamps in MySQL',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                            'default' => 'week'
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    )
+                    new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of acceptance of the articles', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: QueryParameters::START_AFTER_DATE_DESCRIPTION, schema: QueryParameters::DATE),
+                    new Parameter(name: 'unit', in: 'query', description: self::UNIT_DESCRIPTION, schema: self::UNIT_SCHEMA),
                 ]
             ),
         ),
-
 
         new Get(
             uriTemplate: '/statistics/acceptance-rate',
@@ -416,58 +91,9 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                 summary: "Acceptance rate",
                 description: self::INDICATOR_DESCRIPTION,
                 parameters: [
-                    new Parameter(
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal code (exp. epijinfo)',
-                        required: false,
-                        schema: [
-                            "type" => 'string'
-                        ]
-                    ),
-                    new Parameter(
-                        name: AppConstants::YEAR_PARAM,
-                        in: 'query',
-                        description: 'Year of the decision (acceptance or refusal)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'integer',
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    ),
-                    new Parameter(
-                        name: 'year[]',
-                        in: 'query',
-                        description: 'Several years of decision; an article decided in several of them is counted once',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-
-                    ),
-
-                    new Parameter(
-                        name: AppConstants::START_AFTER_DATE,
-                        in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: true,
-                        schema: [
-                            'type' => 'string',
-                            'format' => 'date',
-                        ],
-                    ),
+                    new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of the decision (acceptance or refusal); an article decided in several of them is counted once', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: QueryParameters::START_AFTER_DATE_DESCRIPTION, schema: QueryParameters::DATE),
                 ]
             ),
         ),
@@ -479,109 +105,12 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                 summary: "Evaluation",
                 description: 'Statistics of the editorial evaluation: the number of reviews requested (`reviews-requested`: the invitations sent to the reviewers for a paper, each one once with its current answer, whatever this answer, a pending invitation past its expiration date included, except the cancelled ones: an invitation cancelled after its acceptance is not counted either, e.g. a reviewer removed before starting the review, or a reviewer of the previous version of a paper who had not completed the review when the new version was submitted), the number of reviews received (`reviews-received`: the completed reports, dated by their validation) and the median number of reviews per reviewed article (`median-reviews-number`: the completed reports of each article, all its versions together, among the articles having at least one), for all the journals or for one journal with `rvcode`. Filter by year(s) of invitation or of validation of the report; `groupBy=journal` returns one figure by journal.',
                 parameters: [
-                    new Parameter(
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal code (exp. epijinfo)',
-                        required: false,
-                        schema: [
-                            "type" => 'string'
-                        ]
-                    ),
-                    new Parameter(
-                        name: 'indicator',
-                        in: 'query',
-                        description: 'Indicator; all of them when omitted',
-                        required: false,
-                        schema: [
-                            "type" => 'string',
-                            'enum' => self::EVAL_INDICATOR_VALUES,
-                        ]
-                    ),
-                    new Parameter(
-                        name: 'indicator[]',
-                        in: 'query',
-                        description: 'Several indicators, returned in this order',
-                        required: false,
-                        schema: [
-                            "type" => 'array',
-                            'items' => [
-                                'type' => 'string',
-                                'enum' => self::EVAL_INDICATOR_VALUES,
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-                    ),
-                    new Parameter(
-                        name: AppConstants::YEAR_PARAM,
-                        in: 'query',
-                        description: 'Year of the invitation (reviews-requested) or of the validation of the report (reviews-received, median-reviews-number): for `median-reviews-number`, only the reports validated in the period are counted, so an article whose reports were validated in different years counts a part of its reports in each year',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'integer',
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    ),
-                    new Parameter(
-                        name: 'year[]',
-                        in: 'query',
-                        description: 'Several years, with the same meaning as `year`',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-
-                    ),
-                    new Parameter(
-                        name: AppConstants::START_AFTER_DATE,
-                        in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD], on the date of the invitation or of the validation of the report (for `median-reviews-number`, only the reports validated after the date are counted): a wrong format is rejected (404)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: true,
-                        schema: [
-                            'type' => 'string',
-                            'format' => 'date',
-                        ],
-                    ),
-                    new Parameter(
-                        name: self::WITH_PAPERS_PARAM,
-                        in: 'query',
-                        description: self::WITH_REVIEWS_DESCRIPTION,
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'boolean',
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    ),
-                    new Parameter(
-                        name: self::GROUP_BY_PARAM,
-                        in: 'query',
-                        description: self::GROUP_BY_DESCRIPTION,
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                            'enum' => [self::GROUP_BY_JOURNAL],
-                        ],
-                        explode: false,
-                        allowReserved: false
-                    ),
+                    new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
+                    new Parameter(name: 'indicator[]', in: 'query', description: 'Indicator(s), returned in this order; all of them when omitted', schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => self::EVAL_INDICATOR_VALUES]]),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of the invitation (reviews-requested) or of the validation of the report (reviews-received, median-reviews-number): for `median-reviews-number`, only the reports validated in the period are counted, so an article whose reports were validated in different years counts a part of its reports in each year', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: 'Start statistics after date [YYYY-MM-DD], on the date of the invitation or of the validation of the report (for `median-reviews-number`, only the reports validated after the date are counted): a wrong format is rejected (404)', schema: QueryParameters::DATE),
+                    new Parameter(name: self::WITH_PAPERS_PARAM, in: 'query', description: self::WITH_REVIEWS_DESCRIPTION, schema: QueryParameters::BOOLEAN),
+                    new Parameter(name: self::GROUP_BY_PARAM, in: 'query', description: self::GROUP_BY_DESCRIPTION, schema: ['type' => 'string', 'enum' => [self::GROUP_BY_JOURNAL]]),
                 ]
             ),
         ),
@@ -614,6 +143,8 @@ class Statistic
         self::EVAL_INDICATORS['reviews-received_get'],
         self::EVAL_INDICATORS['median-reviews-number_get'],
     ];
+    public const UNIT_DESCRIPTION = 'The unit of the delays (difference of two timestamps in MySQL)';
+    public const UNIT_SCHEMA = ['type' => 'string', 'enum' => StatisticStateProvider::AVAILABLE_UNITS, 'default' => 'week'];
     public const GROUP_BY_DESCRIPTION = 'Returns the statistics of each active journal: one item by journal and by indicator, with the journal code in `journal`, sorted by code. Only the journals having data are returned. Not with `rvcode`';
     public const NB_SUBMISSIONS_DETAILS = 'nb-submissions-details';
     public const WITH_PAPERS_PARAM = 'withPapers';

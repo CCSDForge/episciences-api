@@ -16,6 +16,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
+use App\OpenApi\QueryParameters;
 
 /**
  * Section
@@ -50,7 +51,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     new Parameter(
                         name: 'rvcode',
                         in: 'query',
-                        description: 'Journal Code (ex. epijinfo)',
+                        description: QueryParameters::JOURNAL_CODE_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: false,

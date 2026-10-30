@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The sorted papers of the volumes are read with two Doctrine queries (the papers of the volume, the papers attached to it) instead of a hand-written SQL query with UNION ALL (same papers, in the same order).
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.
 - The restrictions and filters applied to the items and collections (`AppQueryItemCollectionExtension`) are split into smaller methods, without change in the queries (same conditions, parameters and order).
+- OpenAPI documentation: each filter taking several values is documented once, as `name[]` (e.g. `year[]`), instead of a `name` / `name[]` pair, with the same syntax note everywhere (`year[]=…&year[]=…`, or `year=…` for a single one). The papers `type` and `year` filters were documented with a repeated `year=` that only keeps the last value. The journal code (`rvcode`, `code`) has the same description everywhere and is only documented as a single value; the median delays document the accepted values of `unit`. The API itself is unchanged: `year=2024` is still accepted.
 ### Deprecated
 ### Removed
 ### Security
