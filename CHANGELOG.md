@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `make test-db` runs the database tests (`tests/Functional`, skipped without `TEST_DATABASE_URL`) locally, against a throwaway MySQL 8.4 container.
 - The sorted papers of the volumes are read with two Doctrine queries (the papers of the volume, the papers attached to it) instead of a hand-written SQL query with UNION ALL (same papers, in the same order).
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.
+- The restrictions and filters applied to the items and collections (`AppQueryItemCollectionExtension`) are split into smaller methods, without change in the queries (same conditions, parameters and order).
 ### Deprecated
 ### Removed
 ### Security
