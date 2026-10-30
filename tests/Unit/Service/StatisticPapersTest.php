@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Service;
 
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\Entity\Paper;
 use App\Entity\PaperConflicts;
 use App\Entity\Review;
 use App\Entity\ReviewSetting;
 use App\Entity\User;
-use App\Exception\ResourceNotFoundException;
 use App\Repository\PapersRepository;
 use App\Service\StatisticPapers;
 use Doctrine\ORM\EntityManagerInterface;
@@ -39,7 +39,7 @@ class StatisticPapersTest extends TestCase
     #[DataProvider('invalidWithPapersProvider')]
     public function testInvalidWithPapersIsRejected(mixed $value): void
     {
-        $this->expectException(ResourceNotFoundException::class);
+        $this->expectException(ValidationException::class);
 
         StatisticPapers::isRequested($value);
     }

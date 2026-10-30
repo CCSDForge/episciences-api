@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): with `withDetails`, `details` now also gives the median delays of each year (`submissionAcceptanceTimeMedian`, `submissionPublicationTimeMedian`), in the shape of the average delays.
 - Journal dashboard: the delays of each year in `details` (average and median) now give `count`, the number of articles the delay is computed from.
 ### Changed
+- Statistics (`/api/statistics/*`, `/api/journals/stats/*`): an invalid filter (`year`, `startAfterDate`, `status`, `indicator`, `unit`, `groupBy`, `withPapers`), a combination of filters not available (e.g. `groupBy` with `rvcode`) or, on `/api/journals/stats/*`, an unknown parameter now returns a 422 error instead of a 404, with the body of the validation errors (`violations`, one by parameter), as the query parameters validated by API Platform. A 404 is still returned for an unknown journal.
 - Unused code removed: the `YearFilter` API filter (used by no resource), `UserAssignmentRepository::findInvitationsQuery()` and the `docId` and `uid` options of `UserInvitationRepository::getReviewsRequested()`.
 - Statistics of the evaluation: `reviews-requested` only counts the invitations for a paper: an invitation without paper (e.g. `ITEMID = 0`) is no longer counted, so that each invitation counted can be listed by `withPapers`. A pending invitation past its expiration date is still counted.
 - Journal dashboard: the average and the median delays are computed from the same delay of each article, in two queries instead of four.
@@ -56,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `GET /api/papers` and `GET /api/papers/{docid}` for the editors, copy editors and reviewers: the papers they are assigned to are computed once from their assignments instead of for every paper of the journal (from about 135 ms to under 10 ms for a journal of 4,500 papers).
 - OpenAPI documentation: the paginated collections document the 400 response returned for an invalid pagination parameter (e.g. `page` lower than 1).
 - OpenAPI documentation: the 4xx responses (except the 401 of the JWT authentication) describe their body (`Error` schemas), as the responses documented by API Platform; the 404 of the journal statistics keeps its body. The journal dashboard documents its 403 (`displayStatistics` setting).
-- OpenAPI documentation of the statistics (`/api/statistics/*`, `/api/journals/stats/*`): the 404 response says that it is also returned for an invalid `year` or `startAfterDate`, not only for an unknown journal.
+- OpenAPI documentation of the statistics (`/api/statistics/*`, `/api/journals/stats/*`): the 422 response lists the filters rejected when invalid (`year`, `startAfterDate`...); the 404 response is the one of an unknown journal.
 - OpenAPI documentation: the `info` object gives the license of the API (GNU General Public License v3.0).
 - Statistics: a median computed from no value (e.g. no article in the period) is `null` without being logged as a critical error.
 - Statistics without journal (`GET /api/statistics/*` without `rvcode`, `groupBy=journal`, the years of `hydra:range`) only take into account the active journals, as the statistics of a journal (a disabled journal cannot be requested).
@@ -117,7 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The migrations `Version20260527000000` and `Version20261016120000` can be re-run after a partial failure: each step checks the existing schema. `Version20261016120000` caps the lock wait on `PAPER_LOG` (10 s), and the down migration of `Version20260527000000` no longer restores the erroneous unique constraints of `pages` and `news`.
 - `PaperLog` now declares the existing `PAPER_LOG` indexes, so the schema tools no longer propose to drop them.
 - `/api/statistics/*`: the `indicator[]` form (documented) is accepted again (a single indicator), and an invalid `startAfterDate` (expected format: `YYYY-MM-DD`) or `unit` is now rejected with a clear message instead of a server error or an ignored value; an empty `unit` falls back to `week`.
-- `/api/journals/stats/*` (dashboard, submissions, delays, users): an invalid `startAfterDate` is now rejected (`404`) like on `/api/statistics/*`, instead of being ignored (or a server error when sent as an array); an empty value is still ignored. The OpenAPI documentation of the parameter is fixed accordingly.
+- `/api/journals/stats/*` (dashboard, submissions, delays, users): an invalid `startAfterDate` is now rejected (`422`) like on `/api/statistics/*`, instead of being ignored (or a server error when sent as an array); an empty value is still ignored. The OpenAPI documentation of the parameter is fixed accordingly.
 - `GET /api/journals/stats/nb-submissions/{code}?withDetails`: `submissionsByYear[*].imported` now counts the imported submissions of each year (it repeated the total of all the years).
 - An invalid pagination parameter (`page` lower than 1, negative `itemsPerPage`) now returns a `400` error instead of a server error.
 - `GET /api/volumes/{vid}` : the `rvcode` journal is now taken into account, a volume of another journal is no longer returned (`404`).
@@ -155,7 +156,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - Reduce the user data exposed by the public endpoints.
 - The `startAfterDate` filter is now validated (`Y-m-d`) before being concatenated into the delay statistics SQL query.
-- Harden the year filter of the statistics and journal dashboard queries: an invalid `year` on the dashboard is now rejected (404), as on `/api/statistics/`.
+- Harden the year filter of the statistics and journal dashboard queries: an invalid `year` on the dashboard is now rejected (422), as on `/api/statistics/`.
 - Upgraded `symfony/expression-language` from 7.4.18 to 7.4.21 (CVE-2026-109449: unbounded nesting in the expression parser lets untrusted expressions crash the process).
 - Raised the Composer platform PHP version to 8.4.27, required by `roave/security-advisories`; upgraded `api-platform/core` to v4.4.6 and `composer/semver` to 3.5.2.
 

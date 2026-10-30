@@ -13,7 +13,7 @@ final class QueryParameters
 {
     public const string JOURNAL_CODE_DESCRIPTION = 'Journal code (e.g. epijinfo)';
 
-    public const string START_AFTER_DATE_DESCRIPTION = 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (404)';
+    public const string START_AFTER_DATE_DESCRIPTION = 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (422)';
 
     public const array STRING = ['type' => 'string'];
 

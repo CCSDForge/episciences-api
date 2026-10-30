@@ -6,6 +6,7 @@ namespace App\Tests\Unit\State;
 
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\State\Pagination\Pagination;
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\Doctrine\UnpaginatedCollectionLimitExtension;
 use App\Entity\Paper;
 use App\Entity\PaperConflicts;
@@ -101,7 +102,7 @@ class StatisticStateProviderTest extends TestCase
 
     public function testAnInvalidIndicatorAmongSeveralIsRejected(): void
     {
-        $this->expectException(ResourceNotFoundException::class);
+        $this->expectException(ValidationException::class);
 
         $this->provideCollection(['indicator' => ['median-submission-publication', 'foo']]);
     }
@@ -175,7 +176,7 @@ class StatisticStateProviderTest extends TestCase
     #[DataProvider('invalidFilterProvider')]
     public function testInvalidFilterIsRejected(array $filters): void
     {
-        $this->expectException(ResourceNotFoundException::class);
+        $this->expectException(ValidationException::class);
 
         $this->provideEvaluation(filters: $filters);
     }
@@ -407,8 +408,8 @@ class StatisticStateProviderTest extends TestCase
 
     public function testWithPapersErrorNamesBothRoutes(): void
     {
-        $this->expectException(ResourceNotFoundException::class);
-        $this->expectExceptionMessage('withPapers is only available on /api/statistics/ and /api/statistics/evaluation');
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('withPapers: Only available on /api/statistics/ and /api/statistics/evaluation');
 
         $this->provideWithPapers(['rvcode' => null], $this->administrator(1), operationName: self::EVALUATION_OPERATION);
     }
@@ -447,7 +448,7 @@ class StatisticStateProviderTest extends TestCase
     #[DataProvider('invalidWithPapersProvider')]
     public function testInvalidWithPapersIsRejected(array $filters, string $operationName): void
     {
-        $this->expectException(ResourceNotFoundException::class);
+        $this->expectException(ValidationException::class);
 
         $this->provideWithPapers($filters, $this->administrator(1), operationName: $operationName);
     }
@@ -559,7 +560,7 @@ class StatisticStateProviderTest extends TestCase
     #[DataProvider('invalidGroupByProvider')]
     public function testInvalidGroupByIsRejected(array $filters): void
     {
-        $this->expectException(ResourceNotFoundException::class);
+        $this->expectException(ValidationException::class);
 
         $this->provideCollection($filters);
     }
@@ -622,7 +623,7 @@ class StatisticStateProviderTest extends TestCase
 
     public function testGroupByIsRejectedWithAPublicationIndicatorOnTheEvaluation(): void
     {
-        $this->expectException(ResourceNotFoundException::class);
+        $this->expectException(ValidationException::class);
 
         $this->provideCollection(['groupBy' => 'journal', 'indicator' => 'nb-submissions'], self::EVALUATION_OPERATION);
     }

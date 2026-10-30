@@ -9,7 +9,8 @@ use App\Entity\PaperConflicts;
 use App\Entity\Review;
 use App\Entity\ReviewSetting;
 use App\Entity\User;
-use App\Exception\ResourceNotFoundException;
+use ApiPlatform\Validator\Exception\ValidationException;
+use App\Exception\InvalidQueryParameter;
 use App\Repository\PapersRepository;
 use App\Resource\Statistic;
 use Doctrine\ORM\EntityManagerInterface;
@@ -31,7 +32,7 @@ final readonly class StatisticPapers
     }
 
     /**
-     * @throws ResourceNotFoundException not a boolean
+     * @throws ValidationException not a boolean
      */
     public static function isRequested(mixed $withPapers): bool
     {
@@ -42,7 +43,7 @@ final readonly class StatisticPapers
         $value = is_scalar($withPapers) ? filter_var($withPapers, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) : null;
 
         if ($value === null) {
-            throw new ResourceNotFoundException(sprintf('Oops! invalid %s: a boolean is expected', Statistic::WITH_PAPERS_PARAM));
+            throw InvalidQueryParameter::exception(Statistic::WITH_PAPERS_PARAM, 'A boolean is expected.', $withPapers);
         }
 
         return $value;

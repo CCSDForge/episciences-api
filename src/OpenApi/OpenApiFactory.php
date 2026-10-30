@@ -19,6 +19,7 @@ use ApiPlatform\OpenApi\OpenApi;
 use App\AppConstants;
 use App\EventSubscriber\TruncatedCollectionSubscriber;
 use App\Metadata\SingleValueQueryParametersResourceMetadataCollectionFactory;
+use App\Resource\Statistic;
 use Symfony\Component\HttpFoundation\Response;
 
 final readonly class OpenApiFactory implements OpenApiFactoryInterface
@@ -44,11 +45,22 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     /** Parameters holding a journal code: an unknown journal returns a 404 */
     private const array JOURNAL_CODE_PARAMETERS = ['code', 'rvcode'];
 
-    /** Statistics paths: an invalid year or start date also returns a 404 */
+    /** Statistics paths: their filters are checked by their providers */
     private const array STATISTICS_PATH_PREFIXES = ['/api/statistics', '/api/journals/stats/'];
 
-    /** Filters of the statistics rejected with a 404 when invalid */
-    private const array STATISTICS_CHECKED_FILTERS = [AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE];
+    /** Statistics paths rejecting an unknown parameter (StatResourceSubscriber) */
+    private const string JOURNAL_STATISTICS_PATH_PREFIX = '/api/journals/stats/';
+
+    /** Filters of the statistics checked by their providers: an invalid value returns a 422, as a QueryParameter */
+    private const array STATISTICS_CHECKED_FILTERS = [
+        AppConstants::YEAR_PARAM,
+        AppConstants::START_AFTER_DATE,
+        AppConstants::PAPER_STATUS,
+        'indicator',
+        'unit',
+        Statistic::GROUP_BY_PARAM,
+        Statistic::WITH_PAPERS_PARAM,
+    ];
 
     public const string NOTE_PAPERS_MANAGE = 'Confidential field: only returned to the users allowed to manage the paper (`papers_manage` voter).';
     public const string NOTE_ROLE_SECRETARY = 'Confidential field: only returned to the editorial secretaries (ROLE_SECRETARY).';
@@ -433,8 +445,9 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             foreach (self::HTTP_METHODS as $method) {
                 $operation = $path->{'get' . $method}();
                 $validated = $this->findValidatedQueryParameters((string)$key, strtoupper($method), $validatedParameters);
+                $isStatistics = array_filter(self::STATISTICS_PATH_PREFIXES, static fn(string $prefix): bool => str_starts_with((string)$key, $prefix)) !== [];
 
-                if (!$operation instanceof Operation || $validated === null) {
+                if (!$operation instanceof Operation || ($validated === null && !$isStatistics)) {
                     continue;
                 }
 
@@ -446,12 +459,17 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
                     }
                 }
 
+                // the filters of the statistics checked by their providers (documented as `name` or `name[]`)
+                $checkedByProvider = $isStatistics ? array_intersect(self::STATISTICS_CHECKED_FILTERS, array_map(static fn(string $name): string => rtrim($name, '[]'), $documented)) : [];
+
                 $description = $this->unprocessableEntityDescription(
-                    array_values(array_intersect($validated['singleValue'], $documented)),
-                    array_values(array_intersect($validated['others'], $documented))
+                    array_values(array_intersect($validated['singleValue'] ?? [], $documented)),
+                    [...array_intersect($validated['others'] ?? [], $documented), ...$checkedByProvider],
+                    str_starts_with((string)$key, self::JOURNAL_STATISTICS_PATH_PREFIX)
                 );
                 $responses = $operation->getResponses() ?? [];
-                $response = $responses[Response::HTTP_UNPROCESSABLE_ENTITY] ?? $unprocessableEntity;
+                // without a 422 documented by API Platform, the error body of the other errors
+                $response = $responses[Response::HTTP_UNPROCESSABLE_ENTITY] ?? $unprocessableEntity ?? $this->errorResponse('');
 
                 if ($description === null) {
                     // no documented parameter can be invalid: the declared validation error is not documented
@@ -475,7 +493,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
      * @param list<string> $singleValue
      * @param list<string> $others
      */
-    private function unprocessableEntityDescription(array $singleValue, array $others): ?string
+    private function unprocessableEntityDescription(array $singleValue, array $others, bool $unknownParameters = false): ?string
     {
         $descriptions = [];
 
@@ -485,6 +503,11 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
 
         if ($singleValue !== []) {
             $descriptions[] = sprintf('%s given as a list (`name[]=…`): a single value is expected', self::listOfNames($singleValue));
+        }
+
+        // an unknown parameter is rejected even without a documented filter
+        if ($unknownParameters) {
+            $descriptions[] = 'an unknown parameter';
         }
 
         return $descriptions === [] ? null : ucfirst(implode(', or ', $descriptions));
@@ -743,7 +766,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     }
 
     /**
-     * On the statistics, the 404 is also returned for an invalid year or start date
+     * On the statistics filtered by year or start date, the 404 is the one of the journal (an invalid filter returns a 422)
      */
     private function documentStatisticsNotFound(OpenApi $openApi): OpenApi
     {
@@ -757,23 +780,15 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
                 continue;
             }
 
-            $filters = [];
-
             foreach ($operation->getParameters() ?? [] as $parameter) {
-                $name = rtrim($parameter->getName(), '[]');
+                if (in_array(rtrim($parameter->getName(), '[]'), [AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE], true)) {
+                    $responses = $operation->getResponses();
+                    $responses[Response::HTTP_NOT_FOUND] = $responses[Response::HTTP_NOT_FOUND]->withDescription('Journal not found');
+                    $paths->addPath($key, $path->withGet($operation->withResponses($responses)));
 
-                if (in_array($name, self::STATISTICS_CHECKED_FILTERS, true) && !in_array("`$name`", $filters, true)) {
-                    $filters[] = "`$name`";
+                    break;
                 }
             }
-
-            if ($filters === []) {
-                continue;
-            }
-
-            $responses = $operation->getResponses();
-            $responses[Response::HTTP_NOT_FOUND] = $responses[Response::HTTP_NOT_FOUND]->withDescription(sprintf('Journal not found, or invalid %s', implode(' or ', $filters)));
-            $paths->addPath($key, $path->withGet($operation->withResponses($responses)));
         }
 
         return $openApi->withPaths($paths);

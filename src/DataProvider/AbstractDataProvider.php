@@ -5,6 +5,8 @@ namespace App\DataProvider;
 use ApiPlatform\Metadata\Operation;
 use App\AppConstants;
 use App\Entity\Paper;
+use ApiPlatform\Validator\Exception\ValidationException;
+use App\Exception\InvalidQueryParameter;
 use App\Exception\ResourceNotFoundException;
 use App\Resource\AbstractStatResource;
 use App\Resource\Statistic;
@@ -54,7 +56,7 @@ abstract class AbstractDataProvider
             $withPapers = StatisticPapers::isRequested($cFilters[Statistic::WITH_PAPERS_PARAM] ?? null);
 
             if ($withPapers && !$isDashboard) {
-                throw new ResourceNotFoundException(sprintf('Oops! %s is only available on the dashboard', Statistic::WITH_PAPERS_PARAM));
+                throw InvalidQueryParameter::exception(Statistic::WITH_PAPERS_PARAM, 'Only available on the dashboard.', $cFilters[Statistic::WITH_PAPERS_PARAM]);
             }
 
             // before any computation
@@ -94,7 +96,7 @@ abstract class AbstractDataProvider
 
 
     /**
-     * @throws ResourceNotFoundException an invalid startAfterDate or year, as for /api/statistics/*
+     * @throws ValidationException an invalid startAfterDate or year (422), as for /api/statistics/*
      */
     private function addFilters(array &$availableFilters, string $operationName, array &$contextFilters = []): void
     {
@@ -104,7 +106,7 @@ abstract class AbstractDataProvider
             $startDate = is_string($startDate) ? urldecode($startDate) : null;
 
             if ($startDate === null || !self::isValidDate($startDate)) {
-                throw new ResourceNotFoundException(sprintf('Oops! invalid %s: the expected format is YYYY-MM-DD', AppConstants::START_AFTER_DATE));
+                throw InvalidQueryParameter::exception(AppConstants::START_AFTER_DATE, 'The expected format is YYYY-MM-DD.', $contextFilters[AppConstants::START_AFTER_DATE]);
             }
 
             $availableFilters[AppConstants::START_AFTER_DATE] = $startDate;
@@ -120,7 +122,7 @@ abstract class AbstractDataProvider
             $years = is_array($years) || is_string($years) || is_int($years) ? self::toValidYears($years) : null;
 
             if ($years === null) {
-                throw new ResourceNotFoundException(sprintf('Oops! invalid %s: the expected format is YYYY', AppConstants::YEAR_PARAM));
+                throw InvalidQueryParameter::exception(AppConstants::YEAR_PARAM, 'The expected format is YYYY.', $contextFilters[AppConstants::YEAR_PARAM]);
             }
 
             $availableFilters['submissionDate'] = $years;
