@@ -417,6 +417,8 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             ->from(UserAssignment::class, $assignmentAlias)
             ->where("$assignmentAlias.item = :type")
             ->andWhere("$assignmentAlias.uid = :to")
+            // a temporary user has an id of another table than the uid of the users
+            ->andWhere("$assignmentAlias.tmpUser = false")
             ->andWhere("$assignmentAlias.status = :activeAssignment")
             ->andWhere($expr->not($expr->exists($this->laterAssignmentDql($queryBuilder, $assignmentAlias))));
 
@@ -442,6 +444,7 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             ->where("$later.itemid = $assignmentAlias.itemid")
             ->andWhere("$later.item = $assignmentAlias.item")
             ->andWhere("$later.uid = $assignmentAlias.uid")
+            ->andWhere("$later.tmpUser = false")
             ->andWhere("$later.roleid = $assignmentAlias.roleid")
             ->andWhere("$later.when > $assignmentAlias.when OR ($later.when = $assignmentAlias.when AND $later.id > $assignmentAlias.id)")
             ->getDQL();

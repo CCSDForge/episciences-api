@@ -249,7 +249,8 @@ class PapersVoter extends Voter implements ResetInterface
         $latest = null;
 
         foreach ((array)($assignmentsByUid[$authenticatedUser->getUid()] ?? []) as $assignment) {
-            if ($assignment instanceof UserAssignment && ($latest === null || $this->isAfter($assignment, $latest))) {
+            // a temporary user has an id of another table than the uid of the users
+            if ($assignment instanceof UserAssignment && !$assignment->getTmpUser() && ($latest === null || $this->isAfter($assignment, $latest))) {
                 $latest = $assignment;
             }
         }

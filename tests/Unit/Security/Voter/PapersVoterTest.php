@@ -867,6 +867,24 @@ class PapersVoterTest extends TestCase
         }
     }
 
+    /**
+     * The assignments of a temporary user (reviewer invited without account) do not count for the user of the same id:
+     * the id of a temporary user comes from another table than the uid of the users.
+     */
+    public function testTheAssignmentsOfATemporaryUserOfTheSameIdDoNotCount(): void
+    {
+        $token = $this->makeToken($this->makeUser(70));
+        $temporary = $this->assignment(UserAssignment::STATUS_ACTIVE, '2024-06-01')->setTmpUser(true);
+
+        $paper = $this->makePaper(10, reviewers: [70 => [$temporary]]);
+        $this->assertSame(-1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_REVIEW]));
+
+        // a later assignment of the temporary user does not hide the active one of the user
+        $later = $this->assignment(UserAssignment::STATUS_PENDING, '2024-07-01')->setTmpUser(true);
+        $paper = $this->makePaper(10, reviewers: [70 => [$this->assignment(UserAssignment::STATUS_ACTIVE, '2024-06-01'), $later]]);
+        $this->assertSame(1, $this->voter->vote($token, $paper, [PapersVoter::PAPERS_REVIEW]));
+    }
+
     // ------------------------------------------------------------------ own paper of an administrator
 
     /**

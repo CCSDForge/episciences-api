@@ -190,6 +190,8 @@ class Paper implements UserOwnedInterface
 
     public const TABLE = 'PAPERS';
     public const URI_TEMPLATE = '/papers/';
+    // key prefix of a temporary reviewer (invited without account) among the reviewers, as in the gpl
+    public const TMP_REVIEWER_KEY_PREFIX = 'tmp_';
     public const STATUS_SUBMITTED = 0;
     public const STATUS_OK_FOR_REVIEWING = 1; // reviewers have been assigned, but did not start their reports
     public const STATUS_BEING_REVIEWED = 2; // rating has begun (at least one reviewer has starter working on his rating report)
@@ -464,7 +466,7 @@ class Paper implements UserOwnedInterface
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
     ])]
-    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Reviewers assigned to the paper')]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Reviewers assigned to the paper: the history of the assignments of each reviewer, by uid; a temporary reviewer (invited without account, `tmpUser`) is under the key `tmp_<id>`, as its id comes from another table than the uid of the users')]
     private array $reviewers = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
@@ -840,7 +842,8 @@ class Paper implements UserOwnedInterface
     }
 
     /**
-     * @return array
+     * @return array<int|string, list<UserAssignment>> the assignments of each reviewer, by uid, or by "tmp_<id>" for a
+     *                                                temporary reviewer (invited without account)
      */
     public function getReviewers(): array
     {
@@ -872,6 +875,17 @@ class Paper implements UserOwnedInterface
         /** @var UserAssignment $assignment */
 
         foreach ($this->assignments as $assignment) {
+
+            // a temporary user (reviewer invited without account) has an id of another table than the uid of the users:
+            // its assignments get a key of their own among the reviewers ("tmp_<id>", as Episciences_PapersManager::getReviewers()
+            // in the gpl), so that they are never taken for those of the user of the same uid (see PapersVoter::isAssigned())
+            if ($assignment->getTmpUser()) {
+                if ($assignment->getRoleid() === UserAssignment::ROLE_REVIEWER) {
+                    $reviewers[self::TMP_REVIEWER_KEY_PREFIX . $assignment->getUid()][] = $assignment;
+                }
+
+                continue;
+            }
 
             if ($assignment->getRoleid() === UserAssignment::ROLE_EDITOR) {
                 $editors[$assignment->getUid()][] = $assignment;
