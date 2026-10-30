@@ -40,6 +40,13 @@ services:
         arguments: ['@App\OpenApi\OpenApiFactory.inner']
         autoconfigure: false
 
+    # Inside the parameter factories of API Platform (priority 1000), which process the added parameters
+    # as the ones declared in the attributes
+    App\Metadata\SingleValueQueryParametersResourceMetadataCollectionFactory:
+        decorates: 'api_platform.metadata.resource.metadata_collection_factory'
+        decoration_priority: 1001
+        arguments: ['@App\Metadata\SingleValueQueryParametersResourceMetadataCollectionFactory.inner']
+
     App\OpenApi\OpenApiNormalizer:
         decorates: 'api_platform.openapi.normalizer.legacy'
         arguments: ['@App\OpenApi\OpenApiNormalizer.inner']
