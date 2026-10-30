@@ -12,6 +12,8 @@ use App\Entity\PaperLog;
 use App\Entity\Review;
 use App\Entity\ReviewerReport;
 use App\Entity\UserInvitation;
+use ApiPlatform\Validator\Exception\ValidationException;
+use App\Exception\InvalidQueryParameter;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
@@ -36,6 +38,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
     /**
      * @throws ResourceNotFoundException
+     * @throws ValidationException an invalid filter (422)
      */
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
@@ -76,8 +79,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $yearsDiff = $this->checkArrayEquality($availableYears, $years);
 
         if (!empty($yearsDiff['arrayDiff']['out'])) {
-            $message = sprintf('Oops! invalid year(s): %s because the available values are [%s]', implode(', ', $yearsDiff['arrayDiff']['out']), implode(', ', $availableYears));
-            throw new ResourceNotFoundException($message);
+            throw InvalidQueryParameter::exception(AppConstants::YEAR_PARAM, sprintf('Invalid year(s) %s: the available values are [%s].', implode(', ', $yearsDiff['arrayDiff']['out']), implode(', ', $availableYears)), $years);
         }
 
         $flag = $filters['flag'] ?? null;
@@ -97,8 +99,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $statusDiff = $this->checkArrayEquality($dictionaryKeys, $statusValues);
 
         if (!empty($statusDiff['arrayDiff']['out'])) {
-            $message = sprintf('Oops! invalid status: "%s" because the available values are: [%s]', implode(', ', $statusDiff['arrayDiff']['out']), implode(', ', $dictionaryKeys));
-            throw new ResourceNotFoundException($message);
+            throw InvalidQueryParameter::exception(AppConstants::PAPER_STATUS, sprintf('Invalid status "%s": the available values are [%s].', implode(', ', $statusDiff['arrayDiff']['out']), implode(', ', $dictionaryKeys)), $status);
         }
 
         foreach ($status as $currentStatus) {
@@ -259,7 +260,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
      * One or several indicators, sent as "indicator" or "indicator[]" (duplicates and empty values ignored).
      *
      * @return list<string>
-     * @throws ResourceNotFoundException
+     * @throws ValidationException
      */
     private function processIndicators(mixed $indicator): array
     {
@@ -268,7 +269,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
         foreach ($indicators as $value) {
             if (!is_string($value)) {
-                throw new ResourceNotFoundException('Oops! invalid indicator');
+                throw InvalidQueryParameter::exception('indicator', 'A string is expected.', $value);
             }
         }
 
@@ -277,7 +278,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
     /**
      * "groupBy=journal" returns the statistics of each journal: not with a journal code.
-     * @throws ResourceNotFoundException
+     * @throws ValidationException
      */
     private function processGroupBy(mixed $groupBy, string $operationName, ?string $code): ?string
     {
@@ -286,15 +287,15 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         }
 
         if ($groupBy !== Statistic::GROUP_BY_JOURNAL) {
-            throw new ResourceNotFoundException(sprintf('Oops! invalid %s because the available value is: %s', Statistic::GROUP_BY_PARAM, Statistic::GROUP_BY_JOURNAL));
+            throw InvalidQueryParameter::exception(Statistic::GROUP_BY_PARAM, sprintf('The available value is: %s.', Statistic::GROUP_BY_JOURNAL), $groupBy);
         }
 
         if ($operationName !== '_get_collection' && $operationName !== 'evaluation_get_collection') {
-            throw new ResourceNotFoundException(sprintf('Oops! %s=%s is only available on %s and %s', Statistic::GROUP_BY_PARAM, Statistic::GROUP_BY_JOURNAL, Statistic::STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::EVALUATION_GET_COLLECTION_OPERATION_IDENTIFIER));
+            throw InvalidQueryParameter::exception(Statistic::GROUP_BY_PARAM, sprintf('Only available on %s and %s.', Statistic::STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::EVALUATION_GET_COLLECTION_OPERATION_IDENTIFIER), $groupBy);
         }
 
         if ($code) {
-            throw new ResourceNotFoundException(sprintf('Oops! %s=%s cannot be combined with rvcode', Statistic::GROUP_BY_PARAM, Statistic::GROUP_BY_JOURNAL));
+            throw InvalidQueryParameter::exception(Statistic::GROUP_BY_PARAM, 'Cannot be combined with rvcode.', $groupBy);
         }
 
         return $groupBy;
@@ -304,7 +305,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
      * "withPapers": the lists of the papers counted, on the collection of a journal (see StatisticPapers).
      *
      * @return array<int, true>|null the papers not to list (PAPERID => true), null without lists
-     * @throws ResourceNotFoundException
+     * @throws ValidationException
      */
     private function processWithPapers(mixed $withPapers, string $operationName, ?Review $journal, ?string $groupBy): ?array
     {
@@ -313,7 +314,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         }
 
         if (!in_array($operationName, ['_get_collection', 'evaluation_get_collection'], true) || !$journal instanceof Review || $groupBy !== null) {
-            throw new ResourceNotFoundException(sprintf('Oops! %s is only available on %s and %s, with rvcode and without %s', Statistic::WITH_PAPERS_PARAM, Statistic::STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::EVALUATION_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::GROUP_BY_PARAM));
+            throw InvalidQueryParameter::exception(Statistic::WITH_PAPERS_PARAM, sprintf('Only available on %s and %s, with rvcode and without %s.', Statistic::STATISTIC_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::EVALUATION_GET_COLLECTION_OPERATION_IDENTIFIER, Statistic::GROUP_BY_PARAM), $withPapers);
         }
 
         return $this->statisticPapers->getConflictedPapers($journal);
@@ -433,13 +434,13 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
     /**
      * @param string[] $available
-     * @throws ResourceNotFoundException
+     * @throws ValidationException
      */
     private function checkIndicators(array $indicators, array $available): void
     {
         foreach ($indicators as $indicator) {
             if (!in_array($indicator, $available, true)) {
-                throw new ResourceNotFoundException(sprintf('Oops! invalid indicator "%s" because the available values are: %s', $indicator, implode(', ', $available)));
+                throw InvalidQueryParameter::exception('indicator', sprintf('Invalid indicator "%s": the available values are: %s.', $indicator, implode(', ', $available)), $indicator);
             }
         }
     }
@@ -584,7 +585,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     }
 
     /**
-     * @throws ResourceNotFoundException
+     * @throws ValidationException
      */
     private function processStartAfterDate(mixed $startAfterDate): ?string
     {
@@ -595,19 +596,19 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $date = is_string($startAfterDate) ? \DateTimeImmutable::createFromFormat('!Y-m-d', $startAfterDate) : false;
 
         if (!$date || $date->format('Y-m-d') !== $startAfterDate) {
-            throw new ResourceNotFoundException(sprintf('Oops! invalid %s: the expected format is YYYY-MM-DD', AppConstants::START_AFTER_DATE));
+            throw InvalidQueryParameter::exception(AppConstants::START_AFTER_DATE, 'The expected format is YYYY-MM-DD.', $startAfterDate);
         }
 
         return $startAfterDate;
     }
 
     /**
-     * @throws ResourceNotFoundException
+     * @throws ValidationException
      */
     private function processUnit(mixed $unit): string
     {
         if (!is_string($unit) || !in_array(strtolower($unit), self::AVAILABLE_UNITS, true)) {
-            throw new ResourceNotFoundException(sprintf('Oops! invalid unit because the available values are: %s', implode(', ', self::AVAILABLE_UNITS)));
+            throw InvalidQueryParameter::exception('unit', sprintf('The available values are: %s.', implode(', ', self::AVAILABLE_UNITS)), $unit);
         }
 
         return strtolower($unit);

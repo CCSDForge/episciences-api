@@ -4,6 +4,7 @@ namespace App\Tests\Unit\DataProvider;
 
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\Operation;
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\AppConstants;
 use App\DataProvider\AbstractDataProvider;
 use App\Entity\Review;
@@ -108,7 +109,7 @@ class AbstractDataProviderTest extends TestCase
         $journal->method('getRvid')->willReturn(42);
         $this->statsService->method('getJournal')->willReturn($journal);
 
-        $this->expectException(ResourceNotFoundException::class);
+        $this->expectException(ValidationException::class);
 
         $operation = new Get(name: AppConstants::APP_CONST['custom_operations']['items']['review'][1]);
         $this->dataProvider->exposeGetCollection($operation, ['uri_variables' => ['code' => 'myjournal'], 'filters' => ['withPapers' => 'true']]);
@@ -262,7 +263,7 @@ class AbstractDataProviderTest extends TestCase
             'filters' => [AppConstants::START_AFTER_DATE => $startAfterDate],
         ];
 
-        $this->expectException(ResourceNotFoundException::class);
+        $this->expectException(ValidationException::class);
 
         $this->dataProvider->exposeGetCollection($operation, $context);
     }
@@ -296,7 +297,7 @@ class AbstractDataProviderTest extends TestCase
             'filters' => [AppConstants::YEAR_PARAM => $year],
         ];
 
-        $this->expectException(ResourceNotFoundException::class);
+        $this->expectException(ValidationException::class);
 
         $this->dataProvider->exposeGetCollection($operation, $context);
     }

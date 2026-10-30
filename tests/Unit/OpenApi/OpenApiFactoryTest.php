@@ -119,17 +119,29 @@ class OpenApiFactoryTest extends TestCase
         $this->assertSame([200], array_keys($withoutJournal));
     }
 
-    public function testNotFoundResponseOfTheStatisticsListsTheCheckedFilters(): void
+    public function testInvalidFiltersOfTheStatisticsAreDocumentedAsUnprocessableEntity(): void
     {
         $paths = $this->createAuthOpenApi()->getPaths();
+        $statistics = $paths->getPath('/api/statistics/')?->getGet()?->getResponses();
 
-        $this->assertSame('Journal not found, or invalid `year` or `startAfterDate`', $paths->getPath('/api/statistics/')?->getGet()?->getResponses()[404]->getDescription());
+        // the 404 is the one of the journal
+        $this->assertSame('Journal not found', $statistics[404]->getDescription());
         // the error body of the response is kept
-        $this->assertSame('#/components/schemas/Error', $paths->getPath('/api/statistics/')?->getGet()?->getResponses()[404]->getContent()['application/problem+json']->getSchema()['$ref']);
-        $this->assertSame('Journal not found, or invalid `year`', $paths->getPath('/api/statistics/evaluation')?->getGet()?->getResponses()[404]->getDescription());
-        // without year nor startAfterDate
-        $this->assertSame('Not found', $paths->getPath('/api/journals/stats/nb-users/{code}')?->getGet()?->getResponses()[404]->getDescription());
+        $this->assertSame('#/components/schemas/Error', $statistics[404]->getContent()['application/problem+json']->getSchema()['$ref']);
+        $this->assertSame('Invalid `year` or `startAfterDate` (see the accepted values)', $statistics[422]->getDescription());
+        $this->assertSame('Invalid `year` (see the accepted values)', $paths->getPath('/api/statistics/evaluation')?->getGet()?->getResponses()[422]->getDescription());
+        // without filter
+        $nbUsers = $paths->getPath('/api/journals/stats/nb-users/{code}')?->getGet()?->getResponses();
+        $this->assertSame('Not found', $nbUsers[404]->getDescription());
+        $this->assertArrayNotHasKey(422, $nbUsers);
         $this->assertSame('Journal not found', $paths->getPath('/api/volumes')?->getGet()?->getResponses()[404]->getDescription());
+    }
+
+    public function testUnknownParameterOfTheJournalStatisticsIsDocumented(): void
+    {
+        $responses = $this->createAuthOpenApi()->getPaths()->getPath('/api/journals/stats/nb-submissions/{code}')?->getGet()?->getResponses();
+
+        $this->assertSame('Invalid `year` (see the accepted values), or an unknown parameter', $responses[422]->getDescription());
     }
 
     public function testSingleAndListFormsOfAFilterAreDocumentedOnce(): void
@@ -378,6 +390,10 @@ class OpenApiFactoryTest extends TestCase
         $paths->addPath('/api/statistics/evaluation', new PathItem(get: new Operation(
             responses: [200 => new Response('OK')],
             parameters: [new Parameter('rvcode', 'query'), new Parameter('year[]', 'query')]
+        )));
+        $paths->addPath('/api/journals/stats/nb-submissions/{code}', new PathItem(get: new Operation(
+            responses: [200 => new Response('OK'), 404 => new Response('Not found')],
+            parameters: [new Parameter('code', 'path'), new Parameter('year', 'query')]
         )));
         $paths->addPath('/api/journals/stats/nb-users/{code}', new PathItem(get: new Operation(
             responses: [200 => new Response('OK'), 404 => new Response('Not found')],
