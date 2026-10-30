@@ -192,6 +192,7 @@ class Paper implements UserOwnedInterface
     public const URI_TEMPLATE = '/papers/';
     // key prefix of a temporary reviewer (invited without account) among the reviewers, as in the gpl
     public const TMP_REVIEWER_KEY_PREFIX = 'tmp_';
+    private const REVIEWERS_DESCRIPTION = 'Reviewers assigned to the paper: the history of the assignments of each reviewer, by uid; a temporary reviewer (invited without account, `tmpUser`) is under the key `tmp_<id>`, as its id comes from another table than the uid of the users';
     public const STATUS_SUBMITTED = 0;
     public const STATUS_OK_FOR_REVIEWING = 1; // reviewers have been assigned, but did not start their reports
     public const STATUS_BEING_REVIEWED = 2; // rating has begun (at least one reviewer has starter working on his rating report)
@@ -466,7 +467,14 @@ class Paper implements UserOwnedInterface
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
     ])]
-    #[ApiProperty(security: "is_granted('papers_manage', object)", description: 'Reviewers assigned to the paper: the history of the assignments of each reviewer, by uid; a temporary reviewer (invited without account, `tmpUser`) is under the key `tmp_<id>`, as its id comes from another table than the uid of the users')]
+    #[ApiProperty(security: "is_granted('papers_manage', object)", schema: [
+        // keyed by uid or "tmp_<id>": a JSON object, or an empty array without reviewers
+        'type' => ['object', 'array'],
+        'maxItems' => 0,
+        'additionalProperties' => ['type' => 'array', 'items' => ['type' => 'object']],
+        // an explicit schema replaces the description of the property
+        'description' => self::REVIEWERS_DESCRIPTION,
+    ], description: self::REVIEWERS_DESCRIPTION)]
     private array $reviewers = [];
     #[groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
