@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `GET /api/statistics/`: the numbers of submissions, imported and submitted papers are counted in a single query instead of three.
 - The restrictions and filters applied to the items and collections (`AppQueryItemCollectionExtension`) are split into smaller methods, without change in the queries (same conditions, parameters and order).
 - OpenAPI documentation: each filter taking several values is documented once, as `name[]` (e.g. `year[]`), instead of a `name` / `name[]` pair, with the same syntax note everywhere (`year[]=…&year[]=…`, or `year=…` for a single one). The papers `type` and `year` filters were documented with a repeated `year=` that only keeps the last value. The journal code (`rvcode`, `code`) has the same description everywhere and is only documented as a single value; the median delays document the accepted values of `unit`. The API itself is unchanged: `year=2024` is still accepted.
+- OpenAPI documentation: the parameters of the search and date filters (e.g. `rvid[]`, `status[]`, `submissionDate[before]` on the papers, `page_code[]` on the pages) now have a description.
 ### Deprecated
 ### Removed
 ### Security

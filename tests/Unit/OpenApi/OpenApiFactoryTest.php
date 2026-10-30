@@ -168,11 +168,32 @@ class OpenApiFactoryTest extends TestCase
         $this->assertSame(QueryParameters::JOURNAL_CODE_DESCRIPTION, $parameters[0]->getDescription());
     }
 
+    public function testFilterParametersWithoutDescriptionGetOne(): void
+    {
+        $parameters = $this->documentParameters([
+            new Parameter('vid', 'query'),
+            new Parameter('vid[]', 'query', schema: ['type' => 'array', 'items' => ['type' => 'integer']]),
+            new Parameter('publicationDate[strictly_after]', 'query'),
+            new Parameter('unknown', 'query'),
+        ]);
+
+        $this->assertStringStartsWith(QueryParameters::FILTER_DESCRIPTIONS['vid'] . '. One or several values: ', $parameters[0]->getDescription());
+        $this->assertSame('Only the items whose `publicationDate` is after this date (YYYY-MM-DD)', $parameters[1]->getDescription());
+        $this->assertSame('', $parameters[2]->getDescription());
+    }
+
+    public function testDeclaredDescriptionIsKept(): void
+    {
+        $parameters = $this->documentParameters([new Parameter('vid', 'query', 'Volume of the paper')]);
+
+        $this->assertSame('Volume of the paper', $parameters[0]->getDescription());
+    }
+
     public function testOtherParametersAreUnchanged(): void
     {
         $parameters = [
             new Parameter('docid', 'path', 'Paper identifier', true),
-            new Parameter('submissionDate[before]', 'query'),
+            new Parameter('order[title]', 'query'),
             new Parameter('code', 'query', 'Code of the journal'),
         ];
 

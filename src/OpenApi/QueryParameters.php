@@ -26,4 +26,28 @@ final class QueryParameters
     public const array STRINGS = ['type' => 'array', 'items' => self::STRING];
 
     public const array INTEGERS = ['type' => 'array', 'items' => self::INTEGER];
+
+    /** Descriptions of the parameters of the search filters (#[ApiFilter]), which have none, by property */
+    public const array FILTER_DESCRIPTIONS = [
+        'rvid' => 'Journal identifier',
+        'doi' => 'DOI of the paper',
+        'paperid' => 'Identifier of the paper, shared by all its versions',
+        'docid' => 'Identifier of a version of the paper (document identifier)',
+        'vid' => 'Volume identifier',
+        'sid' => 'Section identifier',
+        'repoid' => 'Identifier of the repository hosting the paper',
+        'flag' => 'Origin of the paper: `submitted` to the journal, or `imported`',
+        'status' => 'Status of the paper in the editorial workflow (e.g. 16: published)',
+        'uid' => 'User identifier (uid) of the page',
+        'page_code' => 'Code of the page (e.g. about, for-authors)',
+        'userRoles.rvid' => 'Journal identifier: the users having a role in this journal',
+    ];
+
+    /** Comparisons of the date filters (`property[comparison]`) */
+    public const array DATE_COMPARISONS = [
+        'before' => 'on or before',
+        'strictly_before' => 'before',
+        'after' => 'on or after',
+        'strictly_after' => 'after',
+    ];
 }
