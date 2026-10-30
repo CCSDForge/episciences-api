@@ -130,10 +130,10 @@ class OpenApiFactoryTest extends TestCase
         $this->assertSame('#/components/schemas/Error', $statistics[404]->getContent()['application/problem+json']->getSchema()['$ref']);
         $this->assertSame('Invalid `year` or `startAfterDate` (see the accepted values)', $statistics[422]->getDescription());
         $this->assertSame('Invalid `year` (see the accepted values)', $paths->getPath('/api/statistics/evaluation')?->getGet()?->getResponses()[422]->getDescription());
-        // without filter
+        // without a checked filter: only an unknown parameter can be rejected
         $nbUsers = $paths->getPath('/api/journals/stats/nb-users/{code}')?->getGet()?->getResponses();
         $this->assertSame('Not found', $nbUsers[404]->getDescription());
-        $this->assertArrayNotHasKey(422, $nbUsers);
+        $this->assertSame('An unknown parameter', $nbUsers[422]->getDescription());
         $this->assertSame('Journal not found', $paths->getPath('/api/volumes')?->getGet()?->getResponses()[404]->getDescription());
     }
 
@@ -397,7 +397,7 @@ class OpenApiFactoryTest extends TestCase
         )));
         $paths->addPath('/api/journals/stats/nb-users/{code}', new PathItem(get: new Operation(
             responses: [200 => new Response('OK'), 404 => new Response('Not found')],
-            parameters: [new Parameter('code', 'path')]
+            parameters: [new Parameter('code', 'path'), new Parameter('withDetails', 'query')]
         )));
 
         $decorated = $this->createStub(OpenApiFactoryInterface::class);

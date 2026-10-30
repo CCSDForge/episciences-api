@@ -505,7 +505,8 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             $descriptions[] = sprintf('%s given as a list (`name[]=…`): a single value is expected', self::listOfNames($singleValue));
         }
 
-        if ($unknownParameters && $descriptions !== []) {
+        // an unknown parameter is rejected even without a documented filter
+        if ($unknownParameters) {
             $descriptions[] = 'an unknown parameter';
         }
 
