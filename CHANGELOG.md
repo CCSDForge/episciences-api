@@ -8,12 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!--
 ## Unreleased
 ### Fixed
+- Papers: a temporary reviewer (invited without account) is under the key `tmp_<id>` in the reviewers of a paper (`reviewers`), as in Episciences, and its assignments no longer count as the current assignments of the user of the same uid: its id comes from another table than the uid of the users.
 - Statistics of the evaluation: `reviews-requested` counts each invitation once, with its current status: an answer or a cancellation adds a row to the invitations with the same assignment, which was counted as another invitation (the first one remaining pending). The figures are lower, an invitation cancelled after an answer is no longer counted, and an answered invitation is no longer counted as pending. An invitation cancelled by an assignment only (the invitations without answer of an accepted paper) is cancelled too.
 - The editors of the sections and of the volumes (`committee`) and the sections assigned to the editors of the boards: an editor whose latest assignment to the section (or volume) is inactive is no longer listed, even if an earlier assignment has the same date as the latest assignment of another editor.
 ### Added
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): with `withDetails`, `details` now also gives the median delays of each year (`submissionAcceptanceTimeMedian`, `submissionPublicationTimeMedian`), in the shape of the average delays.
 - Journal dashboard: the delays of each year in `details` (average and median) now give `count`, the number of articles the delay is computed from.
 ### Changed
+- Unused code removed: `UserAssignmentRepository::findInvitationsQuery()` and the `docId` and `uid` options of `UserInvitationRepository::getReviewsRequested()`.
 - Statistics of the evaluation: `reviews-requested` only counts the invitations for a paper: an invitation without paper (e.g. `ITEMID = 0`) is no longer counted, so that each invitation counted can be listed by `withPapers`. A pending invitation past its expiration date is still counted.
 - Journal dashboard: the average and the median delays are computed from the same delay of each article, in two queries instead of four.
 - Statistics: the average delays are always computed from the delay of each article, as the median delays (same figures): the SQL query of the average delays is removed.

@@ -39,8 +39,6 @@ class UserInvitationRepository extends ServiceEntityRepository
         $invitationStatus = $options['invitation-status'] ?? null;
         $startAfterDate = $options[AppConstants::START_AFTER_DATE] ?? null;
 
-        $docId = $options['docId'] ?? null;
-        $uid = $options['uid'] ?? null;
         $years = $options['year'] ?? null;
         $qb = $this->getEntityManager()->createQueryBuilder();
         $qb->addSelect('ua.rvid');
@@ -96,14 +94,6 @@ class UserInvitationRepository extends ServiceEntityRepository
             $qb->andWhere(sprintf('c.status = :status AND NOT %s', $isCancelled('cancelledWith')))->setParameter('status', $invitationStatus);
         } else {
             $qb->andWhere(sprintf('NOT %s', $isCancelled('cancelledWith')));
-        }
-
-        if ($docId) {
-            $qb->andWhere('ua.itemid = :docId')->setParameter('docId', $docId);
-        }
-
-        if ($uid) {
-            $qb->andWhere('ua.uid = :uid')->setParameter('uid', $uid);
         }
 
         $qb->orderBy('ua.rvid', \SortDirection::Descending);

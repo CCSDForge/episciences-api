@@ -78,7 +78,7 @@ class UserAssignment
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
 
-    private bool $tmpUser;
+    private bool $tmpUser = false;
 
     #[ORM\Column(name: 'ROLEID', type: \Doctrine\DBAL\Types\Types::STRING, length: 50, nullable: false)]
     private string $roleid;
