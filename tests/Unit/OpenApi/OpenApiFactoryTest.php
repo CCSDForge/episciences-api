@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Unit\OpenApi;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
 use ApiPlatform\Metadata\Resource\Factory\ResourceNameCollectionFactoryInterface;
 use ApiPlatform\Metadata\Resource\ResourceMetadataCollection;
@@ -13,6 +15,7 @@ use ApiPlatform\Metadata\Resource\ResourceNameCollection;
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
 use ApiPlatform\OpenApi\Model\Components;
 use ApiPlatform\OpenApi\Model\Info;
+use ApiPlatform\OpenApi\Model\MediaType;
 use ApiPlatform\OpenApi\Model\Operation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\PathItem;
@@ -22,11 +25,15 @@ use ApiPlatform\OpenApi\Model\Schema;
 use ApiPlatform\OpenApi\OpenApi;
 use App\AppConstants;
 use App\Controller\BoardsController;
+use App\Entity\Paper;
 use App\Entity\Review;
 use App\EventSubscriber\TruncatedCollectionSubscriber;
+use App\Metadata\SingleValueQueryParametersResourceMetadataCollectionFactory;
 use App\OpenApi\OpenApiFactory;
 use App\OpenApi\QueryParameters;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Validator\Constraints\Choice;
+use Symfony\Component\Validator\Constraints\Type;
 
 class OpenApiFactoryTest extends TestCase
 {
@@ -198,6 +205,32 @@ class OpenApiFactoryTest extends TestCase
         ];
 
         $this->assertEquals($parameters, $this->documentParameters($parameters));
+    }
+
+    public function testUnprocessableEntityDescribesTheValidatedParametersDocumentedByTheOperation(): void
+    {
+        $responses = $this->createValidationOpenApi()->getPaths()->getPath('/api/papers/')?->getGet()?->getResponses();
+
+        // `letter` is validated but not documented by the operation
+        $this->assertSame('Invalid `scope` (see the accepted values), or `rvcode` or `page` given as a list (`name[]=…`): a single value is expected', $responses[422]->getDescription());
+        // the response documented by API Platform (ConstraintViolation schema) is kept, after the success response
+        $this->assertSame('#/components/schemas/ConstraintViolation', $responses[422]->getContent()['application/problem+json']->getSchema()['$ref']);
+        $this->assertGreaterThan(array_search(200, array_keys($responses), true), array_search(422, array_keys($responses), true));
+    }
+
+    public function testItemGetsTheUnprocessableEntityOfTheCollections(): void
+    {
+        $responses = $this->createValidationOpenApi()->getPaths()->getPath('/api/volumes/{vid}')?->getGet()?->getResponses();
+
+        $this->assertSame('`rvcode` given as a list (`name[]=…`): a single value is expected', $responses[422]->getDescription());
+        $this->assertSame('#/components/schemas/ConstraintViolation', $responses[422]->getContent()['application/problem+json']->getSchema()['$ref']);
+    }
+
+    public function testUnprocessableEntityIsRemovedWithoutDocumentedValidatedParameter(): void
+    {
+        $responses = $this->createValidationOpenApi()->getPaths()->getPath('/api/feed/rss/{code}')?->getGet()?->getResponses();
+
+        $this->assertArrayNotHasKey(422, $responses);
     }
 
     public function testErrorResponsesWithoutBodyGetTheErrorBody(): void
@@ -384,6 +417,62 @@ class OpenApiFactoryTest extends TestCase
         $openApi = new OpenApiFactory($decorated, $resourceNameCollectionFactory, $this->createStub(ResourceMetadataCollectionFactoryInterface::class))();
 
         return $openApi->getPaths()->getPath('/api/resources')?->getGet()?->getParameters() ?? [];
+    }
+
+    /**
+     * Operations validating query parameters (QueryParameter with constraints) and their documentation
+     */
+    private function createValidationOpenApi(): OpenApi
+    {
+        $unprocessableEntity = new Response('An error occurred', new \ArrayObject([
+            'application/problem+json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/ConstraintViolation'])),
+        ]));
+
+        $paths = new Paths();
+        $paths->addPath('/api/papers/', new PathItem(get: new Operation(
+            responses: [422 => $unprocessableEntity, 200 => new Response('OK')],
+            parameters: [new Parameter('rvcode', 'query'), new Parameter('scope', 'query'), new Parameter('page', 'query'), new Parameter('year[]', 'query')]
+        )));
+        $paths->addPath('/api/volumes/{vid}', new PathItem(get: new Operation(
+            responses: [200 => new Response('OK')],
+            parameters: [new Parameter('vid', 'path'), new Parameter('rvcode', 'query')]
+        )));
+        $paths->addPath('/api/feed/rss/{code}', new PathItem(get: new Operation(
+            responses: [422 => $unprocessableEntity, 200 => new Response('OK')],
+            parameters: [new Parameter('code', 'path')]
+        )));
+
+        $decorated = $this->createStub(OpenApiFactoryInterface::class);
+        $decorated->method('__invoke')->willReturn(
+            new OpenApi(new Info('Episciences API', '1.0'), [], $paths, new Components(schemas: new \ArrayObject(), securitySchemes: new \ArrayObject()))
+        );
+
+        $singleValue = static fn(string $key): QueryParameter => new QueryParameter(
+            key: $key,
+            constraints: [new Type('string')],
+            extraProperties: [SingleValueQueryParametersResourceMetadataCollectionFactory::SINGLE_VALUE => true]
+        );
+
+        $resourceNameCollectionFactory = $this->createStub(ResourceNameCollectionFactoryInterface::class);
+        $resourceNameCollectionFactory->method('create')->willReturn(new ResourceNameCollection([Paper::class]));
+
+        $resourceMetadataCollectionFactory = $this->createStub(ResourceMetadataCollectionFactoryInterface::class);
+        $resourceMetadataCollectionFactory->method('create')->willReturn(new ResourceMetadataCollection(Paper::class, [
+            new ApiResource(operations: [
+                'papers' => new GetCollection(uriTemplate: '/papers/{._format}', parameters: [
+                    'rvcode' => $singleValue('rvcode'),
+                    'page' => $singleValue('page'),
+                    'letter' => $singleValue('letter'),
+                    'scope' => new QueryParameter(key: 'scope', constraints: [new Choice(choices: ['all'])]),
+                    // not validated
+                    'year' => new QueryParameter(key: 'year'),
+                ]),
+                'volume' => new Get(uriTemplate: '/volumes/{vid}{._format}', parameters: ['rvcode' => $singleValue('rvcode')]),
+                'feed' => new GetCollection(uriTemplate: '/feed/rss/{code}', parameters: ['rvcode' => $singleValue('rvcode')]),
+            ]),
+        ]));
+
+        return new OpenApiFactory($decorated, $resourceNameCollectionFactory, $resourceMetadataCollectionFactory)();
     }
 
     /**

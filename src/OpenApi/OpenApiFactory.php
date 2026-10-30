@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\OpenApi;
 
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
 use ApiPlatform\Metadata\Resource\Factory\ResourceNameCollectionFactoryInterface;
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
@@ -17,6 +18,7 @@ use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use ApiPlatform\OpenApi\OpenApi;
 use App\AppConstants;
 use App\EventSubscriber\TruncatedCollectionSubscriber;
+use App\Metadata\SingleValueQueryParametersResourceMetadataCollectionFactory;
 use Symfony\Component\HttpFoundation\Response;
 
 final readonly class OpenApiFactory implements OpenApiFactoryInterface
@@ -126,6 +128,8 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         $openApi = $this->addAuthPaths($openApi);
 
         $openApi = $this->documentUnpaginatedCap($openApi);
+
+        $openApi = $this->documentQueryParametersValidation($openApi);
 
         $openApi = $this->documentOptionalAuthMode($openApi);
 
@@ -407,6 +411,170 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     private static function copyNode(\ArrayObject|array $node): \ArrayObject|array
     {
         return $node instanceof \ArrayObject ? clone $node : $node;
+    }
+
+    // -----------------------------------
+    // VALIDATION OF THE QUERY PARAMETERS
+    // -----------------------------------
+    /**
+     * Describes the 422 returned by API Platform when a query parameter it validates (QueryParameter with constraints)
+     * is invalid: the parameters taking a single value given as a list (added by
+     * SingleValueQueryParametersResourceMetadataCollectionFactory), the others declared with a schema (e.g. `scope`).
+     * Only the parameters documented by the operation are listed (without any, no 422 is documented). The collections
+     * declare the validation error, which API Platform documents with its schema; the items get the same response.
+     */
+    private function documentQueryParametersValidation(OpenApi $openApi): OpenApi
+    {
+        $paths = $openApi->getPaths();
+        $validatedParameters = $this->getValidatedQueryParameters();
+        $unprocessableEntity = $this->findUnprocessableEntityResponse($openApi);
+
+        foreach ($paths->getPaths() as $key => $path) {
+            foreach (self::HTTP_METHODS as $method) {
+                $operation = $path->{'get' . $method}();
+                $validated = $this->findValidatedQueryParameters((string)$key, strtoupper($method), $validatedParameters);
+
+                if (!$operation instanceof Operation || $validated === null) {
+                    continue;
+                }
+
+                $documented = [];
+
+                foreach ($operation->getParameters() ?? [] as $parameter) {
+                    if ($parameter->getIn() === 'query') {
+                        $documented[] = $parameter->getName();
+                    }
+                }
+
+                $description = $this->unprocessableEntityDescription(
+                    array_values(array_intersect($validated['singleValue'], $documented)),
+                    array_values(array_intersect($validated['others'], $documented))
+                );
+                $responses = $operation->getResponses() ?? [];
+                $response = $responses[Response::HTTP_UNPROCESSABLE_ENTITY] ?? $unprocessableEntity;
+
+                if ($description === null) {
+                    // no documented parameter can be invalid: the declared validation error is not documented
+                    unset($responses[Response::HTTP_UNPROCESSABLE_ENTITY]);
+                } elseif ($response instanceof OpenApiResponse) {
+                    // after the success response (API Platform documents the declared errors first)
+                    unset($responses[Response::HTTP_UNPROCESSABLE_ENTITY]);
+                    $responses[Response::HTTP_UNPROCESSABLE_ENTITY] = $response->withDescription($description);
+                }
+
+                $path = $path->{'with' . $method}($operation->withResponses($responses));
+            }
+
+            $paths->addPath($key, $path);
+        }
+
+        return $openApi->withPaths($paths);
+    }
+
+    /**
+     * @param list<string> $singleValue
+     * @param list<string> $others
+     */
+    private function unprocessableEntityDescription(array $singleValue, array $others): ?string
+    {
+        $descriptions = [];
+
+        if ($others !== []) {
+            $descriptions[] = sprintf('Invalid %s (see the accepted values)', self::listOfNames($others));
+        }
+
+        if ($singleValue !== []) {
+            $descriptions[] = sprintf('%s given as a list (`name[]=…`): a single value is expected', self::listOfNames($singleValue));
+        }
+
+        return $descriptions === [] ? null : ucfirst(implode(', or ', $descriptions));
+    }
+
+    /**
+     * @param list<string> $names
+     */
+    private static function listOfNames(array $names): string
+    {
+        $names = array_map(static fn(string $name): string => "`$name`", array_values(array_unique($names)));
+        $last = array_pop($names);
+
+        return $names === [] ? (string)$last : implode(', ', $names) . " or $last";
+    }
+
+    /**
+     * The 422 documented by API Platform on the operations declaring the validation error (ConstraintViolation schema)
+     */
+    private function findUnprocessableEntityResponse(OpenApi $openApi): ?OpenApiResponse
+    {
+        foreach ($openApi->getPaths()->getPaths() as $path) {
+            foreach (self::HTTP_METHODS as $method) {
+                $response = ($path->{'get' . $method}()?->getResponses() ?? [])[Response::HTTP_UNPROCESSABLE_ENTITY] ?? null;
+
+                if ($response instanceof OpenApiResponse && $response->getContent() !== null) {
+                    return $response;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<array{method: string, uriTemplate: string, singleValue: list<string>, others: list<string>}>
+     *         The query parameters validated by API Platform, by operation (URI template without the format)
+     */
+    private function getValidatedQueryParameters(): array
+    {
+        $validated = [];
+
+        foreach ($this->resourceNameCollectionFactory->create() as $resourceClass) {
+            foreach ($this->resourceMetadataCollectionFactory->create($resourceClass) as $resource) {
+                foreach ($resource->getOperations() ?? [] as $operation) {
+                    if ($operation->getUriTemplate() === null) {
+                        continue;
+                    }
+
+                    $parameters = ['singleValue' => [], 'others' => []];
+
+                    foreach ($operation->getParameters() ?? [] as $parameter) {
+                        if ($parameter instanceof QueryParameter && $parameter->getConstraints()) {
+                            $kind = ($parameter->getExtraProperties()[SingleValueQueryParametersResourceMetadataCollectionFactory::SINGLE_VALUE] ?? false) ? 'singleValue' : 'others';
+                            $parameters[$kind][] = (string)$parameter->getKey();
+                        }
+                    }
+
+                    $validated[] = [
+                        'method' => $operation->getMethod(),
+                        'uriTemplate' => str_replace('{._format}', '', $operation->getUriTemplate()),
+                    ] + $parameters;
+                }
+            }
+        }
+
+        return $validated;
+    }
+
+    /**
+     * The parameters validated on the operation of the path: the one with the longest URI template ending the path
+     *
+     * @param list<array{method: string, uriTemplate: string, singleValue: list<string>, others: list<string>}> $validatedParameters
+     * @return array{method: string, uriTemplate: string, singleValue: list<string>, others: list<string>}|null
+     */
+    private function findValidatedQueryParameters(string $path, string $method, array $validatedParameters): ?array
+    {
+        $found = null;
+
+        foreach ($validatedParameters as $validated) {
+            if (
+                $validated['method'] === $method &&
+                str_ends_with($path, $validated['uriTemplate']) &&
+                strlen($validated['uriTemplate']) > strlen($found['uriTemplate'] ?? '')
+            ) {
+                $found = $validated;
+            }
+        }
+
+        return $found;
     }
 
     // -----------------------------------
