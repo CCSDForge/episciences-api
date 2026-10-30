@@ -12,12 +12,10 @@ use App\Entity\News;
 use App\Entity\Page;
 use App\Entity\Paper;
 use App\Entity\Review;
-use App\Entity\ReviewSetting;
 use App\Entity\Section;
 use App\Entity\User;
 use App\Entity\UserAssignment;
 use App\Entity\UserRoles;
-use App\Entity\UserOwnedInterface;
 use App\Entity\Volume;
 use App\Exception\ResourceNotFoundException;
 use App\Traits\QueryTrait;
@@ -25,6 +23,10 @@ use Doctrine\ORM\Query\Expr\Andx;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\SecurityBundle\Security;
 
+/**
+ * Restricts the items and collections to what the current user may read (public access when offline or
+ * without journal, access by role in the journal of the token), then applies the query filters of the resource.
+ */
 class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, QueryCollectionExtensionInterface
 {
     use QueryTrait;
@@ -33,26 +35,21 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     private const string SETTING_ENCAPSULATE_EDITORS = 'encapsulateEditors';
     private const string SETTING_ENCAPSULATE_COPY_EDITORS = 'encapsulateCopyEditors';
 
+    /** Roles reading only the papers they are assigned to (unless they are editorial staff of every paper) */
+    private const array ASSIGNED_ROLES = ['ROLE_EDITOR', 'ROLE_COPYEDITOR', 'ROLE_GUEST_EDITOR', 'ROLE_REVIEWER'];
+
     public function __construct(private Security $security)
     {
     }
 
     /**
-     * @param QueryBuilder $queryBuilder
-     * @param QueryNameGeneratorInterface $queryNameGenerator
-     * @param string $resourceClass
-     * @param Operation|null $operation
-     * @param array $context
-     * @return void
      * @throws ResourceNotFoundException
      */
-
-
     public function applyToCollection(
         QueryBuilder                $queryBuilder,
         QueryNameGeneratorInterface $queryNameGenerator,
         string                      $resourceClass,
-        ?Operation                   $operation = null,
+        ?Operation                  $operation = null,
         array                       $context = []
     ): void
     {
@@ -62,192 +59,197 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
 
         if ($rvCode) {
             $journal = $queryBuilder->getEntityManager()->getRepository(Review::class)->getJournalByIdentifier($rvCode);
+
             if (!$journal) {
                 throw new ResourceNotFoundException(sprintf('Oops! not found Journal %s', $rvCode));
             }
 
             $context['filters']['rvid'] = $journal->getRvid();
-
         }
 
         $this->addWhere($queryBuilder, $resourceClass, $operation, $context);
     }
 
-    /**
-     * @param QueryBuilder $queryBuilder
-     * @param QueryNameGeneratorInterface $queryNameGenerator
-     * @param string $resourceClass
-     * @param array $identifiers
-     * @param Operation|null $operation
-     * @param array $context
-     * @return void
-     */
     public function applyToItem(
         QueryBuilder                $queryBuilder,
         QueryNameGeneratorInterface $queryNameGenerator,
         string                      $resourceClass,
         array                       $identifiers,
-        ?Operation                   $operation = null,
+        ?Operation                  $operation = null,
         array                       $context = []
     ): void
     {
         $context[AppConstants::IS_APP_ITEM] = true;
-        $this->addWhere($queryBuilder, $resourceClass, $operation, $context);
 
+        $this->addWhere($queryBuilder, $resourceClass, $operation, $context);
     }
 
-    /**
-     */
-    private function addWhere(QueryBuilder $queryBuilder, string $resourceClass, ?HttpOperation $operation = null, array $context = []): void
+    /** @param array<string, mixed> $context */
+    private function addWhere(QueryBuilder $queryBuilder, string $resourceClass, ?Operation $operation, array $context): void
     {
-        $context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE] = true;
-        /** @var User $currentUser */
-        $currentUser = $this->security->getUser();
-
         $alias = $queryBuilder->getRootAliases()[0];
 
+        /** @var User|null $currentUser */
+        $currentUser = $this->security->getUser();
 
-        if ($currentUser) { // connected
-
-            if (!$currentUser->getCurrentJournalID()) {
-
-                $this->publicAccessProcess($queryBuilder, $alias, $resourceClass, $context);
-
-            } else {
-
-                $this->privateAccessProcess($queryBuilder, $alias, $resourceClass, $currentUser, $operation, $context);
-            }
-
-
+        if ($currentUser?->getCurrentJournalID()) {
+            $this->privateAccessProcess($queryBuilder, $alias, $resourceClass, $currentUser, $operation, $context);
         } else {
             $this->publicAccessProcess($queryBuilder, $alias, $resourceClass, $context);
         }
 
+        $this->applyResourceFilters($queryBuilder, $alias, $resourceClass, $context);
+    }
 
+    /**
+     * Restrictions and filters of a resource, whatever the user.
+     *
+     * @param array<string, mixed> $context
+     */
+    private function applyResourceFilters(QueryBuilder $queryBuilder, string $alias, string $resourceClass, array $context): void
+    {
         if ($resourceClass === Review::class) {
-
             $queryBuilder
                 ->andWhere("$alias.rvid!= :portal")
                 ->setParameter('portal', Review::PORTAL_ID)
                 ->andWhere("$alias.status!= :status")
                 ->setParameter('status', Review::STATUS_DISABLED);
 
-        } elseif ($resourceClass === Page::class || $resourceClass === News::class) {
+            return;
+        }
 
-            if (($resourceClass === News::class) && isset($context['filters'][AppConstants::YEAR_PARAM])) {
+        if ($resourceClass === News::class && isset($context['filters'][AppConstants::YEAR_PARAM])) {
+            $years = $this->processYears($context['filters'][AppConstants::YEAR_PARAM]);
+            $this->processOrExpression($queryBuilder, $alias, $years, $resourceClass);
+        }
 
-                $newsYear = $this->processYears($context['filters'][AppConstants::YEAR_PARAM]);
-                $this->processOrExpression($queryBuilder, $alias, $newsYear, $resourceClass);
-            }
-
+        if ($resourceClass === Page::class || $resourceClass === News::class) {
             // Use the indexed stored generated column instead of JSON_EXTRACT() to avoid
             // full-table scans that triggered sort_buffer_size overflow (MySQL error 1038).
             $queryBuilder->andWhere("$alias.is_public = :isPublic")->setParameter('isPublic', true);
 
-        } elseif ($resourceClass === Paper::class) {
+            return;
+        }
 
-            $types = isset($context['filters']['type']) ? (array)($context['filters']['type']) : [];
+        if ($resourceClass === Paper::class) {
+            $types = isset($context['filters']['type']) ? (array)$context['filters']['type'] : [];
             $this->andOrExp($queryBuilder, sprintf("JSON_EXTRACT(%s.type, '$.title')", $alias), $types);
-
         }
     }
 
     /**
-     * @param QueryBuilder $queryBuilder
-     * @param string $field
-     * @param string $resourceClass
-     * @param array $context
-     * @return QueryBuilder
+     * Access of the anonymous users and of the users connected without journal: the published papers,
+     * and the volumes (sections) holding them.
+     *
+     * @param array<string, mixed> $context
      */
-
-    private function adnWherePublished(QueryBuilder $queryBuilder, string $field, string $resourceClass, array $context = []): QueryBuilder
+    private function publicAccessProcess(QueryBuilder $queryBuilder, string $alias, string $resourceClass, array $context): void
     {
+        if ($resourceClass === Paper::class) {
+            /** @var HttpOperation|null $operation */
+            $operation = $context['operation'] ?? null;
+            $isPapersList = $operation?->getName() === Paper::COLLECTION_NAME && $this->isCollection($context);
 
-        $allowBrowseAcceptedDocuments = isset($context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE]) && filter_var($context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE], FILTER_VALIDATE_BOOLEAN);
-        $isItem = isset($context[AppConstants::IS_APP_ITEM]) && filter_var($context[AppConstants::IS_APP_ITEM], FILTER_VALIDATE_BOOLEAN);
-
-        $strict = !$isItem || !$allowBrowseAcceptedDocuments;
-
-        $parameters = $queryBuilder->getParameters()->getValues();
-
-        if (!empty($parameters) && $resourceClass === Paper::class) {
-            $docId = $parameters[array_key_first($parameters)]->getValue();
-
-            if ($docId) {
-                $alias = $queryBuilder->getRootAliases()[0];
-
-                $queryBuilder->orWhere(sprintf('%s.paperid = :paperId', $alias))
-                    ->setParameter('paperId', $docId);
-
+            if ($isPapersList && $this->isOnlyAccepted($context)) {
+                $this->andWhereAcceptedOnly($queryBuilder, $alias);
+            } else {
+                // an accepted paper can be read, but is only listed with only_accepted
+                $this->andWherePublished($queryBuilder, "$alias.status", $resourceClass, $this->isItem($context));
+                $this->andWherePublicationYears($queryBuilder, $alias, $context);
             }
-
+        } elseif ($resourceClass === Volume::class || $resourceClass === Section::class) {
+            $this->andWherePublished($queryBuilder, 'papers_a1.status', $resourceClass);
+        } else {
+            return;
         }
 
-        if ($strict) {
-            $queryBuilder->
-            andWhere("$field= :published")->
-            setParameter('published', Paper::STATUS_PUBLISHED);
-            if ($resourceClass === Paper::class) {
-                $queryBuilder->addOrderBy(sprintf("%s.publicationDate", $queryBuilder->getRootAliases()[0]), \SortDirection::Descending);
+        $this->andWhereRequestedJournal($queryBuilder, $alias, $context);
+    }
+
+    /**
+     * Access of the users connected to a journal (the journal of the token).
+     *
+     * @param array<string, mixed> $context
+     */
+    private function privateAccessProcess(
+        QueryBuilder $queryBuilder,
+        string       $alias,
+        string       $resourceClass,
+        User         $currentUser,
+        ?Operation   $operation,
+        array        $context
+    ): void
+    {
+        if ($resourceClass === User::class) {
+            // @see operation security allowed only for ROLE_SECRETARY
+            $queryBuilder
+                ->join(UserRoles::class, 'ur', 'ON', "$alias.uid = ur.uid")
+                ->andWhere("ur.roleid!= :epiAdminRole")->setParameter('epiAdminRole', User::ROLE_ROOT)
+                ->andWhere("$alias.uid!= :systemUid")->setParameter('systemUid', User::EPISCIENCES_UID)
+                ->andWhere("ur.rvid= :userVid")->setParameter('userVid', $currentUser->getCurrentJournalID());
+        } elseif ($resourceClass === Paper::class) {
+            $this->privatePaperAccess($queryBuilder, $alias, $currentUser, $context);
+        } elseif ($resourceClass === Volume::class || $resourceClass === Section::class) {
+            if (!$this->security->isGranted('ROLE_EDITOR')) {
+                $this->andWherePublished($queryBuilder, 'papers_a1.status', $resourceClass);
+            } elseif ($this->isJournalListOperation($operation)) {
+                // replaces the previous conditions: the editors read every volume (section) of their journal
+                $queryBuilder
+                    ->where("$alias.rvid= :rvId")
+                    ->setParameter('rvId', $currentUser->getCurrentJournalID());
+            }
+        }
+    }
+
+    /**
+     * Papers read by a connected user, according to the `scope` of the list (an item is always read with scope=all).
+     * With scope=workspace, the papers are restricted to the journal of the token: a journal other than this one
+     * returns no paper; with scope=all, it returns the public papers of this journal.
+     *
+     * @param array<string, mixed> $context
+     */
+    private function privatePaperAccess(QueryBuilder $queryBuilder, string $alias, User $currentUser, array $context): void
+    {
+        $isItem = $this->isItem($context);
+        $isOnlyAccepted = $this->isOnlyAccepted($context);
+        $scope = $isItem ? Paper::SCOPE_ALL : $this->paperScope($context);
+
+        if ($scope === Paper::SCOPE_PUBLIC) { // the papers listed in offline mode
+            $this->publicAccessProcess($queryBuilder, $alias, Paper::class, $context);
+
+            return;
+        }
+
+        if ($isOnlyAccepted) {
+            $this->andWhereAcceptedOnly($queryBuilder, $alias);
+        }
+
+        $access = $this->paperAccessCondition($queryBuilder, $alias, $currentUser);
+
+        if ($scope === Paper::SCOPE_ALL) {
+            // The papers open to everyone (as isRestrictedAccess in the gpl), whatever the journal of
+            // the token, and those opened by the role; the confidential fields stay protected by the voter.
+            $queryBuilder
+                ->andWhere($queryBuilder->expr()->orX("$alias.status IN (:publicStatuses)", $access))
+                ->setParameter('publicStatuses', $this->publicPaperStatuses($isItem, $isOnlyAccepted));
+
+            if (!$isItem) {
+                $queryBuilder
+                    ->orderBy("$alias.publicationDate", \SortDirection::Descending)
+                    ->addOrderBy("$alias.when", \SortDirection::Descending);
             }
         } else {
-            $this->andOrExp($queryBuilder, $field, array_merge(Paper::STATUS_ACCEPTED, [Paper::STATUS_PUBLISHED]));
+            $queryBuilder->andWhere($access);
         }
 
-        return $queryBuilder;
+        $requestedRvId = $context['filters']['rvid'] ?? null;
 
-    }
-
-    private function adnWhereAcceptedOnly(QueryBuilder $queryBuilder, string $alias): QueryBuilder
-    {
-        $this->andOrExp($queryBuilder, sprintf('%s.status', $alias), Paper::STATUS_ACCEPTED);
-        $queryBuilder->addOrderBy(sprintf("%s.modificationDate", $alias), \SortDirection::Descending);
-        return $queryBuilder;
-
-    }
-
-
-    private function publicAccessProcess(QueryBuilder $queryBuilder, string $alias, string $resourceClass, array $context = []): void
-    {
-        /** @var HttpOperation $operation */
-        $operation = $context['operation'] ?? null;
-        $operationName = $operation?->getName();
-
-        if (in_array($resourceClass, [Paper::class, Volume::class, Section::class], true)) {
-            if ($resourceClass === Paper::class) {
-                $allowBrowseAcceptedDocuments = isset($context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE]) && filter_var($context[ReviewSetting::ALLOW_BROWSE_ACCEPTED_ARTICLE], FILTER_VALIDATE_BOOLEAN);
-                $isOnlyAccepted = isset($context['filters']['only_accepted']) && filter_var($context['filters']['only_accepted'], FILTER_VALIDATE_BOOLEAN);
-                $isCollection = isset($context[AppConstants::IS_APP_COLLECTION]) && filter_var($context[AppConstants::IS_APP_COLLECTION], FILTER_VALIDATE_BOOLEAN);
-
-                if ( // for collection
-                    $operationName === Paper::COLLECTION_NAME &&
-                    $isCollection &&
-                    $allowBrowseAcceptedDocuments &&
-                    $isOnlyAccepted
-                ) {
-                    $this->adnWhereAcceptedOnly($queryBuilder, $alias);
-                } else {
-                    $this->adnWherePublished($queryBuilder, "$alias.status", $resourceClass, $context);
-
-                    if (isset($context['filters'][AppConstants::YEAR_PARAM])) {
-                        $year = $this->processYears($context['filters'][AppConstants::YEAR_PARAM]);
-                        $this->andOrExp($queryBuilder, sprintf('YEAR(%s.%s)', $alias, 'publicationDate'), $year);
-                    }
-
-                }
-            } else {
-                $this->adnWherePublished($queryBuilder, 'papers_a1.status', $resourceClass);
-            }
-
-            $rvId = $context['filters']['rvid'] ?? null;
-
-            if ($rvId) {
-                $queryBuilder->andWhere(sprintf("%s.rvid = :rvId", $alias))->setParameter('rvId', $rvId);
-            }
-
+        if ($requestedRvId) {
+            $queryBuilder->andWhere("$alias.rvid = :requestedRvId")->setParameter('requestedRvId', $requestedRvId);
         }
-    }
 
+        $this->andWherePublicationYears($queryBuilder, $alias, $context);
+    }
 
     /**
      * Statuses of the papers open to everyone, as in offline mode (publicAccessProcess): a published
@@ -279,25 +281,6 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     }
 
     /**
-     * Applies the journal (rvcode) and publication year filters to the papers visible to a connected user.
-     * With scope=workspace, the papers are restricted to the journal of the token: a journal other than this one
-     * returns no paper; with scope=all, it returns the public papers of this journal.
-     */
-    private function applyPrivatePaperFilters(QueryBuilder $queryBuilder, string $alias, array $context = []): void
-    {
-        $requestedRvId = $context['filters']['rvid'] ?? null;
-
-        if ($requestedRvId) {
-            $queryBuilder->andWhere("$alias.rvid = :requestedRvId")->setParameter('requestedRvId', $requestedRvId);
-        }
-
-        if (isset($context['filters'][AppConstants::YEAR_PARAM])) {
-            $years = $this->processYears($context['filters'][AppConstants::YEAR_PARAM]);
-            $this->andOrExp($queryBuilder, sprintf('YEAR(%s.%s)', $alias, 'publicationDate'), $years);
-        }
-    }
-
-    /**
      * Papers of the journal of the token that the role of the connected user opens to them: every paper
      * for the secretaries (and the roles above) and the editors (copy editors) who are not encapsulated,
      * the assigned papers for the other editorial roles and the reviewers, and, for everyone, the papers
@@ -315,59 +298,29 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             return $access;
         }
 
-        if (
-            $this->security->isGranted('ROLE_EDITOR') ||
-            $this->security->isGranted('ROLE_COPYEDITOR') ||
-            $this->security->isGranted('ROLE_GUEST_EDITOR') ||
-            $this->security->isGranted('ROLE_REVIEWER')
-        ) { // only assigned papers
-
-            // The papers they are currently assigned to, and, for the editors and copy editors, the
-            // previous versions of the papers whose latest version they are assigned to
-            // (Episciences_Paper::isAssignedEditorOrCopyEditor in the gpl)
-            // The paperids of the latest versions the user is currently assigned to as editor or copy
-            // editor: computed once from their assignments rather than for every paper of the journal
-            $latestVersionsOfUser = $queryBuilder->getEntityManager()->createQueryBuilder()
-                ->select('latestVersion.paperid')
-                ->from(UserAssignment::class, 'vAss')
-                ->join(Paper::class, 'latestVersion', 'WITH', 'latestVersion.docid = vAss.itemid')
-                ->where('vAss.item = :type')
-                ->andWhere('vAss.uid = :to')
-                ->andWhere('vAss.status = :activeAssignment')
-                ->andWhere('vAss.roleid IN (:managingRoles)')
-                ->andWhere($expr->not($expr->exists($this->laterAssignmentDql($queryBuilder, 'vAss'))))
-                ->andWhere($expr->not($expr->exists(
-                    $queryBuilder->getEntityManager()->createQueryBuilder()
-                        ->select('newerVersion.docid')
-                        ->from(Paper::class, 'newerVersion')
-                        ->where('newerVersion.paperid = latestVersion.paperid')
-                        ->andWhere('newerVersion.when > latestVersion.when')
-                        ->getDQL()
-                )));
-
-            $queryBuilder
-                ->setParameter('type', UserAssignment::ITEM_PAPER)
-                ->setParameter('to', $currentUser->getUid())
-                ->setParameter('activeAssignment', UserAssignment::STATUS_ACTIVE)
-                ->setParameter('managingRoles', [UserAssignment::ROLE_EDITOR, UserAssignment::ROLE_COPY_EDITOR])
-                ->orderBy("$alias.when", \SortDirection::Descending);
-
-            $queryBuilder->setParameter('closedStatuses', [Paper::STATUS_DELETED, Paper::STATUS_REMOVED]);
-
-            return $access->add($expr->orX(
-                // their own papers, as for the other users
-                $this->ownPaperCondition($queryBuilder, $alias, $currentUser),
-                // a deleted or removed paper is only shown by its administration page, to its editors and copy editors
-                $expr->andX(
-                    "$alias.status NOT IN (:closedStatuses)",
-                    $expr->in("$alias.docid", $this->currentAssignmentDql($queryBuilder, 'uAss'))
-                ),
-                $expr->in("$alias.docid", $this->currentAssignmentDql($queryBuilder, 'eAss', true)),
-                $expr->in("$alias.paperid", $latestVersionsOfUser->getDQL())
-            ));
+        if (!array_any(self::ASSIGNED_ROLES, fn(string $role): bool => $this->security->isGranted($role))) {
+            return $access->add($this->ownPaperCondition($queryBuilder, $alias, $currentUser));
         }
 
-        return $access->add($this->ownPaperCondition($queryBuilder, $alias, $currentUser));
+        // Parameters of the assignment subqueries
+        $queryBuilder
+            ->setParameter('type', UserAssignment::ITEM_PAPER)
+            ->setParameter('to', $currentUser->getUid())
+            ->setParameter('activeAssignment', UserAssignment::STATUS_ACTIVE)
+            ->setParameter('managingRoles', [UserAssignment::ROLE_EDITOR, UserAssignment::ROLE_COPY_EDITOR])
+            ->orderBy("$alias.when", \SortDirection::Descending);
+
+        return $access->add($expr->orX(
+            // their own papers, as for the other users (also sets :closedStatuses)
+            $this->ownPaperCondition($queryBuilder, $alias, $currentUser),
+            // a deleted or removed paper is only shown by its administration page, to its editors and copy editors
+            $expr->andX(
+                "$alias.status NOT IN (:closedStatuses)",
+                $expr->in("$alias.docid", $this->currentAssignmentDql($queryBuilder, 'uAss'))
+            ),
+            $expr->in("$alias.docid", $this->currentAssignmentDql($queryBuilder, 'eAss', true)),
+            $expr->in("$alias.paperid", $this->latestVersionsAssignedDql($queryBuilder))
+        ));
     }
 
     /**
@@ -430,6 +383,34 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
     }
 
     /**
+     * DQL of the paperids of the latest versions the connected user (:to) is currently assigned to as editor
+     * or copy editor, which open them the previous versions of these papers (Episciences_Paper::isAssignedEditorOrCopyEditor
+     * in the gpl). Computed once from the assignments of the user rather than for every paper of the journal.
+     */
+    private function latestVersionsAssignedDql(QueryBuilder $queryBuilder): string
+    {
+        $expr = $queryBuilder->expr();
+
+        $newerVersion = $queryBuilder->getEntityManager()->createQueryBuilder()
+            ->select('newerVersion.docid')
+            ->from(Paper::class, 'newerVersion')
+            ->where('newerVersion.paperid = latestVersion.paperid')
+            ->andWhere('newerVersion.when > latestVersion.when');
+
+        return $queryBuilder->getEntityManager()->createQueryBuilder()
+            ->select('latestVersion.paperid')
+            ->from(UserAssignment::class, 'vAss')
+            ->join(Paper::class, 'latestVersion', 'WITH', 'latestVersion.docid = vAss.itemid')
+            ->where('vAss.item = :type')
+            ->andWhere('vAss.uid = :to')
+            ->andWhere('vAss.status = :activeAssignment')
+            ->andWhere('vAss.roleid IN (:managingRoles)')
+            ->andWhere($expr->not($expr->exists($this->laterAssignmentDql($queryBuilder, 'vAss'))))
+            ->andWhere($expr->not($expr->exists($newerVersion->getDQL())))
+            ->getDQL();
+    }
+
+    /**
      * DQL of the assignments of the same user, paper and role made after the given one (the latest id
      * first for the same date, as the row kept by the gpl): when there is none, the given assignment is
      * the latest one.
@@ -472,88 +453,99 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             ($isCopyEditor && $journal?->getSetting(self::SETTING_ENCAPSULATE_COPY_EDITORS) === '0');
     }
 
-    private function privateAccessProcess(
-        QueryBuilder  $queryBuilder,
-        string        $alias,
-        string        $resourceClass,
-        User          $currentUser,
-        ?HttpOperation $operation = null,
-                      array $context = []
-    ): void
+    /**
+     * Published papers (volumes, sections holding them), sorted by publication date for the papers;
+     * the accepted papers too when $withAccepted.
+     */
+    private function andWherePublished(QueryBuilder $queryBuilder, string $statusField, string $resourceClass, bool $withAccepted = false): void
     {
-        $isOnlyAccepted = isset($context['filters']['only_accepted']) && filter_var($context['filters']['only_accepted'], FILTER_VALIDATE_BOOLEAN);
+        $alias = $queryBuilder->getRootAliases()[0];
+        $parameters = $queryBuilder->getParameters()->getValues();
 
-        // @see operation security allowed only for ROLE_SECRETARY
-        if ($resourceClass === User::class) {
-            $queryBuilder->
-            join(UserRoles::class, 'ur', 'ON', "$alias.uid = ur.uid")
-                ->andWhere("ur.roleid!= :epiAdminRole")->setParameter('epiAdminRole', User::ROLE_ROOT)
-                ->andWhere("$alias.uid!= :systemUid")->setParameter('systemUid', User::EPISCIENCES_UID)
-                ->andWhere("ur.rvid= :userVid")->setParameter('userVid', $currentUser->getCurrentJournalID());
-        } elseif (new \ReflectionClass($resourceClass)->implementsInterface(UserOwnedInterface::class)) {
+        if ($parameters !== [] && $resourceClass === Paper::class) {
+            // a paper is also found by its paperid: the first parameter is the requested docid
+            $docId = $parameters[array_key_first($parameters)]->getValue();
 
-            if ($resourceClass === Paper::class) {
-
-                $isItem = isset($context[AppConstants::IS_APP_ITEM]) && filter_var($context[AppConstants::IS_APP_ITEM], FILTER_VALIDATE_BOOLEAN);
-                $scope = $isItem ? Paper::SCOPE_ALL : $this->paperScope($context);
-
-                if ($scope === Paper::SCOPE_PUBLIC) { // the papers listed in offline mode
-                    $this->publicAccessProcess($queryBuilder, $alias, $resourceClass, $context);
-                    return;
-                }
-
-                if ($isOnlyAccepted) {
-                    $this->adnWhereAcceptedOnly($queryBuilder, $alias);
-                }
-
-                $access = $this->paperAccessCondition($queryBuilder, $alias, $currentUser);
-
-                if ($scope === Paper::SCOPE_ALL) {
-                    // The papers open to everyone (as isRestrictedAccess in the gpl), whatever the journal of
-                    // the token, and those opened by the role; the confidential fields stay protected by the voter.
-                    $queryBuilder
-                        ->andWhere($queryBuilder->expr()->orX("$alias.status IN (:publicStatuses)", $access))
-                        ->setParameter('publicStatuses', $this->publicPaperStatuses($isItem, $isOnlyAccepted));
-
-                    if (!$isItem) {
-                        $queryBuilder
-                            ->orderBy("$alias.publicationDate", \SortDirection::Descending)
-                            ->addOrderBy("$alias.when", \SortDirection::Descending);
-                    }
-                } else {
-                    $queryBuilder->andWhere($access);
-                }
-
-                $this->applyPrivatePaperFilters($queryBuilder, $alias, $context);
-
+            if ($docId) {
+                $queryBuilder->orWhere("$alias.paperid = :paperId")->setParameter('paperId', $docId);
             }
-
-
-        } elseif ($resourceClass === Volume::class || $resourceClass === Section::class) {
-
-            if ($this->security->isGranted('ROLE_EDITOR')) {
-
-                if (
-                    $operation instanceof \ApiPlatform\Metadata\HttpOperation &&
-                    (
-                        str_starts_with((string) $operation->getUriTemplate(), Volume::DEFAULT_URI_TEMPLATE) ||
-                        str_starts_with((string) $operation->getUriTemplate(), Section::DEFAULT_URI_TEMPLATE)
-                    )
-                ) {
-
-                    $queryBuilder
-                        ->where("$alias.rvid= :rvId")
-                        ->setParameter('rvId', $currentUser->getCurrentJournalID());
-                }
-
-
-            } else {
-
-                $this->adnWherePublished($queryBuilder, 'papers_a1.status', $resourceClass);
-            }
-
         }
 
+        if ($withAccepted) {
+            $this->andOrExp($queryBuilder, $statusField, [...Paper::STATUS_ACCEPTED, Paper::STATUS_PUBLISHED]);
+
+            return;
+        }
+
+        $queryBuilder->andWhere("$statusField= :published")->setParameter('published', Paper::STATUS_PUBLISHED);
+
+        if ($resourceClass === Paper::class) {
+            $queryBuilder->addOrderBy("$alias.publicationDate", \SortDirection::Descending);
+        }
     }
 
+    private function andWhereAcceptedOnly(QueryBuilder $queryBuilder, string $alias): void
+    {
+        $this->andOrExp($queryBuilder, "$alias.status", Paper::STATUS_ACCEPTED);
+        $queryBuilder->addOrderBy("$alias.modificationDate", \SortDirection::Descending);
+    }
+
+    /**
+     * `year` filter of the papers, on their publication date.
+     *
+     * @param array<string, mixed> $context
+     */
+    private function andWherePublicationYears(QueryBuilder $queryBuilder, string $alias, array $context): void
+    {
+        if (isset($context['filters'][AppConstants::YEAR_PARAM])) {
+            $years = $this->processYears($context['filters'][AppConstants::YEAR_PARAM]);
+            $this->andOrExp($queryBuilder, "YEAR($alias.publicationDate)", $years);
+        }
+    }
+
+    /**
+     * `rvcode` filter, resolved into a journal id by applyToCollection().
+     *
+     * @param array<string, mixed> $context
+     */
+    private function andWhereRequestedJournal(QueryBuilder $queryBuilder, string $alias, array $context): void
+    {
+        $rvId = $context['filters']['rvid'] ?? null;
+
+        if ($rvId) {
+            $queryBuilder->andWhere("$alias.rvid = :rvId")->setParameter('rvId', $rvId);
+        }
+    }
+
+    /**
+     * Whether the operation lists the volumes (sections) of the journal, which the editors read whole.
+     */
+    private function isJournalListOperation(?Operation $operation): bool
+    {
+        if (!$operation instanceof HttpOperation) {
+            return false;
+        }
+
+        $uriTemplate = (string)$operation->getUriTemplate();
+
+        return str_starts_with($uriTemplate, Volume::DEFAULT_URI_TEMPLATE) || str_starts_with($uriTemplate, Section::DEFAULT_URI_TEMPLATE);
+    }
+
+    /** @param array<string, mixed> $context */
+    private function isItem(array $context): bool
+    {
+        return filter_var($context[AppConstants::IS_APP_ITEM] ?? false, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /** @param array<string, mixed> $context */
+    private function isCollection(array $context): bool
+    {
+        return filter_var($context[AppConstants::IS_APP_COLLECTION] ?? false, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /** @param array<string, mixed> $context */
+    private function isOnlyAccepted(array $context): bool
+    {
+        return filter_var($context['filters']['only_accepted'] ?? false, FILTER_VALIDATE_BOOLEAN);
+    }
 }

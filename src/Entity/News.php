@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\OpenApi\OpenApiSchemas;
+use App\OpenApi\QueryParameters;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
@@ -31,34 +32,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
                 summary: 'List of News',
                 description: 'Retrieve a list of news published by the journals, sorted in descending order of creation (most recent first). Can be filtered by the year of creation.',
                 parameters: [
-                    new Parameter(
-                        name: AppConstants::YEAR_PARAM,
-                        in: 'query',
-                        description: 'The Year of creation',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'integer',
-                        ],explode: false, allowReserved: false
-                    ),
-                    new Parameter(
-                        name: 'year[]',
-                        in: 'query',
-                        description: 'The year(s) of creation, repeated for each year (e.g. ?year[]=2023&year[]=2024)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-
-                    ),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of creation', schema: QueryParameters::INTEGERS),
                 ]
             ),
             order: ['date_creation' => AppConstants::ORDER_DESC],

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\OpenApi\OpenApiSchemas;
+use App\OpenApi\QueryParameters;
 use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiProperty;
@@ -62,69 +63,12 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
                 summary: 'All Papers (In offline mode: only published papers )',
                 description: 'List the papers. In offline mode only published papers are returned. In connected mode the papers of the journal of the token are returned according to the role (`scope=workspace`, default): all of them for an administrator, a chief editor or a secretary, the assigned ones for an editor, a copy editor or a reviewer, and only their own papers for an author (an empty list if they have none); `scope=public` lists the papers as in offline mode (the published papers, or the accepted ones with `only_accepted`), `scope=all` both. The journal (rvcode), paper type(s) and publication year(s) filters apply in both modes; in connected mode a journal other than the one of the token returns an empty list.',
                 parameters: [
-                    new Parameter(
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal Code (ex. epijinfo)',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ]
-                    ),
+                    new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
                     // Documentation of the scope parameter (validated by the QueryParameter below), next to only_accepted
-                    new Parameter(
-                        name: self::SCOPE_PARAM,
-                        in: 'query',
-                        description: 'Connected mode only (ignored in offline mode): `workspace` (default) the papers opened by the role of the user in the journal of the token; `public` the papers listed in offline mode (the published papers, or the accepted ones with `only_accepted`); `all` both, the public papers and those opened by the role.',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: self::SCOPE_SCHEMA
-                    ),
-                    new Parameter(
-                        name: 'only_accepted',
-                        in: 'query',
-                        description: 'If true, only accepted documents will be returned.',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'boolean',
-                        ]
-                    ),
-                    new Parameter(
-                        name: 'type',
-                        in: 'query',
-                        description: 'Paper type(s). Repeat parameter: ?type=a&type=b',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'string',
-                            ],
-                        ],
-                        explode: true
-                    ),
-                    new Parameter(
-                        name: AppConstants::YEAR_PARAM,
-                        in: 'query',
-                        description: 'Publication year(s). Repeat parameter: ?year=2023&year=2024',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ],
-                        ],
-                        explode: true,
-                        allowReserved: false
-                    ),
+                    new Parameter(name: self::SCOPE_PARAM, in: 'query', description: 'Connected mode only (ignored in offline mode): `workspace` (default) the papers opened by the role of the user in the journal of the token; `public` the papers listed in offline mode (the published papers, or the accepted ones with `only_accepted`); `all` both, the public papers and those opened by the role.', schema: self::SCOPE_SCHEMA),
+                    new Parameter(name: 'only_accepted', in: 'query', description: 'If true, only accepted documents will be returned.', schema: QueryParameters::BOOLEAN),
+                    new Parameter(name: 'type[]', in: 'query', description: 'Paper type(s)', schema: QueryParameters::STRINGS),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Publication year(s)', schema: QueryParameters::INTEGERS),
                 ],
             ),
             normalizationContext: [

@@ -9,6 +9,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\OpenApi\OpenApiFactory;
+use App\OpenApi\QueryParameters;
 use App\State\SearchStateProvider;
 
 
@@ -21,175 +22,13 @@ use App\State\SearchStateProvider;
                 summary: 'Document search',
                 description: 'Full-text search in the documents published by Episciences journals (Solr). Supports filters on journal, document type, volume, section, publication year and author. The results come with facets (volume, section, year, type); use the author search or the browse endpoints for the authors.',
                 parameters: [
-                    new Parameter(
-                        name: self::TERMS_PARAM,
-                        in: 'query',
-                        description: 'Search terms',
-                        required: true,
-                        schema: [
-                            "type" => 'string',
-                            "default" => self::DEFAULT_TERMS,
-                        ]
-                    ),
-                    new Parameter(
-                        name: 'rvcode',
-                        in: 'query',
-                        description: 'Journal code (exp. epijinfo)',
-                        required: false,
-                        schema: [
-                            "type" => 'string',
-                            "default" => ''
-                        ]
-                    ),
-                    new Parameter(
-                        name: self::DOC_TYPE_FILTER,
-                        in: 'query',
-                        description: 'Document type',
-                        required: false,
-                        deprecated: false,
-                        schema: [
-                            "type" => 'string'
-                        ]
-                    ),
-                    new Parameter(
-                        name: self::ARRAY_DOC_TYPE_FILTER,
-                        in: 'query',
-                        description: 'Document type',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'string',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-
-                    ),
-                    new Parameter(
-                        name: self::VOLUME_FILTER,
-                        in: 'query',
-                        description: 'Volume identifier',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'integer',
-                        ],
-                        explode: false,
-                        allowReserved: false,
-
-                    ),
-                    new Parameter(
-                        name: self::ARRAY_VOLUME_FILTER,
-                        in: 'query',
-                        description: 'Volume identifier',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-
-                    ),
-                    new Parameter(
-                        name: self::SECTION_FILTER,
-                        in: 'query',
-                        description: 'Section identifier',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'integer',
-                        ],
-                        explode: false,
-                        allowReserved: false,
-
-                    ),
-                    new Parameter(
-                        name: self::ARRAY_SECTION_FILTER,
-                        in: 'query',
-                        description: 'Section identifier',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-
-                    ),
-
-                    new Parameter(
-                        name: self::PUBLICATION_DATE_YEAR_FILTER,
-                        in: 'query',
-                        description: 'Publication year',
-                        required: false,
-                        deprecated: false,
-                        schema: [
-                            "type" => 'integer'
-                        ]
-                    ),
-                    new Parameter(
-                        name: self::ARRAY_PUBLICATION_DATE_YEAR_FILTER,
-                        in: 'query',
-                        description: 'Publication year',
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'integer',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false,
-
-                    ),
-
-                    new Parameter(
-                        name: self::AUTHOR_FULL_NAME_FILTER,
-                        in: 'query',
-                        description: "Author's full name",
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'string',
-                        ],
-                        explode: false,
-                        allowReserved: false,
-
-                    ),
-                    new Parameter(
-                        name: self::ARRAY_AUTHOR_FULL_NAME_FILTER,
-                        in: 'query',
-                        description: "Author's full name",
-                        required: false,
-                        deprecated: false,
-                        allowEmptyValue: false,
-                        schema: [
-                            'type' => 'array',
-                            'items' => [
-                                'type' => 'string',
-                            ]
-                        ],
-                        explode: true,
-                        allowReserved: false
-                    ),
-
+                    new Parameter(name: self::TERMS_PARAM, in: 'query', description: 'Search terms', required: true, schema: ['type' => 'string', 'default' => self::DEFAULT_TERMS]),
+                    new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
+                    new Parameter(name: self::ARRAY_DOC_TYPE_FILTER, in: 'query', description: 'Document type', schema: QueryParameters::STRINGS),
+                    new Parameter(name: self::ARRAY_VOLUME_FILTER, in: 'query', description: 'Volume identifier', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: self::ARRAY_SECTION_FILTER, in: 'query', description: 'Section identifier', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: self::ARRAY_PUBLICATION_DATE_YEAR_FILTER, in: 'query', description: 'Publication year', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: self::ARRAY_AUTHOR_FULL_NAME_FILTER, in: 'query', description: "Author's full name", schema: QueryParameters::STRINGS),
                 ],
             ),
             normalizationContext: [

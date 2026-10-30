@@ -10,6 +10,7 @@ use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use App\OpenApi\OpenApiFactory;
 use App\State\BrowseStateProvider;
+use App\OpenApi\QueryParameters;
 
 #[ApiResource(
     operations: [
@@ -25,7 +26,7 @@ use App\State\BrowseStateProvider;
                     new Parameter(
                         name: 'code',
                         in: 'query',
-                        description: 'Journal code (exp. epijinfo)',
+                        description: QueryParameters::JOURNAL_CODE_DESCRIPTION,
                         required: false,
                         schema: [
                             "type" => 'string',
@@ -76,7 +77,7 @@ use App\State\BrowseStateProvider;
                     new Parameter(
                         name: 'code',
                         in: 'query',
-                        description: 'Journal code (exp. epijinfo)',
+                        description: QueryParameters::JOURNAL_CODE_DESCRIPTION,
                         required: false,
                         schema: [
                             "type" => 'string',
