@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\OpenApi;
 
 use ApiPlatform\Metadata\GetCollection;
-use ApiPlatform\Metadata\HttpOperation;
 use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
 use ApiPlatform\Metadata\Resource\Factory\ResourceNameCollectionFactoryInterface;
@@ -531,7 +530,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         foreach ($this->resourceNameCollectionFactory->create() as $resourceClass) {
             foreach ($this->resourceMetadataCollectionFactory->create($resourceClass) as $resource) {
                 foreach ($resource->getOperations() ?? [] as $operation) {
-                    if (!$operation instanceof HttpOperation || $operation->getUriTemplate() === null) {
+                    if ($operation->getUriTemplate() === null) {
                         continue;
                     }
 

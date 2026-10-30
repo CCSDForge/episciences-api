@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Metadata;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Exception\AccessDeniedException;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\HttpOperation;
@@ -42,10 +43,10 @@ class SingleValueQueryParametersResourceMetadataCollectionFactoryTest extends Te
 
     public function testCollectionDeclaresTheValidationError(): void
     {
-        $operation = $this->operation(Paper::class, new GetCollection(name: 'collection', errors: [\RuntimeException::class]));
+        $operation = $this->operation(Paper::class, new GetCollection(name: 'collection', errors: [AccessDeniedException::class]));
 
         $this->assertInstanceOf(HttpOperation::class, $operation);
-        $this->assertSame([\RuntimeException::class, ValidationException::class], $operation->getErrors());
+        $this->assertSame([AccessDeniedException::class, ValidationException::class], $operation->getErrors());
     }
 
     /**
@@ -93,7 +94,7 @@ class SingleValueQueryParametersResourceMetadataCollectionFactoryTest extends Te
         $this->assertCount(0, $validator->validate(null, $constraints));
     }
 
-    private function operation(string $resourceClass, Operation $operation): Operation
+    private function operation(string $resourceClass, HttpOperation $operation): Operation
     {
         $decorated = $this->createStub(ResourceMetadataCollectionFactoryInterface::class);
         $decorated->method('create')->willReturn(new ResourceMetadataCollection($resourceClass, [
