@@ -59,7 +59,8 @@ class OpenApiFactoryTest extends TestCase
         $this->assertArrayHasKey(TruncatedCollectionSubscriber::TRUNCATED_HEADER, $headers);
         $this->assertSame(['type' => 'integer'], $headers[TruncatedCollectionSubscriber::TRUNCATED_HEADER]['schema']);
 
-        $this->assertSame('Invalid pagination parameter (e.g. `page` lower than 1)', $get->getResponses()[400]->getDescription());
+        $this->assertSame('Invalid pagination parameter (e.g. `page` that is not a positive integer)', $get->getResponses()[400]->getDescription());
+        $this->assertSame('Page after the last one (the first page always exists, even empty)', $get->getResponses()[404]->getDescription());
         $this->assertSame('#/components/schemas/Error.jsonld', $get->getResponses()[400]->getContent()['application/ld+json']->getSchema()['$ref']);
         $this->assertSame('#/components/schemas/Error', $get->getResponses()[400]->getContent()['application/json']->getSchema()['$ref']);
     }

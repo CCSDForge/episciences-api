@@ -217,14 +217,16 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     }
 
     /**
-     * An invalid pagination parameter returns a 400 (see InvalidPaginationSubscriber)
+     * An invalid pagination parameter returns a 400, a page after the last one a 404
+     * (see InvalidPaginationSubscriber and RequestedPageSubscriber)
      *
      * @param array<int|string, mixed> $responses
      * @return array<int|string, mixed>
      */
     private function withInvalidPaginationResponse(array $responses): array
     {
-        $responses[Response::HTTP_BAD_REQUEST] ??= $this->errorResponse('Invalid pagination parameter (e.g. `page` lower than 1)');
+        $responses[Response::HTTP_BAD_REQUEST] ??= $this->errorResponse('Invalid pagination parameter (e.g. `page` that is not a positive integer)');
+        $responses[Response::HTTP_NOT_FOUND] ??= $this->errorResponse('Page after the last one (the first page always exists, even empty)');
 
         return $responses;
     }
