@@ -29,6 +29,8 @@ class IndexingDatabaseController extends AbstractController
         $indexingDatabases = [];
         $page = 1;
         $itemsPerPage = 30;
+        $pagination = true;
+        $firstResult = 0;
 
         if ($request instanceof Request) {
             $code = $request->attributes->get('code');
@@ -46,12 +48,16 @@ class IndexingDatabaseController extends AbstractController
                 $indexingDbRepo = $this->entityManager->getRepository(IndexingDatabase::class);
                 $indexingDatabases = $indexingDbRepo->findByReviewId($journal->getRvid());
 
+                // The page is checked by RequestedPageSubscriber (positive integer, 404 after the last one)
                 $page = max(1, $request->query->getInt('page', 1));
                 $itemsPerPage = max(1, $request->query->getInt('itemsPerPage', 30));
+                $pagination = filter_var($request->query->get('pagination', true), FILTER_VALIDATE_BOOLEAN);
             }
         }
 
-        $firstResult = ($page - 1) * $itemsPerPage;
+        if ($pagination) {
+            $firstResult = ($page - 1) * $itemsPerPage;
+        }
 
         return new ArrayPaginator($indexingDatabases, $firstResult, $itemsPerPage);
     }
