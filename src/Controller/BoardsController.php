@@ -58,8 +58,9 @@ class BoardsController extends AbstractController
 
         if ($request instanceof \Symfony\Component\HttpFoundation\Request) {
             $tags = [];
-            // The page is checked by RequestedPageSubscriber (positive integer, 404 after the last one)
-            $page = max(1, $request->query->getInt('page', 1));
+            // The page is validated (400) and checked against the last page (404) by RequestedPageSubscriber;
+            // only itemsPerPage needs a local floor (the subscriber does not guard it).
+            $page = $request->query->getInt('page', 1);
             $itemsPerPage = max(1, $request->query->getInt('itemsPerPage', 30));
             $pagination = filter_var($request->query->get('pagination', true), FILTER_VALIDATE_BOOLEAN);
 
