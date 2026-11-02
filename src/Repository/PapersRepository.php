@@ -208,8 +208,9 @@ class PapersRepository extends ServiceEntityRepository
             }
 
             if (in_array($name, $dateYearFilters, true)) {
-                if ($name === AppConstants::SUBMISSION_DATE) { // old stats by year @see PapersStatsProvider
-                    $qb->andWhere(sprintf('YEAR(%s.%s) =:%s', self::PAPERS_ALIAS, $date, $name));
+                if ($name === AppConstants::SUBMISSION_DATE) { // old stats by year @see PapersStatsProvider; one or several years
+                    $qb->andWhere(sprintf('YEAR(%s.%s) IN (:%s)', self::PAPERS_ALIAS, $date, $name));
+                    $value = array_map('intval', (array)$value);
                 } else { // YEAR_PARAM
                     $this->andOrExp($qb, sprintf('YEAR(%s.%s)', self::PAPERS_ALIAS, $date), (array)$value);
                 }
@@ -237,14 +238,13 @@ class PapersRepository extends ServiceEntityRepository
     {
         $alias = 'firstSubmission' . ucfirst($filter);
         $condition = match ($filter) {
-            AppConstants::SUBMISSION_DATE => sprintf('YEAR(MIN(%s.submissionDate)) = :%s', $alias, $alias),
-            AppConstants::YEAR_PARAM => sprintf('YEAR(MIN(%s.submissionDate)) IN (:%s)', $alias, $alias),
+            AppConstants::SUBMISSION_DATE, AppConstants::YEAR_PARAM => sprintf('YEAR(MIN(%s.submissionDate)) IN (:%s)', $alias, $alias),
             default => sprintf('MIN(%s.submissionDate) >= :%s', $alias, $alias), // startAfterDate
         };
 
         $qb
             ->andWhere(sprintf('%1$s.paperid IN (SELECT %2$s.paperid FROM %3$s %2$s GROUP BY %2$s.paperid HAVING %4$s)', self::PAPERS_ALIAS, $alias, Paper::class, $condition))
-            ->setParameter($alias, $filter === AppConstants::YEAR_PARAM ? array_map('intval', (array)$value) : $value);
+            ->setParameter($alias, $filter === AppConstants::START_AFTER_DATE ? $value : array_map('intval', (array)$value));
     }
 
     /**

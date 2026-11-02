@@ -109,6 +109,18 @@ class PapersRepositoryDatabaseTest extends TestCase
         }
     }
 
+    /**
+     * Several years (year[]=2022&year[]=2023 on the dashboard), by first submission and by publication date.
+     */
+    public function testSeveralYearsAreCounted(): void
+    {
+        $filters = $this->filters(['submissionDate' => [2022, 2023]]);
+
+        $this->assertSame(4, (int)$this->repository->submissionsQuery($filters)->getQuery()->getSingleScalarResult());
+        // no publication date in the fixtures: the query runs and counts nothing
+        $this->assertSame(0, (int)$this->repository->submissionsQuery($filters, false, 'publicationDate')->getQuery()->getSingleScalarResult());
+    }
+
     public function testSubmissionsAreCountedByYearAndRepository(): void
     {
         $totals = $this->repository->countSubmissionsByYearAndRepository($this->filters());
