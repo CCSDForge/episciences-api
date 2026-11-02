@@ -58,6 +58,8 @@ class IndexingDatabaseController extends AbstractController
 
         if ($pagination) {
             $firstResult = ($page - 1) * $itemsPerPage;
+        } else { // the whole collection, whatever itemsPerPage
+            $itemsPerPage = max(1, count($indexingDatabases));
         }
 
         return new ArrayPaginator($indexingDatabases, $firstResult, $itemsPerPage);

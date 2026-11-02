@@ -41,6 +41,9 @@ class IndexingDatabaseControllerTest extends TestCase
         $this->journal->method('getRvid')->willReturn(3);
     }
 
+    /**
+     * @return list<IndexingDatabase>
+     */
     private function sampleDatabases(): array
     {
         $databases = [];
@@ -114,12 +117,13 @@ class IndexingDatabaseControllerTest extends TestCase
 
     public function testPaginationDisabledReturnsFullCollectionIgnoringPage(): void
     {
-        // pagination=false → the whole collection is returned, page is ignored.
+        // pagination=false → the whole collection is returned, page and itemsPerPage are ignored.
         // The RequestedPageSubscriber ignores the page in this case, so the controller
         // must not slice the collection either (see docs/pagination-requested-page.md).
         $request = Request::create('/api/journals/indexing-database/myjournal', Request::METHOD_GET, [
             'pagination' => 'false',
             'page' => '100',
+            'itemsPerPage' => '2', // fewer than the collection: ignored as well
         ]);
         $request->attributes->set('code', 'myjournal');
 
