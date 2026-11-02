@@ -154,7 +154,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Statistics of the evaluation: `reviews-requested` counts each invitation once, with its current status: an answer or a cancellation adds a row to the invitations with the same assignment, which was counted as another invitation (the first one remaining pending). The figures are lower, an invitation cancelled after an answer is no longer counted, and an answered invitation is no longer counted as pending. An invitation cancelled by an assignment only (the invitations without answer of an accepted paper) is cancelled too.
 - The editors of the sections and of the volumes (`committee`) and the sections assigned to the editors of the boards: an editor whose latest assignment to the section (or volume) is inactive is no longer listed, even if an earlier assignment has the same date as the latest assignment of another editor.
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): several years (`year[]=…&year[]=…`) no longer return a `500`, for the submissions and the published articles.
-- Statistics: `startAfterDate` is inclusive for the accepted, refused and published papers, as for the submissions and the delays (a paper first submitted at midnight of that date was left out).
+- Statistics: `startAfterDate` is inclusive for the accepted, refused and published papers, as for the submissions and the delays (a paper first submitted at midnight of that date was left out). The OpenAPI documentation of `startAfterDate` now states that the date is included.
 - `make test-db` fails with a clear message when the database does not start, and the container is stopped when the run is interrupted.
 
 ### Security

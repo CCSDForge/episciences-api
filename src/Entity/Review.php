@@ -29,6 +29,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use App\Repository\ReviewRepository;
 use App\OpenApi\OpenApiFactory;
+use App\OpenApi\QueryParameters;
 use App\Resource\Statistic;
 use App\Controller\IndexingDatabaseController;
 use App\Entity\IndexingDatabase;
@@ -179,7 +180,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (422)',
+                        description: QueryParameters::START_AFTER_DATE_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -245,7 +246,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (422)',
+                        description: QueryParameters::START_AFTER_DATE_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -300,7 +301,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (422)',
+                        description: QueryParameters::START_AFTER_DATE_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -355,7 +356,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: 'Start statistics after date [YYYY-MM-DD]: a wrong format is rejected (422)',
+                        description: QueryParameters::START_AFTER_DATE_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
