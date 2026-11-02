@@ -162,6 +162,39 @@ class StatisticsQueriesDatabaseTest extends TestCase
     }
 
     /**
+     * The start date is inclusive, as for the submissions: a paper first submitted at midnight of the start date is counted.
+     */
+    public function testStartAfterDateIncludesAPaperSubmittedAtMidnightOfThatDay(): void
+    {
+        $connection = $this->entityManager->getConnection();
+        $platform = $connection->getDatabasePlatform();
+
+        $paper = array_merge($this->requiredColumnDefaults(Paper::TABLE), [
+            'DOCID' => 30,
+            'PAPERID' => 30,
+            'RVID' => self::RVID,
+            'STATUS' => Paper::STATUS_SUBMITTED,
+            'FLAG' => 'submitted',
+            'SUBMISSION_DATE' => '2025-03-01 00:00:00',
+            'WHEN' => '2025-03-01 00:00:00',
+        ]);
+        // WHEN is a reserved word
+        $connection->insert(Paper::TABLE, array_combine(array_map($platform->quoteSingleIdentifier(...), array_keys($paper)), $paper));
+
+        $connection->insert(PaperLog::TABLE, array_merge($this->requiredColumnDefaults(PaperLog::TABLE), [
+            'PAPERID' => 30,
+            'DOCID' => 30,
+            'RVID' => self::RVID,
+            'ACTION' => 'status',
+            'DETAIL' => json_encode(['status' => Paper::STATUS_STRICTLY_ACCEPTED], JSON_THROW_ON_ERROR),
+            'DATE' => '2025-04-01 10:00:00',
+        ]));
+
+        $this->assertSame([30], $this->paperLogRepository->getPaperIds('accepted', self::RVID, [2025], '2025-03-01'));
+        $this->assertSame([], $this->paperLogRepository->getPaperIds('accepted', self::RVID, [2025], '2025-03-02'));
+    }
+
+    /**
      * All the combinations of the filters of the delays
      *
      * @return iterable<string, array{0: string, 1: int, 2: int|null, 3: mixed, 4: string|null}>

@@ -257,7 +257,7 @@ class PaperLogRepository extends ServiceEntityRepository
 
         if (self::isValidDate($startAfterDate)) {
             // first submission of the paper (the oldest submission date of its versions), as for the submissions
-            $qb->andWhere(sprintf('p.paperid IN (SELECT firstSubmission.paperid FROM %s firstSubmission GROUP BY firstSubmission.paperid HAVING MIN(firstSubmission.submissionDate) > :date)', Paper::class))
+            $qb->andWhere(sprintf('p.paperid IN (SELECT firstSubmission.paperid FROM %s firstSubmission GROUP BY firstSubmission.paperid HAVING MIN(firstSubmission.submissionDate) >= :date)', Paper::class))
                 ->setParameter('date', $startAfterDate);
         }
 
