@@ -70,8 +70,10 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
             $data[PapersRepository::TOTAL_ARTICLE] = $object->getTotalPublishedArticles();
         }
 
-        if ($object instanceof Statistic && is_array($data) && isset($data['@id'])) {
-            $data['@id'] = $this->getStatisticIri($object->getName(), $data['@id'], $object->getJournal());
+        // A statistic is a value computed from the request filters (journal, years, unit...), not a resource
+        // of its own: a blank node, as the other computed objects
+        if ($object instanceof Statistic && is_array($data)) {
+            unset($data['@id']);
         }
 
         // Generated IRIs (/.well-known/genid/...) cannot be dereferenced and change on every request: blank nodes instead
@@ -80,28 +82,6 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
         }
 
         return $data;
-    }
-
-    /**
-     * Without an identifier, every statistic gets the IRI of the first item operation (nb-submissions):
-     * the IRI is rebuilt from the indicator name (and the journal, for the statistics grouped by journal).
-     */
-    private function getStatisticIri(string $name, string $defaultIri, ?string $journal = null): string
-    {
-        $base = dirname($defaultIri); // e.g. /api/statistics
-
-        if (in_array($name, Statistic::AVAILABLE_PUBLICATION_INDICATORS, true)) { // one operation by indicator
-            return $journal === null ? sprintf('%s/%s', $base, $name) : sprintf('%s/%s?rvcode=%s', $base, $name, rawurlencode($journal));
-        }
-
-        if (in_array($name, Statistic::EVAL_INDICATORS, true)) {
-            $iri = sprintf('%s/%s?indicator=%s', $base, Statistic::AVAILABLE_PUBLICATION_INDICATORS['evaluation_get_collection'], $name);
-
-            return $journal === null ? $iri : sprintf('%s&rvcode=%s', $iri, rawurlencode($journal));
-        }
-
-        // no dedicated operation (e.g. nb-submissions-details)
-        return sprintf('%s/#%s', $base, $name);
     }
 
     public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool

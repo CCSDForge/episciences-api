@@ -15,51 +15,31 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 class ApiItemNormalizerTest extends TestCase
 {
     /**
-     * @return iterable<string, array{string, string}>
+     * @return iterable<string, array{string, ?string}>
      */
-    public static function statisticIriProvider(): iterable
+    public static function statisticProvider(): iterable
     {
-        yield 'publication indicator' => ['median-submission-publication', '/api/statistics/median-submission-publication'];
-        yield 'evaluation' => ['evaluation', '/api/statistics/evaluation'];
-        yield 'evaluation indicator' => ['reviews-received', '/api/statistics/evaluation?indicator=reviews-received'];
-        yield 'without operation' => ['nb-submissions-details', '/api/statistics/#nb-submissions-details'];
+        yield 'publication indicator' => ['median-submission-publication', null];
+        yield 'publication indicator of a journal' => ['median-submission-publication', 'dmtcs'];
+        yield 'evaluation indicator' => ['reviews-received', null];
+        yield 'evaluation indicator of a journal' => ['reviews-received', 'dmtcs'];
+        yield 'without operation' => ['nb-submissions-details', null];
     }
 
     /**
-     * Without an identifier, API Platform gives every statistic the IRI of the first item operation.
+     * A statistic depends on the request filters (journal, years, unit...): a blank node, without the IRI
+     * API Platform gives to every statistic (the one of the first item operation).
      */
-    #[DataProvider('statisticIriProvider')]
-    public function testStatisticIriMatchesTheIndicator(string $name, string $expectedIri): void
+    #[DataProvider('statisticProvider')]
+    public function testStatisticIsABlankNode(string $name, ?string $journal): void
     {
         $decorated = $this->createStub(NormalizerInterface::class);
-        $decorated->method('normalize')->willReturn(['@id' => '/api/statistics/nb-submissions', 'name' => $name]);
+        $decorated->method('normalize')->willReturn(['@id' => '/api/statistics/nb-submissions', '@type' => 'Statistic', 'name' => $name]);
 
         $normalizer = new ApiItemNormalizer($decorated, $this->createStub(EntityManagerInterface::class), $this->createStub(PaperConflictsRepository::class));
-        $data = $normalizer->normalize(new Statistic()->setName($name), 'jsonld');
+        $data = $normalizer->normalize(new Statistic()->setName($name)->setJournal($journal), 'jsonld');
 
-        $this->assertSame($expectedIri, $data['@id']);
-    }
-
-    public function testStatisticOfAJournalHasTheIriOfItsJournal(): void
-    {
-        $decorated = $this->createStub(NormalizerInterface::class);
-        $decorated->method('normalize')->willReturn(['@id' => '/api/statistics/nb-submissions']);
-
-        $normalizer = new ApiItemNormalizer($decorated, $this->createStub(EntityManagerInterface::class), $this->createStub(PaperConflictsRepository::class));
-        $data = $normalizer->normalize(new Statistic()->setName('median-submission-publication')->setJournal('dmtcs'), 'jsonld');
-
-        $this->assertSame('/api/statistics/median-submission-publication?rvcode=dmtcs', $data['@id']);
-    }
-
-    public function testEvaluationStatisticOfAJournalHasTheIriOfItsJournal(): void
-    {
-        $decorated = $this->createStub(NormalizerInterface::class);
-        $decorated->method('normalize')->willReturn(['@id' => '/api/statistics/nb-submissions']);
-
-        $normalizer = new ApiItemNormalizer($decorated, $this->createStub(EntityManagerInterface::class), $this->createStub(PaperConflictsRepository::class));
-        $data = $normalizer->normalize(new Statistic()->setName('reviews-received')->setJournal('dmtcs'), 'jsonld');
-
-        $this->assertSame('/api/statistics/evaluation?indicator=reviews-received&rvcode=dmtcs', $data['@id']);
+        $this->assertSame(['@type' => 'Statistic', 'name' => $name], $data);
     }
 
     public function testGeneratedIriIsRemoved(): void
