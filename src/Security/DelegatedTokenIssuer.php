@@ -37,7 +37,7 @@ final readonly class DelegatedTokenIssuer
         #[Autowire(service: 'cache.app')]
         private CacheItemPoolInterface $cache,
         private LoggerInterface $logger,
-        #[Autowire('%app.delegation_secret%')]
+        #[Autowire('%app.stats_delegation_secret%')]
         private string $secret,
     ) {
     }
