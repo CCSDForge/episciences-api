@@ -214,14 +214,21 @@ test-db: check-prereqs
 	@docker run -d --rm --name $(TEST_DB_CONTAINER) -p 127.0.0.1:$(TEST_DB_PORT):3306 \
 		-e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=episciences_test -e MYSQL_USER=episciences -e MYSQL_PASSWORD=episciences \
 		$(TEST_DB_IMAGE) >/dev/null
-	@for i in $$(seq 1 60); do \
-		docker exec $(TEST_DB_CONTAINER) mysql -h 127.0.0.1 -uepisciences -pepisciences -e 'SELECT 1' episciences_test >/dev/null 2>&1 && break; \
+	@trap 'docker stop $(TEST_DB_CONTAINER) >/dev/null 2>&1' EXIT; \
+	trap 'exit 130' INT TERM; \
+	ready=0; \
+	for i in $$(seq 1 60); do \
+		if docker exec $(TEST_DB_CONTAINER) mysql -h 127.0.0.1 -uepisciences -pepisciences -e 'SELECT 1' episciences_test >/dev/null 2>&1; then \
+			ready=1; \
+			break; \
+		fi; \
 		sleep 2; \
-	done
-	@TEST_DATABASE_URL=mysql://episciences:episciences@127.0.0.1:$(TEST_DB_PORT)/episciences_test php8.4 vendor/bin/phpunit $${FILE:-tests/Functional}; \
-		status=$$?; \
-		docker stop $(TEST_DB_CONTAINER) >/dev/null; \
-		exit $$status
+	done; \
+	if [ $$ready -ne 1 ]; then \
+		echo "$(RED)$(TEST_DB_IMAGE) is not ready after 120 s$(NC)"; \
+		exit 1; \
+	fi; \
+	TEST_DATABASE_URL=mysql://episciences:episciences@127.0.0.1:$(TEST_DB_PORT)/episciences_test php8.4 vendor/bin/phpunit $${FILE:-tests/Functional}
 
 # Validate PHP syntax of test files
 validate:
