@@ -46,7 +46,7 @@ deployment/ansible/
 ## Server Requirements
 
 Each server must have:
-- PHP 8.4 (8.4.27 or later, the `config.platform.php` of `composer.json`) + `php8.4-fpm`; check with `composer check-platform-reqs`
+- PHP 8.4 + `php8.4-fpm`, both 8.4.27 or later (the `config.platform.php` of `composer.json`; the earlier 8.4 releases have known vulnerabilities). Check both runtimes explicitly: `php -v` and `php-fpm8.4 -v` (`composer check-platform-reqs` only checks the CLI against `^8.4`)
 - `composer` available in `$PATH`
 - `yarn` (v4) available in `$PATH`
 - Apache configured to serve from `{deploy_to}/current/public/`
