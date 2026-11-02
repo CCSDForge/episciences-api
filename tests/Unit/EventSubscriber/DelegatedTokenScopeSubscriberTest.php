@@ -31,6 +31,9 @@ class DelegatedTokenScopeSubscriberTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    /**
+     * @return iterable<string, array{string}>
+     */
     public static function allowedRouteProvider(): iterable
     {
         foreach (DelegatedTokenIssuer::ALLOWED_ROUTES as $route) {
@@ -48,6 +51,9 @@ class DelegatedTokenScopeSubscriberTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    /**
+     * @param array<string, mixed> $payload
+     */
     #[DataProvider('refusedUseProvider')]
     public function testDelegatedTokenIsRefusedAnywhereElse(array $payload, string $method, string $route): void
     {
@@ -56,6 +62,9 @@ class DelegatedTokenScopeSubscriberTest extends TestCase
         $this->authenticate($payload, $method, $route);
     }
 
+    /**
+     * @return iterable<string, array{array<string, mixed>, string, string}>
+     */
     public static function refusedUseProvider(): iterable
     {
         yield 'other route' => [['scope' => DelegatedTokenIssuer::SCOPE], 'GET', '_api_/papers/{docid}_get'];
@@ -64,6 +73,9 @@ class DelegatedTokenScopeSubscriberTest extends TestCase
         yield 'unknown scope' => [['scope' => 'other'], 'GET', 'get_stats_dashboard_item'];
     }
 
+    /**
+     * @param array<string, mixed> $payload
+     */
     private function authenticate(array $payload, string $method, string $route): void
     {
         $request = Request::create('/api/whatever', $method);
