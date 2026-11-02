@@ -14,6 +14,9 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class ApiItemNormalizerTest extends TestCase
 {
+    /**
+     * @return iterable<string, array{string, string}>
+     */
     public static function statisticIriProvider(): iterable
     {
         yield 'publication indicator' => ['median-submission-publication', '/api/statistics/median-submission-publication'];
@@ -86,6 +89,9 @@ class ApiItemNormalizerTest extends TestCase
         $this->assertSame(12, $this->normalizeSection($section)['totalPublishedArticles']);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function normalizeSection(Section $section): array
     {
         $decorated = $this->createStub(NormalizerInterface::class);
