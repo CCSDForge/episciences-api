@@ -459,7 +459,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     /**
      * The statistics of each journal, computed as for a single journal (one query by indicator for all the journals):
      * one item by journal and by indicator, sorted by journal code, then in the order of the indicators.
-     * Only the active journals having data for at least one of the indicators are returned; a missing count is 0, a missing rate or median is null.
+     * All the active journals are returned (not the portal), as with rvcode: a missing count is 0, a missing rate or median is null.
      *
      * @param string[] $indicators "evaluation" stands for its three indicators
      * @return Statistic[]
@@ -506,21 +506,13 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             }
         }
 
-        $rvIds = [];
-
-        foreach ($values as $byJournal) {
-            $rvIds += array_fill_keys(array_keys($byJournal), true);
-        }
-
-        if ($rvIds === []) {
-            return [];
-        }
-
         $codes = [];
 
-        // active journals only, as with rvcode: the data of a disabled or deleted journal are ignored
-        foreach ($this->entityManager->getRepository(Review::class)->findBy(['rvid' => array_keys($rvIds), 'status' => Review::STATUS_ENABLED]) as $journal) {
-            $codes[$journal->getRvid()] = $journal->getCode();
+        // every active journal, as with rvcode: the data of a disabled or deleted journal are ignored
+        foreach ($this->entityManager->getRepository(Review::class)->findBy(['status' => Review::STATUS_ENABLED]) as $journal) {
+            if ($journal->getRvid() !== Review::PORTAL_ID) {
+                $codes[$journal->getRvid()] = $journal->getCode();
+            }
         }
 
         asort($codes, SORT_STRING);

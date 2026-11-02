@@ -600,6 +600,26 @@ class StatisticStateProviderTest extends TestCase
         ], $rows);
     }
 
+    /**
+     * An active journal without data is returned, as with rvcode (a count is 0, a rate or median is null); not the portal.
+     */
+    public function testActiveJournalWithoutDataIsGroupedByJournal(): void
+    {
+        $statistics = iterator_to_array($this->provideCollection(
+            ['groupBy' => 'journal', 'indicator' => ['nb-submissions', 'acceptance-rate', 'median-submission-publication'], 'unit' => 'day'],
+            extraJournals: [Review::PORTAL_ID => 'portal', 7 => 'epiga']
+        ));
+
+        $rows = array_map(static fn(Statistic $statistic): array => [$statistic->getJournal(), $statistic->getName(), $statistic->getValue(), $statistic->getCount()], $statistics);
+
+        $this->assertSame(['dmtcs', 'epiga', 'jdmdh'], array_values(array_unique(array_column($rows, 0))));
+        $this->assertSame([
+            ['epiga', 'nb-submissions', 0.0, null],
+            ['epiga', 'acceptance-rate', null, null],
+            ['epiga', 'median-submission-publication', null, 0],
+        ], array_values(array_filter($rows, static fn(array $row): bool => $row[0] === 'epiga')));
+    }
+
     public function testRequestedIndicatorsAreGroupedByJournalInTheirOrder(): void
     {
         $statistics = iterator_to_array($this->provideCollection(['groupBy' => 'journal', 'indicator' => ['acceptance-rate', 'nb-submissions']]));
@@ -628,7 +648,10 @@ class StatisticStateProviderTest extends TestCase
         $this->provideCollection(['groupBy' => 'journal', 'indicator' => 'nb-submissions'], self::EVALUATION_OPERATION);
     }
 
-    private function provideCollection(array $filters, string $operationName = self::COLLECTION_OPERATION): iterable
+    /**
+     * @param array<int, string> $extraJournals active journals (rvid => code) besides dmtcs (1) and jdmdh (3)
+     */
+    private function provideCollection(array $filters, string $operationName = self::COLLECTION_OPERATION, array $extraJournals = []): iterable
     {
         $papersRepository = $this->createStub(PapersRepository::class);
         $papersRepository->method('getYearRange')->willReturn([]);
@@ -648,10 +671,12 @@ class StatisticStateProviderTest extends TestCase
         ]);
 
         $reviewRepository = $this->createStub(ReviewRepository::class);
-        $reviewRepository->method('findBy')->willReturn([
-            $this->createConfiguredStub(Review::class, ['getRvid' => 3, 'getCode' => 'jdmdh']),
-            $this->createConfiguredStub(Review::class, ['getRvid' => 1, 'getCode' => 'dmtcs']),
-        ]);
+        $journals = [3 => 'jdmdh', 1 => 'dmtcs'] + $extraJournals;
+        $reviewRepository->method('findBy')->willReturn(array_map(
+            fn(int $rvId, string $code): Review => $this->createConfiguredStub(Review::class, ['getRvid' => $rvId, 'getCode' => $code]),
+            array_keys($journals),
+            $journals
+        ));
 
         $entityManager = $this->createStub(EntityManagerInterface::class);
         // completed reports by paper (docid) and reviewer; invitations sent to the reviewers

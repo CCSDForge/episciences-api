@@ -145,7 +145,7 @@ class Statistic
     ];
     public const UNIT_DESCRIPTION = 'The unit of the delays (difference of two timestamps in MySQL)';
     public const UNIT_SCHEMA = ['type' => 'string', 'enum' => StatisticStateProvider::AVAILABLE_UNITS, 'default' => 'week'];
-    public const GROUP_BY_DESCRIPTION = 'Returns the statistics of each active journal: one item by journal and by indicator, with the journal code in `journal`, sorted by code. Only the journals having data are returned. Not with `rvcode`';
+    public const GROUP_BY_DESCRIPTION = 'Returns the statistics of each active journal: one item by journal and by indicator, with the journal code in `journal`, sorted by code. Every active journal is returned, a missing count being 0 and a missing rate or median null. Not with `rvcode`';
     public const NB_SUBMISSIONS_DETAILS = 'nb-submissions-details';
     public const WITH_PAPERS_PARAM = 'withPapers';
     public const WITH_PAPERS_DESCRIPTION = 'Adds `papers`, the papers counted by each statistic: one DOCID by paper, its latest version, computed with the same queries as the figures. With `indicator=evaluation`, `reviews-requested` and `reviews-received` get `reviews` instead, as on /api/statistics/evaluation; the `evaluation` statistic returned without `indicator` gets no list. Only with `rvcode`, without `groupBy`, for the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number is in `hiddenPapers` (`hiddenReviews` for the reviews)';
