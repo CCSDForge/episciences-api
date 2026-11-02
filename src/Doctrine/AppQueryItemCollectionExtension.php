@@ -242,6 +242,11 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             $queryBuilder->andWhere($access);
         }
 
+        if ($isOnlyAccepted && !$isItem) {
+            // the accepted papers sorted as in offline mode (andWhereAcceptedOnly), whatever the role and the scope
+            $queryBuilder->orderBy("$alias.modificationDate", \SortDirection::Descending);
+        }
+
         $requestedRvId = $context['filters']['rvid'] ?? null;
 
         if ($requestedRvId) {

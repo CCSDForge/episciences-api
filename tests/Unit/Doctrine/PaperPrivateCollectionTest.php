@@ -533,4 +533,31 @@ class PaperPrivateCollectionTest extends TestCase
         self::assertStringContainsString('o.status IN (:publicStatuses) OR ', $this->where($queryBuilder));
         self::assertSame(array_values(Paper::STATUS_ACCEPTED), $this->parameter($queryBuilder, 'publicStatuses'));
     }
+
+    /**
+     * With only_accepted, the accepted papers are sorted by modification date as in offline mode, whatever the role and the scope.
+     *
+     * @param string[] $roles
+     */
+    #[DataProvider('onlyAcceptedOrderProvider')]
+    public function testOnlyAcceptedIsSortedAsInOfflineMode(?array $roles, string $scope): void
+    {
+        $security = $roles === null ? $this->security(null) : $this->security($this->user(), $roles);
+        $queryBuilder = $this->apply($security, ['scope' => $scope, 'only_accepted' => 'true']);
+
+        self::assertSame('o.modificationDate DESC', implode(', ', array_map('strval', $queryBuilder->getDQLPart('orderBy'))));
+    }
+
+    /**
+     * @return iterable<string, array{?list<string>, string}>
+     */
+    public static function onlyAcceptedOrderProvider(): iterable
+    {
+        yield 'offline' => [null, Paper::SCOPE_WORKSPACE];
+        yield 'secretary, workspace' => [['ROLE_SECRETARY'], Paper::SCOPE_WORKSPACE];
+        yield 'editor, workspace' => [['ROLE_EDITOR'], Paper::SCOPE_WORKSPACE];
+        yield 'author, workspace' => [['ROLE_MEMBER'], Paper::SCOPE_WORKSPACE];
+        yield 'editor, all' => [['ROLE_EDITOR'], Paper::SCOPE_ALL];
+        yield 'editor, public' => [['ROLE_EDITOR'], Paper::SCOPE_PUBLIC];
+    }
 }
