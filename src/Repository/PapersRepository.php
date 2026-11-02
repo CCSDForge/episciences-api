@@ -194,7 +194,7 @@ class PapersRepository extends ServiceEntityRepository
                 continue;
             }
 
-            $isEmptyValue = $value === null || $value === '';
+            $isEmptyValue = $value === null || $value === '' || $value === []; // [] = no year requested
             $isAllowedFilter = in_array($name, AppConstants::AVAILABLE_FILTERS, true);
 
             if ($isEmptyValue || !$isAllowedFilter) {

@@ -104,6 +104,12 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
     public function testSubmissionsAwaitingDecisionAreCounted(): void
     {
         $this->assertSame(3, $this->repository->getSubmissionsAwaitingDecision(self::RVID));
+        // no year requested (as the dashboard and the statistics do): not filtered
+        $this->assertSame(3, $this->repository->getSubmissionsAwaitingDecision(self::RVID, null, []));
+        $this->assertSame(
+            $this->repository->getSubmissionsAwaitingDecisionPaperIds(self::RVID),
+            $this->repository->getSubmissionsAwaitingDecisionPaperIds(self::RVID, null, [])
+        );
     }
 
     public function testYearFiltersOnTheSubmissionDate(): void
