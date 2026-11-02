@@ -50,6 +50,7 @@ class BoardsController extends AbstractController
     public function __invoke(?Request $request = null): ArrayPaginator
     {
         $boards = [];
+        $users = [];
         $pagination = true;
         $page = 1;
         $itemsPerPage = 30;
@@ -150,9 +151,7 @@ class BoardsController extends AbstractController
                             'assignedSections' => $assignedSections[$uid] ?? null
                         ];
 
-                        // The picture is resolved from the UUID, which is not exposed;
-                        // the id is the position in the whole list (unique across pages)
-                        $boards[] = BoardMember::fromUser((new User($options))->processPicturePath($this->picturePath), count($boards) + 1);
+                        $users[] = new User($options);
                     }
                 }
 
@@ -163,6 +162,13 @@ class BoardsController extends AbstractController
         if ($pagination) {
             $maxResults = $itemsPerPage;
             $firstResult = ($page - 1) * $maxResults;
+        }
+
+        foreach ($users as $index => $user) {
+            // The picture (read from the disk, resolved from the UUID which is not exposed) of the members of the page only;
+            // the id is the position in the whole list (unique across pages)
+            $inPage = $index >= $firstResult && $index < $firstResult + $maxResults;
+            $boards[] = BoardMember::fromUser($inPage ? $user->processPicturePath($this->picturePath) : $user, $index + 1);
         }
 
         return new ArrayPaginator($boards, $firstResult, $maxResults);
