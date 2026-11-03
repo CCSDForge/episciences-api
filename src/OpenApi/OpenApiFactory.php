@@ -323,6 +323,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             '/api/sections' => 'Sections',
             '/api/sections/{sid}' => 'Section',
             '/api/statistics/' => 'Statistics', // withPapers: administrators of the journal
+            '/api/statistics/evaluation' => 'Evaluation statistics', // idem (the reviews)
             '/api/journals/stats/dashboard/{code}' => 'Dashboard', // idem
         ];
     }

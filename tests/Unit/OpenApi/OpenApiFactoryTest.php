@@ -31,6 +31,7 @@ use App\EventSubscriber\TruncatedCollectionSubscriber;
 use App\Metadata\SingleValueQueryParametersResourceMetadataCollectionFactory;
 use App\OpenApi\OpenApiFactory;
 use App\OpenApi\QueryParameters;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Validator\Constraints\Choice;
 use Symfony\Component\Validator\Constraints\Type;
@@ -264,6 +265,28 @@ class OpenApiFactoryTest extends TestCase
         $this->assertSame('[{},{"bearerAuth":[]}]', json_encode($operation?->getSecurity()));
         $this->assertArrayHasKey(401, $operation?->getResponses() ?? []);
         $this->assertStringContainsString('JWT', (string)$operation?->getDescription());
+    }
+
+    /**
+     * withPapers (the papers or the reviews of each figure) needs a JWT on the statistics, the evaluation ones included
+     *
+     * @return array<string, array{string}>
+     */
+    public static function statisticsWithPapersProvider(): array
+    {
+        return [
+            'statistics' => ['/api/statistics/'],
+            'evaluation statistics' => ['/api/statistics/evaluation'],
+        ];
+    }
+
+    #[DataProvider('statisticsWithPapersProvider')]
+    public function testOptionalJwtIsDocumentedOnTheStatisticsWithPapers(string $path): void
+    {
+        $operation = $this->createAuthOpenApi()->getPaths()->getPath($path)?->getGet();
+
+        $this->assertSame('[{},{"bearerAuth":[]}]', json_encode($operation?->getSecurity()));
+        $this->assertArrayHasKey(401, $operation?->getResponses() ?? []);
     }
 
     public function testPublicOperationWithoutJwtIsUnchanged(): void
