@@ -111,7 +111,7 @@ class DelegatedTokenIssuerTest extends TestCase
     /**
      * @return array<string, mixed>
      */
-    private function request(int $uid = 7, string $code = 'dmtcs', int $iat = self::NOW, string $nonce = self::NONCE): array
+    private function request(int $uid = 7, string $code = 'dev', int $iat = self::NOW, string $nonce = self::NONCE): array
     {
         return [
             'uid' => $uid,

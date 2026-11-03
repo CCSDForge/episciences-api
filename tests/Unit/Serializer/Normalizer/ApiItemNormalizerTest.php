@@ -20,9 +20,9 @@ class ApiItemNormalizerTest extends TestCase
     public static function statisticProvider(): iterable
     {
         yield 'publication indicator' => ['median-submission-publication', null];
-        yield 'publication indicator of a journal' => ['median-submission-publication', 'dmtcs'];
+        yield 'publication indicator of a journal' => ['median-submission-publication', 'dev'];
         yield 'evaluation indicator' => ['reviews-received', null];
-        yield 'evaluation indicator of a journal' => ['reviews-received', 'dmtcs'];
+        yield 'evaluation indicator of a journal' => ['reviews-received', 'dev'];
         yield 'without operation' => ['nb-submissions-details', null];
     }
 
