@@ -739,8 +739,9 @@ class PapersRepository extends ServiceEntityRepository
         }
 
         if (!empty($filters['flag'])) {
-            $totalConditions[] = sprintf('%s.flag = :flagFilter', $alias);
-            $qb->setParameter('flagFilter', $filters['flag']);
+            // one or several flags (flag[]=…)
+            $totalConditions[] = sprintf('%s.flag IN (:flagFilter)', $alias);
+            $qb->setParameter('flagFilter', (array)$filters['flag']);
         }
 
         $countIf = static fn(array $conditions): string => $conditions === []

@@ -73,6 +73,12 @@ class Stats
         $nbSubmissions = $submissions->getValue(); // imported submissions included
 
         if (!$nbSubmissions) {
+            // no value (404), but the requested filters are still the available ones
+            $result
+                ->setAvailableFilters(ReviewStatsDataProvider::AVAILABLE_FILTERS)
+                ->setRequestedFilters($context['filters'] ?? [])
+                ->setName('dashboard');
+
             return $result;
         }
 

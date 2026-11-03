@@ -15,7 +15,7 @@ use Symfony\Component\Validator\ConstraintViolationList;
 final class InvalidQueryParameter
 {
     /**
-     * @param string|list<string> $parameters one violation by parameter
+     * @param string|list<string|int> $parameters one violation by parameter
      * @param string $message the violation, prefixed with the parameter in the error detail ("year: …")
      */
     public static function exception(string|array $parameters, string $message, mixed $invalidValue = null): ValidationException
@@ -23,7 +23,8 @@ final class InvalidQueryParameter
         $violations = new ConstraintViolationList();
 
         foreach ((array)$parameters as $parameter) {
-            $violations->add(new ConstraintViolation($message, $message, [], null, $parameter, $invalidValue));
+            // a numeric query key (e.g. "?0=x") is given as an int by PHP
+            $violations->add(new ConstraintViolation($message, $message, [], null, (string)$parameter, $invalidValue));
         }
 
         return new ValidationException($violations);

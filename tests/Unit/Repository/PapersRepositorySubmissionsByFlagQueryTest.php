@@ -65,15 +65,26 @@ class PapersRepositorySubmissionsByFlagQueryTest extends TestCase
         $qb = $this->repository->countSubmissionsByFlagQuery(['status' => [16], 'flag' => 'imported']);
         $sql = $qb->getQuery()->getSQL();
 
-        $this->assertMatchesRegularExpression('/^SELECT COUNT\(DISTINCT CASE WHEN \w+\.STATUS IN \(\?\) AND \w+\.FLAG = \? THEN/', $sql);
+        $this->assertMatchesRegularExpression('/^SELECT COUNT\(DISTINCT CASE WHEN \w+\.STATUS IN \(\?\) AND \w+\.FLAG IN \(\?\) THEN/', $sql);
         $this->assertMatchesRegularExpression('/COUNT\(DISTINCT CASE WHEN \w+\.FLAG = \? AND \w+\.STATUS IN \(\?\) THEN/', $sql);
         $this->assertMatchesRegularExpression('/COUNT\(DISTINCT CASE WHEN \w+\.FLAG = \? THEN \w+\.PAPERID ELSE NULL END\) AS \w+ FROM/', $sql);
         $this->assertStringNotContainsString('STATUS IN', substr($sql, (int)strpos($sql, ' WHERE ')));
 
         $this->assertSame('imported', $qb->getParameter('importedFlag')?->getValue());
         $this->assertSame('submitted', $qb->getParameter('submittedFlag')?->getValue());
-        $this->assertSame('imported', $qb->getParameter('flagFilter')?->getValue());
+        $this->assertSame(['imported'], $qb->getParameter('flagFilter')?->getValue());
         $this->assertSame([16], $qb->getParameter('statusFilter')?->getValue());
+    }
+
+    /**
+     * Several flags (flag[]=submitted&flag[]=imported): a list, not an invalid "FLAG = ?, ?".
+     */
+    public function testSeveralFlagsAreAList(): void
+    {
+        $qb = $this->repository->countSubmissionsByFlagQuery(['flag' => ['submitted', 'imported']]);
+
+        $this->assertMatchesRegularExpression('/^SELECT COUNT\(DISTINCT CASE WHEN \w+\.FLAG IN \(\?\) THEN/', $qb->getQuery()->getSQL());
+        $this->assertSame(['submitted', 'imported'], $qb->getParameter('flagFilter')?->getValue());
     }
 
     /**

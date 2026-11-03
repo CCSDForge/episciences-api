@@ -3,10 +3,13 @@
 namespace App\Tests\Unit\Service;
 
 use App\AppConstants;
+use App\DataProvider\ReviewStatsDataProvider;
 use App\Entity\Paper;
 use App\Entity\PaperLog;
 use App\Entity\Review;
 use App\Entity\User;
+use App\EventSubscriber\StatResourceSubscriber;
+use App\Exception\ResourceNotFoundException;
 use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
 use App\Repository\ReviewRepository;
@@ -23,6 +26,9 @@ use Doctrine\ORM\QueryBuilder;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Event\ViewEvent;
+use Symfony\Component\HttpKernel\HttpKernelInterface;
 
 class StatsTest extends TestCase
 {
@@ -125,6 +131,31 @@ class StatsTest extends TestCase
             ->willReturn(null);
 
         $this->assertNull($this->stats->getJournal(['code' => 'disabled']));
+    }
+
+    // -------------------------------------------------------------------------
+    // getDashboard()
+    // -------------------------------------------------------------------------
+
+    /**
+     * No submission (e.g. a year without any): no value (404), and the requested filters remain available ones
+     * (not a 422 "Not available. The available parameters are: []").
+     */
+    public function testDashboardWithoutSubmissionIsNotFoundWithItsFilters(): void
+    {
+        $this->papersRepo->method('submissionsQuery')->willReturn($this->makeScalarQb(0));
+
+        $dashboard = $this->stats->getDashboard(['filters' => ['year' => '2014']], ['is' => ['rvid' => 8, 'submissionDate' => [2014]]]);
+
+        $this->assertSame('dashboard', $dashboard->getName());
+        $this->assertNull($dashboard->getValue());
+        $this->assertSame(ReviewStatsDataProvider::AVAILABLE_FILTERS, $dashboard->getAvailableFilters());
+
+        $kernel = $this->createStub(HttpKernelInterface::class);
+        $event = new ViewEvent($kernel, Request::create('/api/journals/stats/dashboard/x'), HttpKernelInterface::MAIN_REQUEST, $dashboard);
+
+        $this->expectException(ResourceNotFoundException::class);
+        new StatResourceSubscriber($this->em)->checkStatResourceAvailability($event);
     }
 
     // -------------------------------------------------------------------------

@@ -125,6 +125,21 @@ class StatResourceSubscriberTest extends TestCase
         $this->subscriber->checkStatResourceAvailability($event);
     }
 
+    /**
+     * A numeric query key ("?0=x") is given as an int by PHP: the same 422, not a TypeError (500).
+     */
+    public function testNumericUnknownFilterParameterThrowsValidationException(): void
+    {
+        $resource = $this->makeStatResource(['year'], [0 => 'x'], 42);
+
+        try {
+            $this->subscriber->checkStatResourceAvailability($this->makeEvent($resource));
+            $this->fail('A ValidationException was expected.');
+        } catch (ValidationException $e) {
+            $this->assertSame('0', $e->getConstraintViolationList()->get(0)->getPropertyPath());
+        }
+    }
+
     // ------------------------------------------------------------------ null value with valid subset filters → ResourceNotFoundException
 
     public function testNullValueWithValidFiltersThrowsResourceNotFoundException(): void
