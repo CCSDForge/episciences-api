@@ -60,7 +60,8 @@ class PapersRepository extends ServiceEntityRepository
             return null;
         }
 
-        $latest = $this->findOneBy(['paperid' => $paper->getPaperid()], ['when' => 'DESC']);
+        // the latest docid for the same date, as latestVersionsAssignedDql() of the paper lists
+        $latest = $this->findOneBy(['paperid' => $paper->getPaperid()], ['when' => 'DESC', 'docid' => 'DESC']);
 
         return $latest instanceof Paper && $latest->getDocid() !== $paper->getDocid() ? $latest : null;
     }
@@ -565,6 +566,11 @@ class PapersRepository extends ServiceEntityRepository
         }
 
         $result = $qb->getQuery()->getResult();
+
+        // a journal without any submission (e.g. a new one): no year, instead of range(null, null)
+        if (!isset($result[0]['minYear'], $result[0]['maxYear'])) {
+            return [];
+        }
 
         foreach (range($result[0]['minYear'], $result[0]['maxYear']) as $value) {
 

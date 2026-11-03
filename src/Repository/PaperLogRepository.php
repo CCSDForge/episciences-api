@@ -140,7 +140,7 @@ class PaperLogRepository extends ServiceEntityRepository
      * Number of papers whose status (in their history) was given the year of their first submission
      * (the oldest submission date of their versions), imported versions excluded, by journal and year:
      * rows [rvid, year, total], by journal then from the latest year.
-     * As before, without journal, all the journals are counted.
+     * Without journal, the active journals only, as the other figures.
      * @param int $status
      * @param int|null $rvId
      * @return list<array{rvid: int|string, year: int|string, total: int|string}>|null null on a database error
@@ -163,6 +163,9 @@ class PaperLogRepository extends ServiceEntityRepository
 
         if ($rvId) {
             $qb->andWhere('version.rvid = :rvid')->setParameter('rvid', $rvId);
+        } else {
+            // as the other figures without journal
+            $this->andActiveJournals($qb, 'version.rvid');
         }
 
         try {

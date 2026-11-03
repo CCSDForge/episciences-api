@@ -22,7 +22,7 @@ api_platform:
     # The title of the API.
     title: 'Episciences API'
     # The description of the API.
-    description: 'REST API of Episciences, the editorial platform of overlay journals. It exposes the published papers and journals (browse, full-text search, exports), the societies statistics, and the authenticated services of the personal workspace (Myspace) via a JWT bearer token.'
+    description: 'REST API of Episciences, the editorial platform of overlay journals. It exposes the published papers and journals (browse, full-text search, exports), the statistics of the journals, and the authenticated services of the personal workspace (Myspace) via a JWT bearer token.'
     # The version of the API.
     version: "%git_application_version%"
 

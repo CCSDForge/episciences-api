@@ -71,9 +71,9 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $dictionary = array_merge(array_flip(Paper::STATUS_DICTIONARY), ['accepted' => Paper::STATUS_ACCEPTED]);
         unset($dictionary[Paper::STATUS_DICTIONARY[Paper::STATUS_OBSOLETE]], $dictionary[Paper::STATUS_DICTIONARY[Paper::STATUS_REMOVED]], $dictionary[Paper::STATUS_DICTIONARY[Paper::STATUS_DELETED]]);
 
-        $status = isset($filters['status']) ? array_unique((array)$filters['status']) : [];
+        $status = array_unique(self::scalarValues($filters, 'status'));
 
-        $years = isset($filters[AppConstants::YEAR_PARAM]) ? array_unique((array)$filters[AppConstants::YEAR_PARAM]) : [];
+        $years = array_unique(self::scalarValues($filters, AppConstants::YEAR_PARAM));
         $availableYears = $this->entityManager->getRepository(Paper::class)->getYearRange($rvId);
 
         $yearsDiff = $this->checkArrayEquality($availableYears, $years);
@@ -82,6 +82,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             throw InvalidQueryParameter::exception(AppConstants::YEAR_PARAM, sprintf('Invalid year(s) %s: the available values are [%s].', implode(', ', $yearsDiff['arrayDiff']['out']), implode(', ', $availableYears)), $years);
         }
 
+        self::scalarValues($filters, 'flag');
         $flag = $filters['flag'] ?? null;
         $startAfterDate = $this->processStartAfterDate($filters[AppConstants::START_AFTER_DATE] ?? null);
 
@@ -265,15 +266,36 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     private function processIndicators(mixed $indicator): array
     {
         $indicators = is_array($indicator) ? $indicator : [$indicator];
-        $indicators = array_values(array_unique(array_filter($indicators, static fn($value) => $value !== '' && $value !== null)));
 
+        // checked before array_unique(), which compares the values as strings
         foreach ($indicators as $value) {
-            if (!is_string($value)) {
+            if (!is_string($value) && $value !== null) {
                 throw InvalidQueryParameter::exception('indicator', 'A string is expected.', $value);
             }
         }
 
-        return $indicators;
+        return array_values(array_unique(array_filter($indicators, static fn($value) => $value !== '' && $value !== null)));
+    }
+
+    /**
+     * The values of a filter taking one or several values ("name" or "name[]"): a nested list ("name[0][]=…")
+     * is rejected (422) instead of reaching array_unique() or the query as an array.
+     *
+     * @param array<string, mixed> $filters
+     * @return array<int|string, scalar>
+     * @throws ValidationException
+     */
+    private static function scalarValues(array $filters, string $name): array
+    {
+        $values = (array)($filters[$name] ?? []);
+
+        foreach ($values as $value) {
+            if (!is_scalar($value)) {
+                throw InvalidQueryParameter::exception($name, 'A string is expected.', $value);
+            }
+        }
+
+        return $values;
     }
 
     /**
