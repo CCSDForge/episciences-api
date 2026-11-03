@@ -128,6 +128,21 @@ class StatisticsQueriesDatabaseTest extends TestCase
     }
 
     /**
+     * The global average delay (value of the dashboard): the mean of the articles, as ROUND(AVG(delay), 0) on the
+     * reference query of the delay of each article, not a mean of the yearly averages.
+     */
+    public function testGlobalAverageDelayIsTheMeanOfTheArticles(): void
+    {
+        foreach ($this->delayFilters() as $label => [$unit, $status, $rvId, $years, $startDate]) {
+            $expected = $this->fetch('SELECT ROUND(AVG(t3.delay), 0) AS delay FROM ('
+                . self::referenceArticleDelaysSql($unit, $status, $startDate, $rvId, $years) . ') t3')[0]['delay'];
+            $actual = Stats::articleAverageDelay($this->paperLogRepository->getArticleDelays($unit, $status, $startDate, $years, $rvId) ?? []);
+
+            $this->assertSame($expected === null ? null : (float)$expected, $actual, $label);
+        }
+    }
+
+    /**
      * An average of n.5 is rounded half away from zero, as MySQL: (389 + 18) / 2 = 203.5 days, i.e. 204
      */
     public function testAverageDelayIsRoundedAsMySql(): void

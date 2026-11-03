@@ -321,14 +321,7 @@ class Stats
 
 
         if ($year && !$rvId) { // all platform by year
-            $years = (array)$year;
-
-            $yearRows = array_values(array_filter(
-                $result,
-                static fn(array $row): bool => in_array($row['year'] ?? null, $years, false)
-            ));
-
-            $avg = $yearRows === [] ? null : $this->processDelay($yearRows, $method);
+            $avg = self::articleAverageDelay($articleDelays, null, (array)$year);
 
             $statResource->setValue(
                 $avg !== null
@@ -348,7 +341,7 @@ class Stats
             $rvIdResult = $this->applyFilterBy($result, 'rvid', (string)$rvId);
 
             if (array_key_exists($rvId, $rvIdResult)) {
-                $avg = $this->processDelay($rvIdResult[$rvId], $method);
+                $avg = self::articleAverageDelay($articleDelays, $rvId);
                 $statResource->setValue(['value' => $avg, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]);
             }
 
@@ -372,17 +365,11 @@ class Stats
 
             if (isset($reformattedResult[$rvId])) {
 
-                $yearlyValues = [];
+                $avg = self::articleAverageDelay($articleDelays, $rvId, (array)$year);
 
-                foreach ((array)$year as $y) {
-                    if (isset($reformattedResult[$rvId][$y][PaperLogRepository::DELAY]['value'])) {
-                        $yearlyValues[] = $reformattedResult[$rvId][$y][PaperLogRepository::DELAY]['value'];
-                    }
-                }
-
-                if ($yearlyValues !== []) {
+                if ($avg !== null) {
                     $statResource->setValue([
-                        'value' => $method === self::MEDIAN_METHOD ? $this->getMedian($yearlyValues) : $this->getAvg($yearlyValues),
+                        'value' => $avg,
                         self::STATS_UNIT => $unit,
                         self::STATS_METHOD => $method,
                     ]);
@@ -400,7 +387,7 @@ class Stats
         }
 
         // all platform stats (!year && !rvId)
-        $avg = $this->processDelay($result, $method);
+        $avg = self::articleAverageDelay($articleDelays);
         $statResource->setValue(['value' => $avg, self::STATS_UNIT => $unit, self::STATS_METHOD => $method]);
 
         if ($withDetails) {
@@ -829,6 +816,39 @@ class Stats
         }
 
         return $rows;
+    }
+
+    /**
+     * Average delay of the articles of a journal and of some years (all of them by default), computed from the delay
+     * of each article as the median (not as a mean of the yearly averages, which would give the same weight to a year
+     * of 2 articles and to a year of 80 articles); rounded as MySQL ROUND(AVG(...), 0).
+     *
+     * @param array<int, array<string, mixed>> $articleDelays The delay of each article.
+     * @param int|null                         $rvId          Journal of the articles, all the journals by default.
+     * @param array<int|string>                $years         Submission years of the articles, all the years by default.
+     *
+     * @return float|null null without any article
+     */
+    public static function articleAverageDelay(array $articleDelays, ?int $rvId = null, array $years = []): ?float
+    {
+        $sum = 0;
+        $count = 0;
+
+        foreach ($articleDelays as $row) {
+            if (
+                !is_numeric($row[PaperLogRepository::DELAY] ?? null)
+                || ($rvId !== null && (int)($row['rvid'] ?? 0) !== $rvId)
+                || ($years !== [] && !in_array($row['year'] ?? null, $years, false))
+            ) {
+                continue;
+            }
+
+            $sum += $row[PaperLogRepository::DELAY];
+            $count++;
+        }
+
+        // MySQL AVG() gives 4 decimals, then ROUND(..., 0) rounds half away from zero
+        return $count === 0 ? null : round(round($sum / $count, 4), 0);
     }
 
     /**
