@@ -11,6 +11,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Table(name: 'USER_ASSIGNMENT')]
 #[ORM\Index(columns: ['ITEMID'], name: 'FK_ITEMID_idx')]
 #[ORM\Index(columns: ['UID'], name: 'FK_UID_idx')]
+// the assignments of an invitation (see UserInvitationRepository::getReviewsRequested())
+#[ORM\Index(columns: ['INVITATION_ID'], name: 'INVITATION_ID')]
 #[ORM\Entity(repositoryClass: UserAssignmentRepository::class)]
 
 class UserAssignment
