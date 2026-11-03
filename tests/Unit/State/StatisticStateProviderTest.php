@@ -245,7 +245,7 @@ class StatisticStateProviderTest extends TestCase
     {
         $statistics = iterator_to_array($this->provideCollection(['indicator' => 'median-submission-publication', 'unit' => 'day', 'groupBy' => 'journal']));
 
-        $this->assertSame(['dmtcs', 'jdmdh'], array_map(static fn(Statistic $statistic): ?string => $statistic->getJournal(), $statistics));
+        $this->assertSame(['dev', 'epijinfo'], array_map(static fn(Statistic $statistic): ?string => $statistic->getJournal(), $statistics));
         $this->assertSame([335.0, 233.0], array_map(static fn(Statistic $statistic): float|array|null => $statistic->getValue(), $statistics));
         $this->assertSame([412, 57], array_map(static fn(Statistic $statistic): ?int => $statistic->getCount(), $statistics));
         $this->assertSame('day', $statistics[0]->getUnit());
@@ -516,7 +516,7 @@ class StatisticStateProviderTest extends TestCase
     {
         $journal = $this->createStub(Review::class);
         $journal->method('getRvid')->willReturn(1);
-        $journal->method('getCode')->willReturn('dmtcs');
+        $journal->method('getCode')->willReturn('dev');
         $journal->method('getSetting')->willReturnCallback(static fn(string $key): ?string => $key === 'isCoiEnabled' && $coiEnabled ? '1' : null);
 
         $reviewRepository = $this->createStub(ReviewRepository::class);
@@ -588,7 +588,7 @@ class StatisticStateProviderTest extends TestCase
         $provider = new StatisticStateProvider($entityManager, $this->createStub(LoggerInterface::class), new Pagination(['client_enabled' => true]), $this->createStub(Stats::class), new StatisticPapers($entityManager, $security));
         $operation = new GetCollection(class: Statistic::class, name: $operationName, paginationMaximumItemsPerPage: 30);
         // the given filters override the defaults; a null filter is removed (e.g. no rvcode)
-        $filters = array_filter(array_merge(['pagination' => 'true', 'rvcode' => 'dmtcs', 'withPapers' => 'true', 'unit' => 'day'], $filters), static fn($value): bool => $value !== null);
+        $filters = array_filter(array_merge(['pagination' => 'true', 'rvcode' => 'dev', 'withPapers' => 'true', 'unit' => 'day'], $filters), static fn($value): bool => $value !== null);
 
         return iterator_to_array($provider->provide($operation, [], ['operation' => $operation, 'filters' => $filters, 'request' => $this->request]));
     }
@@ -619,20 +619,20 @@ class StatisticStateProviderTest extends TestCase
         $rows = array_map(static fn(Statistic $statistic): array => [$statistic->getJournal(), $statistic->getName(), $statistic->getValue(), $statistic->getCount()], $statistics);
 
         $this->assertSame([
-            ['dmtcs', 'nb-submissions', 10.0, null],
-            ['dmtcs', 'acceptance-rate', 75.0, null],
-            ['dmtcs', 'median-submission-publication', 335.0, 412],
-            ['dmtcs', 'median-submission-acceptance', 335.0, 412],
-            ['dmtcs', 'reviews-requested', 2.0, null],
-            ['dmtcs', 'reviews-received', 3.0, null],
-            ['dmtcs', 'median-reviews-number', 2.0, null],
-            ['jdmdh', 'nb-submissions', 4.0, null],
-            ['jdmdh', 'acceptance-rate', 0.0, null],
-            ['jdmdh', 'median-submission-publication', 233.0, 57],
-            ['jdmdh', 'median-submission-acceptance', 233.0, 57],
-            ['jdmdh', 'reviews-requested', 1.0, null],
-            ['jdmdh', 'reviews-received', 0.0, null],
-            ['jdmdh', 'median-reviews-number', null, null],
+            ['dev', 'nb-submissions', 10.0, null],
+            ['dev', 'acceptance-rate', 75.0, null],
+            ['dev', 'median-submission-publication', 335.0, 412],
+            ['dev', 'median-submission-acceptance', 335.0, 412],
+            ['dev', 'reviews-requested', 2.0, null],
+            ['dev', 'reviews-received', 3.0, null],
+            ['dev', 'median-reviews-number', 2.0, null],
+            ['epijinfo', 'nb-submissions', 4.0, null],
+            ['epijinfo', 'acceptance-rate', 0.0, null],
+            ['epijinfo', 'median-submission-publication', 233.0, 57],
+            ['epijinfo', 'median-submission-acceptance', 233.0, 57],
+            ['epijinfo', 'reviews-requested', 1.0, null],
+            ['epijinfo', 'reviews-received', 0.0, null],
+            ['epijinfo', 'median-reviews-number', null, null],
         ], $rows);
     }
 
@@ -643,17 +643,18 @@ class StatisticStateProviderTest extends TestCase
     {
         $statistics = iterator_to_array($this->provideCollection(
             ['groupBy' => 'journal', 'indicator' => ['nb-submissions', 'acceptance-rate', 'median-submission-publication'], 'unit' => 'day'],
-            extraJournals: [Review::PORTAL_ID => 'portal', 7 => 'epiga']
+            extraJournals: [Review::PORTAL_ID => 'portal', 7 => 'testjournal']
         ));
 
         $rows = array_map(static fn(Statistic $statistic): array => [$statistic->getJournal(), $statistic->getName(), $statistic->getValue(), $statistic->getCount()], $statistics);
 
-        $this->assertSame(['dmtcs', 'epiga', 'jdmdh'], array_values(array_unique(array_column($rows, 0))));
+        // sorted by code
+        $this->assertSame(['dev', 'epijinfo', 'testjournal'], array_values(array_unique(array_column($rows, 0))));
         $this->assertSame([
-            ['epiga', 'nb-submissions', 0.0, null],
-            ['epiga', 'acceptance-rate', null, null],
-            ['epiga', 'median-submission-publication', null, 0],
-        ], array_values(array_filter($rows, static fn(array $row): bool => $row[0] === 'epiga')));
+            ['testjournal', 'nb-submissions', 0.0, null],
+            ['testjournal', 'acceptance-rate', null, null],
+            ['testjournal', 'median-submission-publication', null, 0],
+        ], array_values(array_filter($rows, static fn(array $row): bool => $row[0] === 'testjournal')));
     }
 
     public function testRequestedIndicatorsAreGroupedByJournalInTheirOrder(): void
@@ -661,7 +662,7 @@ class StatisticStateProviderTest extends TestCase
         $statistics = iterator_to_array($this->provideCollection(['groupBy' => 'journal', 'indicator' => ['acceptance-rate', 'nb-submissions']]));
 
         $this->assertSame(
-            [['dmtcs', 'acceptance-rate'], ['dmtcs', 'nb-submissions'], ['jdmdh', 'acceptance-rate'], ['jdmdh', 'nb-submissions']],
+            [['dev', 'acceptance-rate'], ['dev', 'nb-submissions'], ['epijinfo', 'acceptance-rate'], ['epijinfo', 'nb-submissions']],
             array_map(static fn(Statistic $statistic): array => [$statistic->getJournal(), $statistic->getName()], $statistics)
         );
         $this->assertSame('%', $statistics[0]->getUnit());
@@ -672,7 +673,7 @@ class StatisticStateProviderTest extends TestCase
         $statistics = iterator_to_array($this->provideCollection(['groupBy' => 'journal', 'indicator' => 'reviews-received'], self::EVALUATION_OPERATION));
 
         $this->assertSame(
-            [['dmtcs', 'reviews-received', 3.0], ['jdmdh', 'reviews-received', 0.0]],
+            [['dev', 'reviews-received', 3.0], ['epijinfo', 'reviews-received', 0.0]],
             array_map(static fn(Statistic $statistic): array => [$statistic->getJournal(), $statistic->getName(), $statistic->getValue()], $statistics)
         );
     }
@@ -685,7 +686,7 @@ class StatisticStateProviderTest extends TestCase
     }
 
     /**
-     * @param array<int, string> $extraJournals active journals (rvid => code) besides dmtcs (1) and jdmdh (3)
+     * @param array<int, string> $extraJournals active journals (rvid => code) besides dev (1) and epijinfo (3)
      */
     private function provideCollection(array $filters, string $operationName = self::COLLECTION_OPERATION, array $extraJournals = []): iterable
     {
@@ -707,7 +708,7 @@ class StatisticStateProviderTest extends TestCase
         ]);
 
         $reviewRepository = $this->createStub(ReviewRepository::class);
-        $journals = [3 => 'jdmdh', 1 => 'dmtcs'] + $extraJournals;
+        $journals = [3 => 'epijinfo', 1 => 'dev'] + $extraJournals;
         $reviewRepository->method('findBy')->willReturn(array_map(
             fn(int $rvId, string $code): Review => $this->createConfiguredStub(Review::class, ['getRvid' => $rvId, 'getCode' => $code]),
             array_keys($journals),

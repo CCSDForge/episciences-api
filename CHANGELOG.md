@@ -79,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The restrictions and filters applied to the items and collections (`AppQueryItemCollectionExtension`) are split into smaller methods, without change in the queries (same conditions, parameters and order).
 - OpenAPI documentation: each filter taking several values is documented once, as `name[]` (e.g. `year[]`), instead of a `name` / `name[]` pair, with the same syntax note everywhere (`year[]=…&year[]=…`, or `year=…` for a single one). The papers `type` and `year` filters were documented with a repeated `year=` that only keeps the last value. The journal code (`rvcode`, `code`) has the same description everywhere and is only documented as a single value; the median delays document the accepted values of `unit`. The API itself is unchanged: `year=2024` is still accepted.
 - OpenAPI documentation: the parameters of the search and date filters (e.g. `rvid[]`, `status[]`, `submissionDate[before]` on the papers, `page_code[]` on the pages) now have a description.
+- Tests and CHANGELOG: fictitious journal codes only.
 
 ### Removed
 - `GET /api/journals/{code}` and `GET /api/journals/` no longer expose the `settings` field of the journals (a raw `REVIEW_SETTING` `{setting, value}` array, without external consumer). The settings still work internally via `Review::getSetting()` and the public, structured configuration remains available through `GET /api/journals/front/configuration` (`{code}/front/configuration`).
@@ -250,7 +251,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## v1.2.0 2024-11-25
 ### Fixed
- - In some situations (COI enabled), the API return does not contain any private data (/papers/11072 @jtcam)
+ - In some situations (COI enabled), the API return does not contain any private data
  - truncated uid identifier in hydra metadata "@id": uid identifier is now serialized
 ### Changed
 - Return all volume's metadata on GET /volumes.
