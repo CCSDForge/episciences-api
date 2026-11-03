@@ -81,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `GET /api/journals/{code}` and `GET /api/journals/` no longer expose the `settings` field of the journals (a raw `REVIEW_SETTING` `{setting, value}` array, without external consumer). The settings still work internally via `Review::getSetting()` and the public, structured configuration remains available through `GET /api/journals/front/configuration` (`{code}/front/configuration`).
 
 ### Fixed
+- `GET /api/journals/boards/{code}` and `GET /api/journals/indexing-database/{code}`: a page too large for its offset (e.g. `page=9223372036854775807`) returns a `400` ("Page parameter is too large."), as the other collections, instead of a `500`.
 - Statistics (`/api/statistics/*`, `/api/journals/stats/*`): an unknown query parameter with a numeric name (e.g. `?0=x`) returns a `422`, as the other unknown parameters, instead of a `500`.
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): without any submission for the requested filters (e.g. a year without submission), the dashboard returns a `404` again, instead of a `422` rejecting the valid filters.
 - `GET /api/statistics/` with several `flag[]` values: the submissions are counted for each of them, instead of a `500`.

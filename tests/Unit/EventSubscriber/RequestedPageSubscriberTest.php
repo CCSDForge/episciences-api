@@ -116,6 +116,49 @@ class RequestedPageSubscriberTest extends TestCase
         $this->checkPageExists('page=3&itemsPerPage=2', $result);
     }
 
+    /**
+     * @return array<string, array{int, int, int}> page, items per page, offset
+     */
+    public static function offsetProvider(): array
+    {
+        return [
+            'first page' => [1, 30, 0],
+            'second page' => [2, 30, 30],
+            'largest page of one item' => [PHP_INT_MAX, 1, PHP_INT_MAX - 1],
+            'second page of the largest size' => [2, PHP_INT_MAX, PHP_INT_MAX],
+        ];
+    }
+
+    #[DataProvider('offsetProvider')]
+    public function testFirstResultIsTheOffsetOfThePage(int $page, int $itemsPerPage, int $expected): void
+    {
+        $this->assertSame($expected, RequestedPageSubscriber::firstResult($page, $itemsPerPage));
+    }
+
+    /**
+     * @return array<string, array{int, int}> page, items per page
+     */
+    public static function tooLargePageProvider(): array
+    {
+        return [
+            'largest page' => [PHP_INT_MAX, 30],
+            'third page of the largest size' => [3, PHP_INT_MAX],
+        ];
+    }
+
+    /**
+     * An offset beyond the integers is a bad request (400), as API Platform for the Doctrine collections,
+     * not a float given to ArrayPaginator (500).
+     */
+    #[DataProvider('tooLargePageProvider')]
+    public function testAPageWhoseOffsetIsNotAnIntegerIsABadRequest(int $page, int $itemsPerPage): void
+    {
+        $this->expectException(BadRequestHttpException::class);
+        $this->expectExceptionMessage('Page parameter is too large.');
+
+        RequestedPageSubscriber::firstResult($page, $itemsPerPage);
+    }
+
     private function checkPageFormat(string $query, ?Operation $operation): void
     {
         $event = new RequestEvent($this->createStub(HttpKernelInterface::class), $this->request($query, $operation), HttpKernelInterface::MAIN_REQUEST);

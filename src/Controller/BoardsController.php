@@ -7,6 +7,7 @@ use App\Entity\Review;
 use App\Entity\Section;
 use App\Entity\User;
 use App\Entity\UserRoles;
+use App\EventSubscriber\RequestedPageSubscriber;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\ReviewRepository;
 use App\Repository\SectionRepository;
@@ -161,7 +162,7 @@ class BoardsController extends AbstractController
 
         if ($pagination) {
             $maxResults = $itemsPerPage;
-            $firstResult = ($page - 1) * $maxResults;
+            $firstResult = RequestedPageSubscriber::firstResult($page, $maxResults);
         }
 
         foreach ($users as $index => $user) {

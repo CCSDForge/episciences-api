@@ -115,6 +115,22 @@ class IndexingDatabaseControllerTest extends TestCase
         $this->assertSame('Google Scholar', array_values(iterator_to_array($result))[0]->getName());
     }
 
+    public function testAPageWhoseOffsetIsNotAnIntegerIsABadRequest(): void
+    {
+        $request = Request::create('/api/journals/indexing-database/myjournal', Request::METHOD_GET, [
+            'page' => '3',
+            'itemsPerPage' => (string)PHP_INT_MAX,
+        ]);
+        $request->attributes->set('code', 'myjournal');
+
+        $this->stubRepositories('myjournal');
+        $this->indexingDatabaseRepository->method('findByReviewId')->with(3)->willReturn($this->sampleDatabases());
+
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\BadRequestHttpException::class);
+
+        $this->controller->__invoke($request);
+    }
+
     public function testPaginationDisabledReturnsFullCollectionIgnoringPage(): void
     {
         // pagination=false → the whole collection is returned, page and itemsPerPage are ignored.

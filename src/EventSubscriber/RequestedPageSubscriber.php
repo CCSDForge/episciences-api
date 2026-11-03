@@ -32,6 +32,22 @@ final readonly class RequestedPageSubscriber implements EventSubscriberInterface
     {
     }
 
+    /**
+     * Offset of a page of the collections paginated by a controller (ArrayPaginator), the page being already validated
+     * (positive integer). A page whose offset is not an integer is a bad request (400), as for the Doctrine collections
+     * (Pagination::getOffset()), instead of a TypeError (500).
+     *
+     * @throws BadRequestHttpException
+     */
+    public static function firstResult(int $page, int $itemsPerPage): int
+    {
+        if ($page - 1 > intdiv(PHP_INT_MAX, max(1, $itemsPerPage))) {
+            throw new BadRequestHttpException('Page parameter is too large.');
+        }
+
+        return ($page - 1) * $itemsPerPage;
+    }
+
     public static function getSubscribedEvents(): array
     {
         return [
