@@ -14,6 +14,7 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
+use DoctrineExtensions\Query\Mysql\Greatest;
 use DoctrineExtensions\Query\Mysql\Year;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -52,6 +53,7 @@ class PapersRepositoryDatabaseTest extends TestCase
         $config = ORMSetup::createAttributeMetadataConfig([dirname(__DIR__, 3) . '/src/Entity'], true);
         $config->enableNativeLazyObjects(true);
         $config->addCustomStringFunction('YEAR', Year::class);
+        $config->addCustomNumericFunction('GREATEST', Greatest::class);
 
         $connection = DriverManager::getConnection(new DsnParser(['mysql' => 'pdo_mysql'])->parse($url), $config);
 
@@ -134,6 +136,23 @@ class PapersRepositoryDatabaseTest extends TestCase
     public function testImportedSubmissionsAreCountedByYear(): void
     {
         $this->assertSame([2023 => 1], $this->repository->getImportedByYear($this->filters()));
+    }
+
+    /**
+     * A journal without any submission (e.g. a new one) has no year, without the deprecations of range(null, null)
+     */
+    public function testAJournalWithoutSubmissionHasNoYear(): void
+    {
+        set_error_handler(static function (int $severity, string $message): never {
+            throw new \ErrorException($message, 0, $severity);
+        });
+
+        try {
+            $this->assertSame([], $this->repository->getYearRange(99));
+            $this->assertNotSame([], $this->repository->getYearRange(self::RVID));
+        } finally {
+            restore_error_handler();
+        }
     }
 
     public function testStartAfterDateFilter(): void

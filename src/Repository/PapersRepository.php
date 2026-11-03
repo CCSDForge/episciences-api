@@ -566,6 +566,11 @@ class PapersRepository extends ServiceEntityRepository
 
         $result = $qb->getQuery()->getResult();
 
+        // a journal without any submission (e.g. a new one): no year, instead of range(null, null)
+        if (!isset($result[0]['minYear'], $result[0]['maxYear'])) {
+            return [];
+        }
+
         foreach (range($result[0]['minYear'], $result[0]['maxYear']) as $value) {
 
             if ($value < Stats::REF_YEAR) {
