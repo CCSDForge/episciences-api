@@ -6,10 +6,10 @@ use App\Repository\UserInvitationRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 
+// the indexes of the table in Episciences (the invitations of an assignment: see UserInvitationRepository::getReviewsRequested())
 #[ORM\Table(name: self::TABLE)]
-#[ORM\Index(columns: ['TOKEN'], name: 'TOKEN')]
-#[ORM\Index(columns: ['STATUS'], name: 'TOKEN')]
 #[ORM\Index(columns: ['SENDER_UID'], name: 'SENDER_UID')]
+#[ORM\Index(columns: ['AID', 'SENDING_DATE'], name: 'AID_SENDING_DATE')]
 #[ORM\Entity(repositoryClass: UserInvitationRepository::class)]
 
 
