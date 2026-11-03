@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a database test (`tests/Functional/`, MySQL in CI through `TEST_DATABASE_URL`, skipped otherwise) checking that the cap of the unpaginated collections keeps the to-many fetch-joined collections complete.
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): with `withDetails`, `details` now also gives the median delays of each year (`submissionAcceptanceTimeMedian`, `submissionPublicationTimeMedian`), in the shape of the average delays.
 - Journal dashboard: the delays of each year in `details` (average and median) now give `count`, the number of articles the delay is computed from.
+- Added a kernel test (`tests/Functional/Wiring/DelegatedTokenRoutesTest.php`, without database) checking that the routes accepting the delegated token of Episciences exist, on their expected path.
 
 ### Changed
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): the average delays (`submissionAcceptanceTime`, `submissionPublicationTime`) are now the mean of the delays of the articles, as the median delays, instead of a mean of the yearly averages (and, without journal, of the averages of each journal), which gave the same weight to a year (or a journal) of a few articles as to one of many. The figure changes when the articles are spread over several years or journals; the average of each year in `details` is unchanged.
