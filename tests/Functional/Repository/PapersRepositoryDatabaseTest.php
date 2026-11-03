@@ -155,6 +155,21 @@ class PapersRepositoryDatabaseTest extends TestCase
         }
     }
 
+    /**
+     * Two versions of the same date: the latest is the one of the latest docid (as the paper lists), not an arbitrary one
+     */
+    public function testTheLatestVersionOfTheSameDateIsTheLatestDocid(): void
+    {
+        $platform = $this->entityManager->getConnection()->getDatabasePlatform();
+        $this->entityManager->getConnection()->update(Paper::TABLE, [$platform->quoteSingleIdentifier('WHEN') => '2024-05-01 10:00:00'], ['DOCID' => 14]);
+
+        $firstVersion = $this->entityManager->find(Paper::class, 13);
+        $secondVersion = $this->entityManager->find(Paper::class, 14);
+
+        $this->assertSame(14, $this->repository->findLatestVersion($firstVersion)?->getDocid());
+        $this->assertNull($this->repository->findLatestVersion($secondVersion));
+    }
+
     public function testStartAfterDateFilter(): void
     {
         $totals = $this->repository->countSubmissionsByYear($this->filters(['startAfterDate' => '2023-02-01']));

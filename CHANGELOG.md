@@ -155,6 +155,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `make test-db` fails with a clear message when the database does not start, and the container is stopped when the run is interrupted.
 - Statistics (`/api/statistics/*`): a nested list in `year`, `status`, `indicator` or `flag` (e.g. `year[0][]=2024`) returns a `422` ("A string is expected."), instead of a `500`.
 - Statistics (`/api/statistics/*`) of a journal without any submission (e.g. a new journal): the available years are empty, instead of a `500` (`range()` called with `null`).
+- Papers: when two versions of a paper have the same date, the latest version is the one of the latest DOCID, for the details of a paper and the lists of papers alike.
 
 ### Security
 - Reduce the user data exposed by the public endpoints.

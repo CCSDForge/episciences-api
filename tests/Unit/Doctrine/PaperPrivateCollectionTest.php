@@ -253,8 +253,11 @@ class PaperPrivateCollectionTest extends TestCase
         $where = $this->where($queryBuilder);
 
         self::assertStringContainsString('o.paperid IN(SELECT latestVersion.paperid FROM App\\Entity\\UserAssignment vAss', $where);
-        self::assertStringContainsString('newerVersion.when > latestVersion.when', $where);
+        // the latest docid for the same date, as the voter (PapersRepository::findLatestVersion())
+        self::assertStringContainsString('newerVersion.when > latestVersion.when OR (newerVersion.when = latestVersion.when AND newerVersion.docid > latestVersion.docid)', $where);
         self::assertStringContainsString('latestVersion.docid = vAss.itemid', $where);
+        // a temporary user is not a user (another table), as in the other assignment subqueries
+        self::assertStringContainsString('vAss.tmpUser = false', $where);
         self::assertStringContainsString('vAss.roleid IN (:managingRoles)', $where);
         self::assertSame(
             [UserAssignment::ROLE_EDITOR, UserAssignment::ROLE_COPY_EDITOR],

@@ -60,7 +60,8 @@ class PapersRepository extends ServiceEntityRepository
             return null;
         }
 
-        $latest = $this->findOneBy(['paperid' => $paper->getPaperid()], ['when' => 'DESC']);
+        // the latest docid for the same date, as latestVersionsAssignedDql() of the paper lists
+        $latest = $this->findOneBy(['paperid' => $paper->getPaperid()], ['when' => 'DESC', 'docid' => 'DESC']);
 
         return $latest instanceof Paper && $latest->getDocid() !== $paper->getDocid() ? $latest : null;
     }

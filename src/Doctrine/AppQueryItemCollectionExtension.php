@@ -400,7 +400,8 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             ->select('newerVersion.docid')
             ->from(Paper::class, 'newerVersion')
             ->where('newerVersion.paperid = latestVersion.paperid')
-            ->andWhere('newerVersion.when > latestVersion.when');
+            // the latest docid for the same date, as PapersRepository::findLatestVersion() of the voter
+            ->andWhere('newerVersion.when > latestVersion.when OR (newerVersion.when = latestVersion.when AND newerVersion.docid > latestVersion.docid)');
 
         return $queryBuilder->getEntityManager()->createQueryBuilder()
             ->select('latestVersion.paperid')
@@ -408,6 +409,8 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             ->join(Paper::class, 'latestVersion', 'WITH', 'latestVersion.docid = vAss.itemid')
             ->where('vAss.item = :type')
             ->andWhere('vAss.uid = :to')
+            // a temporary user has an id of another table than the uid of the users
+            ->andWhere('vAss.tmpUser = false')
             ->andWhere('vAss.status = :activeAssignment')
             ->andWhere('vAss.roleid IN (:managingRoles)')
             ->andWhere($expr->not($expr->exists($this->laterAssignmentDql($queryBuilder, 'vAss'))))
