@@ -154,7 +154,7 @@ class StatisticsQueriesDatabaseTest extends TestCase
 
     /**
      * The papers given a status the year of their first submission: the same rows as the reference SQL query
-     * (without journal, all the journals, as the reference).
+     * (without journal, the active journals, as the other figures).
      */
     public function testSubmittedSameYearMatchesTheReferenceQuery(): void
     {
@@ -164,8 +164,11 @@ class StatisticsQueriesDatabaseTest extends TestCase
             $reference = $this->fetch(self::referenceSubmittedSameYearSql($status));
 
             foreach ([null, self::RVID, self::OTHER_RVID, self::DISABLED_RVID] as $rvId) {
-                // the reference query gives all the journals: the rows of the journal
-                $expected = $rvId === null ? $reference : array_values(array_filter($reference, static fn(array $row): bool => (int)$row['rvid'] === $rvId));
+                // the reference query gives all the journals: the rows of the journal, or of the active journals without journal
+                $expected = array_values(array_filter(
+                    $reference,
+                    static fn(array $row): bool => $rvId === null ? (int)$row['rvid'] !== self::DISABLED_RVID : (int)$row['rvid'] === $rvId
+                ));
                 $actual = $this->paperLogRepository->getSubmittedSameYear($status, $rvId);
 
                 $this->assertSame(self::normalizeCounts($expected), self::normalizeCounts($actual), sprintf('status %d, journal %s', $status, $rvId ?? '-'));
