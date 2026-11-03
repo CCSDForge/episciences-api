@@ -66,13 +66,18 @@ class OpenApiFactoryTest extends TestCase
         $this->assertSame('#/components/schemas/Error', $get->getResponses()[400]->getContent()['application/json']->getSchema()['$ref']);
     }
 
-    public function testCollectionServedByAControllerIsUnchanged(): void
+    /**
+     * A collection served by a controller is not capped (no note, no header), but its page is checked
+     * (RequestedPageSubscriber): 400 and 404, the latter completing the 404 of the journal.
+     */
+    public function testCollectionServedByAControllerOnlyDocumentsThePageResponses(): void
     {
         $get = $this->createOpenApi()->getPaths()->getPath(self::CONTROLLER_PATH)->getGet();
 
         $this->assertSame('Enable or disable pagination', $get->getParameters()[0]->getDescription());
         $this->assertNull($get->getResponses()[200]->getHeaders());
-        $this->assertArrayNotHasKey(400, $get->getResponses());
+        $this->assertSame('Invalid pagination parameter (e.g. `page` that is not a positive integer)', $get->getResponses()[400]->getDescription());
+        $this->assertSame('Journal not found, or page after the last one (the first page always exists, even empty)', $get->getResponses()[404]->getDescription());
     }
 
     public function testOperationWithoutPaginationIsUnchanged(): void
@@ -368,7 +373,7 @@ class OpenApiFactoryTest extends TestCase
         )));
         $paths->addPath(self::CONTROLLER_PATH, new PathItem(get: new Operation(
             responses: [200 => new Response('Journal boards')],
-            parameters: [new Parameter('pagination', 'query', 'Enable or disable pagination')]
+            parameters: [new Parameter('pagination', 'query', 'Enable or disable pagination'), new Parameter('code', 'path', 'Journal code', true)]
         )));
         $paths->addPath(self::ITEM_PATH, new PathItem(get: new Operation(
             responses: [200 => new Response('Paper resource')],

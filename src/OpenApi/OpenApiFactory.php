@@ -156,8 +156,8 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     /**
      * Documents, on the collections that can be requested without pagination, the cap
      * applied to ?pagination=false and the TRUNCATED_HEADER response header.
-     * They also return a 400 for an invalid pagination parameter.
-     * The collections served by a Symfony controller are not capped: they are skipped.
+     * They also return a 400 for an invalid pagination parameter and a 404 for a page after the last one.
+     * The collections served by a Symfony controller are not capped: they only get the 400 and the 404.
      */
     private function documentUnpaginatedCap(OpenApi $openApi): OpenApi
     {
@@ -167,6 +167,13 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         foreach ($paths->getPaths() as $key => $path) {
             foreach ($controllerUriTemplates as $uriTemplate) {
                 if (str_ends_with((string)$key, $uriTemplate)) {
+                    // the page is checked by RequestedPageSubscriber, whatever serves the collection
+                    $get = $path->getGet();
+
+                    if ($get !== null && $this->findPaginationParameter($get->getParameters() ?? []) !== null) {
+                        $paths->addPath($key, $path->withGet($get->withResponses($this->withInvalidPaginationResponse($get->getResponses() ?? []))));
+                    }
+
                     continue 2;
                 }
             }
@@ -218,7 +225,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
 
     /**
      * An invalid pagination parameter returns a 400, a page after the last one a 404
-     * (see InvalidPaginationSubscriber and RequestedPageSubscriber)
+     * (see InvalidPaginationSubscriber and RequestedPageSubscriber); an existing 404 (e.g. "Journal not found") is completed.
      *
      * @param array<int|string, mixed> $responses
      * @return array<int|string, mixed>
@@ -226,7 +233,15 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     private function withInvalidPaginationResponse(array $responses): array
     {
         $responses[Response::HTTP_BAD_REQUEST] ??= $this->errorResponse('Invalid pagination parameter (e.g. `page` that is not a positive integer)');
-        $responses[Response::HTTP_NOT_FOUND] ??= $this->errorResponse('Page after the last one (the first page always exists, even empty)');
+
+        $pageNotFound = 'page after the last one (the first page always exists, even empty)';
+        $notFound = $responses[Response::HTTP_NOT_FOUND] ?? null;
+
+        if (!$notFound instanceof OpenApiResponse) {
+            $responses[Response::HTTP_NOT_FOUND] = $this->errorResponse(ucfirst($pageNotFound));
+        } elseif (!str_contains(strtolower($notFound->getDescription()), $pageNotFound)) {
+            $responses[Response::HTTP_NOT_FOUND] = $notFound->withDescription(sprintf('%s, or %s', rtrim($notFound->getDescription(), '. '), $pageNotFound));
+        }
 
         return $responses;
     }
