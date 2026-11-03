@@ -44,7 +44,7 @@ class SectionRepository extends ServiceEntityRepository
 
         $qb = $this->getEntityManager()->createQueryBuilder()
             ->select('assignment.uid AS UID', 'assignment.rvid AS RVID', 'section.sid AS SID', 'section.titles AS titles', 'section.descriptions AS descriptions', 'section.position AS POSITION')
-            ->addSelect(sprintf('(SELECT COUNT(published.docid) FROM %s published WHERE published.rvid = section.rvid AND published.sid = section.sid AND published.status = :published) AS %s', Paper::class, PapersRepository::TOTAL_ARTICLE))
+            ->addSelect(sprintf('(SELECT COUNT(DISTINCT published.paperid) FROM %s published WHERE published.rvid = section.rvid AND published.sid = section.sid AND published.status = :published) AS %s', Paper::class, PapersRepository::TOTAL_ARTICLE))
             ->distinct()
             ->from(UserAssignment::class, 'assignment')
             // a removed section is not returned

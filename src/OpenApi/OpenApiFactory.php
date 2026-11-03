@@ -462,7 +462,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
                 }
 
                 // the filters of the statistics checked by their providers (documented as `name` or `name[]`)
-                $checkedByProvider = $isStatistics ? array_intersect(self::STATISTICS_CHECKED_FILTERS, array_map(static fn(string $name): string => rtrim($name, '[]'), $documented)) : [];
+                $checkedByProvider = $isStatistics ? array_intersect(self::STATISTICS_CHECKED_FILTERS, array_map(static fn(string $name): string => preg_replace('/\[]$/', '', $name), $documented)) : [];
 
                 $description = $this->unprocessableEntityDescription(
                     array_values(array_intersect($validated['singleValue'] ?? [], $documented)),
@@ -783,7 +783,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             }
 
             foreach ($operation->getParameters() ?? [] as $parameter) {
-                if (in_array(rtrim($parameter->getName(), '[]'), [AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE], true)) {
+                if (in_array(preg_replace('/\[]$/', '', $parameter->getName()), [AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE], true)) {
                     $responses = $operation->getResponses();
                     $responses[Response::HTTP_NOT_FOUND] = $responses[Response::HTTP_NOT_FOUND]->withDescription('Journal not found');
                     $paths->addPath($key, $path->withGet($operation->withResponses($responses)));
