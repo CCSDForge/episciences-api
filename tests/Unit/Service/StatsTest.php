@@ -20,6 +20,7 @@ use App\Service\Stats;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -616,6 +617,82 @@ class StatsTest extends TestCase
         $this->assertEquals(10, $result->getValue()['value']);
     }
 
+    /**
+     * 1 article at 10 days in 2023, 3 articles at 100 days in 2024: the mean of the articles (77.5, rounded to 78),
+     * not the mean of the yearly averages (55), as the median is computed from the articles.
+     *
+     * @return array<string, array{array<string, mixed>}>
+     */
+    public static function averageOfTheArticlesProvider(): array
+    {
+        return [
+            'journal, all the years' => [['rvid' => 5]],
+            'journal, several years' => [['rvid' => 5, 'submissionDate' => [2023, 2024]]],
+            'platform, several years' => [['submissionDate' => [2023, 2024]]],
+            'platform, all the years' => [[]],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     */
+    #[DataProvider('averageOfTheArticlesProvider')]
+    public function testGetDelayAverageIsTheMeanOfTheArticlesNotOfTheYearlyAverages(array $filters): void
+    {
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([
+            ['rvid' => 5, 'year' => 2023, 'delay' => 10],
+            ['rvid' => 5, 'year' => 2024, 'delay' => 100],
+            ['rvid' => 5, 'year' => 2024, 'delay' => 100],
+            ['rvid' => 5, 'year' => 2024, 'delay' => 100],
+        ]);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(['is' => $filters]);
+
+        $this->assertEquals(78, $result->getValue()['value']);
+    }
+
+    public function testGetDelayAverageOfThePlatformGivesTheSameWeightToEachArticleOfEachJournal(): void
+    {
+        // journal 5: 1 article at 10 days; journal 8: 3 articles at 100 days, the same year
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([
+            ['rvid' => 5, 'year' => 2024, 'delay' => 10],
+            ['rvid' => 8, 'year' => 2024, 'delay' => 100],
+            ['rvid' => 8, 'year' => 2024, 'delay' => 100],
+            ['rvid' => 8, 'year' => 2024, 'delay' => 100],
+        ]);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(['is' => ['submissionDate' => 2024]]);
+
+        $this->assertEquals(78, $result->getValue()['value']);
+    }
+
+    public function testGetDelayAverageKeepsTheAverageOfEachYearInTheDetails(): void
+    {
+        $this->paperLogRepo->method('getArticleDelays')->willReturn([
+            ['rvid' => 5, 'year' => 2023, 'delay' => 10],
+            ['rvid' => 5, 'year' => 2024, 'delay' => 100],
+            ['rvid' => 5, 'year' => 2024, 'delay' => 101],
+        ]);
+
+        $result = $this->stats->getDelayBetweenSubmissionAndLatestStatus(['is' => ['rvid' => 5, AppConstants::WITH_DETAILS => true]]);
+
+        // value: avg(10, 100, 101) = 70.33 → 70; details: 10 for 2023, avg(100, 101) = 100.5 → 101 for 2024
+        $this->assertEquals(70, $result->getValue()['value']);
+        $this->assertEquals(10, $result->getDetails()[2023]['delay']['value']);
+        $this->assertEquals(101, $result->getDetails()[2024]['delay']['value']);
+        $this->assertSame(2, $result->getDetails()[2024]['delay']['count']);
+    }
+
+    public function testArticleAverageDelayIsNullWithoutAnyArticleOfTheJournalAndYears(): void
+    {
+        $rows = [['rvid' => 5, 'year' => 2023, 'delay' => 10], ['rvid' => 8, 'year' => 2024, 'delay' => null]];
+
+        $this->assertNull(Stats::articleAverageDelay($rows, 8));
+        $this->assertNull(Stats::articleAverageDelay($rows, 5, [2024]));
+        $this->assertNull(Stats::articleAverageDelay([]));
+        $this->assertEquals(10, Stats::articleAverageDelay($rows, 5, ['2023']));
+    }
+
     public function testGetDelayMethodCanBeOverriddenFromFilter(): void
     {
         $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
@@ -696,8 +773,8 @@ class StatsTest extends TestCase
         $this->assertEquals(13, $average->getDetails()['2022']['delay']['value']);
         $this->assertSame(2, $average->getDetails()['2022']['delay']['count']);
         $this->assertEquals(40, $average->getDetails()['2023']['delay']['value']);
-        // global average: the average of the yearly averages, as with the query
-        $this->assertEquals(27, $average->getValue()['value']);
+        // global average: the mean of the articles, as the median (not the mean of the yearly averages, 27)
+        $this->assertEquals(22, $average->getValue()['value']);
         $this->assertEquals(15, $median->getValue()['value']);
         $this->assertEquals(13, $median->getDetails()['2022']['delay']['value']);
     }
