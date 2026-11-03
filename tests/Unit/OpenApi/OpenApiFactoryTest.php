@@ -31,6 +31,7 @@ use App\EventSubscriber\TruncatedCollectionSubscriber;
 use App\Metadata\SingleValueQueryParametersResourceMetadataCollectionFactory;
 use App\OpenApi\OpenApiFactory;
 use App\OpenApi\QueryParameters;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Validator\Constraints\Choice;
 use Symfony\Component\Validator\Constraints\Type;
@@ -65,13 +66,18 @@ class OpenApiFactoryTest extends TestCase
         $this->assertSame('#/components/schemas/Error', $get->getResponses()[400]->getContent()['application/json']->getSchema()['$ref']);
     }
 
-    public function testCollectionServedByAControllerIsUnchanged(): void
+    /**
+     * A collection served by a controller is not capped (no note, no header), but its page is checked
+     * (RequestedPageSubscriber): 400 and 404, the latter completing the 404 of the journal.
+     */
+    public function testCollectionServedByAControllerOnlyDocumentsThePageResponses(): void
     {
         $get = $this->createOpenApi()->getPaths()->getPath(self::CONTROLLER_PATH)->getGet();
 
         $this->assertSame('Enable or disable pagination', $get->getParameters()[0]->getDescription());
         $this->assertNull($get->getResponses()[200]->getHeaders());
-        $this->assertArrayNotHasKey(400, $get->getResponses());
+        $this->assertSame('Invalid pagination parameter (e.g. `page` that is not a positive integer)', $get->getResponses()[400]->getDescription());
+        $this->assertSame('Journal not found, or page after the last one (the first page always exists, even empty)', $get->getResponses()[404]->getDescription());
     }
 
     public function testOperationWithoutPaginationIsUnchanged(): void
@@ -266,6 +272,28 @@ class OpenApiFactoryTest extends TestCase
         $this->assertStringContainsString('JWT', (string)$operation?->getDescription());
     }
 
+    /**
+     * withPapers (the papers or the reviews of each figure) needs a JWT on the statistics, the evaluation ones included
+     *
+     * @return array<string, array{string}>
+     */
+    public static function statisticsWithPapersProvider(): array
+    {
+        return [
+            'statistics' => ['/api/statistics/'],
+            'evaluation statistics' => ['/api/statistics/evaluation'],
+        ];
+    }
+
+    #[DataProvider('statisticsWithPapersProvider')]
+    public function testOptionalJwtIsDocumentedOnTheStatisticsWithPapers(string $path): void
+    {
+        $operation = $this->createAuthOpenApi()->getPaths()->getPath($path)?->getGet();
+
+        $this->assertSame('[{},{"bearerAuth":[]}]', json_encode($operation?->getSecurity()));
+        $this->assertArrayHasKey(401, $operation?->getResponses() ?? []);
+    }
+
     public function testPublicOperationWithoutJwtIsUnchanged(): void
     {
         $operation = $this->createAuthOpenApi()->getPaths()->getPath('/api/news')?->getGet();
@@ -345,7 +373,7 @@ class OpenApiFactoryTest extends TestCase
         )));
         $paths->addPath(self::CONTROLLER_PATH, new PathItem(get: new Operation(
             responses: [200 => new Response('Journal boards')],
-            parameters: [new Parameter('pagination', 'query', 'Enable or disable pagination')]
+            parameters: [new Parameter('pagination', 'query', 'Enable or disable pagination'), new Parameter('code', 'path', 'Journal code', true)]
         )));
         $paths->addPath(self::ITEM_PATH, new PathItem(get: new Operation(
             responses: [200 => new Response('Paper resource')],

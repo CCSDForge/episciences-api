@@ -6,6 +6,7 @@ namespace App\Controller;
 use ApiPlatform\State\Pagination\ArrayPaginator;
 use App\Entity\IndexingDatabase;
 use App\Entity\Review;
+use App\EventSubscriber\RequestedPageSubscriber;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\IndexingDatabaseRepository;
 use App\Repository\ReviewRepository;
@@ -57,7 +58,7 @@ class IndexingDatabaseController extends AbstractController
         }
 
         if ($pagination) {
-            $firstResult = ($page - 1) * $itemsPerPage;
+            $firstResult = RequestedPageSubscriber::firstResult($page, $itemsPerPage);
         } else { // the whole collection, whatever itemsPerPage
             $itemsPerPage = max(1, count($indexingDatabases));
         }

@@ -387,6 +387,15 @@ class BoardsControllerTest extends TestCase
         $this->assertInstanceOf(ArrayPaginator::class, $result);
     }
 
+    public function testAPageWhoseOffsetIsNotAnIntegerIsABadRequest(): void
+    {
+        $request = Request::create('/api/boards', Request::METHOD_GET, ['page' => (string)PHP_INT_MAX]);
+
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\BadRequestHttpException::class);
+
+        $this->controller->__invoke($request);
+    }
+
     public function testPaginationDisabledWhenParamAbsent(): void
     {
         // No 'pagination' query param → pagination=true, page=1, itemsPerPage=30

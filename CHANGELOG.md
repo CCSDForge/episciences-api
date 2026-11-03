@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added regression tests for the `is_public` generated column filter.
 - Added in-memory regression tests (`tests/Unit/Entity/UserRolesTest.php`) proving that `User::getRoles($rvId)` (the JWT `roles` construction path used by `JWTSubscriber`) yields the journal-scoped role (e.g. `ROLE_SECRETARY`) when the matching `USER_ROLES` row is present, is strictly scoped to its journal `rvid`, and falls back to `ROLE_USER` otherwise. This regression-tests the secretary access to the statistics paper lists.
 - Added a database test (`tests/Functional/`, MySQL in CI through `TEST_DATABASE_URL`, skipped otherwise) checking that the cap of the unpaginated collections keeps the to-many fetch-joined collections complete.
+- Added a kernel test (`tests/Functional/Wiring/PaginationAndParametersWiringTest.php`, without database) checking the wiring of the single-value query parameters and of the page checks: `rvcode[]=…` returns a `422` and an invalid `page` a `400` through the HTTP kernel, and the page is checked between the firewall and the read, and before the write.
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): with `withDetails`, `details` now also gives the median delays of each year (`submissionAcceptanceTimeMedian`, `submissionPublicationTimeMedian`), in the shape of the average delays.
 - Journal dashboard: the delays of each year in `details` (average and median) now give `count`, the number of articles the delay is computed from.
 
@@ -82,6 +83,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `GET /api/journals/{code}` and `GET /api/journals/` no longer expose the `settings` field of the journals (a raw `REVIEW_SETTING` `{setting, value}` array, without external consumer). The settings still work internally via `Review::getSetting()` and the public, structured configuration remains available through `GET /api/journals/front/configuration` (`{code}/front/configuration`).
 
 ### Fixed
+- OpenAPI documentation of the paginated collections: the `404` of a journal collection (e.g. `/api/volumes`, `/api/papers/`) also gives the page after the last one ("Journal not found, or page after the last one"), instead of the journal only; the collections served by a controller (`/api/journals/boards/{code}`, `/api/journals/indexing-database/{code}`) now document the `400` of an invalid page and this `404`.
+- OpenAPI documentation of `GET /api/statistics/evaluation`: the JWT is optional (anonymous or bearer, with the `401` of an invalid token), as on `GET /api/statistics/`, for `withPapers`; Swagger UI now sends the token once authorized.
+- `GET /api/journals/boards/{code}` and `GET /api/journals/indexing-database/{code}`: a page too large for its offset (e.g. `page=9223372036854775807`) returns a `400` ("Page parameter is too large."), as the other collections, instead of a `500`.
 - Statistics (`/api/statistics/*`, `/api/journals/stats/*`): an unknown query parameter with a numeric name (e.g. `?0=x`) returns a `422`, as the other unknown parameters, instead of a `500`.
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): without any submission for the requested filters (e.g. a year without submission), the dashboard returns a `404` again, instead of a `422` rejecting the valid filters.
 - `GET /api/statistics/` with several `flag[]` values: the submissions are counted for each of them, instead of a `500`.
