@@ -86,7 +86,8 @@ final readonly class DelegatedTokenIssuer
             $this->reject('invalid signature', $uid, $code);
         }
 
-        // replay: a signed request can only be used once
+        // replay: a signed request can only be used once. cache.app is local to the server (filesystem):
+        // this assumes the API is served by a single node; with several nodes, use a shared store (e.g. Symfony Lock on Redis)
         $nonceItem = $this->cache->getItem(self::NONCE_CACHE_PREFIX . $nonce);
 
         if ($nonceItem->isHit()) {
