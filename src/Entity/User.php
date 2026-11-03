@@ -49,6 +49,9 @@ use App\OpenApi\OpenApiSchemas;
     operations: [
         new Get(
             openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['user']],
+                summary: 'Consult a user',
+                description: 'Consult a particular user by its identifier (uid). Requires the secretary role.',
                 security: [
                     ['bearerAuth' => []],
                 ]
@@ -60,6 +63,9 @@ use App\OpenApi\OpenApiSchemas;
         ),
         new GetCollection(
             openapi: new OpenApiOperation(
+                tags: [OpenApiFactory::OAF_TAGS['user']],
+                summary: 'List users',
+                description: 'List the users, optionally filtered by journal (userRoles.rvid). Requires the secretary role.',
                 security: [
                     ['bearerAuth' => []],
                 ]
@@ -77,6 +83,7 @@ use App\OpenApi\OpenApiSchemas;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['auth']],
                 summary: 'My Account',
+                description: 'Information about the currently authenticated user.',
                 security: [
                     ['bearerAuth' => []],
                 ]
@@ -156,14 +163,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     public const ROLE_WEBMASTER = 'webmaster';
 
     #[Groups(['read:Me',])]
+    #[ApiProperty(description: 'Identifier of the current journal')]
     private ?int $currentJournalID = null;
 
     /**
      * @var array
      */
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
     // Boards: one list of roles per board member
-    #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => ['string', 'array'], 'items' => ['type' => 'string']]])]
+    #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => ['string', 'array'], 'items' => ['type' => 'string']]], description: 'Roles of the user, one list of roles per journal')]
     private array $roles = [];
 
     #[ORM\Id]
@@ -172,19 +180,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-            'read:Boards'
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0]
         ])]
-    #[ApiProperty(identifier: true)]
+    #[ApiProperty(identifier: true, description: 'Unique identifier of the user')]
     private int $uid;
 
     #[ORM\Column(type: Types::GUID)]
     #[Groups(
         [
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
-            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-            'read:Boards'
+            AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0]
         ])]
+    #[ApiProperty(description: 'Universally unique identifier of the user')]
     private ?string $uuid = null;
 
 
@@ -192,8 +199,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-        'read:Me', 'read:Boards'
+        'read:Me'
     ])]
+    #[ApiProperty(description: 'Language of the user (two-letter code)')]
     private string $langueid = 'fr';
     #[ORM\Column(name: "SCREEN_NAME", type: \Doctrine\DBAL\Types\Types::STRING, length: 250, nullable: false)]
     #[Groups(
@@ -202,11 +210,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
             AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0],
-            'read:Me', 'read:Boards', 'read:News', 'read:News:Collection',
+            'read:Me', 'read:News', 'read:News:Collection',
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['item']['read'][0],
             AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]
 
         ])]
+    #[ApiProperty(description: 'Screen name (display name) of the user')]
     private string $screenName;
 
 
@@ -224,8 +233,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-        'read:Me', 'read:Boards'
+        'read:Me'
     ])]
+    #[ApiProperty(description: 'Email address of the user')]
     private string $email;
 
 
@@ -233,28 +243,32 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups([
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['item']['read'][0],
         AppConstants::APP_CONST['normalizationContext']['groups']['user']['collection']['read'][0],
-        'read:Me', 'read:Boards'
+        'read:Me'
     ])]
+    #[ApiProperty(description: 'Civility title of the user')]
     private ?string $civ = null;
 
     #[ORM\Column(name: "LASTNAME", type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: false)]
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
+    #[ApiProperty(description: 'Last name of the user')]
     private string $lastname;
 
 
     #[ORM\Column(name: "FIRSTNAME", type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: true)]
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
+    #[ApiProperty(description: 'First name of the user')]
     private ?string $firstname = null;
 
     #[ORM\Column(name: "MIDDLENAME", type: \Doctrine\DBAL\Types\Types::STRING, length: 100, nullable: true)]
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
+    #[ApiProperty(description: 'Middle name of the user')]
     private ?string $middlename = null;
 
 
     #[ORM\Column(
         name: "REGISTRATION_DATE", type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true, options: ['comment' => 'Date de création du compte']
     )]
-    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')", description: 'Date the user account was created')]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private ?\DateTimeInterface $registrationDate = null;
 
@@ -262,17 +276,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[ORM\Column(name: "MODIFICATION_DATE", type: \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE, nullable: true, options: [
         'default' => new \Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp(), 'comment' => 'Date de modification du compte'])
     ]
-    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')", description: 'Date the user account was last modified')]
     #[Context([DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'])]
     private ?\DateTimeInterface $modificationDate = null;
 
 
     #[ORM\Column(name: "ORCID", type: \Doctrine\DBAL\Types\Types::STRING, length: 19, nullable: true)]
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
+    #[ApiProperty(description: 'ORCID identifier of the user')]
     private ?string $orcid = null;
 
     #[ORM\Column(name: 'ADDITIONAL_PROFILE_INFORMATION', type: \Doctrine\DBAL\Types\Types::JSON, nullable: true)]
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
     #[ApiProperty(schema: [
         'type' => ['object', 'array', 'null'],
         'maxItems' => 0,
@@ -297,10 +312,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
             'webSites' => ['https://www.episciences.org'],
         ],
     ])]
+    #[ApiProperty(description: 'Additional profile information (affiliations and web sites) of the user')]
     private ?array $additionalProfileInformation = null;
 
     #[ORM\Column(name: "IS_VALID", type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: false)]
-    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')")]
+    #[ApiProperty(security: "is_granted('ROLE_EPIADMIN')", description: 'Whether the user account is validated')]
     #[Groups(['read:User', 'read:Me'])]
     private bool $isValid = true;
 
@@ -319,7 +335,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, JWTUser
     #[Groups(['read:User', 'read:Me'])]
     private Collection $papers;
 
-    #[Groups(['read:User', 'read:Me', 'read:Boards'])]
+    #[Groups(['read:User', 'read:Me'])]
+    #[ApiProperty(description: 'Picture of the user (data URI)')]
     private ?string $picture = null;
 
     /**

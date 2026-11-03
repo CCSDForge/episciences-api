@@ -9,11 +9,12 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\AppConstants;
 use App\Entity\Review;
+use App\Resource\Statistic;
 
 final class ReviewStatsDataProvider extends AbstractDataProvider implements ProviderInterface
 {
 
-    public const array AVAILABLE_FILTERS = [AppConstants::START_AFTER_DATE, AppConstants::WITH_DETAILS, AppConstants::YEAR_PARAM];
+    public const array AVAILABLE_FILTERS = [AppConstants::START_AFTER_DATE, AppConstants::WITH_DETAILS, AppConstants::YEAR_PARAM, Statistic::WITH_PAPERS_PARAM];
 
 
     public function supports(?Operation $operation = null): bool

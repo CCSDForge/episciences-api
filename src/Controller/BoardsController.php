@@ -7,15 +7,19 @@ use App\Entity\Review;
 use App\Entity\Section;
 use App\Entity\User;
 use App\Entity\UserRoles;
+use App\EventSubscriber\RequestedPageSubscriber;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\ReviewRepository;
 use App\Repository\SectionRepository;
 use App\Repository\UserRolesRepository;
+use App\Resource\BoardMember;
 use App\Service\Solr\SolrConstants;
 use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Exception\ORMException;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 
 class BoardsController extends AbstractController
@@ -32,7 +36,12 @@ class BoardsController extends AbstractController
         USER::ROLE_COPY_EDITOR,
         USER::ROLE_WEBMASTER
     ];
-    public function __construct(private readonly \Doctrine\ORM\EntityManagerInterface $entityManager, private readonly \Psr\Log\LoggerInterface $logger)
+    public function __construct(
+        private readonly \Doctrine\ORM\EntityManagerInterface $entityManager,
+        private readonly \Psr\Log\LoggerInterface $logger,
+        #[Autowire(param: 'app.user.picture.path')]
+        private readonly ?string $picturePath = null
+    )
     {
     }
 
@@ -42,6 +51,7 @@ class BoardsController extends AbstractController
     public function __invoke(?Request $request = null): ArrayPaginator
     {
         $boards = [];
+        $users = [];
         $pagination = true;
         $page = 1;
         $itemsPerPage = 30;
@@ -50,9 +60,11 @@ class BoardsController extends AbstractController
 
         if ($request instanceof \Symfony\Component\HttpFoundation\Request) {
             $tags = [];
-            $page = $request->query->has('pagination') ? (int)$request->query->get('page') : 1;
-            $itemsPerPage = $request->query->has('pagination') ? (int)$request->query->get('itemsPerPage') : 30;
-            $pagination = !$request->query->has('pagination') || $request->query->get('pagination');
+            // The page is validated (400) and checked against the last page (404) by RequestedPageSubscriber;
+            // only itemsPerPage needs a local floor (the subscriber does not guard it).
+            $page = $request->query->getInt('page', 1);
+            $itemsPerPage = max(1, $request->query->getInt('itemsPerPage', 30));
+            $pagination = filter_var($request->query->get('pagination', true), FILTER_VALIDATE_BOOLEAN);
 
             $rolesByUid = [];
             $code = $request->attributes->get('code');
@@ -110,7 +122,7 @@ class BoardsController extends AbstractController
                     /** @var SectionRepository $sectionRepo */
                     $sectionRepo = $this->entityManager->getRepository(Section::class);
                     $assignedSections = $sectionRepo->getAssignedSection($journal->getRvid(), $boardIdentifies);
-                } catch (Exception|\JsonException  $e) {
+                } catch (Exception|ORMException|\JsonException $e) {
                     $assignedSections = [];
                     $this->logger->critical($e->getMessage());
 
@@ -132,7 +144,6 @@ class BoardsController extends AbstractController
                             'langueid' => $currentUser['langueid'],
                             'screenName' => $currentUser['screenName'],
                             'roles' => [$current['roles']],
-                            'email' => $currentUser['email'],
                             'civ' => ($currentUser['civ']),
                             'orcid' => $currentUser['orcid'],
                             'additionalProfileInformation' => $currentUser['additionalProfileInformation'],
@@ -141,7 +152,7 @@ class BoardsController extends AbstractController
                             'assignedSections' => $assignedSections[$uid] ?? null
                         ];
 
-                        $boards[] = new User($options);
+                        $users[] = new User($options);
                     }
                 }
 
@@ -151,7 +162,14 @@ class BoardsController extends AbstractController
 
         if ($pagination) {
             $maxResults = $itemsPerPage;
-            $firstResult = ($page - 1) * $maxResults;
+            $firstResult = RequestedPageSubscriber::firstResult($page, $maxResults);
+        }
+
+        foreach ($users as $index => $user) {
+            // The picture (read from the disk, resolved server-side) of the members of the page only;
+            // the id is the position in the whole list (unique across pages)
+            $inPage = $index >= $firstResult && $index < $firstResult + $maxResults;
+            $boards[] = BoardMember::fromUser($inPage ? $user->processPicturePath($this->picturePath) : $user, $index + 1);
         }
 
         return new ArrayPaginator($boards, $firstResult, $maxResults);

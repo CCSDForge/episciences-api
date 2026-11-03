@@ -2,6 +2,7 @@
 
 namespace App\Serializer\Normalizer;
 
+use ApiPlatform\Symfony\Routing\SkolemIriConverter;
 use App\Entity\AbstractVolumeSection;
 use App\Entity\EntityIdentifierInterface;
 use App\Entity\Paper;
@@ -9,6 +10,7 @@ use App\Repository\PaperConflictsRepository;
 use App\Repository\PapersRepository;
 use App\Repository\SectionRepository;
 use App\Repository\VolumeRepository;
+use App\Resource\Statistic;
 use Doctrine\ORM\EntityManagerInterface;
 use ReflectionClass;
 use ReflectionException;
@@ -60,9 +62,23 @@ class ApiItemNormalizer implements NormalizerInterface, SerializerAwareInterface
             $currentRepo = $this->entityManager->getRepository($object::class);
             $committee = $currentRepo->getCommittee($object->getRvid(), $object->getIdentifier());
             $object->setCommittee($committee);
-            $object->setTotalPublishedArticles();
+            // already set when the papers are not loaded (e.g. the sections assigned to the board members)
+            if ($object->getTotalPublishedArticles() === null) {
+                $object->setTotalPublishedArticles();
+            }
             $data['committee'] = $object->getCommittee();
             $data[PapersRepository::TOTAL_ARTICLE] = $object->getTotalPublishedArticles();
+        }
+
+        // A statistic is a value computed from the request filters (journal, years, unit...), not a resource
+        // of its own: a blank node, as the other computed objects
+        if ($object instanceof Statistic && is_array($data)) {
+            unset($data['@id']);
+        }
+
+        // Generated IRIs (/.well-known/genid/...) cannot be dereferenced and change on every request: blank nodes instead
+        if (is_array($data) && isset($data['@id']) && is_string($data['@id']) && str_contains($data['@id'], strstr(SkolemIriConverter::$skolemUriTemplate, '{id}', true))) {
+            unset($data['@id']);
         }
 
         return $data;

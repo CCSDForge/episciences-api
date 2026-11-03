@@ -8,6 +8,7 @@ use App\Entity\Review;
 use App\Entity\Section;
 use App\Entity\User;
 use App\Entity\UserRoles;
+use App\Resource\BoardMember;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\ReviewRepository;
 use App\Repository\SectionRepository;
@@ -19,6 +20,10 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
+use Symfony\Component\Serializer\Mapping\Loader\AttributeLoader;
+use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
+use Symfony\Component\Serializer\Serializer;
 
 class BoardsControllerTest extends TestCase
 {
@@ -194,7 +199,127 @@ class BoardsControllerTest extends TestCase
         $this->assertInstanceOf(ArrayPaginator::class, $result);
         $this->assertCount(1, $result);
         $members = iterator_to_array($result);
-        $this->assertInstanceOf(User::class, $members[0]);
+        $this->assertInstanceOf(BoardMember::class, $members[0]);
+        $this->assertSame(1, $members[0]->id);
+        $this->assertSame('jdoe', $members[0]->screenName);
+        $this->assertSame('Doe', $members[0]->lastname);
+        $this->assertSame([[$boardTag]], $members[0]->roles);
+
+        // Public response: no account identifier nor email address
+        $serializer = new Serializer([new ObjectNormalizer(new ClassMetadataFactory(new AttributeLoader()))]);
+        $data = $serializer->normalize($members[0], null, ['groups' => ['read:Boards']]);
+        $this->assertSame(
+            ['id', 'roles', 'langueid', 'screenName', 'civ', 'lastname', 'firstname', 'middlename', 'orcid', 'additionalProfileInformation', 'picture', 'assignedSections'],
+            array_keys($data)
+        );
+    }
+
+    public function testBoardMembersAreNumberedByPosition(): void
+    {
+        $request = Request::create('/api/boards/myjournal', \Symfony\Component\HttpFoundation\Request::METHOD_GET);
+        $request->attributes->set('code', 'myjournal');
+
+        $this->journal->method('getRvid')->willReturn(3);
+
+        $boardTag = UserRoles::EDITORIAL_BOARD;
+        $boardTagRows = [];
+        $joinRows = [];
+
+        foreach ([300 => 'Adams', 100 => 'Brown'] as $uid => $lastname) {
+            $boardTagRows[] = ['uid' => $uid, 'roleid' => $boardTag];
+            $joinRows[] = [
+                'uid' => $uid,
+                'roleid' => $boardTag,
+                'user' => [
+                    'uid' => $uid, 'uuid' => 'u' . $uid, 'langueid' => 'en', 'screenName' => $lastname,
+                    'email' => $uid . '@example.com', 'civ' => null, 'orcid' => null,
+                    'additionalProfileInformation' => null, 'lastname' => $lastname, 'firstname' => 'X',
+                ],
+            ];
+        }
+
+        $this->entityManager->method('getRepository')->willReturnMap([
+            [Review::class, $this->reviewRepository],
+            [UserRoles::class, $this->userRolesRepository],
+            [Section::class, $this->sectionRepository],
+        ]);
+        $this->reviewRepository->method('getJournalByIdentifier')->willReturn($this->journal);
+        $this->userRolesRepository->method('boardsUsersQuery')->willReturn($this->stubQueryBuilder($boardTagRows));
+        $this->userRolesRepository->method('joinUserRolesQuery')->willReturn($this->stubQueryBuilder($joinRows));
+        $this->sectionRepository->method('getAssignedSection')->willReturn([]);
+
+        $members = iterator_to_array($this->controller->__invoke($request));
+
+        // The id follows the order of the list, not the account identifier
+        $this->assertSame([1, 2], array_map(static fn(BoardMember $member): int => $member->id, $members));
+        $this->assertSame(['Adams', 'Brown'], array_map(static fn(BoardMember $member): ?string => $member->lastname, $members));
+    }
+
+    /**
+     * The pictures are read from the disk for the members of the requested page only; the ids stay the positions in the whole list.
+     */
+    public function testPicturesAreOnlyReadForTheRequestedPage(): void
+    {
+        $pictureDir = dirname(__DIR__, 3) . '/var/test-board-pictures/';
+        $uuids = [300 => 'aaaa1111', 100 => 'bbbb2222'];
+
+        foreach ($uuids as $uuid) {
+            $dir = $pictureDir . wordwrap($uuid, 2, DIRECTORY_SEPARATOR, true);
+            @mkdir($dir, 0755, true);
+            file_put_contents("$dir/$uuid.jpg", 'picture');
+        }
+
+        try {
+            $request = Request::create('/api/boards/myjournal', Request::METHOD_GET, ['page' => '2', 'itemsPerPage' => '1']);
+            $request->attributes->set('code', 'myjournal');
+
+            $this->journal->method('getRvid')->willReturn(3);
+
+            $boardTag = UserRoles::EDITORIAL_BOARD;
+            $boardTagRows = [];
+            $joinRows = [];
+
+            foreach ([300 => 'Adams', 100 => 'Brown'] as $uid => $lastname) {
+                $boardTagRows[] = ['uid' => $uid, 'roleid' => $boardTag];
+                $joinRows[] = [
+                    'uid' => $uid,
+                    'roleid' => $boardTag,
+                    'user' => [
+                        'uid' => $uid, 'uuid' => $uuids[$uid], 'langueid' => 'en', 'screenName' => $lastname,
+                        'email' => $uid . '@example.com', 'civ' => null, 'orcid' => null,
+                        'additionalProfileInformation' => null, 'lastname' => $lastname, 'firstname' => 'X',
+                    ],
+                ];
+            }
+
+            $this->entityManager->method('getRepository')->willReturnMap([
+                [Review::class, $this->reviewRepository],
+                [UserRoles::class, $this->userRolesRepository],
+                [Section::class, $this->sectionRepository],
+            ]);
+            $this->reviewRepository->method('getJournalByIdentifier')->willReturn($this->journal);
+            $this->userRolesRepository->method('boardsUsersQuery')->willReturn($this->stubQueryBuilder($boardTagRows));
+            $this->userRolesRepository->method('joinUserRolesQuery')->willReturn($this->stubQueryBuilder($joinRows));
+            $this->sectionRepository->method('getAssignedSection')->willReturn([]);
+
+            $controller = new BoardsController($this->entityManager, $this->logger, $pictureDir);
+            $result = $controller->__invoke($request);
+
+            $this->assertSame(2.0, $result->getTotalItems());
+            $members = array_values(iterator_to_array($result));
+            $this->assertCount(1, $members);
+            $this->assertSame(2, $members[0]->id);
+            $this->assertSame('Brown', $members[0]->lastname);
+            $this->assertStringStartsWith('data:', (string)$members[0]->picture);
+
+            // the whole list behind the page: the member of the first page has no picture
+            $iterator = (new \ReflectionProperty(ArrayPaginator::class, 'iterator'))->getValue($result);
+            $all = $iterator->getInnerIterator()->getArrayCopy();
+            $this->assertSame([1, 2], array_map(static fn(BoardMember $member): int => $member->id, $all));
+            $this->assertNull($all[0]->picture);
+        } finally {
+            (new \Symfony\Component\Filesystem\Filesystem())->remove($pictureDir);
+        }
     }
 
     public function testSkipsUserWithNullUserDataAndLogsInfo(): void
@@ -260,6 +385,15 @@ class BoardsControllerTest extends TestCase
         $result = $this->controller->__invoke($request);
 
         $this->assertInstanceOf(ArrayPaginator::class, $result);
+    }
+
+    public function testAPageWhoseOffsetIsNotAnIntegerIsABadRequest(): void
+    {
+        $request = Request::create('/api/boards', Request::METHOD_GET, ['page' => (string)PHP_INT_MAX]);
+
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\BadRequestHttpException::class);
+
+        $this->controller->__invoke($request);
     }
 
     public function testPaginationDisabledWhenParamAbsent(): void

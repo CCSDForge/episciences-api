@@ -3,7 +3,6 @@
 
 namespace App\Traits;
 use App\AppConstants;
-use LengthException;
 
 trait ToolsTrait
 {
@@ -72,6 +71,10 @@ trait ToolsTrait
 
     public static function isValidDate($date, $format = 'Y-m-d'): bool
     {
+        if (!is_string($date)) { // e.g. no start date (null)
+            return false;
+        }
+
         $tDate = \DateTime::createFromFormat($format, $date);
         return $tDate && $tDate->format($format) === $date;
     }
@@ -114,19 +117,20 @@ trait ToolsTrait
     }
 
 
-    /** @throws LengthException */
-    public function getMedian(array $array): int|float
+    public function getMedian(array $array): int|float|null
     {
         if ($array === []) {
-            throw new LengthException('Cannot calculate median because Argument #1 ($array) is empty');
+            return null;
         }
 
         sort($array);
-        $middleIndex = count($array) / 2;
+        $count = count($array);
+        $middleIndex = (int)($count / 2);
 
-        if (is_float($middleIndex)) {
-            return $array[(int) $middleIndex];
+        if ($count % 2 !== 0) {
+            return $array[$middleIndex];
         }
+
         return round(($array[$middleIndex] + $array[$middleIndex - 1]) / 2, AppConstants::DEFAULT_PRECISION, \RoundingMode::HalfAwayFromZero);
     }
 

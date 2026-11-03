@@ -31,6 +31,16 @@ use App\OpenApi\OpenApiSchemas;
             ],
         ],
         'nbUsers' => ['type' => 'integer'],
+        'papers' => [
+            'type' => 'object',
+            'description' => 'With `withPapers`: the papers counted by each figure (one DOCID by paper, its latest version)',
+            'additionalProperties' => ['type' => 'array', 'items' => ['type' => 'integer']],
+        ],
+        'hiddenPapers' => [
+            'type' => 'object',
+            'description' => 'With `withPapers`: the number of papers of each figure not listed because of a conflict of interest',
+            'additionalProperties' => ['type' => 'integer'],
+        ],
     ],
 ])]
 final class DashboardOutput extends AbstractStatResource

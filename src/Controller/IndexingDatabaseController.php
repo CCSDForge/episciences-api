@@ -6,6 +6,7 @@ namespace App\Controller;
 use ApiPlatform\State\Pagination\ArrayPaginator;
 use App\Entity\IndexingDatabase;
 use App\Entity\Review;
+use App\EventSubscriber\RequestedPageSubscriber;
 use App\Exception\ResourceNotFoundException;
 use App\Repository\IndexingDatabaseRepository;
 use App\Repository\ReviewRepository;
@@ -29,6 +30,8 @@ class IndexingDatabaseController extends AbstractController
         $indexingDatabases = [];
         $page = 1;
         $itemsPerPage = 30;
+        $pagination = true;
+        $firstResult = 0;
 
         if ($request instanceof Request) {
             $code = $request->attributes->get('code');
@@ -46,12 +49,19 @@ class IndexingDatabaseController extends AbstractController
                 $indexingDbRepo = $this->entityManager->getRepository(IndexingDatabase::class);
                 $indexingDatabases = $indexingDbRepo->findByReviewId($journal->getRvid());
 
-                $page = max(1, $request->query->getInt('page', 1));
+                // The page is validated (400) and checked against the last page (404) by RequestedPageSubscriber;
+                // only itemsPerPage needs a local floor (the subscriber does not guard it).
+                $page = $request->query->getInt('page', 1);
                 $itemsPerPage = max(1, $request->query->getInt('itemsPerPage', 30));
+                $pagination = filter_var($request->query->get('pagination', true), FILTER_VALIDATE_BOOLEAN);
             }
         }
 
-        $firstResult = ($page - 1) * $itemsPerPage;
+        if ($pagination) {
+            $firstResult = RequestedPageSubscriber::firstResult($page, $itemsPerPage);
+        } else { // the whole collection, whatever itemsPerPage
+            $itemsPerPage = max(1, count($indexingDatabases));
+        }
 
         return new ArrayPaginator($indexingDatabases, $firstResult, $itemsPerPage);
     }

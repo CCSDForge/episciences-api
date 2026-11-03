@@ -27,7 +27,6 @@ final readonly class OpenApiNormalizer implements NormalizerInterface
             'items' => [
                 'type' => 'object',
                 'properties' => [
-                    'uuid' => ['type' => 'string', 'format' => 'uuid'],
                     'civ' => ['type' => ['string', 'null']],
                     'screenName' => ['type' => 'string'],
                     'orcid' => ['type' => ['string', 'null']],

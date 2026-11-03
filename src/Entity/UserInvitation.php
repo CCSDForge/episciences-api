@@ -6,16 +6,30 @@ use App\Repository\UserInvitationRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 
+// the indexes of the table in Episciences (the invitations of an assignment: see UserInvitationRepository::getReviewsRequested())
 #[ORM\Table(name: self::TABLE)]
-#[ORM\Index(columns: ['TOKEN'], name: 'TOKEN')]
-#[ORM\Index(columns: ['STATUS'], name: 'TOKEN')]
 #[ORM\Index(columns: ['SENDER_UID'], name: 'SENDER_UID')]
+#[ORM\Index(columns: ['AID', 'SENDING_DATE'], name: 'AID_SENDING_DATE')]
 #[ORM\Entity(repositoryClass: UserInvitationRepository::class)]
 
 
 class UserInvitation
 {
     public const TABLE = 'USER_INVITATION';
+
+    /**
+     * The only statuses Episciences writes (Episciences_User_Invitation; checked on 2026-10-29): an invitation is created
+     * pending (default of the column), then accepted, declined or cancelled. The API never writes this table.
+     * The column is a free VARCHAR: an older value, if any, would be returned as is.
+     */
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_ACCEPTED = 'accepted';
+    public const STATUS_DECLINED = 'declined';
+    public const STATUS_CANCELLED = 'cancelled';
+    /**
+     * Never stored: computed for a pending invitation past its EXPIRATION_DATE, as Episciences_User_Invitation::hasExpired()
+     */
+    public const STATUS_EXPIRED = 'expired';
 
     #[ORM\Column(name: 'ID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
@@ -27,8 +41,8 @@ class UserInvitation
     )]
     private int $aid;
 
-    #[ORM\Column(name: 'STATUS', type: \Doctrine\DBAL\Types\Types::STRING, length: 50, nullable: false, options: ['default' => 'pending'])]
-    private string $status = 'pending';
+    #[ORM\Column(name: 'STATUS', type: \Doctrine\DBAL\Types\Types::STRING, length: 50, nullable: false, options: ['default' => self::STATUS_PENDING])]
+    private string $status = self::STATUS_PENDING;
 
 
     #[ORM\Column(name: 'TOKEN', type: \Doctrine\DBAL\Types\Types::STRING, length: 40, nullable: true)]

@@ -13,6 +13,7 @@ use App\Repository\JournalSettingNgRepository;
 use App\State\JournalSettingNgProvider;
 use Doctrine\ORM\Mapping as ORM;
 use ApiPlatform\OpenApi\Model\Response;
+use App\OpenApi\QueryParameters;
 
 #[ORM\Table(name: self::TABLE)]
 #[ORM\UniqueConstraint(name: 'RVID', columns: ['RVID'])]
@@ -110,7 +111,7 @@ use ApiPlatform\OpenApi\Model\Response;
                 parameters: [new Parameter(
                     name: 'code',
                     in: 'query',
-                    description: 'Journal Code (ex. epijinfo)',
+                    description: QueryParameters::JOURNAL_CODE_DESCRIPTION,
                     required: true,
                     schema: [
                         'type' => 'string',

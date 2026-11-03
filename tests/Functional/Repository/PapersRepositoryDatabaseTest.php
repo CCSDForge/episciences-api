@@ -14,6 +14,7 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
+use DoctrineExtensions\Query\Mysql\Greatest;
 use DoctrineExtensions\Query\Mysql\Year;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -30,6 +31,8 @@ class PapersRepositoryDatabaseTest extends TestCase
 {
     private const int RVID = 1;
     private const int OTHER_RVID = 2;
+    /** Papers with versions submitted in different years, a temporary version and a change of repository */
+    private const int VERSIONS_RVID = 3;
 
     private EntityManagerInterface $entityManager;
     private PapersRepository $repository;
@@ -50,6 +53,7 @@ class PapersRepositoryDatabaseTest extends TestCase
         $config = ORMSetup::createAttributeMetadataConfig([dirname(__DIR__, 3) . '/src/Entity'], true);
         $config->enableNativeLazyObjects(true);
         $config->addCustomStringFunction('YEAR', Year::class);
+        $config->addCustomNumericFunction('GREATEST', Greatest::class);
 
         $connection = DriverManager::getConnection(new DsnParser(['mysql' => 'pdo_mysql'])->parse($url), $config);
 
@@ -107,6 +111,18 @@ class PapersRepositoryDatabaseTest extends TestCase
         }
     }
 
+    /**
+     * Several years (year[]=2022&year[]=2023 on the dashboard), by first submission and by publication date.
+     */
+    public function testSeveralYearsAreCounted(): void
+    {
+        $filters = $this->filters(['submissionDate' => [2022, 2023]]);
+
+        $this->assertSame(4, (int)$this->repository->submissionsQuery($filters)->getQuery()->getSingleScalarResult());
+        // no publication date in the fixtures: the query runs and counts nothing
+        $this->assertSame(0, (int)$this->repository->submissionsQuery($filters, false, 'publicationDate')->getQuery()->getSingleScalarResult());
+    }
+
     public function testSubmissionsAreCountedByYearAndRepository(): void
     {
         $totals = $this->repository->countSubmissionsByYearAndRepository($this->filters());
@@ -122,11 +138,77 @@ class PapersRepositoryDatabaseTest extends TestCase
         $this->assertSame([2023 => 1], $this->repository->getImportedByYear($this->filters()));
     }
 
+    /**
+     * A journal without any submission (e.g. a new one) has no year, without the deprecations of range(null, null)
+     */
+    public function testAJournalWithoutSubmissionHasNoYear(): void
+    {
+        set_error_handler(static function (int $severity, string $message): never {
+            throw new \ErrorException($message, 0, $severity);
+        });
+
+        try {
+            $this->assertSame([], $this->repository->getYearRange(99));
+            $this->assertNotSame([], $this->repository->getYearRange(self::RVID));
+        } finally {
+            restore_error_handler();
+        }
+    }
+
+    /**
+     * Two versions of the same date: the latest is the one of the latest docid (as the paper lists), not an arbitrary one
+     */
+    public function testTheLatestVersionOfTheSameDateIsTheLatestDocid(): void
+    {
+        $platform = $this->entityManager->getConnection()->getDatabasePlatform();
+        $this->entityManager->getConnection()->update(Paper::TABLE, [$platform->quoteSingleIdentifier('WHEN') => '2024-05-01 10:00:00'], ['DOCID' => 14]);
+
+        $firstVersion = $this->entityManager->find(Paper::class, 13);
+        $secondVersion = $this->entityManager->find(Paper::class, 14);
+
+        $this->assertSame(14, $this->repository->findLatestVersion($firstVersion)?->getDocid());
+        $this->assertNull($this->repository->findLatestVersion($secondVersion));
+    }
+
     public function testStartAfterDateFilter(): void
     {
         $totals = $this->repository->countSubmissionsByYear($this->filters(['startAfterDate' => '2023-02-01']));
 
         $this->assertSame([2023 => 1], $totals);
+    }
+
+    /**
+     * A paper is counted once, in the year of its first submission (paper 10: v1 in 2023, v2 in 2024).
+     */
+    public function testPaperIsCountedInTheYearOfItsFirstSubmission(): void
+    {
+        $filters = ['is' => ['rvid' => self::VERSIONS_RVID]];
+
+        $this->assertSame([2023 => 1, 2024 => 1], $this->repository->countSubmissionsByYear($filters));
+        $this->assertSame([10], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::VERSIONS_RVID, 'year' => [2023]]]));
+        $this->assertSame([11], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::VERSIONS_RVID, 'year' => [2024]]]));
+        $this->assertSame(1, (int)$this->repository->submissionsQuery(['is' => ['rvid' => self::VERSIONS_RVID, 'year' => [2024]]])->getQuery()->getSingleScalarResult());
+        $this->assertSame([2023, 2024], $this->repository->getSubmissionYearRange($filters));
+    }
+
+    /**
+     * The start date is compared to the first submission: paper 10, first submitted in 2023, is not counted after 2024-01-01.
+     */
+    public function testStartAfterDateComparesTheFirstSubmission(): void
+    {
+        $this->assertSame([11], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::VERSIONS_RVID, 'startAfterDate' => '2024-01-01']]));
+    }
+
+    /**
+     * The temporary versions (local repository) are not counted by repository; paper 11, moved from repository 2
+     * to repository 1, is counted in the repository of its first version.
+     */
+    public function testSubmissionsByRepositoryIgnoreTheTemporaryVersions(): void
+    {
+        $filters = ['is' => ['rvid' => self::VERSIONS_RVID]];
+
+        $this->assertSame([2023 => [1 => 1], 2024 => [2 => 1]], $this->repository->countSubmissionsByYearAndRepository($filters));
+        $this->assertNotContains(PapersRepository::LOCAL_REPOSITORY, $this->repository->getAvailableRepositories($filters));
     }
 
     /**
@@ -160,6 +242,13 @@ class PapersRepositoryDatabaseTest extends TestCase
             [5, 4, self::RVID, 2, Paper::STATUS_SUBMITTED, 'submitted', '2023-02-10'],
             [6, 5, self::RVID, 1, Paper::STATUS_DELETED, 'submitted', '2023-03-10'],
             [7, 6, self::OTHER_RVID, 1, Paper::STATUS_SUBMITTED, 'submitted', '2023-04-10'],
+            // paper 10: v1 in 2023, v2 in 2024 (other submission date), then a temporary version (local repository)
+            [10, 10, self::VERSIONS_RVID, 1, Paper::STATUS_OBSOLETE, 'submitted', '2023-11-10'],
+            [11, 10, self::VERSIONS_RVID, 1, Paper::STATUS_OBSOLETE, 'submitted', '2024-03-10'],
+            [12, 10, self::VERSIONS_RVID, PapersRepository::LOCAL_REPOSITORY, Paper::STATUS_TMP_VERSION, 'submitted', '2024-04-01'],
+            // paper 11: first in repository 2, then in repository 1
+            [13, 11, self::VERSIONS_RVID, 2, Paper::STATUS_OBSOLETE, 'submitted', '2024-05-01'],
+            [14, 11, self::VERSIONS_RVID, 1, Paper::STATUS_SUBMITTED, 'submitted', '2024-06-01'],
         ];
 
         $connection = $this->entityManager->getConnection();

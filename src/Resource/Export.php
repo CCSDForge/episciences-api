@@ -11,6 +11,7 @@ use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use App\Controller\ExportController;
 use App\OpenApi\OpenApiFactory;
 use App\Service\Export as ExportAlias;
+use App\OpenApi\QueryParameters;
 
 #[ApiResource(
     operations: [
@@ -38,7 +39,7 @@ use App\Service\Export as ExportAlias;
                     new Parameter(
                         name: 'code',
                         in: 'query',
-                        description: 'Journal code (exp. epijinfo)',
+                        description: QueryParameters::JOURNAL_CODE_DESCRIPTION,
                         required: false,
                         schema: [
                             "type" => 'string',

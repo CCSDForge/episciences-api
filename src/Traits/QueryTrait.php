@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Entity\News;
+use App\Entity\Review;
 use App\Entity\Section;
 use App\Entity\Volume;
 use App\Repository\VolumeRepository;
@@ -10,6 +11,16 @@ use Doctrine\ORM\QueryBuilder;
 
 trait QueryTrait
 {
+    /**
+     * The statistics without journal only take into account the active journals,
+     * as the statistics of a journal (a disabled journal cannot be requested).
+     */
+    final public function andActiveJournals(QueryBuilder $qb, string $rvIdField): QueryBuilder
+    {
+        return $qb
+            ->andWhere(sprintf('%s IN (SELECT activeJournal.rvid FROM %s activeJournal WHERE activeJournal.status = :activeJournalStatus)', $rvIdField, Review::class))
+            ->setParameter('activeJournalStatus', Review::STATUS_ENABLED);
+    }
 
     final public function processOrExpression(QueryBuilder $qb, string $alias, array $values, string $resourceClass): QueryBuilder
     {
@@ -40,7 +51,7 @@ trait QueryTrait
         $yFilters = array_unique($yFilters);
 
         return array_filter($yFilters,
-            // Supprime à la fois les valeurs nulles et les valeurs vides
+            // removes both null and empty values
             static fn($val): bool => !empty($val));
 
     }
@@ -107,8 +118,13 @@ trait QueryTrait
 
         if (isset($filters['year'])) {
             $years = $this->processYears($filters['year']);
-            $this->processOrExpression($qb, $alias, $years, $resourceClass);
 
+            if ($resourceClass === Volume::class) {
+                // same filter as VolumeRepository::listQuery(): a volume year can be a range (e.g. "2024-2025")
+                $this->andOrLikeExp($qb, sprintf('%s.vol_year', $alias), $years);
+            } else {
+                $this->processOrExpression($qb, $alias, $years, $resourceClass);
+            }
         }
 
         if (isset($filters['type'])) {
@@ -167,20 +183,24 @@ trait QueryTrait
         return $qb->andWhere($orExp);
     }
 
-    final public function whereYears(string &$sql, array|string|int|null $years = null, string $refDate = 'p.SUBMISSION_DATE'): void
+    /**
+     * The years as integers, or null if one of them is not a year (4 digits)
+     *
+     * @param array<mixed>|string|int $years
+     * @return list<int>|null
+     */
+    final public static function toValidYears(array|string|int $years): ?array
     {
+        $valid = [];
 
-        if ($years !== null && !in_array($years, ['', '0', 0, []], true)) { // More explicit: empty() and $years !== null && !in_array(...) cover exactly the same set of empty values
-
-            $sql .= ' AND';
-
-            if (is_array($years)) {
-                $years = implode(',', $years);
-                $sql .= " YEAR($refDate) IN ($years)";
-            } else {
-                $sql .= " YEAR($refDate) = $years";
+        foreach ((array)$years as $year) {
+            if ((!is_int($year) && !is_string($year)) || preg_match('/^\d{4}$/', (string)$year) !== 1) {
+                return null;
             }
 
+            $valid[] = (int)$year;
         }
+
+        return array_values(array_unique($valid));
     }
 }

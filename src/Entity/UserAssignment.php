@@ -11,6 +11,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Table(name: 'USER_ASSIGNMENT')]
 #[ORM\Index(columns: ['ITEMID'], name: 'FK_ITEMID_idx')]
 #[ORM\Index(columns: ['UID'], name: 'FK_UID_idx')]
+// the assignments of an invitation (see UserInvitationRepository::getReviewsRequested())
+#[ORM\Index(columns: ['INVITATION_ID'], name: 'INVITATION_ID')]
 #[ORM\Entity(repositoryClass: UserAssignmentRepository::class)]
 
 class UserAssignment
@@ -78,7 +80,7 @@ class UserAssignment
         AppConstants::APP_CONST['normalizationContext']['groups']['papers']['collection']['read'][0]
     ])]
 
-    private bool $tmpUser;
+    private bool $tmpUser = false;
 
     #[ORM\Column(name: 'ROLEID', type: \Doctrine\DBAL\Types\Types::STRING, length: 50, nullable: false)]
     private string $roleid;

@@ -46,7 +46,7 @@ deployment/ansible/
 ## Server Requirements
 
 Each server must have:
-- PHP 8.2 + `php8.2-fpm`
+- PHP 8.4 + `php8.4-fpm`, both 8.4.27 or later (`"php": "^8.4.27"` in `composer.json`; the earlier 8.4 releases have known vulnerabilities). An older PHP stops the application at the autoload (`vendor/composer/platform_check.php`), from the CLI and from PHP-FPM alike; check both runtimes before deploying: `php -v` and `php-fpm8.4 -v`
 - `composer` available in `$PATH`
 - `yarn` (v4) available in `$PATH`
 - Apache configured to serve from `{deploy_to}/current/public/`
@@ -57,7 +57,7 @@ The `example-user-deploy` user needs the following entries in `/etc/sudoers.d/ex
 
 ```
 Defaults:example-user-deploy !requiretty
-example-user-deploy ALL=(root) NOPASSWD: /bin/systemctl reload php8.2-fpm
+example-user-deploy ALL=(root) NOPASSWD: /bin/systemctl reload php8.4-fpm
 example-user-deploy ALL=(root) NOPASSWD: /bin/systemctl daemon-reload
 ```
 
@@ -164,5 +164,5 @@ When `deploy.yml` runs, Ansistrano:
    - Installs Yarn dependencies and builds frontend assets.
    - Warms up the Symfony cache.
 5. Updates the `current` symlink to the new release.
-6. Runs `hooks/after-symlink.yml`: reloads `php8.2-fpm` to flush opcache.
+6. Runs `hooks/after-symlink.yml`: reloads `php8.4-fpm` to flush opcache.
 7. Removes old releases, keeping the last 3.
