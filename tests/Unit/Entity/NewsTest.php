@@ -44,7 +44,7 @@ class NewsTest extends TestCase
     }
 
     /**
-     * The creator is public: it must be embedded without its IRI, which contains the account identifier.
+     * The creator is public: it is embedded without IRI (screen name only).
      */
     public function testCreatorIsEmbeddedWithoutIri(): void
     {

@@ -165,7 +165,7 @@ class BoardsController extends AbstractController
         }
 
         foreach ($users as $index => $user) {
-            // The picture (read from the disk, resolved from the UUID which is not exposed) of the members of the page only;
+            // The picture (read from the disk, resolved server-side) of the members of the page only;
             // the id is the position in the whole list (unique across pages)
             $inPage = $index >= $firstResult && $index < $firstResult + $maxResults;
             $boards[] = BoardMember::fromUser($inPage ? $user->processPicturePath($this->picturePath) : $user, $index + 1);

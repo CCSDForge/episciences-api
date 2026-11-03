@@ -89,8 +89,8 @@ class News
     #[groups(
         ['read:News', 'read:News:Collection']
     )]
-    // Public: no IRI, it would expose the account identifier
-    #[ApiProperty(genId: false, description: 'User who created the news (embedded user information, not an IRI to avoid exposing the account identifier)')]
+    // Public: embedded without IRI (screen name only)
+    #[ApiProperty(genId: false, description: 'User who created the news (embedded user information: screen name)')]
     private ?User $creator = null;
 
     #[ORM\Column(nullable: true)]
