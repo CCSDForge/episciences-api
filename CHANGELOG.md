@@ -153,6 +153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): several years (`year[]=…&year[]=…`) no longer return a `500`, for the submissions and the published articles.
 - Statistics: `startAfterDate` is inclusive for the accepted, refused and published papers, as for the submissions and the delays (a paper first submitted at midnight of that date was left out). The OpenAPI documentation of `startAfterDate` now states that the date is included.
 - `make test-db` fails with a clear message when the database does not start, and the container is stopped when the run is interrupted.
+- Statistics (`/api/statistics/*`): a nested list in `year`, `status`, `indicator` or `flag` (e.g. `year[0][]=2024`) returns a `422` ("A string is expected."), instead of a `500`.
 
 ### Security
 - Reduce the user data exposed by the public endpoints.

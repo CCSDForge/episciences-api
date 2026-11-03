@@ -108,6 +108,42 @@ class StatisticStateProviderTest extends TestCase
     }
 
     /**
+     * @return array<string, array{array<string, mixed>, string}> filters, rejected parameter
+     */
+    public static function nestedListProvider(): array
+    {
+        return [
+            'year' => [['year' => [['2024']]], 'year'],
+            'status' => [['status' => [['accepted']]], 'status'],
+            'several indicators' => [['indicator' => [['nb-submissions'], ['evaluation']]], 'indicator'],
+            'flag' => [['flag' => [['submitted']]], 'flag'],
+        ];
+    }
+
+    /**
+     * A nested list ("year[0][]=…") is a client error (422), not an "Array to string conversion" (500)
+     *
+     * @param array<string, mixed> $filters
+     */
+    #[DataProvider('nestedListProvider')]
+    public function testANestedListIsRejected(array $filters, string $parameter): void
+    {
+        // a warning is an error, as in the debug mode of Symfony (500)
+        set_error_handler(static function (int $severity, string $message): never {
+            throw new \ErrorException($message, 0, $severity);
+        });
+
+        try {
+            iterator_to_array($this->provideCollection($filters));
+            $this->fail('A ValidationException was expected.');
+        } catch (ValidationException $e) {
+            $this->assertSame($parameter, $e->getConstraintViolationList()->get(0)->getPropertyPath());
+        } finally {
+            restore_error_handler();
+        }
+    }
+
+    /**
      * The repository returns one row by invitation (see EvaluationQueriesDatabaseTest): each row is a review requested.
      */
     public function testEachInvitationIsARequestedReview(): void
