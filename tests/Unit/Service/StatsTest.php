@@ -85,7 +85,7 @@ class StatsTest extends TestCase
     /**
      * A submission as returned by PapersRepository::getSubmissions()
      *
-     * @return array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, category: string}
+     * @return array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, publicationDate: string|null, category: string}
      */
     private static function submission(int $docId, string $submitted, string $category, ?string $decided = null, int $status = 0, ?int $repoId = 1, ?int $paperId = null): array
     {
@@ -99,6 +99,7 @@ class StatsTest extends TestCase
             'firstSubmissionDate' => $submitted . '-03-01 10:00:00',
             'acceptanceDate' => $category === SubmissionFigures::ACCEPTED && $decided !== null ? $decided . '-06-01 10:00:00' : null,
             'refusalDate' => $category === SubmissionFigures::REFUSED && $decided !== null ? $decided . '-06-01 10:00:00' : null,
+            'publicationDate' => null,
             'category' => $category,
         ];
     }
@@ -987,6 +988,38 @@ class StatsTest extends TestCase
         // the repository of submission 6, not returned by getAvailableRepositories(), is listed
         $this->assertSame(1, $details['submissionsByRepo'][2022]['arXiv']['submissions']);
         $this->assertSame(0, $details['submissionsByRepo'][2023]['arXiv']['submissions']);
+    }
+
+    /**
+     * A year with decisions but no new submission is listed, so that the accepted and refused submissions by year
+     * add up to their totals; the requested years still restrict the years
+     */
+    public function testGetSubmissionByYearStatsListsTheYearsOfDecision(): void
+    {
+        $this->papersRepo->method('getAvailableRepositories')->willReturn([]);
+        $this->papersRepo->method('getSubmissions')->willReturn([
+            self::submission(1, '2022', SubmissionFigures::ACCEPTED, '2024', Paper::STATUS_PUBLISHED),
+            self::submission(2, '2022', SubmissionFigures::REFUSED, '2024', Paper::STATUS_REFUSED),
+            self::submission(3, '2023', SubmissionFigures::OTHER),
+        ]);
+        $this->paperLogRepo->method('getPublishedByYear')->willReturn([]);
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn([]);
+        $this->paperLogRepo->method('getAcceptanceRate')->willReturn(50.0);
+
+        $details = [];
+        $this->stats->getSubmissionByYearStats(['is' => ['rvid' => 8]], 8, $details);
+
+        $this->assertSame([2022, 2023, 2024], array_keys($details[Stats::SUBMISSIONS_BY_YEAR]));
+        $year = $details[Stats::SUBMISSIONS_BY_YEAR][2024];
+        $this->assertSame(0, $year['submissions']);
+        $this->assertSame(1, $year['accepted']);
+        $this->assertSame(1, $year['refused']);
+        $this->assertSame(0, $details[Stats::SUBMISSIONS_BY_YEAR][2022]['accepted']);
+
+        $details = [];
+        $this->stats->getSubmissionByYearStats(['is' => ['rvid' => 8, 'submissionDate' => ['2022', '2024']]], 8, $details);
+
+        $this->assertSame([2022, 2024], array_keys($details[Stats::SUBMISSIONS_BY_YEAR]));
     }
 
     /**

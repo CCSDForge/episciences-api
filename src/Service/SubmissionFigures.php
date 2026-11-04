@@ -19,7 +19,7 @@ use App\Repository\PapersRepository;
  * Each submission falls into a single category, from its last decision, so that the figures add up:
  * submissions = imported + accepted + refused + other (without year; by year, see inCategory()).
  *
- * @phpstan-type Submission array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, category: string}
+ * @phpstan-type Submission array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, publicationDate: string|null, category: string}
  */
 final class SubmissionFigures
 {
@@ -101,7 +101,8 @@ final class SubmissionFigures
      *
      * With years, the accepted and refused submissions are those decided in one of these years (date of the last
      * acceptance or refusal), as before; the other ones (imported, awaiting a decision) are those first submitted in
-     * one of these years. So, by year, accepted + refused + other is not the number of submissions of the year:
+     * one of these years. A published submission without acceptance in the history (published from a copy editing
+     * status, or old data) is accepted in the year of its publication. So, by year, accepted + refused + other is not the number of submissions of the year:
      * a submission of a previous year can be decided this year.
      *
      * @param list<Submission> $submissions
@@ -177,20 +178,39 @@ final class SubmissionFigures
     }
 
     /**
-     * The years of first submission, from Stats::REF_YEAR
+     * The years of first submission, from Stats::REF_YEAR (the years that the "submissionDate" filter can select)
      *
      * @param list<Submission> $submissions
      * @return list<int> sorted
      */
     public static function years(array $submissions): array
     {
-        $years = array_values(array_filter(
-            array_unique(array_map(self::submissionYear(...), $submissions)),
-            static fn(int $year): bool => $year >= Stats::REF_YEAR
-        ));
-        sort($years);
+        return self::fromReferenceYear(array_map(self::submissionYear(...), $submissions));
+    }
 
-        return $years;
+    /**
+     * The years in which the submissions are counted, from Stats::REF_YEAR: the years of first submission, and those
+     * of the decision of the accepted and refused submissions (see inCategory()), so that the details by year cover
+     * every submission counted by the totals, even a decision taken in a year without a new submission
+     *
+     * @param list<Submission> $submissions
+     * @return list<int> sorted
+     */
+    public static function activityYears(array $submissions): array
+    {
+        $years = array_map(self::submissionYear(...), $submissions);
+
+        foreach ([self::ACCEPTED, self::REFUSED] as $category) {
+            $yearOf = self::yearOf($category);
+
+            foreach ($submissions as $submission) {
+                if ($submission['category'] === $category && ($year = $yearOf($submission)) !== null) {
+                    $years[] = $year;
+                }
+            }
+        }
+
+        return self::fromReferenceYear($years);
     }
 
     /**
@@ -222,10 +242,23 @@ final class SubmissionFigures
     private static function yearOf(string $category): callable
     {
         return match ($category) {
-            self::ACCEPTED => static fn(array $submission): ?int => self::dateYear($submission['acceptanceDate']),
+            // without acceptance in the history, the publication (see inCategory())
+            self::ACCEPTED => static fn(array $submission): ?int => self::dateYear($submission['acceptanceDate'] ?? $submission['publicationDate'] ?? null),
             self::REFUSED => static fn(array $submission): ?int => self::dateYear($submission['refusalDate']),
             default => self::submissionYear(...),
         };
+    }
+
+    /**
+     * @param list<int> $years
+     * @return list<int> unique, sorted, from Stats::REF_YEAR
+     */
+    private static function fromReferenceYear(array $years): array
+    {
+        $years = array_values(array_unique(array_filter($years, static fn(int $year): bool => $year >= Stats::REF_YEAR)));
+        sort($years);
+
+        return $years;
     }
 
     private static function dateYear(?string $date): ?int

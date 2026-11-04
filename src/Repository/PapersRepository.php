@@ -896,13 +896,15 @@ class PapersRepository extends ServiceEntityRepository
      *   date of its new submission);
      * - flag: "imported" only if all its versions are imported;
      * - repoid: the repository of its first version outside Episciences (null if all its versions are local);
-     * - acceptanceDate / refusalDate: the date of the last acceptance / refusal logged on one of its versions.
+     * - acceptanceDate / refusalDate: the date of the last acceptance / refusal logged on one of its versions;
+     * - publicationDate: the publication date of the version it ends with (null if not published), the year of a
+     *   published submission without acceptance in the history (see SubmissionFigures::inCategory()).
      *
      * Native SQL: DQL has no window function. The decisions are joined to the versions by DOCID (not the other way
      * round): MySQL would otherwise look up the history of each version of the platform (seconds instead of a third).
      *
      * @param string|null $startAfterDate the submissions first submitted on or after this date (YYYY-MM-DD)
-     * @return list<array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, category: string}> sorted by DOCID
+     * @return list<array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, publicationDate: string|null, category: string}> sorted by DOCID
      */
     public function getSubmissions(?int $rvId = null, ?string $startAfterDate = null): array
     {
@@ -947,7 +949,8 @@ class PapersRepository extends ServiceEntityRepository
             SELECT p.RVID AS rvid, s.PAPERID AS paperid, s.DOCID AS docid, p.STATUS AS status,
                    CASE WHEN s.HAS_SUBMITTED_VERSION = 1 THEN :submittedFlag ELSE :importedFlag END AS flag,
                    repository.REPOID AS repoid,
-                   s.FIRST_SUBMISSION_DATE AS firstSubmissionDate, s.ACCEPTANCE_DATE AS acceptanceDate, s.REFUSAL_DATE AS refusalDate
+                   s.FIRST_SUBMISSION_DATE AS firstSubmissionDate, s.ACCEPTANCE_DATE AS acceptanceDate, s.REFUSAL_DATE AS refusalDate,
+                   p.PUBLICATION_DATE AS publicationDate
             FROM submissions s
             JOIN %1$s p ON p.DOCID = s.DOCID
             LEFT JOIN %1$s repository ON repository.DOCID = s.REPOSITORY_DOCID
@@ -997,6 +1000,7 @@ class PapersRepository extends ServiceEntityRepository
                 'firstSubmissionDate' => (string)$row['firstSubmissionDate'],
                 'acceptanceDate' => $row['acceptanceDate'] === null ? null : (string)$row['acceptanceDate'],
                 'refusalDate' => $row['refusalDate'] === null ? null : (string)$row['refusalDate'],
+                'publicationDate' => $row['publicationDate'] === null ? null : (string)$row['publicationDate'],
             ];
             $submission['category'] = SubmissionFigures::category($submission);
 

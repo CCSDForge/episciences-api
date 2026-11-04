@@ -550,6 +550,7 @@ class Stats
      *
      * Counted by submission (see getSubmissionsStat()): the submissions, imported and other ones (awaiting a decision)
      * by year of submission; the accepted and refused ones by year of the decision (see SubmissionFigures::inCategory()).
+     * The years are those of submission and of decision (see SubmissionFigures::activityYears()).
      * The published papers are still read from the history.
      *
      * @param array<string, mixed> $filters Request filters, for instance ['is' => ['rvid' => int, 'submissionDate' => ..., 'startAfterDate' => string]].
@@ -574,7 +575,14 @@ class Stats
             $papersRepository->getAvailableRepositories($filters),
             array_filter(array_column($submissions, 'repoid'), static fn(mixed $repoId): bool => $repoId !== null)
         )));
-        $years = SubmissionFigures::years(SubmissionFigures::submittedIn($submissions, self::requestedYears($filters)));
+        // the years of submission and those of the decisions: a year with decisions but no new submission is listed,
+        // so that the accepted and refused submissions by year add up to their totals
+        $years = SubmissionFigures::activityYears($submissions);
+        $requestedYears = self::requestedYears($filters);
+
+        if ($requestedYears !== []) {
+            $years = array_values(array_intersect($years, $requestedYears));
+        }
 
         if ($years === []) {
             return;
