@@ -145,6 +145,11 @@ class PapersSubmissionsDatabaseTest extends TestCase
         $this->assertSame('submitted', $submissions[15]['flag']);
         $this->assertSame('imported', $submissions[13]['flag']);
         $this->assertSame('2018-01-06 10:00:00', $submissions[17]['acceptanceDate']);
+        // the publication date of the version it ends with: the year of a submission published without acceptance
+        $this->assertNull($submissions[18]['acceptanceDate']);
+        $this->assertSame('2015-02-01 10:00:00', $submissions[18]['publicationDate']);
+        $this->assertNull($submissions[4]['publicationDate']);
+        $this->assertSame([2015 => 1, 2017 => 1, 2018 => 1, 2022 => 2], SubmissionFigures::countByYear($this->repository->getSubmissions(self::RVID), SubmissionFigures::ACCEPTED));
         $this->assertSame(self::REPOSITORY, $submissions[2]['repoid']);
         $this->assertNull($submissions[19]['repoid']);
     }
@@ -205,7 +210,12 @@ class PapersSubmissionsDatabaseTest extends TestCase
             [14, Paper::STATUS_STRICTLY_ACCEPTED, '2017-06-01'],
             [17, Paper::STATUS_STRICTLY_ACCEPTED, '2018-01-06'],
             [16, Paper::STATUS_REFUSED, '2021-02-12'],
+            // published from a copy editing status, without acceptance
+            [18, Paper::STATUS_CE_READY_TO_PUBLISH, '2014-06-01'],
+            [18, Paper::STATUS_PUBLISHED, '2015-02-01'],
         ];
+        // docid => publication date
+        $publicationDates = [7 => '2022-09-01', 13 => '2022-05-10', 15 => '2017-07-01', 17 => '2018-02-01', 18 => '2015-02-01'];
 
         $connection = $this->entityManager->getConnection();
         $platform = $connection->getDatabasePlatform();
@@ -231,6 +241,7 @@ class PapersSubmissionsDatabaseTest extends TestCase
                 'REPOID' => $paper[6] ?? self::REPOSITORY,
                 'SUBMISSION_DATE' => $date . ' 10:00:00',
                 'WHEN' => $date . ' 10:00:00',
+                'PUBLICATION_DATE' => isset($publicationDates[$docId]) ? $publicationDates[$docId] . ' 10:00:00' : null,
             ]);
 
             // WHEN is a reserved word

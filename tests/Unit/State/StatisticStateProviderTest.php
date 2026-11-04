@@ -891,6 +891,7 @@ class StatisticStateProviderTest extends TestCase
             'firstSubmissionDate' => '2025-01-01 10:00:00',
             'acceptanceDate' => $category === SubmissionFigures::ACCEPTED ? '2025-03-01 10:00:00' : null,
             'refusalDate' => $category === SubmissionFigures::REFUSED ? '2025-03-01 10:00:00' : null,
+            'publicationDate' => null,
             'category' => $category,
         ];
     }

@@ -19,7 +19,7 @@ use App\Repository\PapersRepository;
  * Each submission falls into a single category, from its last decision, so that the figures add up:
  * submissions = imported + accepted + refused + other (without year; by year, see inCategory()).
  *
- * @phpstan-type Submission array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, category: string}
+ * @phpstan-type Submission array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, publicationDate: string|null, category: string}
  */
 final class SubmissionFigures
 {
@@ -101,7 +101,8 @@ final class SubmissionFigures
      *
      * With years, the accepted and refused submissions are those decided in one of these years (date of the last
      * acceptance or refusal), as before; the other ones (imported, awaiting a decision) are those first submitted in
-     * one of these years. So, by year, accepted + refused + other is not the number of submissions of the year:
+     * one of these years. A published submission without acceptance in the history (published from a copy editing
+     * status, or old data) is accepted in the year of its publication. So, by year, accepted + refused + other is not the number of submissions of the year:
      * a submission of a previous year can be decided this year.
      *
      * @param list<Submission> $submissions
@@ -241,7 +242,8 @@ final class SubmissionFigures
     private static function yearOf(string $category): callable
     {
         return match ($category) {
-            self::ACCEPTED => static fn(array $submission): ?int => self::dateYear($submission['acceptanceDate']),
+            // without acceptance in the history, the publication (see inCategory())
+            self::ACCEPTED => static fn(array $submission): ?int => self::dateYear($submission['acceptanceDate'] ?? $submission['publicationDate'] ?? null),
             self::REFUSED => static fn(array $submission): ?int => self::dateYear($submission['refusalDate']),
             default => self::submissionYear(...),
         };

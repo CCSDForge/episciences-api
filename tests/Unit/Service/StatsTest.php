@@ -85,7 +85,7 @@ class StatsTest extends TestCase
     /**
      * A submission as returned by PapersRepository::getSubmissions()
      *
-     * @return array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, category: string}
+     * @return array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, publicationDate: string|null, category: string}
      */
     private static function submission(int $docId, string $submitted, string $category, ?string $decided = null, int $status = 0, ?int $repoId = 1, ?int $paperId = null): array
     {
@@ -99,6 +99,7 @@ class StatsTest extends TestCase
             'firstSubmissionDate' => $submitted . '-03-01 10:00:00',
             'acceptanceDate' => $category === SubmissionFigures::ACCEPTED && $decided !== null ? $decided . '-06-01 10:00:00' : null,
             'refusalDate' => $category === SubmissionFigures::REFUSED && $decided !== null ? $decided . '-06-01 10:00:00' : null,
+            'publicationDate' => null,
             'category' => $category,
         ];
     }

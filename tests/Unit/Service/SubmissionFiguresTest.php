@@ -17,7 +17,7 @@ class SubmissionFiguresTest extends TestCase
     /**
      * @return array<string, mixed>
      */
-    private static function submission(int $docId, string $submitted, int $status = 0, ?string $accepted = null, ?string $refused = null, string $flag = 'submitted', int $rvId = 8, ?int $repoId = 1): array
+    private static function submission(int $docId, string $submitted, int $status = 0, ?string $accepted = null, ?string $refused = null, string $flag = 'submitted', int $rvId = 8, ?int $repoId = 1, ?string $published = null): array
     {
         $submission = [
             'rvid' => $rvId,
@@ -29,6 +29,7 @@ class SubmissionFiguresTest extends TestCase
             'firstSubmissionDate' => $submitted,
             'acceptanceDate' => $accepted,
             'refusalDate' => $refused,
+            'publicationDate' => $published,
         ];
         $submission['category'] = SubmissionFigures::category($submission);
 
@@ -104,6 +105,25 @@ class SubmissionFiguresTest extends TestCase
 
         $this->assertSame([2022, 2024], SubmissionFigures::activityYears($submissions));
         $this->assertSame([], SubmissionFigures::activityYears([]));
+    }
+
+    /**
+     * A published submission without acceptance in the history (published from a copy editing status, or old data)
+     * is accepted in the year of its publication, so that the accepted submissions by year add up to their total
+     */
+    public function testPublishedWithoutAcceptanceIsAcceptedInTheYearOfItsPublication(): void
+    {
+        $submissions = [
+            self::submission(1, '2023-05-15', Paper::STATUS_PUBLISHED, published: '2024-01-19'),
+            // the acceptance in the history first
+            self::submission(2, '2023-05-15', Paper::STATUS_PUBLISHED, '2023-09-01', published: '2024-02-01'),
+            // without publication date either: no year
+            self::submission(3, '2014-01-10', Paper::STATUS_PUBLISHED),
+        ];
+
+        $this->assertSame([2023 => 1, 2024 => 1], SubmissionFigures::countByYear($submissions, SubmissionFigures::ACCEPTED));
+        $this->assertSame([1], array_column(SubmissionFigures::inCategory($submissions, SubmissionFigures::ACCEPTED, [2024]), 'docid'));
+        $this->assertSame([2014, 2023, 2024], SubmissionFigures::activityYears($submissions));
     }
 
     public function testFilterOnTheCurrentStatusAndTheFlag(): void
