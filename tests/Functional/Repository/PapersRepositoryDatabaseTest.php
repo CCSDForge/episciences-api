@@ -89,28 +89,6 @@ class PapersRepositoryDatabaseTest extends TestCase
         }
     }
 
-    public function testSubmissionsAreCountedByYear(): void
-    {
-        $totals = $this->repository->countSubmissionsByYear($this->filters());
-
-        // 2022: 2 papers (paper 1 has two versions); 2023: 2 papers (deleted paper excluded)
-        $this->assertSame([2022 => 2, 2023 => 2], $this->sorted($totals));
-    }
-
-    public function testGroupedCountsMatchThePerYearQuery(): void
-    {
-        $totals = $this->repository->countSubmissionsByYear($this->filters());
-
-        foreach ([2022, 2023] as $year) {
-            $perYear = (int)$this->repository
-                ->submissionsQuery($this->filters(['submissionDate' => $year]))
-                ->getQuery()
-                ->getSingleScalarResult();
-
-            $this->assertSame($perYear, $totals[$year], "Year $year");
-        }
-    }
-
     /**
      * Several years (year[]=2022&year[]=2023 on the dashboard), by first submission and by publication date.
      */
@@ -121,21 +99,6 @@ class PapersRepositoryDatabaseTest extends TestCase
         $this->assertSame(4, (int)$this->repository->submissionsQuery($filters)->getQuery()->getSingleScalarResult());
         // no publication date in the fixtures: the query runs and counts nothing
         $this->assertSame(0, (int)$this->repository->submissionsQuery($filters, false, 'publicationDate')->getQuery()->getSingleScalarResult());
-    }
-
-    public function testSubmissionsAreCountedByYearAndRepository(): void
-    {
-        $totals = $this->repository->countSubmissionsByYearAndRepository($this->filters());
-
-        ksort($totals);
-        array_walk($totals, static fn(array &$byRepository) => ksort($byRepository));
-
-        $this->assertSame([2022 => [1 => 1, 2 => 1], 2023 => [1 => 1, 2 => 1]], $totals);
-    }
-
-    public function testImportedSubmissionsAreCountedByYear(): void
-    {
-        $this->assertSame([2023 => 1], $this->repository->getImportedByYear($this->filters()));
     }
 
     /**
@@ -170,13 +133,6 @@ class PapersRepositoryDatabaseTest extends TestCase
         $this->assertNull($this->repository->findLatestVersion($secondVersion));
     }
 
-    public function testStartAfterDateFilter(): void
-    {
-        $totals = $this->repository->countSubmissionsByYear($this->filters(['startAfterDate' => '2023-02-01']));
-
-        $this->assertSame([2023 => 1], $totals);
-    }
-
     /**
      * A paper is counted once, in the year of its first submission (paper 10: v1 in 2023, v2 in 2024).
      */
@@ -184,11 +140,9 @@ class PapersRepositoryDatabaseTest extends TestCase
     {
         $filters = ['is' => ['rvid' => self::VERSIONS_RVID]];
 
-        $this->assertSame([2023 => 1, 2024 => 1], $this->repository->countSubmissionsByYear($filters));
         $this->assertSame([10], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::VERSIONS_RVID, 'year' => [2023]]]));
         $this->assertSame([11], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::VERSIONS_RVID, 'year' => [2024]]]));
         $this->assertSame(1, (int)$this->repository->submissionsQuery(['is' => ['rvid' => self::VERSIONS_RVID, 'year' => [2024]]])->getQuery()->getSingleScalarResult());
-        $this->assertSame([2023, 2024], $this->repository->getSubmissionYearRange($filters));
     }
 
     /**
@@ -207,7 +161,6 @@ class PapersRepositoryDatabaseTest extends TestCase
     {
         $filters = ['is' => ['rvid' => self::VERSIONS_RVID]];
 
-        $this->assertSame([2023 => [1 => 1], 2024 => [2 => 1]], $this->repository->countSubmissionsByYearAndRepository($filters));
         $this->assertNotContains(PapersRepository::LOCAL_REPOSITORY, $this->repository->getAvailableRepositories($filters));
     }
 
@@ -218,17 +171,6 @@ class PapersRepositoryDatabaseTest extends TestCase
     private function filters(array $filters = []): array
     {
         return ['is' => ['rvid' => self::RVID] + $filters];
-    }
-
-    /**
-     * @param array<int, int> $totals
-     * @return array<int, int>
-     */
-    private function sorted(array $totals): array
-    {
-        ksort($totals);
-
-        return $totals;
     }
 
     private function insertPapers(): void

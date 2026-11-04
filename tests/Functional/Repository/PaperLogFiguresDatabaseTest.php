@@ -23,16 +23,15 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
 /**
- * Runs PapersRepository::getSubmissionsAwaitingDecision() ("other-status" of the statistics) and
- * PaperLogRepository::getAllAcceptedNotYetPublished() ("being-to-publish.accepted") against a real MySQL database:
- * the decisions are read from the history, and an abandoned article, only paused, is still counted.
- * Without journal, only the active journals are taken into account.
+ * Runs the figures read from the history (PaperLogRepository: accepted, refused, published, accepted not yet
+ * published, delays) and their lists against a real MySQL database: an abandoned article, only paused, is still
+ * counted. The submissions awaiting a decision are counted by submission, see PapersSubmissionsDatabaseTest.
  *
  * Requires TEST_DATABASE_URL (set in CI, see docker-compose.ci.yml); skipped otherwise.
  * The test creates and drops the PAPERS, PAPER_LOG and REVIEW tables: it is skipped if one of them already exists,
  * so that it never touches real data.
  */
-class PapersAwaitingDecisionDatabaseTest extends TestCase
+class PaperLogFiguresDatabaseTest extends TestCase
 {
     private const int RVID = 1;
     private const int OTHER_RVID = 2;
@@ -98,91 +97,11 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
     }
 
     /**
-     * Awaiting a decision: paper 1 (latest version under review), paper 6 (abandoned, i.e. paused) and paper 7 (revision requested);
-     * paper 9 is refused in its history, then reopened: it is counted as refused, not twice.
-     */
-    public function testSubmissionsAwaitingDecisionAreCounted(): void
-    {
-        $this->assertSame(3, $this->repository->getSubmissionsAwaitingDecision(self::RVID));
-        // no year requested (as the dashboard and the statistics do): not filtered
-        $this->assertSame(3, $this->repository->getSubmissionsAwaitingDecision(self::RVID, null, []));
-        $this->assertSame(
-            $this->repository->getSubmissionsAwaitingDecisionPaperIds(self::RVID),
-            $this->repository->getSubmissionsAwaitingDecisionPaperIds(self::RVID, null, [])
-        );
-    }
-
-    public function testYearFiltersOnTheSubmissionDate(): void
-    {
-        $this->assertSame(1, $this->repository->getSubmissionsAwaitingDecision(self::RVID, null, [2022]));
-        $this->assertSame(2, $this->repository->getSubmissionsAwaitingDecision(self::RVID, null, [2023]));
-        $this->assertSame(0, $this->repository->getSubmissionsAwaitingDecision(self::RVID, null, [2021]));
-    }
-
-    /**
-     * Dashboard detail by year: the same counts as with a year filter (paper 1 in 2022; papers 6 and 7 in 2023).
-     */
-    public function testSubmissionsAwaitingDecisionAreCountedByYear(): void
-    {
-        $byYear = $this->repository->getSubmissionsAwaitingDecisionByYear(self::RVID);
-        ksort($byYear);
-
-        $this->assertSame([2022 => 1, 2023 => 2], $byYear);
-
-        foreach ($byYear as $year => $total) {
-            $this->assertSame($this->repository->getSubmissionsAwaitingDecision(self::RVID, null, [$year]), $total, "Year $year");
-        }
-
-        $this->assertSame([2023 => 2], $this->repository->getSubmissionsAwaitingDecisionByYear(self::RVID, '2023-01-01'));
-    }
-
-    public function testStartAfterDateFiltersOnTheSubmissionDate(): void
-    {
-        $this->assertSame(2, $this->repository->getSubmissionsAwaitingDecision(self::RVID, '2023-01-01'));
-    }
-
-    /**
-     * Without journal, the active journals only: the paper of the disabled journal is ignored.
-     */
-    public function testAllTheJournalsAreCountedWithoutJournal(): void
-    {
-        $this->assertSame(4, $this->repository->getSubmissionsAwaitingDecision());
-    }
-
-    /**
      * Paper 3 (accepted, being copy edited) and paper 11 (accepted, then abandoned: only paused).
      */
     public function testAcceptedNotYetPublishedIncludesTheAbandonedArticles(): void
     {
-        $this->assertSame(2, $this->paperLogRepository->getAllAcceptedNotYetPublished(self::RVID));
-    }
-
-    /**
-     * The statistics grouped by journal (groupBy=journal) give, for each journal, the counts of a single journal.
-     */
-    public function testCountsByJournalMatchTheCountsOfEachJournal(): void
-    {
-        $submissions = $this->repository->countSubmissionsByJournal(['is' => []]);
-        $this->assertArrayNotHasKey(self::DISABLED_RVID, $submissions, 'Disabled journal');
-
-        foreach ([self::RVID, self::OTHER_RVID] as $rvId) {
-            $single = (int)$this->repository->submissionsQuery(['is' => ['rvid' => $rvId]])->getQuery()->getSingleScalarResult();
-            $this->assertSame($single, $submissions[$rvId] ?? 0, "Submissions of journal $rvId");
-        }
-
-        foreach ([[], [2024], [2023, 2024]] as $years) {
-            $accepted = $this->paperLogRepository->getAcceptedByJournal($years);
-            $refused = $this->paperLogRepository->getRefusedByJournal($years);
-
-            foreach ([self::RVID, self::OTHER_RVID] as $rvId) {
-                $this->assertSame($this->paperLogRepository->getAccepted($rvId, $years), $accepted[$rvId] ?? 0, "Accepted, journal $rvId");
-                $this->assertSame($this->paperLogRepository->getRefused($rvId, $years), $refused[$rvId] ?? 0, "Refused, journal $rvId");
-            }
-        }
-
-        // paper 3 and paper 11 accepted, paper 4 and paper 9 refused (logs of 2024)
-        $this->assertSame([self::RVID => 2], $this->paperLogRepository->getAcceptedByJournal());
-        $this->assertSame([self::RVID => 2], $this->paperLogRepository->getRefusedByJournal([2024]));
+        $this->assertSame([3, 11], $this->paperLogRepository->getPaperIds('accepted-not-yet-published', self::RVID));
     }
 
     /**
@@ -199,26 +118,23 @@ class PapersAwaitingDecisionDatabaseTest extends TestCase
         $this->assertSame([8], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::RVID]], 'imported'));
 
         foreach ([[], [2024], [2023, 2024]] as $years) {
-            $this->assertSame($this->repository->getSubmissionsAwaitingDecision(self::RVID, null, $years), count($this->repository->getSubmissionsAwaitingDecisionPaperIds(self::RVID, null, $years)));
             $this->assertSame($this->paperLogRepository->getAccepted(self::RVID, $years), count($this->paperLogRepository->getPaperIds('accepted', self::RVID, $years)));
             $this->assertSame($this->paperLogRepository->getRefused(self::RVID, $years), count($this->paperLogRepository->getPaperIds('refused', self::RVID, $years)));
             $this->assertSame($this->paperLogRepository->getPublished(self::RVID, $years), count($this->paperLogRepository->getPaperIds('published', self::RVID, $years)));
-            $this->assertSame($this->paperLogRepository->getAllAcceptedNotYetPublished(self::RVID, $years), count($this->paperLogRepository->getPaperIds('accepted-not-yet-published', self::RVID, $years)));
         }
 
-        $this->assertSame([1, 6, 7], $this->repository->getSubmissionsAwaitingDecisionPaperIds(self::RVID));
         $this->assertSame([3, 11], $this->paperLogRepository->getPaperIds('accepted', self::RVID));
         $this->assertSame([4, 9], $this->paperLogRepository->getPaperIds('refused', self::RVID));
     }
 
     /**
-     * Paper 3 is accepted in 2023 and in 2024: it is counted in each year, but once in the total of the two years.
+     * Paper 3 is accepted in 2023 and in 2024: it is counted once in the total of the two years.
      */
     public function testPaperDecidedInSeveralYearsIsCountedOnceInTheTotal(): void
     {
-        $this->assertSame([2023 => 1, 2024 => 2], $this->paperLogRepository->getAcceptedByYear(self::RVID, [2023, 2024]));
+        $this->assertSame(1, $this->paperLogRepository->getAccepted(self::RVID, [2023]));
+        $this->assertSame(2, $this->paperLogRepository->getAccepted(self::RVID, [2024]));
         $this->assertSame(2, $this->paperLogRepository->getAccepted(self::RVID, [2023, 2024]));
-        $this->assertSame([self::RVID => 2], $this->paperLogRepository->getAcceptedByJournal([2023, 2024]));
     }
 
     /**

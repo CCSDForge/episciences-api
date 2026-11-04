@@ -83,6 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tests and CHANGELOG: fictitious journal codes only.
 
 ### Removed
+- Internal: the counting methods of `PapersRepository` and `PaperLogRepository` no longer used since the statistics are counted by submission (`countSubmissionsByYear`, `countSubmissionsByFlag`, `getSubmissionsAwaitingDecision`, `getAcceptedByYear`, `getAcceptedByJournal`, …), with their tests, and the unused `$excludeTmpVersions` parameter of `Stats::getSubmissionsStat()`. No change to the API responses.
 - `GET /api/journals/{code}` and `GET /api/journals/` no longer expose the `settings` field of the journals (a raw `REVIEW_SETTING` `{setting, value}` array, without external consumer). The settings still work internally via `Review::getSetting()` and the public, structured configuration remains available through `GET /api/journals/front/configuration` (`{code}/front/configuration`).
 
 ### Fixed
