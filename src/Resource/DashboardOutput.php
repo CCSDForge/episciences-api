@@ -33,7 +33,7 @@ use App\OpenApi\OpenApiSchemas;
         'nbUsers' => ['type' => 'integer'],
         'papers' => [
             'type' => 'object',
-            'description' => 'With `withPapers`: the papers counted by each figure (one DOCID by paper, its latest version)',
+            'description' => 'With `withPapers`: the papers counted by each figure: one DOCID by submission (the version it ends with) for the submissions, imported, accepted, refused and other ones; one DOCID by paper (its latest version) for the others',
             'additionalProperties' => ['type' => 'array', 'items' => ['type' => 'integer']],
         ],
         'hiddenPapers' => [

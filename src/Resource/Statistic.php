@@ -43,7 +43,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Total number of submissions",
-                description: 'Total number of submitted articles, for all the journals or for one journal with `rvcode`. Filter by year(s) of submission, by status and by flag; the imported articles are excluded. Returns the figure and, with `withDetails`, the number of articles in each status.',
+                description: 'Total number of submissions, for all the journals or for one journal with `rvcode`. Filter by year(s) of submission, by status (current status of the submission) and by flag (`imported`: all the versions of the submission are imported); without flag, the imported submissions are included. A refused paper that the journal accepts to receive again is a new submission, with the same paper identifier, as in the list of papers of the journal. Returns the figure and, with `withDetails`, the number of articles in each status.',
                 parameters: [
                     new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
                     new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of submission of the articles', schema: QueryParameters::INTEGERS),
@@ -128,7 +128,8 @@ class Statistic
 {
     public const INDICATOR_DESCRIPTION = "/!\ This indicator excludes imported articles.";
     public const MEDIAN_DELAY_DESCRIPTION = 'The delay runs from the first submission of the article to its latest publication (or acceptance), truncated to the unit (13 days = 1 week). `count` is the number of articles.';
-    public const OTHER_STATUS_DESCRIPTION = 'In `nb-submissions-details`, `being-to-publish.other-status` is the number of articles awaiting an editorial decision (neither published, accepted, refused, deleted nor removed; an abandoned article is only paused).';
+    public const OTHER_STATUS_DESCRIPTION = 'In `nb-submissions-details`, `being-to-publish.other-status` is the number of submissions awaiting an editorial decision (neither published, accepted, refused, deleted nor removed; an abandoned submission is only paused). ' . self::SUBMISSIONS_DESCRIPTION;
+    public const SUBMISSIONS_DESCRIPTION = '`nb-submissions`, `acceptance-rate` and `nb-submissions-details` (except the published articles) count submissions, as the list of papers of the journal: a refused paper that the journal accepts to receive again is a new submission, with the same paper identifier. Each submission is counted in a single category, from its last decision (an article accepted, then refused, is refused), so that without year the submitted ones are the accepted, refused and awaiting-decision ones; an imported submission is one whose versions are all imported.';
     public const YEAR_COLLECTION_DESCRIPTION = 'Year of: submission for `nb-submissions` (and the submitted, imported and awaiting-decision articles of `nb-submissions-details`); decision for `acceptance-rate` (and the published, accepted and refused articles); publication or acceptance for the median delays; invitation or validation of the report for `evaluation` (the median number of reviews only counts the reports validated in the year: an article whose reports were validated in different years counts a part of its reports in each year)';
     /** Values of the "indicator" parameter (lists for the OpenAPI enums) */
     public const PUBLICATION_INDICATOR_VALUES = [
@@ -148,7 +149,7 @@ class Statistic
     public const GROUP_BY_DESCRIPTION = 'Returns the statistics of each active journal: one item by journal and by indicator, with the journal code in `journal`, sorted by code. Every active journal is returned, a missing count being 0 and a missing rate or median null. Not with `rvcode`';
     public const NB_SUBMISSIONS_DETAILS = 'nb-submissions-details';
     public const WITH_PAPERS_PARAM = 'withPapers';
-    public const WITH_PAPERS_DESCRIPTION = 'Adds `papers`, the papers counted by each statistic: one DOCID by paper, its latest version, computed with the same queries as the figures. With `indicator=evaluation`, `reviews-requested` and `reviews-received` get `reviews` instead, as on /api/statistics/evaluation; the `evaluation` statistic returned without `indicator` gets no list. Only with `rvcode`, without `groupBy`, for the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number is in `hiddenPapers` (`hiddenReviews` for the reviews)';
+    public const WITH_PAPERS_DESCRIPTION = 'Adds `papers`, the papers counted by each statistic: one DOCID by paper (its latest version), by submission for the figures counting submissions (the version it ends with), computed with the same queries as the figures. With `indicator=evaluation`, `reviews-requested` and `reviews-received` get `reviews` instead, as on /api/statistics/evaluation; the `evaluation` statistic returned without `indicator` gets no list. Only with `rvcode`, without `groupBy`, for the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number is in `hiddenPapers` (`hiddenReviews` for the reviews)';
     public const WITH_REVIEWS_DESCRIPTION = 'Adds `reviews` to `reviews-requested` and `reviews-received`: the invitations or the completed reports counted, without the reviewers, computed with the same queries as the figures, sorted by DOCID then date. The lists are not paginated: all the reviews counted are returned, use `year` or `startAfterDate` to limit them. Only with `rvcode`, without `groupBy`, for the administrators of the journal (JWT); the reviews of the papers for which the user has declared a conflict of interest are not listed, their number is in `hiddenReviews`';
     public const GROUP_BY_PARAM = 'groupBy';
     public const GROUP_BY_JOURNAL = 'journal';
@@ -187,7 +188,7 @@ class Statistic
     private ?int $count = null;
     #[groups(['read:Statistic'])]
     #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
-    #[ApiProperty(description: 'With `withPapers`: the papers counted (one DOCID by paper, its latest version), or, for a statistic made of several figures, the papers of each figure', schema: ['type' => ['array', 'object'], 'items' => ['type' => 'integer'], 'example' => [18910, 18947]])]
+    #[ApiProperty(description: 'With `withPapers`: the papers counted (one DOCID by paper, its latest version, or by submission, the version it ends with), or, for a statistic made of several figures, the papers of each figure', schema: ['type' => ['array', 'object'], 'items' => ['type' => 'integer'], 'example' => [18910, 18947]])]
     private ?array $papers = null;
     #[groups(['read:Statistic'])]
     #[Context(normalizationContext: [AbstractObjectNormalizer::SKIP_NULL_VALUES => true])]
