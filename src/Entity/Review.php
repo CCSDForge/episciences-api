@@ -460,7 +460,7 @@ class Review
     public const STATUS_DISABLED = 0;
     public const STATUS_ENABLED = 1;
     public const URI_TEMPLATE = '/journals/';
-    public const DASHBOARD_WITH_PAPERS_DESCRIPTION = 'Adds `papers` to the value, the papers counted by each figure (one DOCID by paper, its latest version; the delays: the papers of the average and median delays), computed with the same queries as the figures. For the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number by figure is in `hiddenPapers`';
+    public const DASHBOARD_WITH_PAPERS_DESCRIPTION = 'Adds `papers` to the value, the papers counted by each figure, computed with the same queries as the figures: one DOCID by submission (the version it ends with) for the submissions, imported, accepted, refused and other ones; one DOCID by paper (its latest version) for the others (the delays: the papers of the average and median delays). For the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number by figure is in `hiddenPapers`';
     public const DASHBOARD_YEAR_DESCRIPTION = 'Year of: submission for `nbSubmissions` and `nbImported`; decision (publication, acceptance, refusal) for `nbPublished`, `nbImportedPublished`, `nbAccepted`, `nbAcceptedNotYetPublished`, `nbRefused` and `rates`; publication or acceptance for the delays; both submission and decision for `total*SubmittedSameYear`. The users are not counted by year';
 
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]

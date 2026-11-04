@@ -483,6 +483,53 @@ class StatisticStateProviderTest extends TestCase
         $this->assertNull($statistics[0]->getHiddenReviews());
     }
 
+    /**
+     * The submitted submissions of the details do not depend on the "flag" filter (as their list, see addPapers())
+     */
+    public function testSubmittedDetailsIgnoreTheFlagFilter(): void
+    {
+        $statistics = iterator_to_array($this->provideCollection(['flag' => 'imported'], submissions: self::submissionsWithImported()));
+        $byName = array_combine(array_map(static fn(Statistic $statistic): string => $statistic->getName(), $statistics), $statistics);
+
+        $this->assertSame(1.0, $byName['nb-submissions']->getValue());
+        $details = $byName[Statistic::NB_SUBMISSIONS_DETAILS]->getValue();
+        $this->assertSame(2, $details['nb-submitted-versions']);
+        $this->assertSame(1, $details['nb-imported-versions']);
+    }
+
+    /**
+     * Several flags ("flag[]=…"): the submissions of each of them, not an "Array to string conversion"
+     */
+    public function testSeveralFlagsAreCounted(): void
+    {
+        // a warning is an error, as in the debug mode of Symfony (500)
+        set_error_handler(static function (int $severity, string $message): never {
+            throw new \ErrorException($message, 0, $severity);
+        });
+
+        try {
+            $statistics = iterator_to_array($this->provideCollection(['indicator' => 'nb-submissions', 'flag' => ['imported', 'submitted']], submissions: self::submissionsWithImported()));
+            $single = iterator_to_array($this->provideCollection(['indicator' => 'nb-submissions', 'flag' => ['imported']], submissions: self::submissionsWithImported()));
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertEquals(3, $statistics[0]->getValue());
+        $this->assertEquals(1, $single[0]->getValue());
+    }
+
+    /**
+     * @return list<array<string, mixed>> dev (1): 2 submitted submissions, 1 imported
+     */
+    private static function submissionsWithImported(): array
+    {
+        return [
+            self::submission(1, 1, SubmissionFigures::OTHER),
+            self::submission(1, 2, SubmissionFigures::ACCEPTED),
+            self::submission(1, 3, SubmissionFigures::IMPORTED, 'imported'),
+        ];
+    }
+
     public function testNoPapersWithoutWithPapers(): void
     {
         $statistics = iterator_to_array($this->provideCollection(['indicator' => 'nb-submissions']));
@@ -718,12 +765,12 @@ class StatisticStateProviderTest extends TestCase
     /**
      * @param array<int, string> $extraJournals active journals (rvid => code) besides dev (1) and epijinfo (3)
      */
-    private function provideCollection(array $filters, string $operationName = self::COLLECTION_OPERATION, array $extraJournals = []): iterable
+    private function provideCollection(array $filters, string $operationName = self::COLLECTION_OPERATION, array $extraJournals = [], ?array $submissions = null): iterable
     {
         $papersRepository = $this->createStub(PapersRepository::class);
         $papersRepository->method('getYearRange')->willReturn([]);
         // dev (1): 10 submissions, 3 accepted and 1 refused; epijinfo (3): 4 submissions, 2 refused
-        $papersRepository->method('getSubmissions')->willReturn(array_merge(
+        $papersRepository->method('getSubmissions')->willReturn($submissions ?? array_merge(
             array_map(static fn(int $paperId): array => self::submission(1, $paperId, match (true) {
                 $paperId <= 3 => SubmissionFigures::ACCEPTED,
                 $paperId === 4 => SubmissionFigures::REFUSED,
@@ -832,14 +879,14 @@ class StatisticStateProviderTest extends TestCase
      *
      * @return array<string, mixed>
      */
-    private static function submission(int $rvId, int $paperId, string $category): array
+    private static function submission(int $rvId, int $paperId, string $category, string $flag = 'submitted'): array
     {
         return [
             'rvid' => $rvId,
             'paperid' => $paperId,
             'docid' => 100 + $paperId,
             'status' => 0,
-            'flag' => 'submitted',
+            'flag' => $flag,
             'repoid' => 1,
             'firstSubmissionDate' => '2025-01-01 10:00:00',
             'acceptanceDate' => $category === SubmissionFigures::ACCEPTED ? '2025-03-01 10:00:00' : null,

@@ -99,6 +99,11 @@ class SubmissionFiguresTest extends TestCase
         $this->assertSame([2, 3], array_column(SubmissionFigures::filter($submissions, [Paper::STATUS_PUBLISHED]), 'docid'));
         $this->assertSame([3], array_column(SubmissionFigures::filter($submissions, ['16'], 'imported'), 'docid'));
         $this->assertSame([1, 2], array_column(SubmissionFigures::filter($submissions, [], 'submitted'), 'docid'));
+        // several flags ("flag[]=…"); an empty flag does not filter
+        $this->assertSame([1, 2, 3], array_column(SubmissionFigures::filter($submissions, [], ['imported', 'submitted']), 'docid'));
+        $this->assertSame([3], array_column(SubmissionFigures::filter($submissions, [], ['imported']), 'docid'));
+        $this->assertCount(3, SubmissionFigures::filter($submissions, [], ''));
+        $this->assertCount(3, SubmissionFigures::filter($submissions, [], []));
     }
 
     public function testCountByJournalAndYearsBeforeTheReferenceYearAreIgnored(): void

@@ -507,7 +507,7 @@ class Stats
         $submissions = SubmissionFigures::filter(
             $submissions,
             array_map('intval', (array)($filters['is'][AppConstants::PAPER_STATUS] ?? [])),
-            isset($filters['is'][AppConstants::PAPER_FLAG]) ? (string)$filters['is'][AppConstants::PAPER_FLAG] : null
+            $filters['is'][AppConstants::PAPER_FLAG] ?? null
         );
 
         $nbSubmissions = count(SubmissionFigures::submittedIn($submissions, self::requestedYears($filters)));
@@ -567,9 +567,13 @@ class Stats
         $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
 
         $startAfterDate = $filters['is']['startAfterDate'] ?? null;
-        $repositories = $papersRepository->getAvailableRepositories($filters);
-
         $submissions ??= $papersRepository->getSubmissions($rvId ? (int)$rvId : null, $startAfterDate);
+        // the repositories of the papers, and those of the submissions counted by countByYearAndRepository()
+        // (a resubmission may be the only one of its repository within the start date)
+        $repositories = array_values(array_unique(array_merge(
+            $papersRepository->getAvailableRepositories($filters),
+            array_filter(array_column($submissions, 'repoid'), static fn(mixed $repoId): bool => $repoId !== null)
+        )));
         $years = SubmissionFigures::years(SubmissionFigures::submittedIn($submissions, self::requestedYears($filters)));
 
         if ($years === []) {

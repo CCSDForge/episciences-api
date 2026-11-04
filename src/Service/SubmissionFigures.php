@@ -64,20 +64,23 @@ final class SubmissionFigures
     }
 
     /**
-     * The submissions whose current status is one of $statuses (all if empty) and whose flag is $flag (all if null)
+     * The submissions whose current status is one of $statuses (all if empty) and whose flag is one of $flags
+     * (all if empty: one flag or several, "flag[]=…")
      *
      * @param list<Submission> $submissions
      * @param int[] $statuses
+     * @param string|array<mixed>|null $flags
      * @return list<Submission>
      */
-    public static function filter(array $submissions, array $statuses = [], ?string $flag = null): array
+    public static function filter(array $submissions, array $statuses = [], string|array|null $flags = null): array
     {
         $statuses = array_map('intval', $statuses);
+        $flags = array_values(array_map('strval', array_filter((array)$flags, static fn(mixed $flag): bool => is_scalar($flag) && $flag !== '')));
 
         return array_values(array_filter(
             $submissions,
             static fn(array $submission): bool => ($statuses === [] || in_array($submission['status'], $statuses, true))
-                && ($flag === null || $flag === '' || $submission['flag'] === $flag)
+                && ($flags === [] || in_array($submission['flag'], $flags, true))
         ));
     }
 

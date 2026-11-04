@@ -160,7 +160,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                     // filters apply), the imported ones (the "status" filter applies) and the submitted ones
                     $nbSubmission = count($this->getSubmissions($currentFilters));
                     $imported = count($this->getSubmissions(array_merge($currentFilters, ['flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']])));
-                    $nbSubmissionsWithoutImported = count($this->getSubmissions(array_diff_key($currentFilters, ['status' => true]) + ['flag' => PapersRepository::AVAILABLE_FLAG_VALUES['submitted']]));
+                    $nbSubmissionsWithoutImported = count($this->getSubmissions(array_merge(array_diff_key($currentFilters, ['status' => true]), ['flag' => PapersRepository::AVAILABLE_FLAG_VALUES['submitted']])));
 
                     // the published papers from the history; accepted and refused: by year of the decision
                     $nbPublished = $paperLogRepo->getPublished($rvId, $years, $startAfterDate);
@@ -674,7 +674,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $submissions = SubmissionFigures::filter(
             $this->getJournalSubmissions($filters),
             array_map('intval', (array)($filters['status'] ?? [])),
-            isset($filters['flag']) ? (string)$filters['flag'] : null
+            $filters['flag'] ?? null
         );
 
         return SubmissionFigures::submittedIn($submissions, (array)($filters[AppConstants::YEAR_PARAM] ?? []));

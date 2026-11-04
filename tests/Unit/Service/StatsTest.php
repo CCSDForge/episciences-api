@@ -950,7 +950,7 @@ class StatsTest extends TestCase
         $details = [];
 
         $this->papersRepo->method('getAvailableRepositories')->willReturn([1]);
-        $this->metadataSources->method('getLabel')->with(1)->willReturn('HAL');
+        $this->metadataSources->method('getLabel')->willReturnCallback(static fn(int $repoId): string => [1 => 'HAL', 2 => 'arXiv'][$repoId]);
 
         // fetched once, then counted by year
         $this->papersRepo->expects($this->once())->method('getSubmissions')->with(8, null)->willReturn([
@@ -984,6 +984,31 @@ class StatsTest extends TestCase
 
         $this->assertSame(4, $details['submissionsByRepo'][2023]['HAL']['submissions']);
         $this->assertSame(0, $details['submissionsByRepo'][2022]['HAL']['submissions']);
+        // the repository of submission 6, not returned by getAvailableRepositories(), is listed
+        $this->assertSame(1, $details['submissionsByRepo'][2022]['arXiv']['submissions']);
+        $this->assertSame(0, $details['submissionsByRepo'][2023]['arXiv']['submissions']);
+    }
+
+    /**
+     * A repository counted by the submissions is listed even if getAvailableRepositories() does not return it
+     * (a resubmission may be the only one of its repository within the start date)
+     */
+    public function testGetSubmissionByYearStatsListsTheRepositoriesOfTheSubmissions(): void
+    {
+        $details = [];
+
+        $this->papersRepo->method('getAvailableRepositories')->willReturn([1]);
+        $this->metadataSources->method('getLabel')->willReturnCallback(static fn(int $repoId): string => [1 => 'HAL', 2 => 'arXiv'][$repoId]);
+        $this->papersRepo->method('getSubmissions')->willReturn([
+            self::submission(1, '2023', SubmissionFigures::OTHER),
+            self::submission(2, '2023', SubmissionFigures::OTHER, repoId: 2, paperId: 1),
+        ]);
+        $this->paperLogRepo->method('getPublishedByYear')->willReturn([]);
+        $this->paperLogRepo->method('getSubmittedSameYear')->willReturn([]);
+
+        $this->stats->getSubmissionByYearStats(['is' => ['rvid' => 8, 'startAfterDate' => '2023-01-01']], 8, $details);
+
+        $this->assertSame(['HAL' => ['submissions' => 1], 'arXiv' => ['submissions' => 1]], $details['submissionsByRepo'][2023]);
     }
 
     /**
