@@ -110,7 +110,11 @@ final readonly class StatisticPapers
     /**
      * The papers to list: one DOCID by counted paper (its latest version), without the conflicted papers.
      *
-     * @param array<string, list<int>> $paperIdsByFigure PAPERIDs counted by each figure
+     * A figure counted by submission gives the version each submission ends with (['paperid' => int, 'docid' => int],
+     * see SubmissionFigures::papers()): it is listed as is, not as the latest version of the paper, so that a refused
+     * submission is not listed as the new submission of the same paper.
+     *
+     * @param array<string, list<int|array{paperid: int, docid: int}>> $paperIdsByFigure PAPERIDs (or submissions) counted by each figure
      * @param array<int, true> $conflictedPapers see getConflictedPapers()
      * @return array{0: array<string, list<int>>, 1: array<string, int>} DOCIDs by figure, number of papers not listed by figure
      */
@@ -118,18 +122,22 @@ final readonly class StatisticPapers
     {
         $visibleByFigure = [];
         $hiddenByFigure = [];
+        $paperIdOf = static fn(int|array $paper): int => is_array($paper) ? (int)$paper['paperid'] : $paper;
 
-        foreach ($paperIdsByFigure as $figure => $paperIds) {
-            $visibleByFigure[$figure] = array_values(array_filter($paperIds, static fn(int $paperId): bool => !isset($conflictedPapers[$paperId])));
-            $hiddenByFigure[$figure] = count($paperIds) - count($visibleByFigure[$figure]);
+        foreach ($paperIdsByFigure as $figure => $papers) {
+            $visibleByFigure[$figure] = array_values(array_filter($papers, static fn(int|array $paper): bool => !isset($conflictedPapers[$paperIdOf($paper)])));
+            $hiddenByFigure[$figure] = count($papers) - count($visibleByFigure[$figure]);
         }
+
+        // the latest version of the papers given by PAPERID only
+        $paperIds = array_values(array_filter(array_merge(...array_values($visibleByFigure)), static fn(int|array $paper): bool => !is_array($paper)));
 
         /** @var PapersRepository $papersRepository */
         $papersRepository = $this->entityManager->getRepository(Paper::class);
-        $docIds = $papersRepository->getLatestDocIds(array_merge(...array_values($visibleByFigure)));
+        $docIds = $paperIds === [] ? [] : $papersRepository->getLatestDocIds($paperIds);
 
-        foreach ($visibleByFigure as $figure => $paperIds) {
-            $figureDocIds = array_values(array_map(static fn(int $paperId): int => $docIds[$paperId] ?? $paperId, $paperIds));
+        foreach ($visibleByFigure as $figure => $papers) {
+            $figureDocIds = array_map(static fn(int|array $paper): int => is_array($paper) ? (int)$paper['docid'] : ($docIds[$paper] ?? $paper), $papers);
             sort($figureDocIds);
             $visibleByFigure[$figure] = $figureDocIds;
         }

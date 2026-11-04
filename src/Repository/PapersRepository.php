@@ -6,10 +6,12 @@ namespace App\Repository;
 use App\AppConstants;
 use App\Entity\Paper;
 use App\Entity\PaperLog;
+use App\Entity\Review;
 use App\Entity\Section;
 use App\Entity\Volume;
 use App\Entity\VolumePaper;
 use App\Service\Stats;
+use App\Service\SubmissionFigures;
 use App\Traits\QueryTrait;
 use App\Traits\ToolsTrait;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -878,6 +880,128 @@ class PapersRepository extends ServiceEntityRepository
 
         return $qb->andWhere($qb->expr()->not($qb->expr()->exists($decision->getDQL())))
             ->setParameter('decisionStatuses', [...PaperLogRepository::ACCEPTED_STATUSES, PaperLogRepository::REFUSED_STATUS]);
+    }
+
+    /**
+     * The submissions of a journal (of the active journals without journal), with what their category is computed
+     * from (see SubmissionFigures).
+     *
+     * A submission is not a paper (PAPERID): a refused paper that the journal accepts to receive again keeps its row
+     * (status "refused", identifier suffixed with "-REFUSED") and its new submission is a new row with the same
+     * PAPERID (see Episciences_Submit in Episciences). So a submission is the chain of the versions of a paper, by
+     * DOCID, up to its first non-obsolete version, which stands for it (DOCID, current status): the submissions are
+     * the rows of the list of papers of the journal in Episciences (obsolete, deleted and removed versions excluded).
+     *
+     * - firstSubmissionDate: the oldest submission date of its versions (a refused paper submitted again gets the
+     *   date of its new submission);
+     * - flag: "imported" only if all its versions are imported;
+     * - repoid: the repository of its first version outside Episciences (null if all its versions are local);
+     * - acceptanceDate / refusalDate: the date of the last acceptance / refusal logged on one of its versions.
+     *
+     * Native SQL: DQL has no window function. The decisions are joined to the versions by DOCID (not the other way
+     * round): MySQL would otherwise look up the history of each version of the platform (seconds instead of a third).
+     *
+     * @param string|null $startAfterDate the submissions first submitted on or after this date (YYYY-MM-DD)
+     * @return list<array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, category: string}> sorted by DOCID
+     */
+    public function getSubmissions(?int $rvId = null, ?string $startAfterDate = null): array
+    {
+        $journal = $rvId
+            ? 'p.RVID = :rvId'
+            : sprintf('p.RVID IN (SELECT r.RVID FROM %s r WHERE r.STATUS = :enabledJournal)', Review::TABLE);
+
+        $sql = sprintf(<<<'SQL'
+            -- the last acceptance and refusal of each version, read from the covering index
+            -- (status, RVID, PAPERID, DATE, DOCID) of the history
+            WITH decisions AS (
+                SELECT l.DOCID,
+                       MAX(CASE WHEN l.STATUS IN (:acceptedStatuses) THEN l.DATE END) AS ACCEPTANCE_DATE,
+                       MAX(CASE WHEN l.STATUS = :refused THEN l.DATE END) AS REFUSAL_DATE
+                FROM %2$s l
+                WHERE l.STATUS IN (:decisionStatuses) AND %5$s
+                GROUP BY l.DOCID
+            ),
+            versions AS (
+                SELECT p.DOCID, p.PAPERID, p.STATUS, p.FLAG, p.REPOID, p.SUBMISSION_DATE, d.ACCEPTANCE_DATE, d.REFUSAL_DATE,
+                       -- number of non-obsolete versions before this one: the index of its submission in the paper
+                       COALESCE(SUM(p.STATUS <> :obsolete) OVER (
+                           PARTITION BY p.PAPERID ORDER BY p.DOCID ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                       ), 0) AS SUBMISSION_INDEX
+                FROM %1$s p
+                LEFT JOIN decisions d ON d.DOCID = p.DOCID
+                WHERE %3$s AND p.PAPERID IS NOT NULL
+            ),
+            submissions AS (
+                SELECT PAPERID,
+                       MAX(CASE WHEN STATUS <> :obsolete THEN DOCID END) AS DOCID,
+                       MIN(SUBMISSION_DATE) AS FIRST_SUBMISSION_DATE,
+                       MAX(FLAG = :submittedFlag) AS HAS_SUBMITTED_VERSION,
+                       MIN(CASE WHEN REPOID <> :localRepository THEN DOCID END) AS REPOSITORY_DOCID,
+                       MAX(ACCEPTANCE_DATE) AS ACCEPTANCE_DATE,
+                       MAX(REFUSAL_DATE) AS REFUSAL_DATE
+                FROM versions
+                GROUP BY PAPERID, SUBMISSION_INDEX
+                -- versions all obsolete, after the last submission: not a submission
+                HAVING SUM(STATUS <> :obsolete) > 0
+            )
+            SELECT p.RVID AS rvid, s.PAPERID AS paperid, s.DOCID AS docid, p.STATUS AS status,
+                   CASE WHEN s.HAS_SUBMITTED_VERSION = 1 THEN :submittedFlag ELSE :importedFlag END AS flag,
+                   repository.REPOID AS repoid,
+                   s.FIRST_SUBMISSION_DATE AS firstSubmissionDate, s.ACCEPTANCE_DATE AS acceptanceDate, s.REFUSAL_DATE AS refusalDate
+            FROM submissions s
+            JOIN %1$s p ON p.DOCID = s.DOCID
+            LEFT JOIN %1$s repository ON repository.DOCID = s.REPOSITORY_DOCID
+            WHERE p.STATUS NOT IN (:deleted, :removed) %4$s
+            ORDER BY s.DOCID
+            SQL,
+            Paper::TABLE,
+            PaperLog::TABLE,
+            $journal,
+            self::isValidDate($startAfterDate) ? 'AND s.FIRST_SUBMISSION_DATE >= :startAfterDate' : '',
+            str_replace('p.RVID', 'l.RVID', $journal)
+        );
+
+        $parameters = [
+            'obsolete' => Paper::STATUS_OBSOLETE,
+            'deleted' => Paper::STATUS_DELETED,
+            'removed' => Paper::STATUS_REMOVED,
+            'refused' => PaperLogRepository::REFUSED_STATUS,
+            'acceptedStatuses' => PaperLogRepository::ACCEPTED_STATUSES,
+            'decisionStatuses' => [...PaperLogRepository::ACCEPTED_STATUSES, PaperLogRepository::REFUSED_STATUS],
+            'submittedFlag' => self::AVAILABLE_FLAG_VALUES['submitted'],
+            'importedFlag' => self::AVAILABLE_FLAG_VALUES['imported'],
+            'localRepository' => self::LOCAL_REPOSITORY,
+        ];
+        $types = ['acceptedStatuses' => ArrayParameterType::INTEGER, 'decisionStatuses' => ArrayParameterType::INTEGER];
+
+        if ($rvId) {
+            $parameters['rvId'] = $rvId;
+        } else {
+            $parameters['enabledJournal'] = Review::STATUS_ENABLED;
+        }
+
+        if (self::isValidDate($startAfterDate)) {
+            $parameters['startAfterDate'] = $startAfterDate;
+        }
+
+        $rows = $this->getEntityManager()->getConnection()->executeQuery($sql, $parameters, $types)->fetchAllAssociative();
+
+        return array_map(static function (array $row): array {
+            $submission = [
+                'rvid' => (int)$row['rvid'],
+                'paperid' => (int)$row['paperid'],
+                'docid' => (int)$row['docid'],
+                'status' => (int)$row['status'],
+                'flag' => (string)$row['flag'],
+                'repoid' => $row['repoid'] === null ? null : (int)$row['repoid'],
+                'firstSubmissionDate' => (string)$row['firstSubmissionDate'],
+                'acceptanceDate' => $row['acceptanceDate'] === null ? null : (string)$row['acceptanceDate'],
+                'refusalDate' => $row['refusalDate'] === null ? null : (string)$row['refusalDate'],
+            ];
+            $submission['category'] = SubmissionFigures::category($submission);
+
+            return $submission;
+        }, $rows);
     }
 
     public function partialQuery(array $cols = ['rvid', 'docid', 'paperid', 'vid', 'sid', 'status', 'version', 'flag'], string $alias = self::PAPERS_ALIAS): QueryBuilder

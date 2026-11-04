@@ -71,6 +71,44 @@ class StatisticPapersTest extends TestCase
     }
 
     /**
+     * A figure counted by submission lists the version each submission ends with, not the latest version of the paper:
+     * the refused submission of a paper submitted again is listed as itself (no query for it).
+     */
+    public function testSubmissionsAreListedByTheVersionTheyEndWith(): void
+    {
+        $papersRepository = $this->createMock(PapersRepository::class);
+        $papersRepository->expects($this->once())->method('getLatestDocIds')->with([7])->willReturn([7 => 70]);
+
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturnMap([[Paper::class, $papersRepository]]);
+
+        $service = new StatisticPapers($entityManager, $this->createStub(Security::class));
+
+        [$papers, $hidden] = $service->toDocIds([
+            // paper 4: refused (version 41), then submitted again and accepted (version 45)
+            'refused' => [['paperid' => 4, 'docid' => 41], ['paperid' => 3, 'docid' => 30]],
+            'accepted' => [['paperid' => 4, 'docid' => 45]],
+            'published' => [7],
+        ], [3 => true]);
+
+        $this->assertSame(['refused' => [41], 'accepted' => [45], 'published' => [70]], $papers);
+        $this->assertSame(['refused' => 1, 'accepted' => 0, 'published' => 0], $hidden);
+    }
+
+    public function testNoQueryWhenAllTheFiguresAreCountedBySubmission(): void
+    {
+        $papersRepository = $this->createMock(PapersRepository::class);
+        $papersRepository->expects($this->never())->method('getLatestDocIds');
+
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturnMap([[Paper::class, $papersRepository]]);
+
+        [$papers] = new StatisticPapers($entityManager, $this->createStub(Security::class))->toDocIds(['nbSubmissions' => [['paperid' => 1, 'docid' => 12]], 'nbOtherStatus' => []], []);
+
+        $this->assertSame(['nbSubmissions' => [12], 'nbOtherStatus' => []], $papers);
+    }
+
+    /**
      * The paper lists ("withPapers") are reserved for the administrators and the editorial
      * secretaries of the journal; the platform administrators get no conflict filtering.
      *

@@ -20,6 +20,7 @@ use App\Repository\PapersRepository;
 use App\Resource\Statistic;
 use App\Service\StatisticPapers;
 use App\Service\Stats;
+use App\Service\SubmissionFigures;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -30,6 +31,9 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
     /** Rows of the evaluation queries, by query and filters: the lists of withPapers reuse the rows of the figures */
     private array $evaluationRows = [];
+
+    /** @var array<string, list<array<string, mixed>>> the submissions of the last journal and start date, see getJournalSubmissions() */
+    private array $submissions = [];
 
     public function __construct(protected EntityManagerInterface $entityManager, protected LoggerInterface $logger, protected Pagination $pagination, protected Stats $statsService, private readonly StatisticPapers $statisticPapers)
     {
@@ -133,12 +137,9 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
                     foreach ($indicators as $indicator) {
                         if ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get']) {
-                            $nbSubmissionStatsQuery = $this->entityManager->getRepository(Paper::class)
-                                ->submissionsQuery(['is' => $currentFilters])
-                                ->getQuery();
                             $response[] = new Statistic()
                                 ->setName($indicator)
-                                ->setValue($nbSubmissionStatsQuery->getSingleScalarResult());
+                                ->setValue(count($this->getSubmissions($currentFilters)));
                         } elseif ($indicator === Statistic::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get']) {
                             $response[] = new Statistic()
                                 ->setName($indicator)
@@ -153,19 +154,18 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
                 } else { // all submissions indicators
 
-                    $paperRepo = $this->entityManager->getRepository(Paper::class);
                     $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
 
-                    // submissions, imported and submitted papers: a single query
-                    $submissions = $paperRepo->countSubmissionsByFlag($currentFilters);
-                    $nbSubmission = $submissions['total'];
-                    $imported = $submissions['imported'];
-                    $nbSubmissionsWithoutImported = $submissions['submitted'];
+                    // counted by submission (see Stats::getDashboard()): the submissions (the "status" and "flag"
+                    // filters apply), the imported ones (the "status" filter applies) and the submitted ones
+                    $nbSubmission = count($this->getSubmissions($currentFilters));
+                    $imported = count($this->getSubmissions(array_merge($currentFilters, ['flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']])));
+                    $nbSubmissionsWithoutImported = count($this->getSubmissions(array_merge(array_diff_key($currentFilters, ['status' => true]), ['flag' => PapersRepository::AVAILABLE_FLAG_VALUES['submitted']])));
 
-                    // stats from papers logs
+                    // the published papers from the history; accepted and refused: by year of the decision
                     $nbPublished = $paperLogRepo->getPublished($rvId, $years, $startAfterDate);
-                    $nbRefused = $paperLogRepo->getRefused($rvId, $years, $startAfterDate);
-                    $nbAccepted = $paperLogRepo->getAccepted($rvId, $years, $startAfterDate);
+                    $nbRefused = count($this->getDecidedSubmissions(SubmissionFigures::REFUSED, $currentFilters));
+                    $nbAccepted = count($this->getDecidedSubmissions(SubmissionFigures::ACCEPTED, $currentFilters));
 
                     $response[] = new Statistic()
                         ->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'])
@@ -192,8 +192,8 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                                 Paper::STATUS_DICTIONARY[Paper::STATUS_REFUSED] => $nbRefused,
                                 'accepted' => $nbAccepted, // include published
                                 'being-to-publish' => [
-                                    'accepted' => $paperLogRepo->getAllAcceptedNotYetPublished($rvId, $years, $startAfterDate),
-                                    'other-status' => $paperRepo->getSubmissionsAwaitingDecision($rvId, $startAfterDate, $years)
+                                    'accepted' => count(SubmissionFigures::acceptedNotYetPublished($this->getJournalSubmissions($currentFilters), $years)),
+                                    'other-status' => count($this->getDecidedSubmissions(SubmissionFigures::OTHER, $currentFilters)),
                                 ]
                             ]);
 
@@ -240,19 +240,16 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         }
 
         $oStats = new Statistic()->setName(Statistic::AVAILABLE_PUBLICATION_INDICATORS[$operationName]);
-        $statsQuery = null;
 
         if ($operationName === 'nb-submissions_get') {
-            $statsQuery = $this->entityManager->getRepository(Paper::class)->submissionsQuery(['is' => $currentFilters])->getQuery();
+            return $oStats->setValue(count($this->getSubmissions($currentFilters)));
         } elseif ($operationName === 'median-submission-publication_get' || $operationName === 'median-submission-acceptance_get') {
             return $this->getMedianDelay(Statistic::AVAILABLE_PUBLICATION_INDICATORS[$operationName], $rvId, $years, $startAfterDate, $unit);
         } elseif ($operationName === 'acceptance-rate_get') {
             return $oStats->setValue($this->getAcceptanceRate($currentFilters))->setUnit('%');
         }
 
-        $result = $statsQuery ? (int)$statsQuery->getSingleScalarResult() : 0;
-
-        return $oStats->setValue($result);
+        return $oStats->setValue(0);
 
     }
 
@@ -351,8 +348,6 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
      */
     private function addPapers(array $statistics, array $filters, int $rvId, array $years, ?string $startAfterDate, string $unit, array $conflictedPapers): void
     {
-        /** @var \App\Repository\PapersRepository $paperRepo */
-        $paperRepo = $this->entityManager->getRepository(Paper::class);
         /** @var PaperLogRepository $paperLogRepo */
         $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
         $common = array_intersect_key($filters, array_flip(['rvid', AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE]));
@@ -366,21 +361,21 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
             }
 
             $papers = match ($statistic->getName()) {
-                Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'] => $paperRepo->getSubmissionPaperIds(['is' => $filters]),
+                Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get'] => SubmissionFigures::papers($this->getSubmissions($filters)),
                 Statistic::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get'] => [
-                    'accepted' => $paperLogRepo->getPaperIds($figures['accepted'], $rvId, $years, $startAfterDate),
-                    'refused' => $paperLogRepo->getPaperIds($figures['refused'], $rvId, $years, $startAfterDate),
+                    'accepted' => SubmissionFigures::papers($this->getDecidedSubmissions(SubmissionFigures::ACCEPTED, $filters)),
+                    'refused' => SubmissionFigures::papers($this->getDecidedSubmissions(SubmissionFigures::REFUSED, $filters)),
                 ],
                 Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-publication_get'],
                 Statistic::AVAILABLE_PUBLICATION_INDICATORS['median-submission-acceptance_get'] => $paperLogRepo->getSubmissionDelayPaperIds($rvId, $years, $startAfterDate, $statistic->getName(), $unit),
                 Statistic::NB_SUBMISSIONS_DETAILS => [
-                    'nb-submitted-versions' => $paperRepo->getSubmissionPaperIds(['is' => $common], PapersRepository::AVAILABLE_FLAG_VALUES['submitted']),
-                    'nb-imported-versions' => $paperRepo->getSubmissionPaperIds(['is' => $common + array_intersect_key($filters, ['status' => true])], PapersRepository::AVAILABLE_FLAG_VALUES['imported']),
+                    'nb-submitted-versions' => SubmissionFigures::papers($this->getSubmissions($common + ['flag' => PapersRepository::AVAILABLE_FLAG_VALUES['submitted']])),
+                    'nb-imported-versions' => SubmissionFigures::papers($this->getSubmissions($common + array_intersect_key($filters, ['status' => true]) + ['flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']])),
                     Paper::STATUS_DICTIONARY[Paper::STATUS_PUBLISHED] => $paperLogRepo->getPaperIds($figures['published'], $rvId, $years, $startAfterDate),
-                    Paper::STATUS_DICTIONARY[Paper::STATUS_REFUSED] => $paperLogRepo->getPaperIds($figures['refused'], $rvId, $years, $startAfterDate),
-                    'accepted' => $paperLogRepo->getPaperIds($figures['accepted'], $rvId, $years, $startAfterDate),
-                    'being-to-publish.accepted' => $paperLogRepo->getPaperIds($figures['accepted-not-yet-published'], $rvId, $years, $startAfterDate),
-                    'being-to-publish.other-status' => $paperRepo->getSubmissionsAwaitingDecisionPaperIds($rvId, $startAfterDate, $years),
+                    Paper::STATUS_DICTIONARY[Paper::STATUS_REFUSED] => SubmissionFigures::papers($this->getDecidedSubmissions(SubmissionFigures::REFUSED, $filters)),
+                    'accepted' => SubmissionFigures::papers($this->getDecidedSubmissions(SubmissionFigures::ACCEPTED, $filters)),
+                    'being-to-publish.accepted' => SubmissionFigures::papers(SubmissionFigures::acceptedNotYetPublished($this->getJournalSubmissions($filters), $years)),
+                    'being-to-publish.other-status' => SubmissionFigures::papers($this->getDecidedSubmissions(SubmissionFigures::OTHER, $filters)),
                 ],
                 default => null, // the median number of reviews: no list
             };
@@ -505,12 +500,12 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
         foreach ($names as $name) {
             if ($name === Statistic::AVAILABLE_PUBLICATION_INDICATORS['nb-submissions_get']) {
-                foreach ($this->entityManager->getRepository(Paper::class)->countSubmissionsByJournal(['is' => $filters]) as $rvId => $total) {
+                foreach (SubmissionFigures::countByJournal($this->getSubmissions($filters)) as $rvId => $total) {
                     $values[$name][$rvId] = ['value' => $total];
                 }
             } elseif ($name === Statistic::AVAILABLE_PUBLICATION_INDICATORS['acceptance-rate_get']) {
-                $accepted = $paperLogRepo->getAcceptedByJournal($years, $startAfterDate);
-                $refused = $paperLogRepo->getRefusedByJournal($years, $startAfterDate);
+                $accepted = SubmissionFigures::countByJournal($this->getDecidedSubmissions(SubmissionFigures::ACCEPTED, $filters));
+                $refused = SubmissionFigures::countByJournal($this->getDecidedSubmissions(SubmissionFigures::REFUSED, $filters));
 
                 foreach (array_keys($accepted + $refused) as $rvId) {
                     $values[$name][$rvId] = ['value' => $this->getAcceptanceRate(['acceptedTotal' => $accepted[$rvId] ?? 0, 'refusedTotal' => $refused[$rvId] ?? 0])];
@@ -632,7 +627,69 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
     {
         /** @var PaperLogRepository $logRepository */
         $logRepository = $this->entityManager->getRepository(PaperLog::class);
+
+        // counted by submission (see Stats::getDashboard()), unless already counted
+        if (!isset($options['acceptedTotal'], $options['refusedTotal'])) {
+            $options['acceptedTotal'] = count($this->getDecidedSubmissions(SubmissionFigures::ACCEPTED, $options));
+            $options['refusedTotal'] = count($this->getDecidedSubmissions(SubmissionFigures::REFUSED, $options));
+        }
+
         return $logRepository->getAcceptanceRate($options);
+    }
+
+    /**
+     * The submissions of the journal ("rvid", all the active journals without), first submitted on or after
+     * "startAfterDate": fetched once by journal and start date (see PapersRepository::getSubmissions()).
+     *
+     * The figures count submissions, not papers (PAPERID): a refused paper submitted again is a new submission with
+     * the same PAPERID. Each submission falls into a single category, from its last decision (see SubmissionFigures).
+     *
+     * @param array<string, mixed> $filters
+     * @return list<array<string, mixed>>
+     */
+    private function getJournalSubmissions(array $filters): array
+    {
+        $rvId = isset($filters['rvid']) ? (int)$filters['rvid'] : null;
+        $startAfterDate = $filters[AppConstants::START_AFTER_DATE] ?? null;
+        $key = sprintf('%d|%s', $rvId, $startAfterDate);
+
+        if (!isset($this->submissions[$key])) {
+            /** @var PapersRepository $papersRepository */
+            $papersRepository = $this->entityManager->getRepository(Paper::class);
+            $this->submissions = [$key => $papersRepository->getSubmissions($rvId ?: null, $startAfterDate)];
+        }
+
+        return $this->submissions[$key];
+    }
+
+    /**
+     * The submissions counted as "nb-submissions": first submitted in the requested years, whose current status is one
+     * of the requested statuses and whose flag is the requested one
+     *
+     * @param array<string, mixed> $filters
+     * @return list<array<string, mixed>>
+     */
+    private function getSubmissions(array $filters): array
+    {
+        $submissions = SubmissionFigures::filter(
+            $this->getJournalSubmissions($filters),
+            array_map('intval', (array)($filters['status'] ?? [])),
+            $filters['flag'] ?? null
+        );
+
+        return SubmissionFigures::submittedIn($submissions, (array)($filters[AppConstants::YEAR_PARAM] ?? []));
+    }
+
+    /**
+     * The submissions of a category (accepted, refused: by year of the decision; other: by year of submission),
+     * see SubmissionFigures::inCategory()
+     *
+     * @param array<string, mixed> $filters
+     * @return list<array<string, mixed>>
+     */
+    private function getDecidedSubmissions(string $category, array $filters): array
+    {
+        return SubmissionFigures::inCategory($this->getJournalSubmissions($filters), $category, (array)($filters[AppConstants::YEAR_PARAM] ?? []));
     }
 
     private function getEvaluationStats(array $options = [], ?string $indicator = null): null|float|array

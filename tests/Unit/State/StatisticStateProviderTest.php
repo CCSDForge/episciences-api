@@ -25,6 +25,7 @@ use App\Repository\UserInvitationRepository;
 use App\Resource\Statistic;
 use App\Service\StatisticPapers;
 use App\Service\Stats;
+use App\Service\SubmissionFigures;
 use App\State\StatisticStateProvider;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
@@ -277,12 +278,36 @@ class StatisticStateProviderTest extends TestCase
     {
         $statistics = $this->provideWithPapers(['indicator' => ['nb-submissions', 'acceptance-rate', 'median-submission-publication']], $this->administrator(1));
 
-        // one DOCID by paper, its latest version
+        // one DOCID by submission, the version it ends with
         $this->assertSame([101, 102, 103, 104], $statistics[0]->getPapers());
         $this->assertSame(0, $statistics[0]->getHiddenPapers());
         $this->assertSame(['accepted' => [102, 103], 'refused' => [104]], $statistics[1]->getPapers());
         $this->assertSame(['accepted' => 0, 'refused' => 0], $statistics[1]->getHiddenPapers());
         $this->assertSame([102, 103], $statistics[2]->getPapers());
+    }
+
+    /**
+     * Without indicator: the details count submissions, each in a single category, so that they add up
+     * (submitted = accepted + refused + other-status) and list the version each submission ends with.
+     */
+    public function testSubmissionDetailsAddUpToTheSubmissions(): void
+    {
+        $statistics = $this->provideWithPapers([], $this->administrator(1));
+        $byName = array_combine(array_map(static fn(Statistic $statistic): string => $statistic->getName(), $statistics), $statistics);
+
+        $this->assertSame(4.0, $byName['nb-submissions']->getValue());
+        $details = $byName[Statistic::NB_SUBMISSIONS_DETAILS]->getValue();
+        $this->assertSame(4, $details['nb-submitted-versions']);
+        $this->assertSame(0, $details['nb-imported-versions']);
+        $this->assertSame(2, $details['accepted']);
+        $this->assertSame(1, $details['refused']);
+        $this->assertSame(['accepted' => 2, 'other-status' => 1], $details['being-to-publish']);
+        $this->assertSame($details['nb-submitted-versions'], $details['accepted'] + $details['refused'] + $details['being-to-publish']['other-status']);
+
+        $papers = $byName[Statistic::NB_SUBMISSIONS_DETAILS]->getPapers();
+        $this->assertSame([102, 103], $papers['accepted']);
+        $this->assertSame([104], $papers['refused']);
+        $this->assertSame([101], $papers['being-to-publish.other-status']);
     }
 
     /**
@@ -458,6 +483,53 @@ class StatisticStateProviderTest extends TestCase
         $this->assertNull($statistics[0]->getHiddenReviews());
     }
 
+    /**
+     * The submitted submissions of the details do not depend on the "flag" filter (as their list, see addPapers())
+     */
+    public function testSubmittedDetailsIgnoreTheFlagFilter(): void
+    {
+        $statistics = iterator_to_array($this->provideCollection(['flag' => 'imported'], submissions: self::submissionsWithImported()));
+        $byName = array_combine(array_map(static fn(Statistic $statistic): string => $statistic->getName(), $statistics), $statistics);
+
+        $this->assertSame(1.0, $byName['nb-submissions']->getValue());
+        $details = $byName[Statistic::NB_SUBMISSIONS_DETAILS]->getValue();
+        $this->assertSame(2, $details['nb-submitted-versions']);
+        $this->assertSame(1, $details['nb-imported-versions']);
+    }
+
+    /**
+     * Several flags ("flag[]=…"): the submissions of each of them, not an "Array to string conversion"
+     */
+    public function testSeveralFlagsAreCounted(): void
+    {
+        // a warning is an error, as in the debug mode of Symfony (500)
+        set_error_handler(static function (int $severity, string $message): never {
+            throw new \ErrorException($message, 0, $severity);
+        });
+
+        try {
+            $statistics = iterator_to_array($this->provideCollection(['indicator' => 'nb-submissions', 'flag' => ['imported', 'submitted']], submissions: self::submissionsWithImported()));
+            $single = iterator_to_array($this->provideCollection(['indicator' => 'nb-submissions', 'flag' => ['imported']], submissions: self::submissionsWithImported()));
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertEquals(3, $statistics[0]->getValue());
+        $this->assertEquals(1, $single[0]->getValue());
+    }
+
+    /**
+     * @return list<array<string, mixed>> dev (1): 2 submitted submissions, 1 imported
+     */
+    private static function submissionsWithImported(): array
+    {
+        return [
+            self::submission(1, 1, SubmissionFigures::OTHER),
+            self::submission(1, 2, SubmissionFigures::ACCEPTED),
+            self::submission(1, 3, SubmissionFigures::IMPORTED, 'imported'),
+        ];
+    }
+
     public function testNoPapersWithoutWithPapers(): void
     {
         $statistics = iterator_to_array($this->provideCollection(['indicator' => 'nb-submissions']));
@@ -524,10 +596,15 @@ class StatisticStateProviderTest extends TestCase
 
         $papersRepository = $this->createStub(PapersRepository::class);
         $papersRepository->method('getYearRange')->willReturn([]);
-        $papersRepository->method('getSubmissionPaperIds')->willReturn([1, 2, 3, 4]);
+        // the submission of paper N ends with the version 100 + N: 1 awaiting a decision, 2 and 3 accepted, 4 refused
+        $papersRepository->method('getSubmissions')->willReturn([
+            self::submission(1, 1, SubmissionFigures::OTHER),
+            self::submission(1, 2, SubmissionFigures::ACCEPTED),
+            self::submission(1, 3, SubmissionFigures::ACCEPTED),
+            self::submission(1, 4, SubmissionFigures::REFUSED),
+        ]);
         // DOCID of the latest version of paper N: 100 + N
         $papersRepository->method('getLatestDocIds')->willReturnCallback(static fn(array $paperIds): array => array_combine($paperIds, array_map(static fn(int $id): int => 100 + $id, $paperIds)));
-        $papersRepository->method('submissionsQuery')->willReturn($this->createQueryBuilder([], 4));
 
         $paperLogRepository = $this->createStub(PaperLogRepository::class);
         $paperLogRepository->method('getSubmissionMedianTimeDetails')->willReturn(['median' => 317.0, 'count' => 2]);
@@ -688,15 +765,21 @@ class StatisticStateProviderTest extends TestCase
     /**
      * @param array<int, string> $extraJournals active journals (rvid => code) besides dev (1) and epijinfo (3)
      */
-    private function provideCollection(array $filters, string $operationName = self::COLLECTION_OPERATION, array $extraJournals = []): iterable
+    private function provideCollection(array $filters, string $operationName = self::COLLECTION_OPERATION, array $extraJournals = [], ?array $submissions = null): iterable
     {
         $papersRepository = $this->createStub(PapersRepository::class);
         $papersRepository->method('getYearRange')->willReturn([]);
-        $papersRepository->method('countSubmissionsByJournal')->willReturn([1 => 10, 3 => 4]);
+        // dev (1): 10 submissions, 3 accepted and 1 refused; epijinfo (3): 4 submissions, 2 refused
+        $papersRepository->method('getSubmissions')->willReturn($submissions ?? array_merge(
+            array_map(static fn(int $paperId): array => self::submission(1, $paperId, match (true) {
+                $paperId <= 3 => SubmissionFigures::ACCEPTED,
+                $paperId === 4 => SubmissionFigures::REFUSED,
+                default => SubmissionFigures::OTHER,
+            }), range(1, 10)),
+            array_map(static fn(int $paperId): array => self::submission(3, $paperId, $paperId <= 22 ? SubmissionFigures::REFUSED : SubmissionFigures::OTHER), range(21, 24)),
+        ));
 
         $paperLogRepository = $this->createStub(PaperLogRepository::class);
-        $paperLogRepository->method('getAcceptedByJournal')->willReturn([1 => 3]);
-        $paperLogRepository->method('getRefusedByJournal')->willReturn([1 => 1, 3 => 2]);
         $paperLogRepository->method('getAcceptanceRate')->willReturnCallback(
             static fn(array $options): float => $options['acceptedTotal'] / ($options['acceptedTotal'] + $options['refusedTotal']) * 100
         );
@@ -789,6 +872,27 @@ class StatisticStateProviderTest extends TestCase
         $operation = new GetCollection(class: Statistic::class, name: self::EVALUATION_OPERATION, paginationMaximumItemsPerPage: $maxItemsPerPage);
 
         return $provider->provide($operation, [], ['operation' => $operation, 'filters' => ['pagination' => $pagination] + $filters, 'request' => $this->request]);
+    }
+
+    /**
+     * A submission as returned by PapersRepository::getSubmissions(), ending with the version 100 + PAPERID
+     *
+     * @return array<string, mixed>
+     */
+    private static function submission(int $rvId, int $paperId, string $category, string $flag = 'submitted'): array
+    {
+        return [
+            'rvid' => $rvId,
+            'paperid' => $paperId,
+            'docid' => 100 + $paperId,
+            'status' => 0,
+            'flag' => $flag,
+            'repoid' => 1,
+            'firstSubmissionDate' => '2025-01-01 10:00:00',
+            'acceptanceDate' => $category === SubmissionFigures::ACCEPTED ? '2025-03-01 10:00:00' : null,
+            'refusalDate' => $category === SubmissionFigures::REFUSED ? '2025-03-01 10:00:00' : null,
+            'category' => $category,
+        ];
     }
 
     private function createQueryBuilder(array $rows = [], int $scalar = 0): QueryBuilder

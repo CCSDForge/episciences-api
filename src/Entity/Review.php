@@ -161,7 +161,7 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Dashboard",
-                description: 'Dashboard of a journal: submissions, decisions, rates, delays and users (by year with `withDetails`). Follows the setting `displayStatistics` of the journal: hidden by default, public, or reserved for the editorial secretaries of the journal (JWT).',
+                description: 'Dashboard of a journal: submissions, decisions, rates, delays and users (by year with `withDetails`). The figures count submissions, as the list of papers of the journal: a refused paper that the journal accepts to receive again is a new submission, with the same paper identifier; each submission is counted in a single category, from its last decision, so that `nbSubmissions` = `nbImported` + `nbAccepted` + `nbRefused` + `nbOtherStatus` without year (by year, the accepted and refused ones are those decided in the year). Follows the setting `displayStatistics` of the journal: hidden by default, public, or reserved for the editorial secretaries of the journal (JWT).',
                 responses: [
                     '403' => new OpenApiResponse(description: 'Statistics of the journal hidden, or reserved for its editorial secretaries (`displayStatistics` setting)'),
                 ],
@@ -230,7 +230,7 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Total number of submissions",
-                description: "Total number of submissions of the journal, optionally by year and with details.",
+                description: "Total number of submissions of the journal, optionally by year and with details. A refused paper that the journal accepts to receive again is a new submission, with the same paper identifier (as in the list of papers of the journal); `status` and `flag` filter on the current status of each submission and on its origin (imported if all its versions are).",
                 parameters: [
                     new Parameter(
                         name: AppConstants::YEAR_PARAM,
@@ -460,7 +460,7 @@ class Review
     public const STATUS_DISABLED = 0;
     public const STATUS_ENABLED = 1;
     public const URI_TEMPLATE = '/journals/';
-    public const DASHBOARD_WITH_PAPERS_DESCRIPTION = 'Adds `papers` to the value, the papers counted by each figure (one DOCID by paper, its latest version; the delays: the papers of the average and median delays), computed with the same queries as the figures. For the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number by figure is in `hiddenPapers`';
+    public const DASHBOARD_WITH_PAPERS_DESCRIPTION = 'Adds `papers` to the value, the papers counted by each figure, computed with the same queries as the figures: one DOCID by submission (the version it ends with) for the submissions, imported, accepted, refused and other ones; one DOCID by paper (its latest version) for the others (the delays: the papers of the average and median delays). For the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number by figure is in `hiddenPapers`';
     public const DASHBOARD_YEAR_DESCRIPTION = 'Year of: submission for `nbSubmissions` and `nbImported`; decision (publication, acceptance, refusal) for `nbPublished`, `nbImportedPublished`, `nbAccepted`, `nbAcceptedNotYetPublished`, `nbRefused` and `rates`; publication or acceptance for the delays; both submission and decision for `total*SubmittedSameYear`. The users are not counted by year';
 
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
