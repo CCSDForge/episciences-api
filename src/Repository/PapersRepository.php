@@ -103,7 +103,6 @@ class PapersRepository extends ServiceEntityRepository
             $qb->setParameter('obsolete', Paper::STATUS_OBSOLETE);
         }
 
-
         $qb->andWhere('p.status != :deleted');
         $qb->setParameter('deleted', Paper::STATUS_DELETED);
 
@@ -129,52 +128,6 @@ class PapersRepository extends ServiceEntityRepository
 
         return $qb;
 
-    }
-
-    /**
-     * A previously submitted article that has been modified will be taken into account in the current submissions
-     * @param array|null $filters
-     * @param bool $excludeTmpVersions
-     * @param bool $excludeImportedPapers
-     * @return QueryBuilder
-     */
-    public function flexibleSubmissionsQueryDetails(?array $filters = null, bool $excludeTmpVersions = false, bool $excludeImportedPapers = false): QueryBuilder
-    {
-
-        $qb = $this
-            ->createQueryBuilder(self::PAPERS_ALIAS)
-            ->select('p.rvid, YEAR(p.when) AS year, p.repoid, p.status, count(distinct(p.paperid)) AS nbSubmissions ');
-
-        $qb = $this->addQueryFilters($qb, $filters);
-
-        if ($excludeTmpVersions) {
-            $qb
-                ->andWhere('p.repoid != :repoId')
-                ->setParameter('repoId', self::LOCAL_REPOSITORY);
-        }
-
-        if ($excludeImportedPapers) {
-            $qb
-                ->andWhere('p.flag = :flag')
-                ->setParameter('flag', self::AVAILABLE_FLAG_VALUES['submitted']);
-        }
-
-        $qb->andWhere('p.status != :obsolete');
-        $qb->setParameter('obsolete', Paper::STATUS_OBSOLETE);
-
-        $qb->andWhere('p.status != :deleted');
-        $qb->setParameter('deleted', Paper::STATUS_DELETED);
-
-        $qb->orderBy('year', \SortDirection::Ascending);
-        $qb->addOrderBy('p.rvid', \SortDirection::Ascending);
-        $qb->addOrderBy('p.status', \SortDirection::Descending);
-        $qb->groupBy('p.rvid');
-        $qb->groupBy('p.paperid');
-        $qb->groupBy('year');
-        $qb->addGroupBy('p.repoid');
-        $qb->addGroupBy('p.status');
-
-        return $qb;
     }
 
     /**
@@ -250,70 +203,6 @@ class PapersRepository extends ServiceEntityRepository
             ->setParameter($alias, $filter === AppConstants::START_AFTER_DATE ? $value : array_map('intval', (array)$value));
     }
 
-    /**
-     * Year of the first submission of each paper (the oldest submission date of its versions)
-     *
-     * @param int[] $paperIds
-     * @return array<int, int> year indexed by PAPERID
-     */
-    public function getFirstSubmissionYears(array $paperIds): array
-    {
-        $years = [];
-
-        foreach (array_chunk(array_values(array_unique($paperIds)), 1000) as $chunk) {
-            $rows = $this->createQueryBuilder(self::PAPERS_ALIAS)
-                ->select(sprintf('%1$s.paperid AS paperid, YEAR(MIN(%1$s.submissionDate)) AS year', self::PAPERS_ALIAS))
-                ->where(sprintf('%s.paperid IN (:paperIds)', self::PAPERS_ALIAS))
-                ->setParameter('paperIds', $chunk)
-                ->groupBy('paperid')
-                ->getQuery()
-                ->getScalarResult();
-
-            foreach ($rows as $row) {
-                $years[(int)$row['paperid']] = (int)$row['year'];
-            }
-        }
-
-        return $years;
-    }
-
-    /**
-     * @param int[] $paperIds
-     * @return array<int, int> number of papers by year of first submission
-     */
-    private function countByFirstSubmissionYear(array $paperIds): array
-    {
-        $totals = [];
-
-        foreach ($this->getFirstSubmissionYears($paperIds) as $year) {
-            $totals[$year] = ($totals[$year] ?? 0) + 1;
-        }
-
-        ksort($totals);
-
-        return $totals;
-    }
-
-    public function getSubmissionYearRange(?array $filters = null, ?string $flag = null): array
-    {
-        $alias = self::PAPERS_ALIAS;
-        $qb = $this->createQueryBuilder(self::PAPERS_ALIAS);
-        $qb->select("DISTINCT $alias.paperid AS paperid");
-        $qb = $this->addQueryFilters($qb, $filters);
-
-        if ($flag && array_key_exists($flag, self::AVAILABLE_FLAG_VALUES)) {
-
-            $qb
-                ->andWhere("$alias.flag = :flag")
-                ->setParameter('flag', self::AVAILABLE_FLAG_VALUES[$flag]);
-        }
-
-        // years of first submission of the papers
-        $years = array_keys($this->countByFirstSubmissionYear(array_map('intval', array_column($qb->getQuery()->getScalarResult(), 'paperid'))));
-
-        return array_values(array_filter($years, static fn($value): bool => $value >= Stats::REF_YEAR));
-    }
-
     public function getAvailableRepositories(?array $filters = null, $strict = true): array
     {
 
@@ -324,9 +213,8 @@ class PapersRepository extends ServiceEntityRepository
         $qb->select("$alias.repoid");
 
         $qb = $this->addQueryFilters($qb, $filters);
-        // the local repository holds the temporary versions, not a submission: see countSubmissionsByYearAndRepository()
+        // the local repository holds the temporary versions, not a submission
         $qb->andWhere("$alias.repoid != :localRepository")->setParameter('localRepository', self::LOCAL_REPOSITORY);
-
 
         $qb->groupBy("$alias.repoid");
 
@@ -349,7 +237,6 @@ class PapersRepository extends ServiceEntityRepository
      * @param int|null $rvId
      * @return QueryBuilder
      */
-
 
     public function getTotalArticlesBySectionOrVolumeQuery(
         string    $resourceClass = Section::class,
@@ -390,7 +277,6 @@ class PapersRepository extends ServiceEntityRepository
                 ->setParameter('rvid', $rvId);
         }
 
-
         if (!$withoutIdentifier) { // vId(s) or sId(s) en paramètres
 
             if (is_int($identifiers)) {
@@ -422,7 +308,6 @@ class PapersRepository extends ServiceEntityRepository
         return $qb;
     }
 
-
     public function getTotalArticleBySectionOrVolume(string $resourceClass = Section::class, int $status = Paper::STATUS_PUBLISHED, int|array|null $identifiers = null, ?int $rvId = null): array|float|bool|int|string|null
     {
 
@@ -441,7 +326,6 @@ class PapersRepository extends ServiceEntityRepository
 
         $currentRvId = null;
         $total = [];
-
 
         foreach ($result as $values) {
 
@@ -462,7 +346,6 @@ class PapersRepository extends ServiceEntityRepository
         $qb->select("DISTINCT JSON_UNQUOTE(JSON_EXTRACT(p.type, '$.title')) AS type");
         $qb->andWhere("JSON_EXTRACT(p.type, '$.title') IS NOT NULL");
         $this->andWhere($qb, $filters, $strict);
-
 
         $result = array_values($qb->getQuery()->getArrayResult());
 
@@ -492,7 +375,6 @@ class PapersRepository extends ServiceEntityRepository
         return $this->arrayCleaner(array_column(array_values($qb->getQuery()->getResult()), 'year'));
 
     }
-
 
     private function andWhere(QueryBuilder $qb, array $filters = [], bool $strict = true): QueryBuilder
     {
@@ -534,7 +416,6 @@ class PapersRepository extends ServiceEntityRepository
             }
 
         }
-
 
         return $qb;
     }
@@ -630,182 +511,6 @@ class PapersRepository extends ServiceEntityRepository
     }
 
     /**
-     * Number of imported submissions by year of submission
-     * @param array<string, mixed> $filters see submissionsQuery()
-     * @return array<int, int> year => number of imported submissions
-     */
-    public function getImportedByYear(array $filters = []): array
-    {
-        return $this->countByFirstSubmissionYear($this->getSubmissionPaperIds($filters, self::AVAILABLE_FLAG_VALUES['imported']));
-    }
-
-    /**
-     * Same count as submissionsQuery(), by year of first submission of the papers (two queries for all the years)
-     *
-     * @param array<string, mixed> $filters see submissionsQuery()
-     * @return array<int, int> number of submissions indexed by year
-     */
-    public function countSubmissionsByYear(array $filters = []): array
-    {
-        return $this->countByFirstSubmissionYear($this->getSubmissionPaperIds($filters));
-    }
-
-    /**
-     * Same count as submissionsQuery(), for each journal: one query for all the journals
-     *
-     * @param array<string, mixed> $filters see submissionsQuery()
-     * @return array<int, int> number of submissions indexed by journal identifier (rvid); the journals without submission are not returned
-     */
-    public function countSubmissionsByJournal(array $filters = []): array
-    {
-        $qb = $this->submissionsQuery($filters)
-            ->select(sprintf('%1$s.rvid AS rvid, COUNT(DISTINCT %1$s.paperid) AS total', self::PAPERS_ALIAS))
-            ->groupBy('rvid');
-
-        $totals = [];
-
-        foreach ($qb->getQuery()->getArrayResult() as $row) {
-            $totals[(int)$row['rvid']] = (int)$row['total'];
-        }
-
-        return $totals;
-    }
-
-    /**
-     * Same count as submissionsQuery(), by year of first submission and by repository (two queries for all the years);
-     * the temporary versions (local repository) are ignored, a paper is counted in the repository of its first other version
-     *
-     * @param array<string, mixed> $filters see submissionsQuery()
-     * @return array<int, array<int, int>> number of submissions indexed by year, then by repository identifier
-     */
-    public function countSubmissionsByYearAndRepository(array $filters = []): array
-    {
-        // the local repository holds the temporary versions: a paper is counted in the repository of its first other version
-        $rows = $this->submissionsQuery($filters)
-            ->select(sprintf('%1$s.paperid AS paperid, %1$s.docid AS docid, %1$s.repoid AS repoid', self::PAPERS_ALIAS))
-            ->andWhere(sprintf('%s.repoid != :localRepository', self::PAPERS_ALIAS))
-            ->setParameter('localRepository', self::LOCAL_REPOSITORY)
-            ->getQuery()
-            ->getScalarResult();
-
-        $firstVersions = []; // paperid => [docid, repoid]
-
-        foreach ($rows as $row) {
-            $paperId = (int)$row['paperid'];
-
-            if (!isset($firstVersions[$paperId]) || (int)$row['docid'] < $firstVersions[$paperId][0]) {
-                $firstVersions[$paperId] = [(int)$row['docid'], (int)$row['repoid']];
-            }
-        }
-
-        $totals = [];
-
-        foreach ($this->getFirstSubmissionYears(array_keys($firstVersions)) as $paperId => $year) {
-            $repoId = $firstVersions[$paperId][1];
-            $totals[$year][$repoId] = ($totals[$year][$repoId] ?? 0) + 1;
-        }
-
-        return $totals;
-    }
-
-    /**
-     * Numbers of submissions, imported and submitted papers in a single query (GET /api/statistics/).
-     *
-     * Same results as the three former queries: the journal, year and date filters apply to the three
-     * numbers; the "status" filter to the total and the imported papers; the "flag" filter to the total
-     * only (the submitted papers ignore both, see getSubmissionsWithoutImported()).
-     *
-     * @param array<string, mixed> $filters filters of submissionsQuery() (without the "is" level)
-     *
-     * @return array{total: int, imported: int, submitted: int}
-     */
-    public function countSubmissionsByFlag(array $filters = []): array
-    {
-        $result = $this->countSubmissionsByFlagQuery($filters)->getQuery()->getSingleResult();
-
-        return ['total' => (int)$result['total'], 'imported' => (int)$result['imported'], 'submitted' => (int)$result['submitted']];
-    }
-
-    /**
-     * @param array<string, mixed> $filters see countSubmissionsByFlag()
-     */
-    public function countSubmissionsByFlagQuery(array $filters = []): QueryBuilder
-    {
-        $alias = self::PAPERS_ALIAS;
-        $common = array_intersect_key($filters, array_flip(['rvid', AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE]));
-        $qb = $this->submissionsQuery(['is' => $common]);
-
-        $totalConditions = [];
-        $importedConditions = [sprintf('%s.flag = :importedFlag', $alias)];
-        $qb->setParameter('importedFlag', self::AVAILABLE_FLAG_VALUES['imported']);
-
-        if (!empty($filters['status'])) {
-            $statusCondition = sprintf('%s.status IN (:statusFilter)', $alias);
-            $totalConditions[] = $statusCondition;
-            $importedConditions[] = $statusCondition;
-            $qb->setParameter('statusFilter', (array)$filters['status']);
-        }
-
-        if (!empty($filters['flag'])) {
-            // one or several flags (flag[]=…)
-            $totalConditions[] = sprintf('%s.flag IN (:flagFilter)', $alias);
-            $qb->setParameter('flagFilter', (array)$filters['flag']);
-        }
-
-        $countIf = static fn(array $conditions): string => $conditions === []
-            ? sprintf('COUNT(DISTINCT %s.paperid)', $alias)
-            : sprintf('COUNT(DISTINCT CASE WHEN %s THEN %s.paperid ELSE NULL END)', implode(' AND ', $conditions), $alias);
-
-        $qb
-            ->select(sprintf('%s AS total', $countIf($totalConditions)))
-            ->addSelect(sprintf('%s AS imported', $countIf($importedConditions)))
-            ->addSelect(sprintf('COUNT(DISTINCT CASE WHEN %1$s.flag = :submittedFlag THEN %1$s.paperid ELSE NULL END) AS submitted', $alias))
-            ->setParameter('submittedFlag', self::AVAILABLE_FLAG_VALUES['submitted']);
-
-        return $qb;
-    }
-
-    public function getSubmissionsWithoutImported(?int $rvId = null, ?string $startAfterDate = null, array|string|null $years = null): int
-    {
-
-        $withoutImportedFilters = ['rvid' => $rvId, 'startAfterDate' => $startAfterDate, 'flag' => self::AVAILABLE_FLAG_VALUES['submitted'], 'year' => $years];
-        try {
-            return (int)$this->submissionsQuery(['is' => $withoutImportedFilters])->getQuery()->getSingleScalarResult();
-        } catch (NoResultException|NonUniqueResultException $e) {
-            $this->logger->critical($e->getMessage());
-            return 0;
-        }
-
-    }
-
-
-    /**
-     * Submissions still awaiting an editorial decision: neither published, accepted nor refused (decisions read from the history,
-     * as PaperLogRepository::acceptedQuery and refusedQuery, so that an article is not counted twice), deleted nor removed;
-     * an abandoned article is only paused, so it is still awaiting a decision. Counted by article (PAPERID, common to all its versions), imported articles excluded.
-     * The year and the start date apply to the submission date.
-     */
-    public function getSubmissionsAwaitingDecision(?int $rvId = null, ?string $startAfterDate = null, array|string|null $years = null): int
-    {
-        try {
-            return (int)$this->awaitingDecisionQuery($rvId, $startAfterDate, $years)->getQuery()->getSingleScalarResult();
-        } catch (NoResultException|NonUniqueResultException $e) {
-            $this->logger->critical($e->getMessage());
-            return 0;
-        }
-    }
-
-    /**
-     * Same count as getSubmissionsAwaitingDecision(), by year of first submission (two queries for all the years)
-     *
-     * @return array<int, int> indexed by year; the years without submission awaiting a decision are not returned
-     */
-    public function getSubmissionsAwaitingDecisionByYear(?int $rvId = null, ?string $startAfterDate = null): array
-    {
-        return $this->countByFirstSubmissionYear($this->getSubmissionsAwaitingDecisionPaperIds($rvId, $startAfterDate));
-    }
-
-    /**
      * Identifiers (PAPERID) of the papers counted by submissionsQuery()
      *
      * @param array<string, mixed> $filters see submissionsQuery()
@@ -844,16 +549,6 @@ class PapersRepository extends ServiceEntityRepository
     }
 
     /**
-     * Identifiers (PAPERID) of the papers counted by getSubmissionsAwaitingDecision()
-     *
-     * @return list<int> sorted
-     */
-    public function getSubmissionsAwaitingDecisionPaperIds(?int $rvId = null, ?string $startAfterDate = null, array|string|null $years = null): array
-    {
-        return $this->paperIds($this->awaitingDecisionQuery($rvId, $startAfterDate, $years));
-    }
-
-    /**
      * @return list<int> sorted
      */
     private function paperIds(QueryBuilder $qb): array
@@ -861,25 +556,6 @@ class PapersRepository extends ServiceEntityRepository
         $qb->select(sprintf('DISTINCT %s.paperid AS paperid', self::PAPERS_ALIAS))->orderBy('paperid');
 
         return array_map('intval', array_column($qb->getQuery()->getScalarResult(), 'paperid'));
-    }
-
-    private function awaitingDecisionQuery(?int $rvId, ?string $startAfterDate, array|string|null $years = null): QueryBuilder
-    {
-        $filters = ['rvid' => $rvId, 'startAfterDate' => $startAfterDate, 'flag' => self::AVAILABLE_FLAG_VALUES['submitted'], 'year' => $years];
-
-        // deleted and removed papers are already excluded
-        $qb = $this->submissionsQuery(['is' => $filters], withoutObsolete: true)
-            ->andWhere('p.status NOT IN (:decidedStatuses)')
-            ->setParameter('decidedStatuses', [Paper::STATUS_PUBLISHED, Paper::STATUS_REFUSED]);
-
-        $decision = $this->getEntityManager()->createQueryBuilder()
-            ->select('decisionLog.logid')
-            ->from(PaperLog::class, 'decisionLog')
-            ->where('decisionLog.paperid = p.paperid')
-            ->andWhere('decisionLog.status IN (:decisionStatuses)');
-
-        return $qb->andWhere($qb->expr()->not($qb->expr()->exists($decision->getDQL())))
-            ->setParameter('decisionStatuses', [...PaperLogRepository::ACCEPTED_STATUSES, PaperLogRepository::REFUSED_STATUS]);
     }
 
     /**
@@ -1018,7 +694,6 @@ class PapersRepository extends ServiceEntityRepository
      * @param int $docId
      * @return Paper|null
      */
-
 
     public function fetchPartialByDocId(int $docId): ?Paper
     {

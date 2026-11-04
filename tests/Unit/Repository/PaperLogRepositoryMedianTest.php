@@ -43,7 +43,7 @@ class PaperLogRepositoryMedianTest extends TestCase
     {
         $repository = $this->createRepository(Paper::STATUS_STRICTLY_ACCEPTED);
 
-        $this->assertSame(10, $repository->getSubmissionMedianTimeByStatusQuery(null, [], null, 'median-submission-acceptance', 'day'));
+        $this->assertSame(['median' => 10, 'count' => 5], $repository->getSubmissionMedianTimeDetails(null, [], null, 'median-submission-acceptance', 'day'));
     }
 
     private function createRepository(int $expectedStatus = Paper::STATUS_PUBLISHED): PaperLogRepository

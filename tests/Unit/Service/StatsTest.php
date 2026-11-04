@@ -272,7 +272,6 @@ class StatsTest extends TestCase
     public function testDashboardPaperIdsWithoutImportedPublishedWithAStartDateOnly(): void
     {
         $this->papersRepo->method('getSubmissionPaperIds')->willReturn([]);
-        $this->papersRepo->method('getSubmissionsAwaitingDecisionPaperIds')->willReturn([]);
         $this->paperLogRepo->method('getPaperIds')->willReturn([]);
         $this->paperLogRepo->method('getSubmissionDelayPaperIds')->willReturn([]);
 

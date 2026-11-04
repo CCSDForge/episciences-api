@@ -19,7 +19,6 @@ use App\Resource\SubmissionOutput;
 use App\Resource\SubmissionPublicationDelayOutput;
 use App\Resource\UsersStatsOutput;
 use App\Traits\ToolsTrait;
-use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\NoResultException;
@@ -75,7 +74,7 @@ class Stats
         // submissions = imported + accepted + refused + other, as the list of papers of the journal in Episciences.
         $allSubmissions = $paperRepo->getSubmissions($rvId ? (int)$rvId : null, $startAfterDate);
 
-        $submissions = $this->getSubmissionsStat($filters, false, $allSubmissions);
+        $submissions = $this->getSubmissionsStat($filters, $allSubmissions);
         $nbSubmissions = $submissions->getValue(); // imported submissions included
 
         if (!$nbSubmissions) {
@@ -485,12 +484,11 @@ class Stats
      * its versions are).
      *
      * @param array<string, mixed> $filters            Request filters, for instance ['is' => ['rvid' => int, 'submissionDate' => ..., 'startAfterDate' => string, AppConstants::WITH_DETAILS => bool]].
-     * @param bool                 $excludeTmpVersions Unused: the temporary versions are not submissions.
      * @param list<array<string, mixed>>|null $submissions the submissions of the journal (PapersRepository::getSubmissions()), already fetched with the same journal and start date
      *
      * @return SubmissionOutput
      */
-    public function getSubmissionsStat(array $filters = [], bool $excludeTmpVersions = false, ?array $submissions = null): SubmissionOutput
+    public function getSubmissionsStat(array $filters = [], ?array $submissions = null): SubmissionOutput
     {
 
         $rvId = $filters['is']['rvid'] ?? null;
