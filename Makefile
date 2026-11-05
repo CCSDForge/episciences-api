@@ -25,7 +25,7 @@ TEST_DB_PORT ?= 33306
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install test test-unit test-coverage cov test-file test-db validate clean phpstan rector local-rector check docker-up docker-up-ci docker-down docker-down-ci docker-restart docker-logs docker-status docker-shell docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer docker-composer-update docker-validate openapi-lint setup-help deploy deploy-branch deploy-tag
+.PHONY: help check-prereqs install test test-unit test-coverage cov test-file test-db validate clean phpstan rector local-rector check up up-ci down down-ci restart logs status enter-container-php docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer docker-composer-update docker-validate openapi-lint setup-help deploy deploy-branch deploy-tag
 
 # Help target - displays all available commands
 help:
@@ -53,14 +53,14 @@ help:
 	@echo "  $(BOLD)clean$(NC)             Clean cache and temporary files"
 	@echo ""
 	@echo "$(BLUE)Docker Development Commands:$(NC)"
-	@echo "  $(BOLD)docker-up$(NC)         Start all containers (detached)"
-	@echo "  $(BOLD)docker-up-ci$(NC)      Start containers with CI database (standalone)"
-	@echo "  $(BOLD)docker-down$(NC)       Stop all containers"
-	@echo "  $(BOLD)docker-down-ci$(NC)    Stop CI containers with volumes cleanup"
-	@echo "  $(BOLD)docker-restart$(NC)    Restart all containers"
-	@echo "  $(BOLD)docker-logs$(NC)       Follow container logs"
-	@echo "  $(BOLD)docker-status$(NC)     Show container status"
-	@echo "  $(BOLD)docker-shell$(NC)      Enter PHP container shell"
+	@echo "  $(BOLD)up$(NC)                Start all containers (detached)"
+	@echo "  $(BOLD)up-ci$(NC)             Start containers with CI database (standalone)"
+	@echo "  $(BOLD)down$(NC)              Stop all containers"
+	@echo "  $(BOLD)down-ci$(NC)           Stop CI containers with volumes cleanup"
+	@echo "  $(BOLD)restart$(NC)           Restart all containers"
+	@echo "  $(BOLD)logs$(NC)              Follow container logs"
+	@echo "  $(BOLD)status$(NC)            Show container status"
+	@echo "  $(BOLD)enter-container-php$(NC) Enter PHP container shell"
 	@echo "  $(BOLD)docker-mysql$(NC)      Enter MySQL container shell"
 	@echo "  $(BOLD)setup-help$(NC)        Show detailed setup instructions"
 	@echo ""
@@ -88,7 +88,7 @@ help:
 	@echo "  - docker-compose.yml file configured"
 	@echo "  - /etc/hosts configured (see 'make setup-help')"
 	@echo ""
-	@echo "Run '$(BOLD)make check-prereqs$(NC)' to verify local setup or '$(BOLD)make docker-status$(NC)' to check Docker."
+	@echo "Run '$(BOLD)make check-prereqs$(NC)' to verify local setup or '$(BOLD)make status$(NC)' to check Docker."
 
 # Check all prerequisites
 check-prereqs:
@@ -281,7 +281,7 @@ clean:
 # ===========================
 
 # Start all containers in detached mode
-docker-up:
+up:
 	@echo "$(BOLD)Starting Docker containers...$(NC)"
 	@if [ -z "$(DOCKER_COMPOSE)" ]; then \
 		echo "$(RED)✗ Docker Compose not found$(NC)"; \
@@ -307,7 +307,7 @@ docker-up:
 	@echo "  Run '$(BOLD)make setup-help$(NC)' for detailed setup instructions."
 
 # Start containers with CI database (standalone)
-docker-up-ci:
+up-ci:
 	@echo "$(BOLD)Starting Docker containers (CI mode with standalone database)...$(NC)"
 	@if [ -z "$(DOCKER_COMPOSE)" ]; then \
 		echo "$(RED)✗ Docker Compose not found$(NC)"; \
@@ -326,19 +326,19 @@ docker-up-ci:
 	@echo "  $(BLUE)HTTP direct:$(NC)  http://api-dev.episciences.org:8080"
 
 # Stop all containers
-docker-down:
+down:
 	@echo "$(BOLD)Stopping Docker containers...$(NC)"
 	$(DOCKER_COMPOSE) down
 	@echo "$(GREEN)✓ Containers stopped$(NC)"
 
 # Stop CI containers with volume cleanup
-docker-down-ci:
+down-ci:
 	@echo "$(BOLD)Stopping Docker containers (CI mode)...$(NC)"
 	$(DOCKER_COMPOSE) -f docker-compose.yml -f docker-compose.ci.yml down -v
 	@echo "$(GREEN)✓ CI containers stopped and volumes cleaned$(NC)"
 
 # Restart all containers
-docker-restart:
+restart:
 	@echo "$(BOLD)Restarting Docker containers...$(NC)"
 	$(DOCKER_COMPOSE) restart
 	@echo "$(GREEN)✓ Containers restarted$(NC)"
@@ -352,12 +352,12 @@ docker-restart:
 	@echo "  $(BOLD)127.0.0.1    api-dev.episciences.org$(NC)"
 
 # Show container logs
-docker-logs:
+logs:
 	@echo "$(BOLD)Following container logs...$(NC)"
 	$(DOCKER_COMPOSE) logs -f
 
 # Show container status
-docker-status:
+status:
 	@echo "$(BOLD)Docker Container Status:$(NC)"
 	@echo ""
 	@if command -v docker >/dev/null 2>&1; then \
@@ -384,7 +384,7 @@ docker-status:
 	fi
 
 # Enter PHP container shell
-docker-shell:
+enter-container-php:
 	@echo "$(BOLD)Entering PHP container shell...$(NC)"
 	$(DOCKER_COMPOSE) exec php bash
 
@@ -498,7 +498,7 @@ setup-help:
 	@echo "   • $(BOLD)Windows:$(NC)     Run Notepad as Administrator and open C:\\Windows\\System32\\drivers\\etc\\hosts"
 	@echo ""
 	@echo "$(BLUE)2. Start the application$(NC)"
-	@echo "   Run: $(BOLD)make docker-up$(NC)"
+	@echo "   Run: $(BOLD)make up$(NC)"
 	@echo ""
 	@echo "$(BLUE)3. Start episciences-infrastructure first$(NC)"
 	@echo "   $(BOLD)cd ../episciences-infrastructure && make up$(NC)"
@@ -512,10 +512,10 @@ setup-help:
 	@echo "   • Accept the browser security warning on first access"
 	@echo ""
 	@echo "$(BLUE)4. Other useful commands$(NC)"
-	@echo "   • $(BOLD)make docker-restart$(NC)  - Restart containers"
-	@echo "   • $(BOLD)make docker-logs$(NC)     - View container logs"
-	@echo "   • $(BOLD)make docker-status$(NC)   - Check container status"
-	@echo "   • $(BOLD)make docker-shell$(NC)    - Enter PHP container"
+	@echo "   • $(BOLD)make restart$(NC)              - Restart containers"
+	@echo "   • $(BOLD)make logs$(NC)                 - View container logs"
+	@echo "   • $(BOLD)make status$(NC)               - Check container status"
+	@echo "   • $(BOLD)make enter-container-php$(NC)  - Enter PHP container"
 	@echo ""
 	@echo "$(GREEN)✓ Happy coding! 🎉$(NC)"
 

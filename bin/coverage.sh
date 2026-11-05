@@ -19,7 +19,7 @@ else
     # Check if Xdebug or PCOV is available
     if ! php8.2 -m | grep -qE "xdebug|pcov"; then
         echo "Error: Neither Xdebug nor PCOV detected in local PHP (php8.2)."
-        echo "Please start Docker with 'make docker-up' or install Xdebug locally."
+        echo "Please start Docker with 'make up' or install Xdebug locally."
         exit 1
     fi
     # Run tests with coverage

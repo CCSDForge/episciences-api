@@ -93,7 +93,7 @@ Before starting, ensure you have the following installed:
 
 2. **Start the development environment:**
    ```bash
-   make docker-up
+   make up
    ```
    This command will:
    - Automatically generate SSL certificates for HTTPS development
@@ -118,14 +118,14 @@ Run `make help` to see all available commands. Key commands for development:
 
 ```bash
 # Environment Management
-make docker-up         # Start all containers (auto-generates SSL certificates)
-make docker-down       # Stop all containers
-make docker-restart    # Restart all containers
-make docker-status     # Check container status
-make docker-logs       # Follow container logs
+make up                # Start all containers (auto-generates SSL certificates)
+make down              # Stop all containers
+make restart           # Restart all containers
+make status            # Check container status
+make logs              # Follow container logs
 
 # Development Tools
-make docker-shell      # Enter PHP container for debugging
+make enter-container-php # Enter PHP container for debugging
 make docker-mysql      # Access MySQL database
 make docker-test       # Run PHPUnit tests in container
 make docker-test-coverage # Run tests with HTML coverage in container
@@ -150,7 +150,7 @@ The development environment uses HTTPS with a local domain for production-like c
 
 #### SSL Certificate Management
 
-SSL certificates are automatically generated when you run `make docker-up`. Key points:
+SSL certificates are automatically generated when you run `make up`. Key points:
 
 - Certificates are **not committed** to the repository for security
 - Each developer generates their own certificates locally
@@ -227,11 +227,11 @@ make docker-mysql
 
 **Common Issues:**
 
-1. **"Connection refused" error:** Check if containers are running with `make docker-status`
+1. **"Connection refused" error:** Check if containers are running with `make status`
 
 2. **"SSL certificate error":** This is expected for self-signed certificates - proceed past the browser warning
 
-3. **"Port already in use":** Stop existing containers with `make docker-down` or check for conflicting services on ports 8080, 8443, 3306
+3. **"Port already in use":** Stop existing containers with `make down` or check for conflicting services on ports 8080, 8443, 3306
 
 4. **Permission issues:** Ensure Docker has proper permissions and your user is in the docker group
 
@@ -240,5 +240,5 @@ make docker-mysql
 **Getting Help:**
 
 - Run `make help` to see all available commands
-- Check container logs with `make docker-logs`  
+- Check container logs with `make logs`  
 - Verify setup with `make check-prereqs`

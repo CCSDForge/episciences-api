@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a kernel test (`tests/Functional/Wiring/DelegatedTokenRoutesTest.php`, without database) checking that the routes accepting the delegated token of Episciences exist, on their expected path.
 
 ### Changed
+- Makefile: the Docker lifecycle targets are named as in the other Episciences applications: `make up`, `up-ci`, `down`, `down-ci`, `restart`, `logs`, `status` and `enter-container-php` replace `make docker-up`, `docker-up-ci`, `docker-down`, `docker-down-ci`, `docker-restart`, `docker-logs`, `docker-status` and `docker-shell`.
 - Updated the dependencies (Symfony 7.4.22, API Platform 4.18).
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): the average delays (`submissionAcceptanceTime`, `submissionPublicationTime`) are now the mean of the delays of the articles, as the median delays, instead of a mean of the yearly averages (and, without journal, of the averages of each journal), which gave the same weight to a year (or a journal) of a few articles as to one of many. The figure changes when the articles are spread over several years or journals; the average of each year in `details` is unchanged.
 - The Doctrine mapping of `USER_INVITATION` and `USER_ASSIGNMENT` declares their indexes of Episciences used by the statistics of the evaluation (`AID_SENDING_DATE`, `INVITATION_ID`), and no longer two `TOKEN` indexes missing from the database. No migration: the indexes already exist.
