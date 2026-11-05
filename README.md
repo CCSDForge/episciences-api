@@ -119,6 +119,7 @@ Run `make help` to see all available commands. Key commands for development:
 ```bash
 # Environment Management
 make up                # Start all containers (auto-generates SSL certificates)
+make up-xdebug         # Start all containers with Xdebug step-debugging (port 9003)
 make down              # Stop all containers
 make restart           # Restart all containers
 make status            # Check container status

@@ -1,0 +1,16 @@
+# Opt-in override that turns Xdebug step-debugging on for the php service.
+# The image ships with xdebug.mode=off so that every PHP process (tests,
+# console) runs without Xdebug overhead.
+#
+# Use when you need to step-debug (map /var/www/html to the project root in the IDE):
+#   make up-xdebug
+#
+# These keys are merged with the base file (compose merges by key, the later
+# file wins).
+services:
+  php:
+    environment:
+      - XDEBUG_MODE=debug
+      - XDEBUG_CONFIG=client_host=host.docker.internal client_port=9003 start_with_request=yes
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

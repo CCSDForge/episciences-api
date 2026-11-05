@@ -12,6 +12,24 @@ NC=\033[0m # No Color
 # Docker Compose command detection
 DOCKER_COMPOSE := $(shell if command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; elif docker compose version >/dev/null 2>&1; then echo "docker compose"; else echo ""; fi)
 
+# Compose files of make up-xdebug: an explicit -f list disables the automatic loading
+# of the local docker-compose.override.yml, so it is added back when it exists
+XDEBUG_COMPOSE_FILES := -f docker-compose.yml $(if $(wildcard docker-compose.override.yml),-f docker-compose.override.yml) -f docker-compose.xdebug.yml
+
+# Application URLs and setup reminder printed by make up and make up-xdebug
+define PRINT_UP_INFO
+	@echo ""
+	@echo "$(BOLD)🌐 Application URLs:$(NC)"
+	@echo "  $(BLUE)HTTPS:$(NC) https://api-dev.episciences.org/ (via Traefik)"
+	@echo "  $(BLUE)HTTP direct:$(NC)  http://api-dev.episciences.org:8080"
+	@echo ""
+	@echo "$(YELLOW)⚠️  Setup Required:$(NC)"
+	@echo "  Add this line to your $(BOLD)/etc/hosts$(NC) file:"
+	@echo "  $(BOLD)127.0.0.1    api-dev.episciences.org$(NC)"
+	@echo ""
+	@echo "  Run '$(BOLD)make setup-help$(NC)' for detailed setup instructions."
+endef
+
 # OpenAPI lint (make openapi-lint)
 OPENAPI_SPEC ?= var/openapi.json
 REDOCLY_CLI ?= @redocly/cli@2.66.0
@@ -25,7 +43,7 @@ TEST_DB_PORT ?= 33306
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help check-prereqs install test test-unit test-coverage cov test-file test-db validate clean phpstan rector local-rector check up up-ci down down-ci restart logs status enter-container-php docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer docker-composer-update docker-validate openapi-lint setup-help deploy deploy-branch deploy-tag
+.PHONY: help check-prereqs install test test-unit test-coverage cov test-file test-db validate clean phpstan rector local-rector check up up-xdebug up-ci down down-ci restart logs status enter-container-php docker-mysql docker-test docker-test-coverage docker-test-unit docker-install docker-install-ci docker-composer docker-composer-update docker-validate openapi-lint setup-help deploy deploy-branch deploy-tag
 
 # Help target - displays all available commands
 help:
@@ -54,6 +72,7 @@ help:
 	@echo ""
 	@echo "$(BLUE)Docker Development Commands:$(NC)"
 	@echo "  $(BOLD)up$(NC)                Start all containers (detached)"
+	@echo "  $(BOLD)up-xdebug$(NC)         Start all containers with Xdebug step-debugging enabled"
 	@echo "  $(BOLD)up-ci$(NC)             Start containers with CI database (standalone)"
 	@echo "  $(BOLD)down$(NC)              Stop all containers"
 	@echo "  $(BOLD)down-ci$(NC)           Stop CI containers with volumes cleanup"
@@ -295,16 +314,22 @@ up:
 	fi
 	$(DOCKER_COMPOSE) up -d
 	@echo "$(GREEN)✓ Containers started$(NC)"
+	$(PRINT_UP_INFO)
+
+# Start all containers with Xdebug step-debugging enabled (docker-compose.xdebug.yml)
+up-xdebug:
+	@echo "$(BOLD)Starting Docker containers with Xdebug enabled...$(NC)"
+	@if [ -z "$(DOCKER_COMPOSE)" ]; then \
+		echo "$(RED)✗ Docker Compose not found$(NC)"; \
+		echo "  Install Docker Compose: https://docs.docker.com/compose/install/"; \
+		exit 1; \
+	fi
+	$(DOCKER_COMPOSE) $(XDEBUG_COMPOSE_FILES) up -d
+	@echo "$(GREEN)✓ Containers started$(NC)"
+	$(PRINT_UP_INFO)
 	@echo ""
-	@echo "$(BOLD)🌐 Application URLs:$(NC)"
-	@echo "  $(BLUE)HTTPS:$(NC) https://api-dev.episciences.org/ (via Traefik)"
-	@echo "  $(BLUE)HTTP direct:$(NC)  http://api-dev.episciences.org:8080"
-	@echo ""
-	@echo "$(YELLOW)⚠️  Setup Required:$(NC)"
-	@echo "  Add this line to your $(BOLD)/etc/hosts$(NC) file:"
-	@echo "  $(BOLD)127.0.0.1    api-dev.episciences.org$(NC)"
-	@echo ""
-	@echo "  Run '$(BOLD)make setup-help$(NC)' for detailed setup instructions."
+	@echo "🐞 Xdebug is active: listen on port 9003 in your IDE (path mapping: /var/www/html → project root)."
+	@echo "  Run '$(BOLD)make up$(NC)' to start again without Xdebug."
 
 # Start containers with CI database (standalone)
 up-ci:
