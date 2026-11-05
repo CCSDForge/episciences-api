@@ -9,8 +9,14 @@
 # file wins).
 services:
   php:
+    # start_with_request is not read from XDEBUG_CONFIG: without it, Xdebug waits
+    # for a trigger (XDEBUG_SESSION cookie/parameter) and never connects.
+    command: ["php-fpm", "-d", "xdebug.start_with_request=yes"]
     environment:
       - XDEBUG_MODE=debug
-      - XDEBUG_CONFIG=client_host=host.docker.internal client_port=9003 start_with_request=yes
+      - XDEBUG_CONFIG=client_host=host.docker.internal client_port=9003
+      # PhpStorm picks the server (and its path mappings) by this name instead of
+      # SERVER_NAME + SERVER_PORT: the port seen by PHP depends on the entry point.
+      - PHP_IDE_CONFIG=serverName=api-dev.episciences.org
     extra_hosts:
       - "host.docker.internal:host-gateway"
