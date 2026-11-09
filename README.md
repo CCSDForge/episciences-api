@@ -139,6 +139,12 @@ make ssl-certs         # Generate SSL certificates manually
 make ssl-clean         # Remove SSL certificates
 ```
 
+With `make up-xdebug`, every web request starts a debugging session (listen on port 9003, path mapping `/var/www/html` → project root). Console commands connect only when triggered:
+
+```bash
+docker compose exec -e XDEBUG_TRIGGER=1 php php bin/console <command>
+```
+
 #### HTTPS Development Setup
 
 The development environment uses HTTPS with a local domain for production-like conditions:

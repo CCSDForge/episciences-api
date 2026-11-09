@@ -10,8 +10,11 @@
 services:
   php:
     # start_with_request is not read from XDEBUG_CONFIG: without it, Xdebug waits
-    # for a trigger (XDEBUG_SESSION cookie/parameter) and never connects.
-    command: ["php-fpm", "-d", "xdebug.start_with_request=yes"]
+    # for a trigger (XDEBUG_SESSION cookie/parameter) and never connects. It is set
+    # for PHP-FPM only, by a pool file: the console keeps the trigger mode
+    # (XDEBUG_TRIGGER=1 to debug a command).
+    volumes:
+      - ./docker/php-fpm/xdebug-fpm.conf:/usr/local/etc/php-fpm.d/zz-xdebug.conf:ro
     environment:
       - XDEBUG_MODE=debug
       - XDEBUG_CONFIG=client_host=host.docker.internal client_port=9003

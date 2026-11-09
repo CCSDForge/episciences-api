@@ -329,6 +329,8 @@ up-xdebug:
 	$(PRINT_UP_INFO)
 	@echo ""
 	@echo "🐞 Xdebug is active: listen on port 9003 in your IDE (path mapping: /var/www/html → project root)."
+	@echo "  Web requests always connect; console commands only with $(BOLD)XDEBUG_TRIGGER=1$(NC):"
+	@echo "  $(BOLD)$(DOCKER_COMPOSE) exec -e XDEBUG_TRIGGER=1 php php bin/console <command>$(NC)"
 	@echo "  Run '$(BOLD)make up$(NC)' to start again without Xdebug."
 
 # Start containers with CI database (standalone)
