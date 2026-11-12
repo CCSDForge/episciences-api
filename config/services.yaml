@@ -69,6 +69,9 @@ services:
     'App\Serializer\Normalizer\ApiItemNormalizer': # JSON-LD format
         decorates: 'api_platform.jsonld.normalizer.item'
 
+    'App\Serializer\Normalizer\ApiObjectNormalizer': # JSON-LD format, objects that are not API resources
+        decorates: 'api_platform.jsonld.normalizer.object'
+
 #    'app.serializer.normalizer.item.json': #JSONformat
 #        class: 'App\Serializer\Normalizer\ApiItemNormalizer'
 #        decorates: 'api_platform.serializer.normalizer.item'
