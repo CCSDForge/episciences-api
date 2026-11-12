@@ -66,6 +66,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     public const string NOTE_ROLE_SECRETARY = 'Confidential field: only returned to the editorial secretaries (ROLE_SECRETARY).';
     public const string NOTE_ROLE_MEMBER = 'Confidential field: only returned to the authenticated members (ROLE_MEMBER).';
     public const string NOTE_ROLE_EPIADMIN = 'Confidential field: only returned to the EPI administrators (ROLE_EPIADMIN).';
+    public const string NOTE_JOURNAL_SETTINGS = 'Confidential field: only returned to the chief editors, the administrators and the editorial secretaries of the journal (JWT of this journal), and to the EPI administrators (ROLE_EPIADMIN).';
 
     /**
      * Role-conditioned serialized properties, scoped by owning resource (schema name prefix).
@@ -100,6 +101,8 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             'status' => self::NOTE_ROLE_EPIADMIN,
             'creation' => self::NOTE_ROLE_EPIADMIN,
             'piwikid' => self::NOTE_ROLE_EPIADMIN,
+            'settings' => self::NOTE_JOURNAL_SETTINGS,
+            'doiSettings' => self::NOTE_ROLE_EPIADMIN,
         ],
     ];
 
@@ -340,6 +343,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             '/api/statistics/' => 'Statistics', // withPapers: administrators of the journal
             '/api/statistics/evaluation' => 'Evaluation statistics', // idem (the reviews)
             '/api/journals/stats/dashboard/{code}' => 'Dashboard', // idem
+            '/api/journals/{code}' => 'Journal', // settings: administrators of the journal
         ];
     }
 

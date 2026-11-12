@@ -26,6 +26,7 @@ use Doctrine\ORM\Mapping as ORM;
 use App\DataProvider\ReviewStatsDataProvider;
 use Symfony\Component\Serializer\Attribute\Context;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Attribute\SerializedName;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use App\Repository\ReviewRepository;
 use App\OpenApi\OpenApiFactory;
@@ -460,6 +461,19 @@ class Review
     public const STATUS_DISABLED = 0;
     public const STATUS_ENABLED = 1;
     public const URI_TEMPLATE = '/journals/';
+    /** Access to the settings of a journal, as its settings page in Episciences: chief editors, administrators and editorial secretaries of the journal (JWT of this journal; ROLE_SECRETARY is inherited by the roles above), and the platform administrators */
+    /** OpenAPI schema of the settings of a journal: a list of {setting, value} */
+    public const SETTINGS_SCHEMA = [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'properties' => [
+                'setting' => ['type' => 'string', 'description' => 'Name of the setting'],
+                'value' => ['type' => ['string', 'null'], 'description' => 'Value of the setting, as stored (a JSON string for the structured settings)'],
+            ],
+        ],
+    ];
+    public const SETTINGS_SECURITY = "is_granted('ROLE_EPIADMIN') or (is_granted('ROLE_SECRETARY') and user !== null and user.getCurrentJournalID() === object.getRvid())";
     public const DASHBOARD_WITH_PAPERS_DESCRIPTION = 'Adds `papers` to the value, the papers counted by each figure, computed with the same queries as the figures: one DOCID by submission (the version it ends with) for the submissions, imported, accepted, refused and other ones; one DOCID by paper (its latest version) for the others (the delays: the papers of the average and median delays). For the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number by figure is in `hiddenPapers`';
     public const DASHBOARD_YEAR_DESCRIPTION = 'Year of: submission for `nbSubmissions` and `nbImported`; decision (publication, acceptance, refusal) for `nbPublished`, `nbImportedPublished`, `nbAccepted`, `nbAcceptedNotYetPublished`, `nbRefused` and `rates`; publication or acceptance for the delays; both submission and decision for `total*SubmittedSameYear`. The users are not counted by year';
 
@@ -663,6 +677,60 @@ class Review
         }
 
         return $this;
+    }
+
+    /**
+     * The settings of the journal (GET /api/journals/{code} only), as on its settings page in Episciences
+     * ("review/settings"): for its chief editors, administrators and editorial secretaries (JWT of this journal)
+     * and for the platform administrators. The DOI settings are left out: see getDoiSettings().
+     *
+     * Plain arrays, not ReviewSetting objects: an embedded object would get a generated @id (/.well-known/genid/...).
+     *
+     * @return list<array{setting: string, value: string|null}>
+     */
+    #[Groups(['read:Review'])]
+    #[SerializedName('settings')]
+    #[ApiProperty(
+        security: self::SETTINGS_SECURITY,
+        description: 'Settings of the journal (`setting`, raw stored `value`), as on its settings page in Episciences, without the DOI settings (`doiSettings`).',
+        schema: self::SETTINGS_SCHEMA
+    )]
+    public function getJournalSettings(): array
+    {
+        return $this->settingsAsArrays(false);
+    }
+
+    /**
+     * The DOI settings of the journal (GET /api/journals/{code} only): in Episciences, they are on a page of their own,
+     * for the platform administrators only ("doi/settings").
+     *
+     * @return list<array{setting: string, value: string|null}>
+     */
+    #[Groups(['read:Review'])]
+    #[ApiProperty(
+        security: "is_granted('ROLE_EPIADMIN')",
+        description: 'DOI settings of the journal (`setting`, raw stored `value`), as on its DOI settings page in Episciences.',
+        schema: self::SETTINGS_SCHEMA
+    )]
+    public function getDoiSettings(): array
+    {
+        return $this->settingsAsArrays(true);
+    }
+
+    /**
+     * @return list<array{setting: string, value: string|null}>
+     */
+    private function settingsAsArrays(bool $doi): array
+    {
+        $settings = [];
+
+        foreach ($this->settings->getValues() as $setting) {
+            if (in_array($setting->getSetting(), ReviewSetting::DOI_SETTINGS, true) === $doi) {
+                $settings[] = ['setting' => (string)$setting->getSetting(), 'value' => $setting->getValue()];
+            }
+        }
+
+        return $settings;
     }
 
     public function getSetting(string $key): ?string
