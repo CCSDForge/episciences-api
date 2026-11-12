@@ -25,6 +25,17 @@ class PageTest extends TestCase
         $this->assertTrue($this->entity->isPublic());
     }
 
+    /**
+     * Doctrine hydrates an empty MySQL SET ('') as [''] with the simple_array type.
+     */
+    public function testHydratedEmptyVisibilitySetIsAnEmptyAudience(): void
+    {
+        new ReflectionProperty(Page::class, 'visibility')->setValue($this->entity, ['']);
+
+        $this->assertSame([], $this->entity->getVisibility());
+        $this->assertFalse($this->entity->isPublic());
+    }
+
     public function testEmptyVisibilityIsNotPublic(): void
     {
         $this->entity->setVisibility([]);

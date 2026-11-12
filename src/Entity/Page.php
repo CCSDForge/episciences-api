@@ -225,11 +225,13 @@ class Page
     }
 
     /**
+     * An empty `visibility_set` is hydrated as [''] (simple_array): it is returned as an empty audience.
+     *
      * @return list<string>
      */
     public function getVisibility(): array
     {
-        return array_values($this->visibility);
+        return array_values(array_filter($this->visibility, static fn(string $role): bool => $role !== ''));
     }
 
     public function setVisibility(array $visibility): static
