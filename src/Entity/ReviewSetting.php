@@ -18,6 +18,8 @@ class ReviewSetting
     public const DISPLAY_STATISTICS = 'displayStatistics';
     public const DISPLAY_STATISTICS_PUBLIC = '1';
     public const DISPLAY_STATISTICS_SECRETARIES = '2';
+    /** DOI settings of the journal: on a page of their own in Episciences, for the platform administrators only */
+    public const DOI_SETTINGS = ['doiPrefix', 'doiFormat', 'doiRegistrationAgency', 'doiAssignMode'];
 
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
