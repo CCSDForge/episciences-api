@@ -29,6 +29,9 @@ class JournalSettingsVisibilityTest extends KernelTestCase
 {
     private const int RVID = 7;
 
+    /**
+     * @return iterable<string, array{list<string>|null, int|null, bool, bool}>
+     */
     public static function viewers(): iterable
     {
         yield 'anonymous' => [null, null, false, false];
