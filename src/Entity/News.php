@@ -69,6 +69,8 @@ use Symfony\Component\Serializer\Annotation\Groups;
 class News
 {
     public const TABLE = 'news';
+    public const string VISIBILITY_PUBLIC = 'public';
+    public const string VISIBILITY_PRIVATE = 'private';
 
     public const FILTERS = [
         'rvcode' => AppConstants::FILTER_TYPE_EXACT,
@@ -140,25 +142,16 @@ class News
     #[ApiProperty(description: 'Date the news was last updated', openapiContext: ['example' => '2024-01-15T10:30:00+00:00'])]
     private ?\DateTimeInterface $date_updated = null;
 
-    #[ORM\Column]
+    /**
+     * MySQL ENUM column maintained by Episciences (`visibility_enum`: "public" or "private"),
+     * which replaces the former JSON `visibility` column. Still returned as a one-item array.
+     */
+    #[ORM\Column(name: 'visibility_enum', length: 7, nullable: true, options: ['default' => self::VISIBILITY_PUBLIC])]
     #[groups(
         ['read:News']
     )]
-    #[ApiProperty(description: 'Audience of the news: index 0 indicates its status, e.g. ["public"]', schema: ['type' => 'array', 'maxItems' => 1, 'items' => ['type' => 'string'], 'example' => ['public']])]
-    private array $visibility = [];
-
-    /**
-     * MySQL stored generated column: 1 when visibility[0] = 'public', NULL otherwise.
-     * Indexed — used instead of JSON_EXTRACT() in WHERE clauses to avoid full-table scans.
-     */
-    #[ORM\Column(
-        name: 'is_public',
-        nullable: true,
-        insertable: false,
-        updatable: false,
-        columnDefinition: "TINYINT(1) GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(visibility, '\$[0]')) = 'public') STORED"
-    )]
-    private ?bool $is_public = null;
+    #[ApiProperty(description: 'Audience of the news: ["public"] or ["private"]', schema: ['type' => 'array', 'maxItems' => 1, 'items' => ['type' => 'string', 'enum' => [self::VISIBILITY_PUBLIC, self::VISIBILITY_PRIVATE]], 'example' => ['public']])]
+    private ?string $visibility = self::VISIBILITY_PUBLIC;
 
     public function getId(): ?int
     {
@@ -261,21 +254,24 @@ class News
         return $this;
     }
 
+    /**
+     * @return list<string>
+     */
     public function getVisibility(): array
     {
-        return $this->visibility;
+        return $this->visibility === null ? [] : [$this->visibility];
     }
 
-    public function setVisibility(array $visibility): static
+    public function setVisibility(?string $visibility): static
     {
         $this->visibility = $visibility;
 
         return $this;
     }
 
-    public function isPublic(): ?bool
+    public function isPublic(): bool
     {
-        return $this->is_public;
+        return $this->visibility === self::VISIBILITY_PUBLIC;
     }
 
     public function getCreator(): ?User

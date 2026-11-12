@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Entity;
 
 use App\Entity\Page;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Mapping\Column;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 
@@ -17,28 +19,41 @@ class PageTest extends TestCase
         $this->entity = new Page();
     }
 
-    public function testIsPublicDefaultsToNull(): void
+    public function testIsPublicByDefault(): void
     {
-        $this->assertNull($this->entity->isPublic());
-    }
-
-    /**
-     * `is_public` is a MySQL STORED GENERATED column (insertable/updatable: false):
-     * it has no setter and is only ever populated by Doctrine when hydrating a row.
-     */
-    public function testIsPublicReflectsHydratedGeneratedColumnValue(): void
-    {
-        $property = new ReflectionProperty(Page::class, 'is_public');
-        $property->setValue($this->entity, true);
-
+        $this->assertSame([Page::VISIBILITY_PUBLIC], $this->entity->getVisibility());
         $this->assertTrue($this->entity->isPublic());
     }
 
-    public function testIsPublicReflectsHydratedFalseValue(): void
+    public function testEmptyVisibilityIsNotPublic(): void
     {
-        $property = new ReflectionProperty(Page::class, 'is_public');
-        $property->setValue($this->entity, false);
+        $this->entity->setVisibility([]);
 
+        $this->assertSame([], $this->entity->getVisibility());
         $this->assertFalse($this->entity->isPublic());
+    }
+
+    public function testIsNotPublicWhenVisibilityHoldsPublicAmongRoles(): void
+    {
+        $this->entity->setVisibility(['public', 'member']);
+
+        $this->assertSame(['public', 'member'], $this->entity->getVisibility());
+        $this->assertFalse($this->entity->isPublic());
+    }
+
+    public function testIsNotPublicWhenRestrictedToRoles(): void
+    {
+        $this->entity->setVisibility(['chief_editor', 'administrator']);
+
+        $this->assertSame(['chief_editor', 'administrator'], $this->entity->getVisibility());
+        $this->assertFalse($this->entity->isPublic());
+    }
+
+    public function testVisibilityIsMappedToTheSetColumnOfEpisciences(): void
+    {
+        $column = new ReflectionProperty(Page::class, 'visibility')->getAttributes(Column::class)[0]->newInstance();
+
+        $this->assertSame('visibility_set', $column->name);
+        $this->assertSame(Types::SIMPLE_ARRAY, $column->type);
     }
 }

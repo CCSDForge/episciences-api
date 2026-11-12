@@ -72,6 +72,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 class Page
 {
     public const TABLE = 'pages';
+    public const string VISIBILITY_PUBLIC = 'public';
     public const FILTERS = [
         'uid' => AppConstants::FILTER_TYPE_EXACT,
         'rvcode' => AppConstants::FILTER_TYPE_EXACT,
@@ -120,25 +121,16 @@ class Page
     #[ApiProperty(description: 'Page content (HTML), translated by language code', schema: OpenApiSchemas::TRANSLATED_TEXT)]
     private array $content = [];
 
-    #[ORM\Column(name: 'visibility', type: \Doctrine\DBAL\Types\Types::JSON, nullable: false)]
+    /**
+     * MySQL SET column maintained by Episciences (`visibility_set`, e.g. "public" or "chief_editor,administrator"),
+     * which replaces the former JSON `visibility` column.
+     */
+    #[ORM\Column(name: 'visibility_set', type: Types::SIMPLE_ARRAY, nullable: true, options: ['default' => self::VISIBILITY_PUBLIC])]
     #[groups(
         ['read:Page']
     )]
-    #[ApiProperty(description: 'Audience of the page: index 0 indicates its status, e.g. ["public"]', schema: ['type' => 'array', 'maxItems' => 1, 'items' => ['type' => 'string'], 'example' => ['public']])]
-    private array $visibility = [];
-
-    /**
-     * MySQL stored generated column: 1 when visibility[0] = 'public', NULL otherwise.
-     * Indexed — used instead of JSON_EXTRACT() in WHERE clauses to avoid full-table scans.
-     */
-    #[ORM\Column(
-        name: 'is_public',
-        nullable: true,
-        insertable: false,
-        updatable: false,
-        columnDefinition: "TINYINT(1) GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(visibility, '\$[0]')) = 'public') STORED"
-    )]
-    private ?bool $is_public = null;
+    #[ApiProperty(description: 'Audience of the page: "public", or the roles allowed to read it, e.g. ["public"]', schema: ['type' => 'array', 'items' => ['type' => 'string'], 'example' => ['public']])]
+    private array $visibility = [self::VISIBILITY_PUBLIC];
 
 
     #[ORM\Column(name: 'date_creation', type: Types::DATETIME_MUTABLE, nullable: true)]
@@ -232,9 +224,12 @@ class Page
         return $this;
     }
 
+    /**
+     * @return list<string>
+     */
     public function getVisibility(): array
     {
-        return $this->visibility;
+        return array_values($this->visibility);
     }
 
     public function setVisibility(array $visibility): static
@@ -244,9 +239,12 @@ class Page
         return $this;
     }
 
-    public function isPublic(): ?bool
+    /**
+     * Public only when the audience is exactly "public".
+     */
+    public function isPublic(): bool
     {
-        return $this->is_public;
+        return $this->getVisibility() === [self::VISIBILITY_PUBLIC];
     }
 
     public function getPageCode(): ?string
