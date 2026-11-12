@@ -18,10 +18,8 @@ use stdClass;
 use Symfony\Bundle\SecurityBundle\Security;
 
 /**
- * Regression coverage for the fix that replaced the non-indexed
- * JSON_EXTRACT(visibility, '$[0]') = 'public' clause (source of the
- * "Out of sort memory" 500 on GET /api/pages and GET /api/news) with a
- * comparison on the indexed, MySQL-maintained `is_public` generated column.
+ * The pages and news are restricted to the public ones: their `visibility_set` (pages) or
+ * `visibility_enum` (news) column of Episciences is exactly "public".
  */
 class AppQueryItemCollectionExtensionTest extends TestCase
 {
@@ -39,64 +37,64 @@ class AppQueryItemCollectionExtensionTest extends TestCase
         $this->queryNameGenerator = $this->createMock(QueryNameGeneratorInterface::class);
     }
 
-    public function testApplyToItemFiltersPagesByIsPublicColumn(): void
+    public function testApplyToItemFiltersPagesByVisibilitySet(): void
     {
         $queryBuilder = $this->createMock(QueryBuilder::class);
         $queryBuilder->method('getRootAliases')->willReturn(['p0_']);
 
         $queryBuilder->expects($this->once())
             ->method('andWhere')
-            ->with('p0_.is_public = :isPublic')
+            ->with('p0_.visibility = :publicVisibility')
             ->willReturnSelf();
 
         $queryBuilder->expects($this->once())
             ->method('setParameter')
-            ->with('isPublic', true)
+            ->with('publicVisibility', Page::VISIBILITY_PUBLIC)
             ->willReturnSelf();
 
         $extension = new AppQueryItemCollectionExtension($this->security);
         $extension->applyToItem($queryBuilder, $this->queryNameGenerator, Page::class, ['id' => 1]);
     }
 
-    public function testApplyToItemFiltersNewsByIsPublicColumn(): void
+    public function testApplyToItemFiltersNewsByVisibilityEnum(): void
     {
         $queryBuilder = $this->createMock(QueryBuilder::class);
         $queryBuilder->method('getRootAliases')->willReturn(['n0_']);
 
         $queryBuilder->expects($this->once())
             ->method('andWhere')
-            ->with('n0_.is_public = :isPublic')
+            ->with('n0_.visibility = :publicVisibility')
             ->willReturnSelf();
 
         $queryBuilder->expects($this->once())
             ->method('setParameter')
-            ->with('isPublic', true)
+            ->with('publicVisibility', News::VISIBILITY_PUBLIC)
             ->willReturnSelf();
 
         $extension = new AppQueryItemCollectionExtension($this->security);
         $extension->applyToItem($queryBuilder, $this->queryNameGenerator, News::class, ['id' => 1]);
     }
 
-    public function testApplyToCollectionFiltersNewsByIsPublicColumnWithoutRvCodeFilter(): void
+    public function testApplyToCollectionFiltersNewsByVisibilityEnumWithoutRvCodeFilter(): void
     {
         $queryBuilder = $this->createMock(QueryBuilder::class);
         $queryBuilder->method('getRootAliases')->willReturn(['n0_']);
 
         $queryBuilder->expects($this->once())
             ->method('andWhere')
-            ->with('n0_.is_public = :isPublic')
+            ->with('n0_.visibility = :publicVisibility')
             ->willReturnSelf();
 
         $queryBuilder->expects($this->once())
             ->method('setParameter')
-            ->with('isPublic', true)
+            ->with('publicVisibility', News::VISIBILITY_PUBLIC)
             ->willReturnSelf();
 
         $extension = new AppQueryItemCollectionExtension($this->security);
         $extension->applyToCollection($queryBuilder, $this->queryNameGenerator, News::class);
     }
 
-    public function testApplyToItemCombinesYearFilterWithIsPublicColumnForNews(): void
+    public function testApplyToItemCombinesYearFilterWithVisibilityForNews(): void
     {
         $queryBuilder = $this->createMock(QueryBuilder::class);
         $queryBuilder->method('getRootAliases')->willReturn(['n0_']);
@@ -113,7 +111,7 @@ class AppQueryItemCollectionExtensionTest extends TestCase
 
         $queryBuilder->expects($this->once())
             ->method('setParameter')
-            ->with('isPublic', true)
+            ->with('publicVisibility', News::VISIBILITY_PUBLIC)
             ->willReturnSelf();
 
         $extension = new AppQueryItemCollectionExtension($this->security);
@@ -123,16 +121,16 @@ class AppQueryItemCollectionExtensionTest extends TestCase
 
         // The year filter is applied first, still as a dedicated OR expression...
         $this->assertInstanceOf(Orx::class, $andWhereConditions[0]);
-        // ...and the is_public column check is appended last, unchanged.
-        $this->assertSame('n0_.is_public = :isPublic', $andWhereConditions[1]);
+        // ...and the visibility check is appended last, unchanged.
+        $this->assertSame('n0_.visibility = :publicVisibility', $andWhereConditions[1]);
     }
 
-    public function testApplyToItemDoesNotFilterByIsPublicColumnForUnrelatedResource(): void
+    public function testApplyToItemDoesNotFilterByVisibilityForUnrelatedResource(): void
     {
         $queryBuilder = $this->createMock(QueryBuilder::class);
         $queryBuilder->method('getRootAliases')->willReturn(['r0_']);
 
-        $queryBuilder->expects($this->never())->method('setParameter')->with('isPublic', $this->anything());
+        $queryBuilder->expects($this->never())->method('setParameter')->with('publicVisibility', $this->anything());
 
         $extension = new AppQueryItemCollectionExtension($this->security);
         $extension->applyToItem($queryBuilder, $this->queryNameGenerator, stdClass::class, ['id' => 1]);

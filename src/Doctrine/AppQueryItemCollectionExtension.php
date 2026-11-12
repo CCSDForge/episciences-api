@@ -123,10 +123,20 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
             $this->processOrExpression($queryBuilder, $alias, $years, $resourceClass);
         }
 
-        if ($resourceClass === Page::class || $resourceClass === News::class) {
-            // Use the indexed stored generated column instead of JSON_EXTRACT() to avoid
-            // full-table scans that triggered sort_buffer_size overflow (MySQL error 1038).
-            $queryBuilder->andWhere("$alias.is_public = :isPublic")->setParameter('isPublic', true);
+        if ($resourceClass === Page::class) {
+            // `visibility_set` (MySQL SET) of Episciences: public only when it is exactly "public"
+            $queryBuilder
+                ->andWhere("$alias.visibility = :publicVisibility")
+                ->setParameter('publicVisibility', Page::VISIBILITY_PUBLIC);
+
+            return;
+        }
+
+        if ($resourceClass === News::class) {
+            // `visibility_enum` (MySQL ENUM) of Episciences: public only when it is exactly "public"
+            $queryBuilder
+                ->andWhere("$alias.visibility = :publicVisibility")
+                ->setParameter('publicVisibility', News::VISIBILITY_PUBLIC);
 
             return;
         }

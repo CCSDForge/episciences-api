@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Entity;
 
 use ApiPlatform\Metadata\ApiProperty;
 use App\Entity\News;
+use Doctrine\ORM\Mapping\Column;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 
@@ -18,29 +19,33 @@ class NewsTest extends TestCase
         $this->entity = new News();
     }
 
-    public function testIsPublicDefaultsToNull(): void
+    public function testIsPublicByDefault(): void
     {
-        $this->assertNull($this->entity->isPublic());
-    }
-
-    /**
-     * `is_public` is a MySQL STORED GENERATED column (insertable/updatable: false):
-     * it has no setter and is only ever populated by Doctrine when hydrating a row.
-     */
-    public function testIsPublicReflectsHydratedGeneratedColumnValue(): void
-    {
-        $property = new ReflectionProperty(News::class, 'is_public');
-        $property->setValue($this->entity, true);
-
+        $this->assertSame([News::VISIBILITY_PUBLIC], $this->entity->getVisibility());
         $this->assertTrue($this->entity->isPublic());
     }
 
-    public function testIsPublicReflectsHydratedFalseValue(): void
+    public function testPrivateNewsIsNotPublic(): void
     {
-        $property = new ReflectionProperty(News::class, 'is_public');
-        $property->setValue($this->entity, false);
+        $this->entity->setVisibility(News::VISIBILITY_PRIVATE);
 
+        $this->assertSame([News::VISIBILITY_PRIVATE], $this->entity->getVisibility());
         $this->assertFalse($this->entity->isPublic());
+    }
+
+    public function testNullVisibilityIsNotPublic(): void
+    {
+        $this->entity->setVisibility(null);
+
+        $this->assertSame([], $this->entity->getVisibility());
+        $this->assertFalse($this->entity->isPublic());
+    }
+
+    public function testVisibilityIsMappedToTheEnumColumnOfEpisciences(): void
+    {
+        $column = new ReflectionProperty(News::class, 'visibility')->getAttributes(Column::class)[0]->newInstance();
+
+        $this->assertSame('visibility_enum', $column->name);
     }
 
     /**
