@@ -88,7 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - Internal: the counting methods of `PapersRepository` and `PaperLogRepository` no longer used since the statistics are counted by submission (`countSubmissionsByYear`, `countSubmissionsByFlag`, `getSubmissionsAwaitingDecision`, `getAcceptedByYear`, `getAcceptedByJournal`, …), with their tests, and the unused `$excludeTmpVersions` parameter of `Stats::getSubmissionsStat()`. No change to the API responses.
-- `GET /api/journals/` no longer exposes the `settings` field of the journals (a raw `REVIEW_SETTING` `{setting, value}` array, without external consumer), nor `GET /api/journals/{code}` publicly (see `settings` in Added). The settings still work internally via `Review::getSetting()` and the public, structured configuration remains available through `GET /api/journals/front/configuration` (`{code}/front/configuration`).
+- `GET /api/journals/` no longer exposes the `settings` field of the journals (a raw `REVIEW_SETTING` `{setting, value}` array, without external consumer), nor `GET /api/journals/{code}` publicly (see `settings` in Added). The settings still work internally via `Review::getSetting()`. They have no public equivalent: `GET /api/journals/front/configuration` returns the configuration of the front-end (`JOURNAL_SETTING`), not the settings of the journal.
 
 ### Fixed
 - JSON-LD: the embedded objects that are not API resources (e.g. `userRoles` in `GET /api/me`) no longer have a generated `@id` (`/api/.well-known/genid/...`) either: they are blank nodes.
