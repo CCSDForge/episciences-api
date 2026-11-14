@@ -11,8 +11,16 @@ class Journal
      */
     public const string DOMAIN = 'episciences.org';
 
-    #[groups(['read:Reviews'])]
+    /**
+     * The sequential position within the journals collection. It is a duplicate of
+     * `rvid` on a single journal, so it is only exposed by the collection (a 1-based
+     * counter renumbered at each read), not by the item endpoint.
+     */
+    #[groups(['read:Reviews', 'read:Reviews:JournalCollection'])]
     private int $number;
+
+    #[groups(['read:Reviews'])]
+    private ?int $rvid;
 
     #[groups(['read:Reviews'])]
     private ?string $code;
@@ -43,6 +51,17 @@ class Journal
     public function setNumber(int $number): self
     {
         $this->number = $number;
+        return $this;
+    }
+
+    public function getRvid(): ?int
+    {
+        return $this->rvid;
+    }
+
+    public function setRvid(?int $rvid): self
+    {
+        $this->rvid = $rvid;
         return $this;
     }
 

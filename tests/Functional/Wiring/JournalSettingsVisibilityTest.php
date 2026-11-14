@@ -4,157 +4,118 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Wiring;
 
-use ApiPlatform\Metadata\Get;
-use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
-use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
 use App\Entity\Review;
 use App\Entity\ReviewSetting;
-use App\Entity\User;
-use App\OpenApi\OpenApiFactory;
-use PHPUnit\Framework\Attributes\DataProvider;
+use App\Repository\ReviewRepository;
+use App\Resource\Journal;
+use App\Service\MetadataSources;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
-use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
-use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The settings of a journal are only returned by GET /api/journals/{code}, as on the settings pages of Episciences:
- * the settings of the journal to its chief editors, administrators and editorial secretaries (JWT of this journal)
- * and to the platform administrators, the DOI settings to the platform administrators only.
+ * GET /api/journals/{code} through the whole HTTP kernel: the item is public and exposes
+ * the same Journal resource shape as the collection (GET /api/journals/), sharing the
+ * JournalMapper. Neither the settings nor the DOI settings of the journal are returned.
  *
- * Serializes an in-memory journal with the context of the operations, through the API Platform normalizers
- * (property security included). Needs neither a database nor Solr.
+ * Needs neither a database nor the real repository: the ReviewRepository service is replaced
+ * by a stub producing real Review entities. A fresh kernel is booted for every test, which lets
+ * each test provide its own stub without touching the doctrine manager registry.
  */
 class JournalSettingsVisibilityTest extends KernelTestCase
 {
     private const int RVID = 7;
+    private const string HOST = 'https://api.example.org';
 
-    /**
-     * @return iterable<string, array{list<string>|null, int|null, bool, bool}>
-     */
-    public static function viewers(): iterable
-    {
-        yield 'anonymous' => [null, null, false, false];
-        yield 'member of the journal' => [['ROLE_MEMBER'], self::RVID, false, false];
-        yield 'editor of the journal' => [['ROLE_EDITOR'], self::RVID, false, false];
-        yield 'secretary of the journal' => [['ROLE_SECRETARY'], self::RVID, true, false];
-        yield 'administrator of the journal' => [['ROLE_ADMINISTRATOR'], self::RVID, true, false];
-        yield 'chief editor of the journal' => [['ROLE_CHIEF_EDITOR'], self::RVID, true, false];
-        yield 'secretary of another journal' => [['ROLE_SECRETARY'], self::RVID + 1, false, false];
-        yield 'platform administrator' => [['ROLE_EPIADMIN'], self::RVID + 1, true, true];
-    }
-
-    /**
-     * @param list<string>|null $roles null: anonymous
-     */
-    #[DataProvider('viewers')]
-    public function testTheItemReturnsTheSettingsAsEpisciences(?array $roles, ?int $tokenJournal, bool $seesSettings, bool $seesDoiSettings): void
-    {
-        $data = $this->normalize(Get::class, $roles, $tokenJournal);
-
-        if ($seesSettings) {
-            $this->assertSame([['setting' => 'displayEmptyVolumes', 'value' => '1'], ['setting' => 'encapsulateEditors', 'value' => '0']], $data['settings']);
-        } else {
-            $this->assertArrayNotHasKey('settings', $data);
-        }
-
-        if ($seesDoiSettings) {
-            $this->assertSame([['setting' => 'doiPrefix', 'value' => '10.0000']], $data['doiSettings']);
-        } else {
-            $this->assertArrayNotHasKey('doiSettings', $data);
-        }
-
-        $this->assertArrayNotHasKey('journalSettings', $data);
-    }
-
-    public function testTheCollectionNeverReturnsTheSettings(): void
-    {
-        $data = $this->normalize(\ApiPlatform\Metadata\GetCollection::class, ['ROLE_EPIADMIN'], self::RVID);
-
-        $this->assertArrayNotHasKey('settings', $data);
-        $this->assertArrayNotHasKey('doiSettings', $data);
-        $this->assertArrayNotHasKey('journalSettings', $data);
-    }
-
-    /**
-     * The JWT is optional on the item: without the bearer requirement, Swagger UI would never send the token and the
-     * settings would never be returned from the documentation.
-     */
-    public function testTheItemIsDocumentedWithAnOptionalJwt(): void
+    protected function setUp(): void
     {
         self::bootKernel();
+    }
 
-        /** @var OpenApiFactoryInterface $factory */
-        $factory = static::getContainer()->get(OpenApiFactoryInterface::class);
-        $get = $factory()->getPaths()->getPath('/api/journals/{code}')?->getGet();
+    public function testTheItemIsPublicAndExposesTheJournalResource(): void
+    {
+        $this->stubRepository($this->journal());
 
-        $this->assertNotNull($get);
-        $this->assertEquals([new \ArrayObject(), [OpenApiFactory::BEARER_AUTH => []]], $get->getSecurity());
-        $this->assertArrayHasKey(401, $get->getResponses() ?? []);
+        $response = $this->request('/api/journals/dev');
+
+        $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
+
+        $payload = json_decode((string) $response->getContent(), true);
+        $this->assertIsArray($payload);
+
+        // Only its public identity (rvid, code) and the safe display fields are exposed on the item.
+        // `number` is deliberately omitted on the item: it is a duplicate of `rvid` for a
+        // single journal (the collection keeps it as its 1-based sequential counter).
+        $this->assertArrayNotHasKey('number', $payload);
+        $this->assertSame(self::RVID, $payload['rvid'] ?? null);
+        $this->assertSame('dev', $payload['code'] ?? null);
+        $this->assertSame('Development journal', $payload['title'] ?? null);
+        $this->assertSame(sprintf('https://dev.%s', Journal::DOMAIN), $payload['address'] ?? null);
+    }
+
+    public function testTheItemNeverReturnsTheSettings(): void
+    {
+        $this->stubRepository($this->journal());
+
+        $response = $this->request('/api/journals/dev');
+
+        $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
+
+        $payload = json_decode((string) $response->getContent(), true);
+        $this->assertIsArray($payload);
+        $this->assertArrayNotHasKey('settings', $payload);
+        $this->assertArrayNotHasKey('doiSettings', $payload);
+        $this->assertArrayNotHasKey('journalSettings', $payload);
     }
 
     /**
-     * @param class-string $operationClass
-     * @param list<string>|null $roles
-     * @return array<string, mixed>
+     * Unknown and disabled journals are the repository's responsibility: the provider serves
+     * the journal only when the repository hands one back, and yields 404 otherwise.
      */
-    private function normalize(string $operationClass, ?array $roles, ?int $tokenJournal): array
+    public function testAnUnknownJournalYieldsANotFound(): void
     {
-        self::bootKernel();
-        $container = static::getContainer();
+        $this->stubRepository(null);
 
-        if ($roles !== null) {
-            $user = new User();
-            $user->setUid(42);
-            $user->setCurrentJournalID($tokenJournal);
-            $container->get(TokenStorageInterface::class)->setToken(new UsernamePasswordToken($user, 'api', $roles));
-        }
+        $response = $this->request('/api/journals/does-not-exist');
 
-        $operation = null;
+        $this->assertSame(Response::HTTP_NOT_FOUND, $response->getStatusCode());
+    }
 
-        foreach ($container->get(ResourceMetadataCollectionFactoryInterface::class)->create(Review::class) as $resource) {
-            foreach ($resource->getOperations() as $candidate) {
-                if ($candidate::class === $operationClass && in_array($candidate->getUriTemplate(), [Review::URI_TEMPLATE . '{code}', Review::URI_TEMPLATE], true)) {
-                    $operation = $candidate;
-                }
-            }
-        }
+    private function stubRepository(?Review $journal): void
+    {
+        $repository = $this->createStub(ReviewRepository::class);
+        $repository->method('getJournalByIdentifier')->willReturn($journal);
 
-        $this->assertNotNull($operation);
+        static::getContainer()->set(ReviewRepository::class, $repository);
 
-        /** @var NormalizerInterface $serializer */
-        $serializer = $container->get('serializer');
-
-        $data = $serializer->normalize($this->journal(), 'jsonld', $operation->getNormalizationContext() + [
-            'operation' => $operation,
-            'resource_class' => Review::class,
-        ]);
-
-        $this->assertIsArray($data);
-
-        return $data;
+        $metadataSources = $this->createStub(MetadataSources::class);
+        $metadataSources->method('getLabel')->willReturnCallback(
+            static fn(int $id): string => $id === 1 ? 'accepted-repo' : ''
+        );
+        static::getContainer()->set(MetadataSources::class, $metadataSources);
     }
 
     private function journal(): Review
     {
         $journal = new Review();
-        $this->set($journal, 'rvid', self::RVID);
+        new \ReflectionProperty(Review::class, 'rvid')->setValue($journal, self::RVID);
         $journal->setCode('dev');
         $journal->setName('Development journal');
 
         foreach (['displayEmptyVolumes' => '1', 'doiPrefix' => '10.0000', 'encapsulateEditors' => '0'] as $name => $value) {
             $setting = new ReviewSetting();
-            $this->set($setting, 'rvid', self::RVID);
-            $this->set($setting, 'setting', $name);
             $setting->setValue($value);
+            new \ReflectionProperty(ReviewSetting::class, 'setting')->setValue($setting, $name);
             $journal->addSetting($setting);
         }
 
         return $journal;
     }
 
-    private function set(object $object, string $property, mixed $value): void
+    private function request(string $uri): Response
     {
-        new \ReflectionProperty($object, $property)->setValue($object, $value);
+        $request = Request::create($uri, server: ['HTTP_ACCEPT' => '*/*', 'HTTPS' => 'on']);
+
+        return self::$kernel->handle($request);
     }
 }

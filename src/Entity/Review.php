@@ -35,6 +35,7 @@ use App\Resource\Statistic;
 use App\Controller\IndexingDatabaseController;
 use App\Entity\IndexingDatabase;
 use App\State\JournalCollectionProvider;
+use App\State\JournalItemProvider;
 
 
 #[ORM\Table(name: self::TABLE)]
@@ -134,11 +135,10 @@ use App\State\JournalCollectionProvider;
             ),
 
             normalizationContext: [
-                'groups' => ['read:Review'],
+                'groups' => ['read:Reviews'],
                 'serialize_null' => true
             ],
-
-        #security: "is_granted('ROLE_SECRETARY')",
+            provider: JournalItemProvider::class,
         ),
 
         new GetCollection(
@@ -168,7 +168,7 @@ use App\State\JournalCollectionProvider;
                 ],
             ),
             normalizationContext: [
-                'groups' => ['read:Reviews'],
+                'groups' => ['read:Reviews', 'read:Reviews:JournalCollection'],
                 'serialize_null' => true
             ],
             provider: JournalCollectionProvider::class,

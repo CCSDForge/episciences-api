@@ -103,7 +103,7 @@ class JournalCollectionProviderTest extends KernelTestCase
         // being one of the legacy fields it exposes.
         $lines = explode(PHP_EOL, trim($csv));
         $this->assertSame(
-            ['number', 'code', 'title', 'subtitle', 'issn', 'eissn', 'address', 'acceptedRepositories'],
+            ['number', 'rvid', 'code', 'title', 'subtitle', 'issn', 'eissn', 'address', 'acceptedRepositories'],
             str_getcsv($lines[0], ',', '"', '\\')
         );
 
@@ -156,6 +156,10 @@ class JournalCollectionProviderTest extends KernelTestCase
             ->setCode($name)
             ->setName($name)
             ->setStatus($status);
+
+        // There is no public setter for `rvid`; it is set through reflection so that
+        // getRvid() (used by JournalMapper::toJournal) returns a value instead of throwing.
+        new \ReflectionProperty(Review::class, 'rvid')->setValue($review, random_int(1, PHP_INT_MAX));
 
         foreach ($settings as $key => $value) {
             $setting = new ReviewSetting();
