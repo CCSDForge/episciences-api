@@ -73,8 +73,14 @@ class ReviewRepositoryDatabaseTest extends TestCase
 
         $defaults = $this->requiredColumnDefaults();
 
-        foreach ([self::ACTIVE_RVID => ['active', Review::STATUS_ENABLED], self::DISABLED_RVID => ['disabled', Review::STATUS_DISABLED]] as $rvId => [$code, $status]) {
-            $connection->insert(Review::TABLE, array_merge($defaults, ['RVID' => $rvId, 'CODE' => $code, 'STATUS' => $status]));
+        // The names are chosen so that the order by NAME (ASC) does not match the RVID order,
+        // so the test can assert that getActiveJournals() orders by name and not by id.
+        // The column names in REVIEW are uppercase: normalize the journal keys so that they
+        // do not duplicate the uppercase keys already present in $defaults (which would make
+        // the INSERT fail with "Column 'CODE' specified twice").
+        foreach ([self::ACTIVE_RVID => ['name' => 'Zebra', 'code' => 'active', 'status' => Review::STATUS_ENABLED], self::DISABLED_RVID => ['name' => 'Alpha', 'code' => 'disabled', 'status' => Review::STATUS_DISABLED]] as $rvId => $journal) {
+            $journal = array_change_key_case($journal, CASE_UPPER);
+            $connection->insert(Review::TABLE, array_merge($defaults, ['RVID' => $rvId] + $journal));
         }
     }
 
@@ -106,6 +112,18 @@ class ReviewRepositoryDatabaseTest extends TestCase
     public function testDisabledJournalIsOnlyFoundWhenNotStrict(): void
     {
         $this->assertSame(self::DISABLED_RVID, $this->repository->getJournalByIdentifier('disabled', false)?->getRvid());
+    }
+
+    /**
+     * Only the enabled journals are returned, ordered by name (the name order does not
+     * match the RVID order, so the ordering is actually checked).
+     */
+    public function testGetActiveJournalsReturnsOnlyTheEnabledOnesOrderedByName(): void
+    {
+        $journals = $this->repository->getActiveJournals();
+
+        $this->assertCount(1, $journals);
+        $this->assertSame(self::ACTIVE_RVID, $journals[0]->getRvid());
     }
 
     /**

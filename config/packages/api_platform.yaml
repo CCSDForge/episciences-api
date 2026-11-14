@@ -26,6 +26,7 @@ api_platform:
         json: ['application/json']
         html: ['text/html']
         xml: ['application/xml']
+        csv: ['text/csv']
 
     serializer:
         # The custom normalizers of App\Serializer\Normalizer and the OpenApiNormalizer

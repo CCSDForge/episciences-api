@@ -34,6 +34,7 @@ use App\OpenApi\QueryParameters;
 use App\Resource\Statistic;
 use App\Controller\IndexingDatabaseController;
 use App\Entity\IndexingDatabase;
+use App\State\JournalCollectionProvider;
 
 
 #[ORM\Table(name: self::TABLE)]
@@ -142,19 +143,35 @@ use App\Entity\IndexingDatabase;
 
         new GetCollection(
             uriTemplate: self::URI_TEMPLATE,
+            formats: ['jsonld', 'json', 'html', 'xml', 'csv' => ['text/csv']],
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['review']],
                 summary: 'All Journals',
                 description: 'Retrieves the collection of active journals',
+                parameters: [
+                    new Parameter(
+                        name: 'format',
+                        in: 'query',
+                        description: 'Response format (jsonld, json, html, xml or csv)',
+                        required: false,
+                        deprecated: false,
+                        allowEmptyValue: false,
+                        schema: [
+                            "type" => 'string',
+                            "enum" => ['jsonld', 'json', 'html', 'xml', 'csv'],
+                            "default" => 'jsonld'
+                        ],
+                        style: "simple",
+                        explode: false,
+                        allowReserved: false
+                    ),
+                ],
             ),
             normalizationContext: [
                 'groups' => ['read:Reviews'],
                 'serialize_null' => true
             ],
-
-
-        //security: "is_granted('ROLE_EPIADMIN')",
-
+            provider: JournalCollectionProvider::class,
         ),
 
         new Get(
