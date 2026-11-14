@@ -20,6 +20,14 @@ class ReviewSetting
     public const DISPLAY_STATISTICS_SECRETARIES = '2';
     /** DOI settings of the journal: on a page of their own in Episciences, for the platform administrators only */
     public const DOI_SETTINGS = ['doiPrefix', 'doiFormat', 'doiRegistrationAgency', 'doiAssignMode'];
+    /** ISSN of the printed edition of the journal */
+    public const SETTING_ISSN_PRINT = 'ISSN_PRINT';
+    /** ISSN of the electronic edition of the journal */
+    public const SETTING_ISSN = 'ISSN';
+    /** Repositories to which the journal's accepted papers are automatically submitted (list of repository ids) */
+    public const SETTING_REPOSITORIES = 'repositories';
+    /** Whether automatic submission of accepted papers to external repositories is disabled for the journal */
+    public const SETTING_DISABLE_AUTOMATIC_TRANSFER = 'disableAutomaticTransfer';
 
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]
