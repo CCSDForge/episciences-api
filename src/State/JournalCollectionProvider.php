@@ -92,6 +92,7 @@ final class JournalCollectionProvider extends AuthenticationStateProvider implem
         $resource->setNumber($number);
         $resource->setCode($journal->getCode());
         $resource->setTitle($journal->getName());
+        $resource->setSubtitle($journal->getSubtitle());
         $resource->setIssn($this->formatIssn((string) $journal->getSetting(ReviewSetting::SETTING_ISSN_PRINT)));
         $resource->setEissn($this->formatIssn((string) $journal->getSetting(ReviewSetting::SETTING_ISSN)));
         $resource->setAddress((string) $this->requestStack->getCurrentRequest()?->getSchemeAndHttpHost());
@@ -204,7 +205,8 @@ final class JournalCollectionProvider extends AuthenticationStateProvider implem
 
     /**
      * Streams the collection as a CSV download, with the download headers of the GPL
-     * reference. No line is written when there is no journal.
+     * reference. The first line is a column-name header. Only the header (and no data
+     * row) is written when there is no journal.
      *
      * @param array<int, Journal> $journals
      */
@@ -218,11 +220,23 @@ final class JournalCollectionProvider extends AuthenticationStateProvider implem
                 return;
             }
 
+            fputcsv($handle, [
+                'number',
+                'code',
+                'title',
+                'subtitle',
+                'issn',
+                'eissn',
+                'address',
+                'acceptedRepositories',
+            ], ',', '"', '\\');
+
             foreach ($journals as $journal) {
                 fputcsv($handle, [
                     $journal->getNumber(),
                     (string) $journal->getCode(),
                     (string) $journal->getTitle(),
+                    $journal->getSubtitle(),
                     $journal->getIssn(),
                     $journal->getEissn(),
                     $journal->getAddress(),

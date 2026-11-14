@@ -98,9 +98,19 @@ class JournalCollectionProviderTest extends KernelTestCase
         $this->assertSame('0', (string) $response->headers->get('Expires'));
 
         $csv = $this->content($response);
+
+        // A first column-name header row identifies each column, the subtitle
+        // being one of the legacy fields it exposes.
+        $lines = explode(PHP_EOL, trim($csv));
+        $this->assertSame(
+            ['number', 'code', 'title', 'subtitle', 'issn', 'eissn', 'address', 'acceptedRepositories'],
+            str_getcsv($lines[0], ',', '"', '\\')
+        );
+
         $this->assertStringContainsString('active', $csv);
         $this->assertStringContainsString('1234-5678', $csv);
         $this->assertStringContainsString('accepted-repo', $csv);
+        $this->assertStringContainsString('Informatics', $csv);
     }
 
     public function testJsonIsPaginated(): void
@@ -123,7 +133,7 @@ class JournalCollectionProviderTest extends KernelTestCase
             ReviewSetting::SETTING_ISSN_PRINT => '12345678',
             ReviewSetting::SETTING_ISSN => '87654321',
             ReviewSetting::SETTING_REPOSITORIES => '[1]',
-        ]);
+        ])->setSubtitle('Informatics');
     }
 
     private function disabledJournal(): Review

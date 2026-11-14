@@ -16,6 +16,9 @@ class Journal
     private ?string $title;
 
     #[groups(['read:Reviews'])]
+    private string $subtitle;
+
+    #[groups(['read:Reviews'])]
     private string $issn;
 
     #[groups(['read:Reviews'])]
@@ -57,6 +60,17 @@ class Journal
     public function setTitle(?string $title): self
     {
         $this->title = $title;
+        return $this;
+    }
+
+    public function getSubtitle(): string
+    {
+        return $this->subtitle;
+    }
+
+    public function setSubtitle(string $subtitle): self
+    {
+        $this->subtitle = $subtitle;
         return $this;
     }
 
