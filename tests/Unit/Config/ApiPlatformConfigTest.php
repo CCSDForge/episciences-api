@@ -13,16 +13,18 @@ use Symfony\Component\Yaml\Yaml;
 class ApiPlatformConfigTest extends TestCase
 {
     /**
-     * The "hydra:" keys are written as is by App\Serializer\Normalizer\ApiCollectionNormalizer
-     * and App\OpenApi\OpenApiNormalizer: they require the prefix to be enabled.
+     * API Platform 5 removed the optional "hydra:" JSON-LD prefix and its legacy
+     * normalizer. The "hydra_prefix" setting is no longer supported and must
+     * therefore stay absent from the configuration.
      */
-    public function testHydraPrefixIsEnabled(): void
+    public function testHydraPrefixConfigIsRemoved(): void
     {
         $config = Yaml::parseFile(dirname(__DIR__, 3) . '/config/packages/api_platform.yaml');
 
-        $this->assertTrue(
-            $config['api_platform']['serializer']['hydra_prefix'] ?? false,
-            'api_platform.serializer.hydra_prefix must stay true: the "hydra:" keys are hardcoded in the normalizers.'
+        $this->assertArrayNotHasKey(
+            'hydra_prefix',
+            $config['api_platform']['serializer'] ?? [],
+            'api_platform.serializer.hydra_prefix was removed in API Platform 5 and must not be set.'
         );
     }
 }
