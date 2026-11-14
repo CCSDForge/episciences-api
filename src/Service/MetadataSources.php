@@ -7,6 +7,11 @@ use App\Repository\MetadataSourcesRepository;
 
 class MetadataSources
 {
+    public const TYPE_PAPERS_REPOSITORY = 'repository';
+    public const TYPE_METADATA_REPOSITORY = 'metadataRepository';
+    public const TYPE_DATAVERSE = 'dataverse';
+    public const TYPE_DSPACE = 'dspace';
+    public const TYPE_USER = 'user';
 
     private array $repositories = [];
 
@@ -17,7 +22,12 @@ class MetadataSources
 
     public function loadRepositories(): void
     {
-        $this->repositories = $this->metadataRepository->findAll();
+        // Index the repositories by their id so they can be looked up directly.
+        $repositories = [];
+        foreach ($this->metadataRepository->findAll() as $repository) {
+            $repositories[$repository->getId()] = $repository;
+        }
+        $this->repositories = $repositories;
     }
 
     public function getLabel(int $repoId): string
@@ -25,12 +35,18 @@ class MetadataSources
         $repositories = $this->getRepositories();
 
         if (!isset($repositories[$repoId])) {
-            throw new \InvalidArgumentException(sprintf('Repository with id "%d" not found.', $repoId));
+            return '';
         }
 
         return $repositories[$repoId]->getName();
     }
 
+    /**
+     * The repositories that can be used as paper/import sources (aligned with the GPL reference
+     * getRepositories()): "dspace", "dataverse" and "repository" types, excluding "Software Heritage".
+     *
+     * @return array<int, \App\Entity\MetadataSources>
+     */
     public function getRepositories(): array
     {
 
@@ -38,7 +54,14 @@ class MetadataSources
             $this->loadRepositories();
         }
 
-        return $this->repositories;
+        return array_filter($this->repositories, static function (\App\Entity\MetadataSources $repository): bool {
+            return $repository->getName() !== 'Software Heritage' &&
+                in_array($repository->getType(), [
+                    self::TYPE_DSPACE,
+                    self::TYPE_DATAVERSE,
+                    self::TYPE_PAPERS_REPOSITORY,
+                ], true);
+        });
 
     }
 
