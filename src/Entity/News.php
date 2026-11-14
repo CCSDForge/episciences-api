@@ -24,10 +24,9 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ORM\Entity(repositoryClass: NewsRepository::class)]
 
 #[ApiResource(
-    uriTemplate: '/news/',
     operations: [
         new GetCollection(
-
+            uriTemplate: '/news/',
             openapi: new OpenApiOperation(
                 summary: 'List of News',
                 description: 'Retrieve a list of news published by the journals, sorted in descending order of creation (most recent first). Can be filtered by the year of creation.',
@@ -36,23 +35,10 @@ use Symfony\Component\Serializer\Annotation\Groups;
                 ]
             ),
             order: ['date_creation' => AppConstants::ORDER_DESC],
-
             normalizationContext: [
                 'groups' => ['read:News:Collection']
             ]
-
         ),
-    ],
-    parameters: [
-        'rvcode' => new QueryParameter(filter: new ExactFilter(), property: 'rvcode'),
-        'news_code' => new QueryParameter(filter: new ExactFilter(), property: 'news_code'),
-    ],
-
-)]
-
-#[ApiResource(
-    uriTemplate: '/news/{id}',
-    operations: [
         new Get(
             uriTemplate: '/news/{id}',
             openapi: new OpenApiOperation(
@@ -63,6 +49,10 @@ use Symfony\Component\Serializer\Annotation\Groups;
                 'groups' => ['read:News']
             ],
         ),
+    ],
+    parameters: [
+        'rvcode' => new QueryParameter(filter: new ExactFilter(), property: 'rvcode'),
+        'news_code' => new QueryParameter(filter: new ExactFilter(), property: 'news_code'),
     ],
 )]
 
