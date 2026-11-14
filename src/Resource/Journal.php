@@ -6,6 +6,11 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 class Journal
 {
+    /**
+     * The public domain under which each journal is served (https://{code}.{domain}).
+     */
+    public const string DOMAIN = 'episciences.org';
+
     #[groups(['read:Reviews'])]
     private int $number;
 

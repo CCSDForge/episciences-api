@@ -95,7 +95,7 @@ final class JournalCollectionProvider extends AuthenticationStateProvider implem
         $resource->setSubtitle($journal->getSubtitle());
         $resource->setIssn($this->formatIssn((string) $journal->getSetting(ReviewSetting::SETTING_ISSN_PRINT)));
         $resource->setEissn($this->formatIssn((string) $journal->getSetting(ReviewSetting::SETTING_ISSN)));
-        $resource->setAddress((string) $this->requestStack->getCurrentRequest()?->getSchemeAndHttpHost());
+        $resource->setAddress(sprintf('https://%s.%s', $journal->getCode(), Journal::DOMAIN));
 
         $repositories = $this->acceptedRepositories($journal);
         $repositories = $this->withoutAutomaticHal($journal, $repositories);

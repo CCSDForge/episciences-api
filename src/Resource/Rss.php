@@ -37,7 +37,7 @@ class Rss
 
     private function prepareFeedHead(): FeedWriter
     {
-        $domain = 'episciences.org';
+        $domain = Journal::DOMAIN;
 
         $review = $this->getReview();
         $code = $review instanceof \App\Entity\Review ? $review->getCode() : 'portal';

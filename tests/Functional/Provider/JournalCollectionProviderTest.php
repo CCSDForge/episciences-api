@@ -111,6 +111,9 @@ class JournalCollectionProviderTest extends KernelTestCase
         $this->assertStringContainsString('1234-5678', $csv);
         $this->assertStringContainsString('accepted-repo', $csv);
         $this->assertStringContainsString('Informatics', $csv);
+
+        // Each journal's address is derived from its code and the shared domain.
+        $this->assertStringContainsString('https://active.episciences.org', $csv);
     }
 
     public function testJsonIsPaginated(): void
