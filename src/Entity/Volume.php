@@ -26,9 +26,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Index(columns: ['RVID'], name: 'FK_CONFID_idx')]
 #[ORM\Entity(repositoryClass: VolumeRepository::class)]
 #[ApiResource(
-    uriTemplate: '/volumes/{vid}',
     operations: [
         new Get(
+            uriTemplate: '/volumes/{vid}',
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Consult a particular volume',
@@ -45,11 +45,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 
         ),
-    ], provider: VolumeStateProvider::class
-)]
-#[ApiResource(
-    operations: [
         new GetCollection(
+            uriTemplate: self::DEFAULT_URI_TEMPLATE,
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['sections_volumes']],
                 summary: 'Volumes list',
@@ -67,8 +64,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
                 'groups' => [AppConstants::APP_CONST['normalizationContext']['groups']['volume']['collection']['read'][0]],
             ],
         ),
-
-    ], provider: VolumeStateProvider::class,
+    ],
+    provider: VolumeStateProvider::class,
     parameters: [
         'vid' => new QueryParameter(filter: new ExactFilter(), property: 'vid'),
     ],
