@@ -38,4 +38,16 @@ class ReviewRepository extends ServiceEntityRepository
 
     }
 
+    /**
+     * Returns all enabled journals, ordered by name.
+     * The settings collection is eagerly loaded with each journal, so accessing
+     * the journal settings does not trigger additional queries.
+     *
+     * @return Review[]
+     */
+    public function getActiveJournals(): array
+    {
+        return $this->findBy(['status' => Review::STATUS_ENABLED], ['name' => 'ASC']);
+    }
+
 }
