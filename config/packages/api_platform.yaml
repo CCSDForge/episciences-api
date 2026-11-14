@@ -27,6 +27,13 @@ api_platform:
         html: ['text/html']
         xml: ['application/xml']
 
+    serializer:
+        # The custom normalizers of App\Serializer\Normalizer and the OpenApiNormalizer
+        # read and write the hydra-prefixed keys ("hydra:totalItems", "hydra:member", ...).
+        # API Platform 5 configures this prefix to false by default; restore it so that the
+        # decorated JSON-LD output keeps the "hydra:" prefix the API has always exposed.
+        hydra_prefix: true
+
     # API Platform 4 defaults omit `json`, which broke /api/docs.json (404).
     # The `json` docs format is served as OpenAPI, as with API Platform 3.
     docs_formats:
@@ -61,7 +68,11 @@ api_platform:
 
     mapping:
         # The list of paths with files or directories where the bundle will look for additional resource files.
-        paths: ['%kernel.project_dir%/src/Resource']
+        # src/Resource holds standalone #[ApiResource] classes; src/Entity holds Doctrine entities that declare
+        # their own #[ApiResource] attributes (Volume, Section, News, Paper, ...). Both must be scanned.
+        paths:
+            - '%kernel.project_dir%/src/Resource'
+            - '%kernel.project_dir%/src/Entity'
     patch_formats:
         json: ['application/merge-patch+json']
     swagger:

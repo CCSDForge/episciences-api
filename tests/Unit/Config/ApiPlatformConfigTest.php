@@ -13,18 +13,20 @@ use Symfony\Component\Yaml\Yaml;
 class ApiPlatformConfigTest extends TestCase
 {
     /**
-     * API Platform 5 removed the optional "hydra:" JSON-LD prefix and its legacy
-     * normalizer. The "hydra_prefix" setting is no longer supported and must
-     * therefore stay absent from the configuration.
+     * API Platform 5 defaults the "hydra:" JSON-LD prefix to false, which strips
+     * the "hydra:" prefix from the decorated collection output and breaks the
+     * custom ApiCollectionNormalizer (it reads "hydra:totalItems"/"hydra:member"
+     * and writes "hydra:totalPublishedArticles"/"hydra:range"). The migration
+     * keeps the "hydra:" prefix by restoring api_platform.serializer.hydra_prefix
+     * to true, so this setting must stay present and truthy.
      */
-    public function testHydraPrefixConfigIsRemoved(): void
+    public function testHydraPrefixConfigIsEnabled(): void
     {
         $config = Yaml::parseFile(dirname(__DIR__, 3) . '/config/packages/api_platform.yaml');
 
-        $this->assertArrayNotHasKey(
-            'hydra_prefix',
-            $config['api_platform']['serializer'] ?? [],
-            'api_platform.serializer.hydra_prefix was removed in API Platform 5 and must not be set.'
+        $this->assertTrue(
+            $config['api_platform']['serializer']['hydra_prefix'] ?? false,
+            'api_platform.serializer.hydra_prefix must be true to keep the "hydra:" JSON-LD prefix.'
         );
     }
 }
