@@ -4,7 +4,7 @@
 - MySQL database shared with Episciences
 
 ## Commands
-- Locally use `php8.4` and `./composer`
+- Locally use `php8.5` and `./composer`
 - `make test`, `make test-unit`, `make test-file FILE=...`
 - In Docker: `make phpstan [TARGET=path] [LEVEL=X]`, `make rector [DRY_RUN=1]`
 - `make docker-validate` - after changing entities

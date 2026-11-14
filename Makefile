@@ -97,7 +97,7 @@ help:
 	@echo "  $(BOLD)deploy-tag$(NC)         Deploy specific tag (usage: make deploy-tag TAG=v1.0.0)"
 	@echo ""
 	@echo "$(YELLOW)Prerequisites (Local Development):$(NC)"
-	@echo "  - PHP 8.4+ (php8.4 command)"
+	@echo "  - PHP 8.5+ (php8.5 command)"
 	@echo "  - Local composer binary (./composer)"
 	@echo "  - OpenSSL (for SSL certificate generation)"
 	@echo "  - Installed dependencies (vendor/)"
@@ -113,22 +113,22 @@ help:
 check-prereqs:
 	@echo "$(BOLD)Checking Prerequisites...$(NC)"
 	@echo ""
-	@# Check PHP 8.4
-	@if ! command -v php8.4 >/dev/null 2>&1; then \
-		echo "$(RED)✗ PHP 8.4 not found$(NC)"; \
-		echo "  Install PHP 8.4:"; \
-		echo "    Ubuntu/Debian: $(BOLD)sudo apt install php8.4 php8.4-cli php8.4-mbstring php8.4-xml php8.4-mysql$(NC)"; \
-		echo "    CentOS/RHEL:   $(BOLD)sudo yum install php84 php84-cli php84-mbstring php84-xml php84-mysqlnd$(NC)"; \
+	@# Check PHP 8.5
+	@if ! command -v php8.5 >/dev/null 2>&1; then \
+		echo "$(RED)✗ PHP 8.5 not found$(NC)"; \
+		echo "  Install PHP 8.5:"; \
+		echo "    Ubuntu/Debian: $(BOLD)sudo apt install php8.5 php8.5-cli php8.5-mbstring php8.5-xml php8.5-mysql$(NC)"; \
+		echo "    CentOS/RHEL:   $(BOLD)sudo yum install php85 php85-cli php85-mbstring php85-xml php85-mysqlnd$(NC)"; \
 		echo ""; \
 		exit 1; \
 	else \
-		echo "$(GREEN)✓ PHP 8.4 found$(NC) ($$(php8.4 --version | head -n1))"; \
+		echo "$(GREEN)✓ PHP 8.5 found$(NC) ($$(php8.5 --version | head -n1))"; \
 	fi
 	@# Check local composer
 	@if [ ! -f "./composer" ]; then \
 		echo "$(RED)✗ Local composer not found$(NC)"; \
 		echo "  Download composer:"; \
-		echo "    $(BOLD)curl -sS https://getcomposer.org/installer | php8.4$(NC)"; \
+		echo "    $(BOLD)curl -sS https://getcomposer.org/installer | php8.5$(NC)"; \
 		echo "    $(BOLD)mv composer.phar composer$(NC)"; \
 		echo ""; \
 		exit 1; \
@@ -166,7 +166,7 @@ check-prereqs:
 # Install PHP dependencies
 install: check-prereqs
 	@echo "$(BOLD)Installing PHP dependencies...$(NC)"
-	php8.4 ./composer install --no-progress --prefer-dist --optimize-autoloader
+	php8.5 ./composer install --no-progress --prefer-dist --optimize-autoloader
 	@echo "$(GREEN)✓ Dependencies installed successfully$(NC)"
 
 
@@ -177,7 +177,7 @@ test: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running all PHPUnit tests...$(NC)"
-	php8.4 vendor/bin/phpunit
+	php8.5 vendor/bin/phpunit
 	@echo "$(GREEN)✓ Tests completed$(NC)"
 
 # Run only unit tests
@@ -187,7 +187,7 @@ test-unit: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running unit tests...$(NC)"
-	php8.4 vendor/bin/phpunit tests/Unit/
+	php8.5 vendor/bin/phpunit tests/Unit/
 	@echo "$(GREEN)✓ Unit tests completed$(NC)"
 
 # Run tests with coverage
@@ -219,7 +219,7 @@ test-file: check-prereqs
 		exit 1; \
 	fi
 	@echo "$(BOLD)Running test file: $(FILE)$(NC)"
-	php8.4 vendor/bin/phpunit $(FILE)
+	php8.5 vendor/bin/phpunit $(FILE)
 	@echo "$(GREEN)✓ Test file completed$(NC)"
 
 # Run the tests that need a database (TEST_DATABASE_URL, skipped otherwise) against a throwaway MySQL container,
@@ -247,12 +247,12 @@ test-db: check-prereqs
 		echo "$(RED)$(TEST_DB_IMAGE) is not ready after 120 s$(NC)"; \
 		exit 1; \
 	fi; \
-	TEST_DATABASE_URL=mysql://episciences:episciences@127.0.0.1:$(TEST_DB_PORT)/episciences_test php8.4 vendor/bin/phpunit $${FILE:-tests/Functional}
+	TEST_DATABASE_URL=mysql://episciences:episciences@127.0.0.1:$(TEST_DB_PORT)/episciences_test php8.5 vendor/bin/phpunit $${FILE:-tests/Functional}
 
 # Validate PHP syntax of test files
 validate:
 	@echo "$(BOLD)Validating PHP syntax of test files...$(NC)"
-	@find tests/ -name "*.php" -exec php8.4 -l {} \; | grep -v "No syntax errors detected" || true
+	@find tests/ -name "*.php" -exec php8.5 -l {} \; | grep -v "No syntax errors detected" || true
 	@echo "$(GREEN)✓ PHP syntax validation completed$(NC)"
 
 # Run PHPStan in container
@@ -283,7 +283,7 @@ local-rector:
 	DRY_RUN_ARG=""; \
 	if [ "$$DRY_RUN" = "1" ]; then DRY_RUN_ARG="--dry-run"; fi; \
 	echo "$(BOLD)Running Rector locally on $$TARGET...$(NC)"; \
-	php8.4 vendor/bin/rector process $$TARGET $$DRY_RUN_ARG
+	php8.5 vendor/bin/rector process $$TARGET $$DRY_RUN_ARG
 	@echo "$(GREEN)✓ Local Rector completed$(NC)"
 
 # Run both PHPStan and Rector
@@ -485,10 +485,10 @@ docker-composer-update:
 
 # Install dependencies optimized for CI
 docker-install-ci:
-	@echo "$(BOLD)Installing dependencies in PHP 8.4 container (CI optimized)...$(NC)"
+	@echo "$(BOLD)Installing dependencies in PHP 8.5 container (CI optimized)...$(NC)"
 	@echo "$(BLUE)Creating Symfony directories...$(NC)"
 	mkdir -p var/cache var/log
-	@echo "$(BLUE)Installing composer dependencies inside the PHP 8.4 container...$(NC)"
+	@echo "$(BLUE)Installing composer dependencies inside the PHP 8.5 container...$(NC)"
 	$(DOCKER_COMPOSE) exec -T php composer install --no-progress --prefer-dist --optimize-autoloader --classmap-authoritative --no-scripts
 	@echo "$(BLUE)Setting proper permissions on cache and log directories...$(NC)"
 	chmod -R 775 var/cache var/log || true
@@ -595,8 +595,8 @@ define deploy-logic
 		echo "  Download composer.phar first"; \
 		exit 1; \
 	fi
-	@php8.4 composer.phar install -o --no-dev --ignore-platform-reqs
-	@php8.4 composer.phar dump-env production
+	@php8.5 composer.phar install -o --no-dev --ignore-platform-reqs
+	@php8.5 composer.phar dump-env production
 	@# Build assets
 	@echo "$(BLUE)Building production assets...$(NC)"
 	@if command -v yarn >/dev/null 2>&1; then \
