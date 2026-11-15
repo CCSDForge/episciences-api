@@ -23,7 +23,7 @@ use App\OpenApi\QueryParameters;
         new Get(
             uriTemplate: Review::URI_TEMPLATE . 'front/configuration',
             openapi: new OpenApiOperation(
-                tags: [OpenApiFactory::OAF_TAGS['review']],
+                tags: [OpenApiFactory::OAF_TAGS['journal']],
                 responses: [
                     '200' => new Response(
                         description: 'Configuration flags',

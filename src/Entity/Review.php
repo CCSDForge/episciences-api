@@ -125,11 +125,12 @@ use App\State\JournalItemProvider;
     controller: FeedController::class
 )]
 #[ApiResource(
+    shortName: 'Journal',
     operations: [
         new Get(
             uriTemplate: self::URI_TEMPLATE . '{code}',
             openapi: new OpenApiOperation(
-                tags: [OpenApiFactory::OAF_TAGS['review']],
+                tags: [OpenApiFactory::OAF_TAGS['journal']],
                 summary: 'Journal',
                 description: 'Retrieves a Journal resource.',
             ),
@@ -145,7 +146,7 @@ use App\State\JournalItemProvider;
             uriTemplate: self::URI_TEMPLATE,
             formats: ['jsonld', 'json', 'html', 'xml', 'csv' => ['text/csv']],
             openapi: new OpenApiOperation(
-                tags: [OpenApiFactory::OAF_TAGS['review']],
+                tags: [OpenApiFactory::OAF_TAGS['journal']],
                 summary: 'All Journals',
                 description: 'Retrieves the collection of active journals',
                 parameters: [

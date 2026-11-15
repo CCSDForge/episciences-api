@@ -30,6 +30,7 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         'auth' => 'Sign in - Myspace',
         'stats' => 'Statistics',
         'review' => 'Journals | Boards',
+        'journal' => 'Journals',
         'user' => 'User',
         'sections_volumes' => 'Sections | Volumes',
         'browse_search' => 'Browse | Search',
