@@ -20,6 +20,8 @@ class ReviewSetting
     public const DISPLAY_STATISTICS_SECRETARIES = '2';
     /** DOI settings of the journal: on a page of their own in Episciences, for the platform administrators only */
     public const DOI_SETTINGS = ['doiPrefix', 'doiFormat', 'doiRegistrationAgency', 'doiAssignMode'];
+    /** Canonical DOI of the journal, entered by the journal itself (a full, pre-complete DOI exported in Crossref/DOAJ) */
+    public const SETTING_JOURNAL_DOI = 'journalAssignedDoi';
     /** ISSN of the printed edition of the journal */
     public const SETTING_ISSN_PRINT = 'ISSN_PRINT';
     /** ISSN of the electronic edition of the journal */

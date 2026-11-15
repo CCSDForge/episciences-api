@@ -43,6 +43,13 @@ class Journal
     #[groups(['read:Reviews'])]
     private array $acceptedRepositories;
 
+    /**
+     * The canonical DOI of the journal, as entered by the journal itself (the raw value of
+     * the `journalAssignedDoi` setting). Null when the journal has not assigned one.
+     */
+    #[groups(['read:Reviews'])]
+    private ?string $doi;
+
     public function getNumber(): int
     {
         return $this->number;
@@ -148,6 +155,17 @@ class Journal
     public function setAcceptedRepositories(array $acceptedRepositories): self
     {
         $this->acceptedRepositories = $acceptedRepositories;
+        return $this;
+    }
+
+    public function getDoi(): ?string
+    {
+        return $this->doi;
+    }
+
+    public function setDoi(?string $doi): self
+    {
+        $this->doi = $doi;
         return $this;
     }
 }

@@ -51,6 +51,7 @@ class JournalSettingsVisibilityTest extends KernelTestCase
         $this->assertSame('dev', $payload['code'] ?? null);
         $this->assertSame('Development journal', $payload['title'] ?? null);
         $this->assertSame(sprintf('https://dev.%s', Journal::DOMAIN), $payload['address'] ?? null);
+        $this->assertSame('10.5281/zenodo.1234', $payload['doi'] ?? null);
     }
 
     public function testTheItemNeverReturnsTheSettings(): void
@@ -102,7 +103,7 @@ class JournalSettingsVisibilityTest extends KernelTestCase
         $journal->setCode('dev');
         $journal->setName('Development journal');
 
-        foreach (['displayEmptyVolumes' => '1', 'doiPrefix' => '10.0000', 'encapsulateEditors' => '0'] as $name => $value) {
+        foreach (['displayEmptyVolumes' => '1', 'doiPrefix' => '10.0000', 'encapsulateEditors' => '0', ReviewSetting::SETTING_JOURNAL_DOI => '10.5281/zenodo.1234'] as $name => $value) {
             $setting = new ReviewSetting();
             $setting->setValue($value);
             new \ReflectionProperty(ReviewSetting::class, 'setting')->setValue($setting, $name);

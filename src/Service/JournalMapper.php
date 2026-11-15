@@ -10,10 +10,10 @@ use App\Resource\Journal;
 
 /**
  * Builds the public Journal resource out of a Review journal, filling the derived
- * fields (ISSN / EISSN, address, accepted repositories) from its settings. Shared by
- * the collection provider (GET /api/journals/, with its sequential counter) and the
- * item provider (GET /api/journals/{code}, which deliberately omits `number` as it
- * is a duplicate of `rvid` on a single journal).
+ * fields (ISSN / EISSN, address, canonical DOI, accepted repositories) from its
+ * settings. Shared by the collection provider (GET /api/journals/, with its sequential
+ * counter) and the item provider (GET /api/journals/{code}, which deliberately omits
+ * `number` as it is a duplicate of `rvid` on a single journal).
  */
 class JournalMapper
 {
@@ -39,6 +39,7 @@ class JournalMapper
         $resource->setIssn($this->formatIssn((string) $journal->getSetting(ReviewSetting::SETTING_ISSN_PRINT)));
         $resource->setEissn($this->formatIssn((string) $journal->getSetting(ReviewSetting::SETTING_ISSN)));
         $resource->setAddress(sprintf('https://%s.%s', $journal->getCode(), Journal::DOMAIN));
+        $resource->setDoi($journal->getSetting(ReviewSetting::SETTING_JOURNAL_DOI));
 
         $repositories = $this->acceptedRepositories($journal);
         $repositories = $this->withoutAutomaticHal($journal, $repositories);
