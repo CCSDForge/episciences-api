@@ -172,17 +172,24 @@ class StatisticsQueriesDatabaseTest extends TestCase
         // WHEN is a reserved word
         $connection->insert(Paper::TABLE, array_combine(array_map($platform->quoteSingleIdentifier(...), array_keys($paper)), $paper));
 
-        $connection->insert(PaperLog::TABLE, array_merge($this->requiredColumnDefaults(PaperLog::TABLE), [
-            'PAPERID' => 30,
-            'DOCID' => 30,
-            'RVID' => self::RVID,
-            'ACTION' => 'status',
-            'DETAIL' => json_encode(['status' => Paper::STATUS_PUBLISHED], JSON_THROW_ON_ERROR),
-            'DATE' => '2025-04-01 10:00:00',
-        ]));
+        foreach ([Paper::STATUS_SUBMITTED => '2025-03-01 00:00:00', Paper::STATUS_PUBLISHED => '2025-04-01 10:00:00'] as $status => $date) {
+            $connection->insert(PaperLog::TABLE, array_merge($this->requiredColumnDefaults(PaperLog::TABLE), [
+                'PAPERID' => 30,
+                'DOCID' => 30,
+                'RVID' => self::RVID,
+                'ACTION' => 'status',
+                'DETAIL' => json_encode(['status' => $status], JSON_THROW_ON_ERROR),
+                'DATE' => $date,
+            ]));
+        }
 
-        $this->assertSame([30], $this->paperLogRepository->getPublishedPaperIds(self::RVID, [2025], '2025-03-01'));
-        $this->assertSame([], $this->paperLogRepository->getPublishedPaperIds(self::RVID, [2025], '2025-03-02'));
+        $paperIds = fn(string $startDate): array => array_map('intval', array_column(
+            $this->paperLogRepository->getArticleDelays('DAY', Paper::STATUS_PUBLISHED, $startDate, [2025], self::RVID) ?? [],
+            'PAPERID'
+        ));
+
+        $this->assertSame([30], $paperIds('2025-03-01'));
+        $this->assertSame([], $paperIds('2025-03-02'));
     }
 
     /**

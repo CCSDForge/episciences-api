@@ -154,16 +154,14 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
 
                 } else { // all submissions indicators
 
-                    $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
-
                     // counted by submission (see Stats::getDashboard()): the submissions (the "status" and "flag"
                     // filters apply), the imported ones (the "status" filter applies) and the submitted ones
                     $nbSubmission = count($this->getSubmissions($currentFilters));
                     $imported = count($this->getSubmissions(array_merge($currentFilters, ['flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']])));
                     $nbSubmissionsWithoutImported = count($this->getSubmissions(array_merge(array_diff_key($currentFilters, ['status' => true]), ['flag' => PapersRepository::AVAILABLE_FLAG_VALUES['submitted']])));
 
-                    // the published papers from the history; accepted and refused: by year of the decision
-                    $nbPublished = $paperLogRepo->getPublished($rvId, $years, $startAfterDate);
+                    // published: by year of publication; accepted and refused: by year of the decision
+                    $nbPublished = count(SubmissionFigures::published($this->getJournalSubmissions($currentFilters), $years));
                     $nbRefused = count($this->getDecidedSubmissions(SubmissionFigures::REFUSED, $currentFilters));
                     $nbAccepted = count($this->getDecidedSubmissions(SubmissionFigures::ACCEPTED, $currentFilters));
 
@@ -370,7 +368,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                 Statistic::NB_SUBMISSIONS_DETAILS => [
                     'nb-submitted-versions' => SubmissionFigures::papers($this->getSubmissions($common + ['flag' => PapersRepository::AVAILABLE_FLAG_VALUES['submitted']])),
                     'nb-imported-versions' => SubmissionFigures::papers($this->getSubmissions($common + array_intersect_key($filters, ['status' => true]) + ['flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']])),
-                    Paper::STATUS_DICTIONARY[Paper::STATUS_PUBLISHED] => $paperLogRepo->getPublishedPaperIds($rvId, $years, $startAfterDate),
+                    Paper::STATUS_DICTIONARY[Paper::STATUS_PUBLISHED] => SubmissionFigures::papers(SubmissionFigures::published($this->getJournalSubmissions($filters), $years)),
                     Paper::STATUS_DICTIONARY[Paper::STATUS_REFUSED] => SubmissionFigures::papers($this->getDecidedSubmissions(SubmissionFigures::REFUSED, $filters)),
                     'accepted' => SubmissionFigures::papers($this->getDecidedSubmissions(SubmissionFigures::ACCEPTED, $filters)),
                     'being-to-publish.accepted' => SubmissionFigures::papers(SubmissionFigures::acceptedNotYetPublished($this->getJournalSubmissions($filters), $years)),

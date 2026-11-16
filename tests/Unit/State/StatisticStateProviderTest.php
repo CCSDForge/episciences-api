@@ -609,7 +609,6 @@ class StatisticStateProviderTest extends TestCase
         $paperLogRepository = $this->createStub(PaperLogRepository::class);
         $paperLogRepository->method('getSubmissionMedianTimeDetails')->willReturn(['median' => 317.0, 'count' => 2]);
         $paperLogRepository->method('getSubmissionDelayPaperIds')->willReturn([2, 3]);
-        $paperLogRepository->method('getPublishedPaperIds')->willReturn([4]);
 
         $paperConflictsRepository = $this->createStub(PaperConflictsRepository::class);
         $paperConflictsRepository->method('findBy')->willReturn(array_map(

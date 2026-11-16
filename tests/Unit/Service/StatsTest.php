@@ -70,24 +70,12 @@ class StatsTest extends TestCase
     // Helpers
     // -------------------------------------------------------------------------
 
-    /** Returns a QueryBuilder mock whose getQuery()->getSingleScalarResult() returns $scalar. */
-    private function makeScalarQb(int|float $scalar): MockObject
-    {
-        $query = $this->createMock(Query::class);
-        $query->method('getSingleScalarResult')->willReturn($scalar);
-
-        $qb = $this->createMock(QueryBuilder::class);
-        $qb->method('getQuery')->willReturn($query);
-
-        return $qb;
-    }
-
     /**
      * A submission as returned by PapersRepository::getSubmissions()
      *
      * @return array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, publicationDate: string|null, category: string}
      */
-    private static function submission(int $docId, string $submitted, string $category, ?string $decided = null, int $status = 0, ?int $repoId = 1, ?int $paperId = null): array
+    private static function submission(int $docId, string $submitted, string $category, ?string $decided = null, int $status = 0, ?int $repoId = 1, ?int $paperId = null, ?string $published = null): array
     {
         return [
             'rvid' => 8,
@@ -99,7 +87,7 @@ class StatsTest extends TestCase
             'firstSubmissionDate' => $submitted . '-03-01 10:00:00',
             'acceptanceDate' => $category === SubmissionFigures::ACCEPTED && $decided !== null ? $decided . '-06-01 10:00:00' : null,
             'refusalDate' => $category === SubmissionFigures::REFUSED && $decided !== null ? $decided . '-06-01 10:00:00' : null,
-            'publicationDate' => null,
+            'publicationDate' => $published === null ? null : $published . '-09-01 10:00:00',
             'category' => $category,
         ];
     }
@@ -167,7 +155,6 @@ class StatsTest extends TestCase
      */
     public function testDashboardWithoutSubmissionIsNotFoundWithItsFilters(): void
     {
-        $this->papersRepo->method('submissionsQuery')->willReturn($this->makeScalarQb(0));
 
         $dashboard = $this->stats->getDashboard(['filters' => ['year' => '2014']], ['is' => ['rvid' => 8, 'submissionDate' => [2014]]]);
 
@@ -198,10 +185,8 @@ class StatsTest extends TestCase
             self::submission(40, '2025', SubmissionFigures::OTHER),
             self::submission(50, '2025', SubmissionFigures::IMPORTED, status: Paper::STATUS_PUBLISHED),
         ]);
-        $this->papersRepo->method('submissionsQuery')->willReturn($this->makeScalarQb(1));
         $this->papersRepo->method('getAvailableRepositories')->willReturn([]);
         $this->paperLogRepo->method('getArticleDelays')->willReturn([]);
-        $this->paperLogRepo->method('getPublished')->willReturn(1);
         $this->paperLogRepo->method('getAcceptanceRate')->willReturnCallback(
             static fn(array $options): float => round($options['acceptedTotal'] / ($options['acceptedTotal'] + $options['refusedTotal']) * 100, 2)
         );
@@ -248,17 +233,15 @@ class StatsTest extends TestCase
         $filters = ['is' => ['rvid' => '8', 'submissionDate' => '2025']];
 
         $this->papersRepo->expects($this->once())->method('getSubmissions')->with(8, null)->willReturn([
-            self::submission(10, '2025', SubmissionFigures::ACCEPTED, '2025', Paper::STATUS_PUBLISHED, paperId: 1),
+            self::submission(10, '2025', SubmissionFigures::ACCEPTED, '2025', Paper::STATUS_PUBLISHED, paperId: 1, published: '2025'),
             self::submission(20, '2025', SubmissionFigures::ACCEPTED, '2025', Paper::STATUS_STRICTLY_ACCEPTED, paperId: 2),
             self::submission(30, '2025', SubmissionFigures::OTHER, paperId: 3),
             // submitted in 2024, refused in 2025: a refusal of 2025, not a submission of 2025
             self::submission(40, '2024', SubmissionFigures::REFUSED, '2025', Paper::STATUS_REFUSED, paperId: 4),
-            self::submission(50, '2025', SubmissionFigures::IMPORTED, status: Paper::STATUS_PUBLISHED, paperId: 5),
+            self::submission(50, '2025', SubmissionFigures::IMPORTED, status: Paper::STATUS_PUBLISHED, paperId: 5, published: '2025'),
+            // published in 2024: not a publication of 2025
+            self::submission(60, '2023', SubmissionFigures::ACCEPTED, '2024', Paper::STATUS_PUBLISHED, paperId: 6, published: '2024'),
         ]);
-        $this->papersRepo->method('getSubmissionPaperIds')->willReturnCallback(
-            static fn(array $f, ?string $flag = null, string $date = 'submissionDate'): array => $date === 'publicationDate' ? [5] : []
-        );
-        $this->paperLogRepo->method('getPublishedPaperIds')->willReturn([1]);
         $this->paperLogRepo->method('getSubmissionDelayPaperIds')->willReturnCallback(
             static fn(int $rvId, ?array $years, ?string $start, string $operation): array => $operation === 'median-submission-publication' ? [1] : [1, 2]
         );
@@ -266,8 +249,8 @@ class StatsTest extends TestCase
         $this->assertSame([
             'nbSubmissions' => [['paperid' => 1, 'docid' => 10], ['paperid' => 2, 'docid' => 20], ['paperid' => 3, 'docid' => 30], ['paperid' => 5, 'docid' => 50]],
             'nbImported' => [['paperid' => 5, 'docid' => 50]],
-            'nbImportedPublished' => [5],
-            'nbPublished' => [1],
+            'nbImportedPublished' => [['paperid' => 5, 'docid' => 50]],
+            'nbPublished' => [['paperid' => 1, 'docid' => 10]],
             'nbAccepted' => [['paperid' => 1, 'docid' => 10], ['paperid' => 2, 'docid' => 20]],
             'nbRefused' => [['paperid' => 4, 'docid' => 40]],
             'nbAcceptedNotYetPublished' => [['paperid' => 2, 'docid' => 20]],
@@ -279,8 +262,6 @@ class StatsTest extends TestCase
 
     public function testDashboardPaperIdsWithoutImportedPublishedWithAStartDateOnly(): void
     {
-        $this->papersRepo->method('getSubmissionPaperIds')->willReturn([]);
-        $this->paperLogRepo->method('getPublishedPaperIds')->willReturn([]);
         $this->paperLogRepo->method('getSubmissionDelayPaperIds')->willReturn([]);
 
         $papers = $this->stats->getDashboardPaperIds(['is' => ['rvid' => '8', 'startAfterDate' => '2025-01-01']]);
@@ -907,17 +888,15 @@ class StatsTest extends TestCase
 
         // fetched once, then counted by year
         $this->papersRepo->expects($this->once())->method('getSubmissions')->with(8, null)->willReturn([
-            self::submission(1, '2023', SubmissionFigures::ACCEPTED, '2023', Paper::STATUS_PUBLISHED),
+            self::submission(1, '2023', SubmissionFigures::ACCEPTED, '2023', Paper::STATUS_PUBLISHED, published: '2023'),
             self::submission(2, '2023', SubmissionFigures::ACCEPTED, '2023', Paper::STATUS_STRICTLY_ACCEPTED),
             self::submission(3, '2023', SubmissionFigures::REFUSED, '2023', Paper::STATUS_REFUSED),
             self::submission(4, '2023', SubmissionFigures::OTHER, repoId: null), // local versions only: no repository
             self::submission(5, '2023', SubmissionFigures::IMPORTED),
             // submitted in 2022, accepted in 2023: an acceptance of 2023, a submission of 2022
-            self::submission(6, '2022', SubmissionFigures::ACCEPTED, '2023', Paper::STATUS_PUBLISHED, 2),
+            self::submission(6, '2022', SubmissionFigures::ACCEPTED, '2023', Paper::STATUS_PUBLISHED, 2, published: '2023'),
         ]);
 
-        // PAPER_LOG counters are fetched once for all the years (not once per year)
-        $this->paperLogRepo->expects($this->once())->method('getPublishedByYear')->with($rvId, [2022, 2023])->willReturn([2023 => 4]);
         $this->paperLogRepo->method('getAcceptanceRate')->willReturn(71.4);
 
         $this->stats->getSubmissionByYearStats($filters, $rvId, $details);
@@ -926,7 +905,7 @@ class StatsTest extends TestCase
         $year = $details[Stats::SUBMISSIONS_BY_YEAR][2023];
         $this->assertSame(5, $year['submissions']);
         $this->assertSame(1, $year['imported']);
-        $this->assertSame(4, $year['published']);
+        $this->assertSame(2, $year['published']);
         $this->assertSame(3, $year['accepted']);
         $this->assertSame(1, $year['refused']);
         $this->assertSame(1, $year['acceptedNotYetPublished']);
@@ -953,7 +932,6 @@ class StatsTest extends TestCase
             self::submission(2, '2022', SubmissionFigures::REFUSED, '2024', Paper::STATUS_REFUSED),
             self::submission(3, '2023', SubmissionFigures::OTHER),
         ]);
-        $this->paperLogRepo->method('getPublishedByYear')->willReturn([]);
         $this->paperLogRepo->method('getAcceptanceRate')->willReturn(50.0);
 
         $details = [];
@@ -986,7 +964,6 @@ class StatsTest extends TestCase
             self::submission(1, '2023', SubmissionFigures::OTHER),
             self::submission(2, '2023', SubmissionFigures::OTHER, repoId: 2, paperId: 1),
         ]);
-        $this->paperLogRepo->method('getPublishedByYear')->willReturn([]);
 
         $this->stats->getSubmissionByYearStats(['is' => ['rvid' => 8, 'startAfterDate' => '2023-01-01']], 8, $details);
 
@@ -1013,7 +990,6 @@ class StatsTest extends TestCase
             // accepted, then refused in 2022
             self::submission(4, '2022', SubmissionFigures::REFUSED, '2022', Paper::STATUS_REFUSED),
         ]);
-        $this->paperLogRepo->method('getPublishedByYear')->willReturn([2022 => 1]);
         $this->paperLogRepo->method('getAcceptanceRate')->willReturn(40.0);
 
         $this->stats->getSubmissionByYearStats(['is' => []], null, $details);

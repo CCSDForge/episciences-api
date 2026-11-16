@@ -182,6 +182,32 @@ class SubmissionFiguresTest extends TestCase
         $this->assertSame([2024 => [1 => 2, 2 => 1], 2025 => [1 => 1]], SubmissionFigures::countByYearAndRepository($submissions));
     }
 
+    /**
+     * Published: current status published, by year of publication; the reviewed ones (category accepted) and the
+     * imported ones apart, so that they add up to all the published submissions
+     */
+    public function testPublishedByYearOfPublication(): void
+    {
+        $submissions = [
+            self::submission(1, '2024-05-01', Paper::STATUS_PUBLISHED, '2024-09-01', published: '2025-01-10'),
+            self::submission(2, '2025-02-01', Paper::STATUS_PUBLISHED, '2025-03-01', published: '2025-06-01'),
+            // accepted, not published yet
+            self::submission(3, '2025-02-01', Paper::STATUS_STRICTLY_ACCEPTED, '2025-03-01'),
+            // imported and published
+            self::submission(4, '2025-01-01', Paper::STATUS_PUBLISHED, published: '2025-01-02', flag: 'imported'),
+            // without publication date: only without year
+            self::submission(5, '2016-01-01', Paper::STATUS_PUBLISHED, '2016-03-01'),
+        ];
+
+        $this->assertSame([1, 2, 5], array_column(SubmissionFigures::published($submissions), 'docid'));
+        $this->assertSame([1, 2], array_column(SubmissionFigures::published($submissions, [2025]), 'docid'));
+        $this->assertSame([], SubmissionFigures::published($submissions, [2024]));
+        $this->assertSame([4], array_column(SubmissionFigures::published($submissions, ['2025'], true), 'docid'));
+        $this->assertSame([2025 => 2], SubmissionFigures::countPublishedByYear($submissions));
+        // a publication in a year without submission nor decision is listed
+        $this->assertContains(2025, SubmissionFigures::activityYears([$submissions[0]]));
+    }
+
     public function testFilterOnTheCurrentStatusAndTheFlag(): void
     {
         $submissions = [

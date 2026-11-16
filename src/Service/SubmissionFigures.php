@@ -161,6 +161,51 @@ final class SubmissionFigures
     }
 
     /**
+     * The published submissions (current status), by year of publication (publication date of the version they end
+     * with; without it, only listed without year): the reviewed ones (category accepted), or the imported ones
+     *
+     * @param list<Submission> $submissions
+     * @param array<int|string> $years
+     * @return list<Submission>
+     */
+    public static function published(array $submissions, array $years = [], bool $imported = false): array
+    {
+        $category = $imported ? self::IMPORTED : self::ACCEPTED;
+
+        return self::inYears(
+            array_values(array_filter(
+                $submissions,
+                static fn(array $submission): bool => $submission['category'] === $category && $submission['status'] === Paper::STATUS_PUBLISHED
+            )),
+            $years,
+            self::publicationYear(...)
+        );
+    }
+
+    /**
+     * Number of published submissions (imported ones excluded, see published()) by year of publication
+     *
+     * @param list<Submission> $submissions
+     * @return array<int, int> indexed by year
+     */
+    public static function countPublishedByYear(array $submissions): array
+    {
+        $counts = [];
+
+        foreach (self::published($submissions) as $submission) {
+            $year = self::publicationYear($submission);
+
+            if ($year !== null) {
+                $counts[$year] = ($counts[$year] ?? 0) + 1;
+            }
+        }
+
+        ksort($counts);
+
+        return $counts;
+    }
+
+    /**
      * Number of submissions by year of submission and by repository: the repository of the first version of the
      * submission outside Episciences (the submissions with local versions only are not counted)
      *
@@ -209,13 +254,7 @@ final class SubmissionFigures
      */
     public static function countPublishedSameYear(array $submissions): array
     {
-        return self::countSameYear(
-            array_filter(
-                $submissions,
-                static fn(array $submission): bool => $submission['category'] === self::ACCEPTED && $submission['status'] === Paper::STATUS_PUBLISHED
-            ),
-            static fn(array $submission): ?int => self::dateYear($submission['publicationDate'])
-        );
+        return self::countSameYear(self::published($submissions), self::publicationYear(...));
     }
 
     /**
@@ -247,9 +286,10 @@ final class SubmissionFigures
     }
 
     /**
-     * The years in which the submissions are counted, from Stats::REF_YEAR: the years of first submission, and those
-     * of the decision of the accepted and refused submissions (see inCategory()), so that the details by year cover
-     * every submission counted by the totals, even a decision taken in a year without a new submission
+     * The years in which the submissions are counted, from Stats::REF_YEAR: the years of first submission, those
+     * of the decision of the accepted and refused submissions (see inCategory()) and those of publication (see
+     * published()), so that the details by year cover every submission counted by the totals, even a decision or a
+     * publication in a year without a new submission
      *
      * @param list<Submission> $submissions
      * @return list<int> sorted
@@ -265,6 +305,12 @@ final class SubmissionFigures
                 if ($submission['category'] === $category && ($year = $yearOf($submission)) !== null) {
                     $years[] = $year;
                 }
+            }
+        }
+
+        foreach (self::published($submissions) as $submission) {
+            if (($year = self::publicationYear($submission)) !== null) {
+                $years[] = $year;
             }
         }
 
@@ -292,6 +338,14 @@ final class SubmissionFigures
     private static function submissionYear(array $submission): int
     {
         return (int)substr($submission['firstSubmissionDate'], 0, 4);
+    }
+
+    /**
+     * @param array{publicationDate: string|null} $submission
+     */
+    private static function publicationYear(array $submission): ?int
+    {
+        return self::dateYear($submission['publicationDate']);
     }
 
     /**

@@ -69,68 +69,6 @@ class PapersRepository extends ServiceEntityRepository
     }
 
     /**
-     * Submissions query
-     * @param array $filters
-     * @param bool $excludeTmpVersions
-     * @param string $fieldDateToBeUsed (default = submissionDate): l'année prise en compte est l'année de la première soumission
-     * @param bool $excludeImportedPapers
-     * @param string|null $flag
-     * @param bool $withoutObsolete
-     * @return QueryBuilder
-     */
-    public function submissionsQuery(array  $filters = [],
-                                     bool   $excludeTmpVersions = false,
-                                     string $fieldDateToBeUsed = 'submissionDate',
-                                     bool   $excludeImportedPapers = false,
-                                     ?string $flag = null,
-                                     bool   $withoutObsolete = false
-    ): QueryBuilder
-    {
-
-        $qb = $this
-            ->createQueryBuilder(self::PAPERS_ALIAS)
-            ->select('count(distinct p.paperid)');
-
-        $qb = $this->addQueryFilters($qb, $filters, $fieldDateToBeUsed);
-
-        if (empty($filters['is']['rvid'])) {
-            $this->andActiveJournals($qb, sprintf('%s.rvid', self::PAPERS_ALIAS));
-        }
-
-        if ($withoutObsolete) {
-
-            $qb->andWhere('p.status != :obsolete');
-            $qb->setParameter('obsolete', Paper::STATUS_OBSOLETE);
-        }
-
-        $qb->andWhere('p.status != :deleted');
-        $qb->setParameter('deleted', Paper::STATUS_DELETED);
-
-        $qb->andWhere('p.status != :removed');
-        $qb->setParameter('removed', Paper::STATUS_REMOVED);
-
-        if ($excludeTmpVersions) {
-            $qb
-                ->andWhere('p.repoid != :repoId')
-                ->setParameter('repoId', self::LOCAL_REPOSITORY);
-        }
-
-        if ($excludeImportedPapers) {
-            $qb
-                ->andWhere('p.flag = :flag')
-                ->setParameter('flag', self::AVAILABLE_FLAG_VALUES['submitted']);
-        } elseif ($flag && array_key_exists($flag, self::AVAILABLE_FLAG_VALUES)) {
-            $qb
-                ->andWhere('p.flag = :flag')
-                ->setParameter('flag', $flag);
-
-        }
-
-        return $qb;
-
-    }
-
-    /**
      * @param QueryBuilder $qb
      * @param array $filters
      * @param string $date
@@ -511,17 +449,6 @@ class PapersRepository extends ServiceEntityRepository
     }
 
     /**
-     * Identifiers (PAPERID) of the papers counted by submissionsQuery()
-     *
-     * @param array<string, mixed> $filters see submissionsQuery()
-     * @return list<int> sorted
-     */
-    public function getSubmissionPaperIds(array $filters = [], ?string $flag = null, string $fieldDateToBeUsed = 'submissionDate'): array
-    {
-        return $this->paperIds($this->submissionsQuery($filters, false, $fieldDateToBeUsed, false, $flag));
-    }
-
-    /**
      * The DOCID of the latest version of each paper
      *
      * @param int[] $paperIds
@@ -546,16 +473,6 @@ class PapersRepository extends ServiceEntityRepository
         }
 
         return $docIds;
-    }
-
-    /**
-     * @return list<int> sorted
-     */
-    private function paperIds(QueryBuilder $qb): array
-    {
-        $qb->select(sprintf('DISTINCT %s.paperid AS paperid', self::PAPERS_ALIAS))->orderBy('paperid');
-
-        return array_map('intval', array_column($qb->getQuery()->getScalarResult(), 'paperid'));
     }
 
     /**

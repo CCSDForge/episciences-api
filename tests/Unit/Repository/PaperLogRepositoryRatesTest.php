@@ -8,8 +8,8 @@ use App\Repository\PaperLogRepository;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The rates are computed from the accepted and refused totals counted by submission by the callers
- * (see SubmissionFigures): without them, no rate is computed from the history.
+ * The rates are computed from the totals counted by submission by the callers (see SubmissionFigures):
+ * without them, no rate is computed.
  */
 class PaperLogRepositoryRatesTest extends TestCase
 {
@@ -31,11 +31,18 @@ class PaperLogRepositoryRatesTest extends TestCase
         $this->createRepository()->getAcceptanceRate(['acceptedTotal' => 3]);
     }
 
+    public function testThePublishedTotalIsRequiredForThePublicationRate(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->createRepository()->getPublicationRate(['acceptedTotal' => 3, 'refusedTotal' => 1]);
+    }
+
     private function createRepository(): PaperLogRepository
     {
         return $this->getMockBuilder(PaperLogRepository::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['getPublished'])
+            ->onlyMethods([])
             ->getMock();
     }
 }

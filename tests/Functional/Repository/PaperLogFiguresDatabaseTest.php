@@ -24,9 +24,9 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
 /**
- * Runs the figures read from the history (PaperLogRepository: published, delays) and their lists against a real
- * MySQL database, and the accepted papers not yet published, counted by submission (SubmissionFigures): an abandoned
- * article, only paused, is still counted. The other submissions figures, see PapersSubmissionsDatabaseTest.
+ * Runs the delays read from the history (PaperLogRepository) against a real MySQL database, and the accepted papers
+ * not yet published, counted by submission (SubmissionFigures): an abandoned article, only paused, is still
+ * counted. The other submissions figures, see PapersSubmissionsDatabaseTest.
  *
  * Requires TEST_DATABASE_URL (set in CI, see docker-compose.ci.yml); skipped otherwise.
  * The test creates and drops the PAPERS, PAPER_LOG and REVIEW tables: it is skipped if one of them already exists,
@@ -105,24 +105,6 @@ class PaperLogFiguresDatabaseTest extends TestCase
         $submissions = SubmissionFigures::acceptedNotYetPublished($this->repository->getSubmissions(self::RVID));
 
         $this->assertSame([3, 11], array_column($submissions, 'paperid'));
-    }
-
-    /**
-     * withPapers: each list of papers has as many identifiers as its figure (same queries).
-     */
-    public function testPaperListsExplainTheFigures(): void
-    {
-        $this->assertSame(
-            (int)$this->repository->submissionsQuery(['is' => ['rvid' => self::RVID]])->getQuery()->getSingleScalarResult(),
-            count($this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::RVID]]))
-        );
-        // paper 5 deleted, paper 8 imported
-        $this->assertSame([1, 2, 3, 4, 6, 7, 9, 11], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::RVID]], 'submitted'));
-        $this->assertSame([8], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::RVID]], 'imported'));
-
-        foreach ([[], [2024], [2023, 2024]] as $years) {
-            $this->assertSame($this->paperLogRepository->getPublished(self::RVID, $years), count($this->paperLogRepository->getPublishedPaperIds(self::RVID, $years)));
-        }
     }
 
     /**

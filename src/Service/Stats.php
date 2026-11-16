@@ -93,15 +93,13 @@ class Stats
             $everySubmission = $paperRepo->getSubmissions($rvId ? (int)$rvId : null);
             $values['totalWithoutStartAfterDate']['totalSubmissions'] = count($everySubmission);
             $values['totalWithoutStartAfterDate']['totalImported'] = count(SubmissionFigures::inCategory($everySubmission, SubmissionFigures::IMPORTED));
-            $values['totalWithoutStartAfterDate']['totalPublished'] = $paperRepo->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Paper::STATUS_PUBLISHED]])->getQuery()->getSingleScalarResult();
-            $values['totalWithoutStartAfterDate']['totalImportedPublished'] = $paperRepo->submissionsQuery(['is' => ['rvid' => $rvId, 'status' => Paper::STATUS_PUBLISHED, 'flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']]])->getQuery()->getSingleScalarResult();
+            $totalImportedPublished = count(SubmissionFigures::published($everySubmission, [], true));
+            $values['totalWithoutStartAfterDate']['totalPublished'] = count(SubmissionFigures::published($everySubmission)) + $totalImportedPublished;
+            $values['totalWithoutStartAfterDate']['totalImportedPublished'] = $totalImportedPublished;
 
         } else {
-            $newFilters['is'] = array_merge($filters['is'], ['status' => Paper::STATUS_PUBLISHED]);
-
-            // Imported and published articles
-            $importedPublished = $paperRepo->submissionsQuery($newFilters, false, 'publicationDate', false, PapersRepository::AVAILABLE_FLAG_VALUES['imported'])->getQuery()->getSingleScalarResult();
-            $values['nbImportedPublished'] = $importedPublished;
+            // imported and published submissions, by year of publication
+            $values['nbImportedPublished'] = count(SubmissionFigures::published($allSubmissions, $years, true));
         }
 
         // imported: all the versions of the submission are imported (by year of submission)
@@ -116,8 +114,8 @@ class Stats
         $avgPublicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED, self::DEFAULT_METHOD, 'day', $publicationDelays);
         $medianSubmissionsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_STRICTLY_ACCEPTED, self::MEDIAN_METHOD, 'day', $acceptanceDelays);
         $medianPublicationsDelay = $this->getDelayBetweenSubmissionAndLatestStatus($filters, Paper::STATUS_PUBLISHED, self::MEDIAN_METHOD, 'day', $publicationDelays);
-        // Published without imported
-        $totalPublished = $paperLogRepo->getPublished($rvId, $years, $startAfterDate);
+        // published submissions, imported ones excluded, by year of publication (see SubmissionFigures::published())
+        $totalPublished = count(SubmissionFigures::published($allSubmissions, $years));
         // accepted (published included, for the acceptance rate) and refused: by year of the decision, see SubmissionFigures::inCategory()
         $totalAccepted = count(SubmissionFigures::inCategory($allSubmissions, SubmissionFigures::ACCEPTED, $years));
         $totalRefused = count(SubmissionFigures::inCategory($allSubmissions, SubmissionFigures::REFUSED, $years));
@@ -227,12 +225,11 @@ class Stats
         ];
 
         if (!($startAfterDate && !$years)) { // as getDashboard()
-            $publishedFilters['is'] = array_merge($filters['is'], ['status' => Paper::STATUS_PUBLISHED]);
-            $papers['nbImportedPublished'] = $paperRepo->getSubmissionPaperIds($publishedFilters, PapersRepository::AVAILABLE_FLAG_VALUES['imported'], 'publicationDate');
+            $papers['nbImportedPublished'] = SubmissionFigures::papers(SubmissionFigures::published($submissions, $years, true));
         }
 
         return $papers + [
-            'nbPublished' => $paperLogRepo->getPublishedPaperIds($rvId, $years, $startAfterDate),
+            'nbPublished' => SubmissionFigures::papers(SubmissionFigures::published($submissions, $years)),
             'nbAccepted' => SubmissionFigures::papers(SubmissionFigures::inCategory($submissions, SubmissionFigures::ACCEPTED, $years)),
             'nbRefused' => SubmissionFigures::papers(SubmissionFigures::inCategory($submissions, SubmissionFigures::REFUSED, $years)),
             'nbAcceptedNotYetPublished' => SubmissionFigures::papers(SubmissionFigures::acceptedNotYetPublished($submissions, $years)),
@@ -530,9 +527,9 @@ class Stats
      * Fills the per-year submission details consumed by the dashboard.
      *
      * Counted by submission (see getSubmissionsStat()): the submissions, imported and other ones (awaiting a decision)
-     * by year of submission; the accepted and refused ones by year of the decision (see SubmissionFigures::inCategory()).
-     * The years are those of submission and of decision (see SubmissionFigures::activityYears()).
-     * The published papers are still read from the history.
+     * by year of submission; the accepted and refused ones by year of the decision (see SubmissionFigures::inCategory());
+     * the published ones by year of publication (see SubmissionFigures::published()).
+     * The years are those of submission, of decision and of publication (see SubmissionFigures::activityYears()).
      *
      * @param array<string, mixed> $filters Request filters, for instance ['is' => ['rvid' => int, 'submissionDate' => ..., 'startAfterDate' => string]].
      * @param int|null             $rvId    Journal identifier, or null for the whole platform.
@@ -570,9 +567,9 @@ class Stats
         }
 
         // Values independent of the year, and PAPER_LOG counters for all the years: computed once, outside the loop.
-        $publishedByYear = $paperLogRepository->getPublishedByYear($rvId, $years, $startAfterDate);
 
         $submissionsByYear = SubmissionFigures::countByYear($submissions);
+        $publishedByYear = SubmissionFigures::countPublishedByYear($submissions);
         $importedByYear = SubmissionFigures::countByYear($submissions, SubmissionFigures::IMPORTED);
         $acceptedByYear = SubmissionFigures::countByYear($submissions, SubmissionFigures::ACCEPTED);
         $refusedByYear = SubmissionFigures::countByYear($submissions, SubmissionFigures::REFUSED);
