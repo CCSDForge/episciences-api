@@ -161,6 +161,41 @@ final class SubmissionFigures
     }
 
     /**
+     * Number of submissions of a category (accepted or refused) decided the year of their first submission, by year:
+     * the year of the decision is the one of inCategory() (last acceptance, or publication without acceptance in the
+     * history; last refusal), so that, for a year, this number is at most the number of submissions of the category
+     *
+     * @param list<Submission> $submissions
+     * @return array<int, int> indexed by year
+     */
+    public static function countDecidedSameYear(array $submissions, string $category): array
+    {
+        $yearOf = self::yearOf($category);
+
+        return self::countSameYear(
+            array_filter($submissions, static fn(array $submission): bool => $submission['category'] === $category),
+            static fn(array $submission): ?int => $yearOf($submission)
+        );
+    }
+
+    /**
+     * Number of published submissions (imported ones excluded) published the year of their first submission, by year
+     *
+     * @param list<Submission> $submissions
+     * @return array<int, int> indexed by year
+     */
+    public static function countPublishedSameYear(array $submissions): array
+    {
+        return self::countSameYear(
+            array_filter(
+                $submissions,
+                static fn(array $submission): bool => $submission['category'] === self::ACCEPTED && $submission['status'] === Paper::STATUS_PUBLISHED
+            ),
+            static fn(array $submission): ?int => self::dateYear($submission['publicationDate'])
+        );
+    }
+
+    /**
      * Number of submissions by journal
      *
      * @param list<Submission> $submissions
@@ -247,6 +282,28 @@ final class SubmissionFigures
             self::REFUSED => static fn(array $submission): ?int => self::dateYear($submission['refusalDate']),
             default => self::submissionYear(...),
         };
+    }
+
+    /**
+     * @param array<Submission> $submissions
+     * @param callable(Submission): (int|null) $yearOf the year of the event to compare with the year of submission
+     * @return array<int, int> indexed by year, sorted
+     */
+    private static function countSameYear(array $submissions, callable $yearOf): array
+    {
+        $counts = [];
+
+        foreach ($submissions as $submission) {
+            $year = self::submissionYear($submission);
+
+            if ($yearOf($submission) === $year) {
+                $counts[$year] = ($counts[$year] ?? 0) + 1;
+            }
+        }
+
+        ksort($counts);
+
+        return $counts;
     }
 
     /**

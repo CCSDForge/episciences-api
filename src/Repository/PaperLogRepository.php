@@ -137,47 +137,6 @@ class PaperLogRepository extends ServiceEntityRepository
     }
 
     /**
-     * Number of papers whose status (in their history) was given the year of their first submission
-     * (the oldest submission date of their versions), imported versions excluded, by journal and year:
-     * rows [rvid, year, total], by journal then from the latest year.
-     * Without journal, the active journals only, as the other figures.
-     * @param int $status
-     * @param int|null $rvId
-     * @return list<array{rvid: int|string, year: int|string, total: int|string}>|null null on a database error
-     */
-    public function getSubmittedSameYear(int $status, ?int $rvId = null): ?array
-    {
-        $qb = $this->getEntityManager()->createQueryBuilder()
-            ->select('version.rvid AS rvid', 'YEAR(history.date) AS year', 'COUNT(DISTINCT version.paperid) AS total')
-            ->from(PaperLog::class, 'history')
-            ->innerJoin(Paper::class, 'version', Join::WITH, 'version.docid = history.docid')
-            ->andWhere('history.status = :status')
-            ->andWhere('version.flag = :submitted')
-            // the year of the first submission of the paper
-            ->andWhere(sprintf('YEAR(history.date) = (SELECT YEAR(MIN(firstVersion.submissionDate)) FROM %s firstVersion WHERE firstVersion.paperid = version.paperid)', Paper::class))
-            ->setParameter('status', $status)
-            ->setParameter('submitted', 'submitted')
-            ->groupBy('version.rvid', 'year')
-            ->orderBy('version.rvid', 'ASC')
-            ->addOrderBy('year', 'DESC');
-
-        if ($rvId) {
-            $qb->andWhere('version.rvid = :rvid')->setParameter('rvid', $rvId);
-        } else {
-            // as the other figures without journal
-            $this->andActiveJournals($qb, 'version.rvid');
-        }
-
-        try {
-            return $qb->getQuery()->getScalarResult();
-        } catch (\Exception $e) {
-            $this->logger->critical($e->getMessage());
-        }
-
-        return null;
-    }
-
-    /**
      * Median delay and number of articles it is computed from.
      *
      * @return array{median: float|int|null, count: int}

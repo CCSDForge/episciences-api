@@ -126,6 +126,45 @@ class SubmissionFiguresTest extends TestCase
         $this->assertSame([2014, 2023, 2024], SubmissionFigures::activityYears($submissions));
     }
 
+    /**
+     * Decided the year of their first submission, as nbAccepted and nbRefused: by the last decision (an acceptance of
+     * the temporary version is an acceptance, see PapersRepository::getSubmissions()), so that, for a year, these
+     * figures are at most the accepted and refused submissions of the year
+     */
+    public function testCountDecidedAndPublishedSameYear(): void
+    {
+        $submissions = [
+            // accepted and published the year of submission
+            self::submission(1, '2025-01-10', Paper::STATUS_PUBLISHED, '2025-03-01', published: '2025-06-01'),
+            // accepted in 2025, published in 2026
+            self::submission(2, '2025-02-10', Paper::STATUS_PUBLISHED, '2025-11-01', published: '2026-01-15'),
+            // accepted again the next year: the last acceptance counts
+            self::submission(3, '2025-03-10', Paper::STATUS_STRICTLY_ACCEPTED, '2026-02-01'),
+            // accepted, then refused the same year: refused only
+            self::submission(4, '2025-04-10', Paper::STATUS_REFUSED, '2025-05-01', '2025-07-01'),
+            // published without acceptance in the history: the year of its publication
+            self::submission(5, '2024-04-10', Paper::STATUS_PUBLISHED, published: '2024-12-01'),
+            // imported: never counted
+            self::submission(6, '2025-01-10', Paper::STATUS_PUBLISHED, published: '2025-02-01', flag: 'imported'),
+            // refused the next year
+            self::submission(7, '2024-10-10', Paper::STATUS_REFUSED, refused: '2025-01-05'),
+            // awaiting a decision
+            self::submission(8, '2025-10-10'),
+        ];
+
+        $this->assertSame([2024 => 1, 2025 => 2], SubmissionFigures::countDecidedSameYear($submissions, SubmissionFigures::ACCEPTED));
+        $this->assertSame([2025 => 1], SubmissionFigures::countDecidedSameYear($submissions, SubmissionFigures::REFUSED));
+        $this->assertSame([2024 => 1, 2025 => 1], SubmissionFigures::countPublishedSameYear($submissions));
+
+        foreach ([SubmissionFigures::ACCEPTED, SubmissionFigures::REFUSED] as $category) {
+            $byYear = SubmissionFigures::countByYear($submissions, $category);
+
+            foreach (SubmissionFigures::countDecidedSameYear($submissions, $category) as $year => $count) {
+                $this->assertLessThanOrEqual($byYear[$year], $count);
+            }
+        }
+    }
+
     public function testFilterOnTheCurrentStatusAndTheFlag(): void
     {
         $submissions = [

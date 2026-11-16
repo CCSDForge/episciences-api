@@ -140,26 +140,10 @@ class Stats
 
         if ($years !== []) {
 
-            $values = array_merge($values, ['totalAcceptedSubmittedSameYear' => 0, 'totalPublishedSubmittedSameYear' => 0, 'totalRefusedSubmittedSameYear' => 0]);
-
-            $totalAcceptedSubmittedSameYear = $this->getSubmittedSameYearByYear($rvId, self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, Paper::STATUS_STRICTLY_ACCEPTED);
-            $nbPublishedSubmittedSameYear = $this->getSubmittedSameYearByYear($rvId, self::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR, Paper::STATUS_PUBLISHED);
-            $nbRefusedSubmittedSameYear = $this->getSubmittedSameYearByYear($rvId, self::TOTAL_REFUSED_SUBMITTED_SAME_YEAR, Paper::STATUS_REFUSED);
-
-            foreach ($years as $year) {
-
-                if (isset($totalAcceptedSubmittedSameYear[$year])) {
-                    $values['totalAcceptedSubmittedSameYear'] += $totalAcceptedSubmittedSameYear[$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR];
-                }
-
-                if (isset($nbPublishedSubmittedSameYear[$year])) {
-                    $values['totalPublishedSubmittedSameYear'] += $nbPublishedSubmittedSameYear[$year][self::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR];
-                }
-
-                if (isset($nbRefusedSubmittedSameYear[$year])) {
-                    $values['totalRefusedSubmittedSameYear'] += $nbRefusedSubmittedSameYear[$year][self::TOTAL_REFUSED_SUBMITTED_SAME_YEAR];
-                }
-            }
+            // by submission, as nbAccepted and nbRefused (see SubmissionFigures::countDecidedSameYear())
+            $values['totalAcceptedSubmittedSameYear'] = self::sumOfYears(SubmissionFigures::countDecidedSameYear($allSubmissions, SubmissionFigures::ACCEPTED), $years);
+            $values['totalPublishedSubmittedSameYear'] = self::sumOfYears(SubmissionFigures::countPublishedSameYear($allSubmissions), $years);
+            $values['totalRefusedSubmittedSameYear'] = self::sumOfYears(SubmissionFigures::countDecidedSameYear($allSubmissions, SubmissionFigures::REFUSED), $years);
 
             $values['totalOtherSubmittedSameYear'] = $submissionsWithoutImported - ($values['totalAcceptedSubmittedSameYear'] + $values['totalRefusedSubmittedSameYear']);
         }
@@ -587,7 +571,6 @@ class Stats
         }
 
         // Values independent of the year, and PAPER_LOG counters for all the years: computed once, outside the loop.
-        $nbAcceptedSubmittedSameYear = $this->getSubmittedSameYearByYear($rvId, self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, Paper::STATUS_STRICTLY_ACCEPTED);
         $publishedByYear = $paperLogRepository->getPublishedByYear($rvId, $years, $startAfterDate);
 
         $submissionsByYear = SubmissionFigures::countByYear($submissions);
@@ -596,6 +579,7 @@ class Stats
         $refusedByYear = SubmissionFigures::countByYear($submissions, SubmissionFigures::REFUSED);
         $awaitingDecisionByYear = SubmissionFigures::countByYear($submissions, SubmissionFigures::OTHER);
         $acceptedNotYetPublishedByYear = SubmissionFigures::countByYear(SubmissionFigures::acceptedNotYetPublished($submissions), SubmissionFigures::ACCEPTED);
+        $acceptedSameYearByYear = SubmissionFigures::countDecidedSameYear($submissions, SubmissionFigures::ACCEPTED);
         $submissionsByYearAndRepo = self::countByYearAndRepository($submissions);
 
         foreach ($years as $year) { // Values are filled per year for the dashboard.
@@ -615,7 +599,7 @@ class Stats
             $details[self::SUBMISSIONS_BY_YEAR][$year]['others'] = $awaitingDecisionByYear[(int)$year] ?? 0;
 
             $details[self::SUBMISSIONS_BY_YEAR][$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] =
-                $nbAcceptedSubmittedSameYear[$year][self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR] ?? 0;
+                $acceptedSameYearByYear[(int)$year] ?? 0;
 
             $details[self::SUBMISSIONS_BY_YEAR][$year][self::ACCEPTANCE_RATE] = $paperLogRepository->getAcceptanceRate([
                 'rvid' => $rvId,
@@ -656,89 +640,15 @@ class Stats
     }
 
     /**
-     * Returns the "submitted same year" counts per year for the given status, keyed by year
-     * ([year => [figure => int]]). The shape is consistent whether a journal is selected ($rvId)
-     * or the whole platform is queried ($rvId null), so callers can index by [$year] in both cases.
+     * Sum of the yearly counts of the given years
      *
-     * @param int|null $rvId     Journal identifier, or null for the whole platform.
-     * @param string   $as       Figure key (e.g. self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR).
-     * @param int      $status   Paper status to filter on.
-     * @return array<int, array<string, int>>
+     * @param array<int, int> $countsByYear
+     * @param array<int|string> $years
      */
-    private function getSubmittedSameYearByYear(int|null $rvId, string $as, int $status): array
+    private static function sumOfYears(array $countsByYear, array $years): int
     {
-        $rows = $this->getNbPapersByStatus($rvId, $as, $status);
-
-        if ($rvId) {
-            // [$rvId => [year => [$as => int]]]
-            return $rows[$rvId] ?? [];
-        }
-
-        // Whole platform: $rows is a raw row list, one entry per journal/year.
-        // Group and sum by year.
-        $byYear = [];
-
-        foreach ($rows as $row) {
-            $year = $row['year'] ?? null;
-
-            if ($year === null) {
-                continue;
-            }
-
-            $byYear[$year][$as] = ($byYear[$year][$as] ?? 0) + (int)($row[$as] ?? 0);
-        }
-
-        return $byYear;
+        return array_sum(array_intersect_key($countsByYear, array_flip(array_map('intval', $years))));
     }
-
-    /**
-     * Returns the number of papers given a status the year of their first submission, either for a single journal
-     * or for the whole platform.
-     *
-     * With $rvId set, the result is indexed [rvId => [year => [as => int]]]; with $rvId null
-     * it is a raw row list (one entry per journal/year).
-     * The shape depends on $rvId: use getSubmittedSameYearByYear(), which gives [year => [as => int]] in both cases.
-     *
-     * @param int|null $rvId                Journal identifier, or null for the whole platform.
-     * @param string   $as                  Figure key (e.g. self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR).
-     * @param int      $status              Paper status to filter on.
-     *
-     * @return array<int|string, mixed>
-     */
-    public function getNbPapersByStatus(?int $rvId = null, string $as = self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, int $status = Paper::STATUS_STRICTLY_ACCEPTED): array
-    {
-        /** @var PaperLogRepository $paperLogRepository */
-        $paperLogRepository = $this->entityManager->getRepository(PaperLog::class);
-
-        $rows = $paperLogRepository->getSubmittedSameYear($status, $rvId);
-
-        if ($rows === null) {
-            return [];
-        }
-
-        // the number of papers under the name of the figure
-        $result = array_map(static fn(array $row): array => ['rvid' => $row['rvid'], 'year' => $row['year'], $as => (int)$row['total']], $rows);
-
-        if ($rvId) {
-
-            //before reformat data : [ 8 => [0 => ["year" => 2023, PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [], ... ]
-            $filtered = $this->applyFilterBy($result, 'rvid', (string)$rvId);
-
-            //after: [8 => [ 2023 => [PapersRepository::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR => 18], [2022 => ], .....
-            // ['extractedKey' => []] if empty result
-
-            if (!empty($filtered[$rvId])) {
-                return $this->reformatPaperLogData($filtered, null, $as);
-            }
-
-            // no paper: an empty list for the journal
-            return [$rvId => []];
-
-        }
-
-        return $result;
-    }
-
 
     /**
      * Returns the journal (Review) matching the context, or null when not found.
@@ -984,10 +894,10 @@ class Stats
                     }
 
                     if ($kv === $extractedField) {
-                        $result[$rvId][$year][$kv] = in_array($extractedField, [self::TOTAL_ACCEPTED_SUBMITTED_SAME_YEAR, self::TOTAL_REFUSED_SUBMITTED_SAME_YEAR, self::TOTAL_PUBLISHED_SUBMITTED_SAME_YEAR], true) ? (int)$vv : ['value' => (float)$vv, self::STATS_UNIT => $unit, self::STATS_METHOD => $method];
+                        $result[$rvId][$year][$kv] = ['value' => (float)$vv, self::STATS_UNIT => $unit, self::STATS_METHOD => $method];
 
                         // the number of articles of a delay
-                        if (is_array($result[$rvId][$year][$kv]) && isset($v['count'])) {
+                        if (isset($v['count'])) {
                             $result[$rvId][$year][$kv]['count'] = (int)$v['count'];
                         }
                     }
