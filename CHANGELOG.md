@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Added
 ### Changed
-- OpenAPI documentation of the statistics (`GET /api/statistics/`, `GET /api/statistics/acceptance-rate`, journal dashboard): explains that, by year, a decision is counted in the year it is taken, not in the year of submission, so that the accepted, refused and awaiting-decision submissions of a year do not add up to its submissions, and that the acceptance rate of a year is the share of the acceptances among the decisions taken that year. The year of `nbPublished` and `nbImportedPublished` is documented as the year of publication.
 ### Deprecated
 ### Removed
 ### Security
@@ -40,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a kernel test (`tests/Functional/Wiring/DelegatedTokenRoutesTest.php`, without database) checking that the routes accepting the delegated token of Episciences exist, on their expected path.
 
 ### Changed
+- OpenAPI documentation of the statistics (`GET /api/statistics/`, `GET /api/statistics/acceptance-rate`, journal dashboard): explains that, by year, a decision is counted in the year it is taken, not in the year of submission, so that the accepted, refused and awaiting-decision submissions of a year do not add up to its submissions, and that the acceptance rate of a year is the share of the acceptances among the decisions taken that year. The year of `nbPublished` and `nbImportedPublished` is documented as the year of publication.
+- OpenAPI documentation of the statistics: `GET /api/statistics/` lists the indicators it returns, and the journal dashboard documents the correspondence of its figures with them (`nb-submissions-details` and `nb-submissions` with `nbSubmissions`, `nbImported`, `nbPublished`, `nbAccepted`, `nbRefused`, `nbAcceptedNotYetPublished`, `nbOtherStatus`; `acceptance-rate` with `rates.acceptance`). The year of the published articles of `nb-submissions-details` is documented as the year of publication. `startAfterDate` documents the date it applies to for each indicator; `GET /api/statistics/acceptance-rate` documents its formula; `GET /api/statistics/nb-submissions` no longer mentions an unsupported `withDetails` parameter.
 - Pages and news: the visibility is read from the `visibility_set` (pages) and `visibility_enum` (news) columns of Episciences instead of the former JSON `visibility` column: a page or a news is public only when its visibility is exactly `public`. The `visibility` property returned is unchanged (an array). Migration `Version20261112120000` drops the `is_public` generated columns of `pages` and `news`, and `Version20260527000000` no longer creates them. Requires the Episciences migration that adds these columns, in this order: run its phases 1 and 2 (new columns) before deploying the API, and its phase 4 (drop of the JSON `visibility` column) only after.
 - Makefile: the Docker lifecycle targets are named as in the other Episciences applications: `make up`, `up-ci`, `down`, `down-ci`, `restart`, `logs`, `status` and `enter-container-php` replace `make docker-up`, `docker-up-ci`, `docker-down`, `docker-down-ci`, `docker-restart`, `docker-logs`, `docker-status` and `docker-shell`.
 - Updated the dependencies (Symfony 7.4.22, API Platform 4.18).
