@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 ### Added
 ### Changed
+- OpenAPI documentation of the statistics (`GET /api/statistics/`, `GET /api/statistics/acceptance-rate`, journal dashboard): explains that, by year, a decision is counted in the year it is taken, not in the year of submission, so that the accepted, refused and awaiting-decision submissions of a year do not add up to its submissions, and that the acceptance rate of a year is the share of the acceptances among the decisions taken that year. The year of `nbPublished` and `nbImportedPublished` is documented as the year of publication.
 ### Deprecated
 ### Removed
 ### Security

@@ -25,7 +25,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Retrieve all available statistical indicators",
-                description: 'Statistics of all the journals, or of one journal with `rvcode`. ' . self::OTHER_STATUS_DESCRIPTION,
+                description: 'Statistics of all the journals, or of one journal with `rvcode`. ' . self::OTHER_STATUS_DESCRIPTION . ' ' . self::YEAR_RULE_DESCRIPTION,
                 parameters: [
                     new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
                     new Parameter(name: 'indicator[]', in: 'query', description: 'Indicator(s), returned in this order; all of them when omitted', schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => self::PUBLICATION_INDICATOR_VALUES]]),
@@ -89,7 +89,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Acceptance rate",
-                description: self::INDICATOR_DESCRIPTION,
+                description: self::INDICATOR_DESCRIPTION . ' ' . self::YEAR_RULE_DESCRIPTION,
                 parameters: [
                     new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
                     new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of the decision (acceptance or refusal); an article decided in several of them is counted once', schema: QueryParameters::INTEGERS),
@@ -130,6 +130,8 @@ class Statistic
     public const MEDIAN_DELAY_DESCRIPTION = 'The delay runs from the first submission of the article to its latest publication (or acceptance), truncated to the unit (13 days = 1 week). `count` is the number of articles.';
     public const OTHER_STATUS_DESCRIPTION = 'In `nb-submissions-details`, `being-to-publish.other-status` is the number of submissions awaiting an editorial decision (neither published, accepted, refused, deleted nor removed; an abandoned submission is only paused). ' . self::SUBMISSIONS_DESCRIPTION;
     public const SUBMISSIONS_DESCRIPTION = '`nb-submissions`, `acceptance-rate` and `nb-submissions-details` (except the published articles) count submissions, as the list of papers of the journal: a refused paper that the journal accepts to receive again is a new submission, with the same paper identifier. Each submission is counted in a single category, from its last decision (an article accepted, then refused, is refused), so that without year the submitted ones are the accepted, refused and awaiting-decision ones; an imported submission is one whose versions are all imported.';
+    /** How the figures are distributed by year: the decisions in the year they are taken */
+    public const YEAR_RULE_DESCRIPTION = 'By year, a decision is counted in the year it is taken, not in the year of submission: a submission of December accepted in January counts as a submission of the first year and as an acceptance of the second. So, for a year, the accepted, refused and awaiting-decision submissions do not add up to the submissions of that year, and the acceptance rate of a year is the share of the acceptances among the decisions taken that year (accepted / (accepted + refused)), not the outcome of the submissions of that year.';
     public const YEAR_COLLECTION_DESCRIPTION = 'Year of: submission for `nb-submissions` (and the submitted, imported and awaiting-decision articles of `nb-submissions-details`); decision for `acceptance-rate` (and the published, accepted and refused articles); publication or acceptance for the median delays; invitation or validation of the report for `evaluation` (the median number of reviews only counts the reports validated in the year: an article whose reports were validated in different years counts a part of its reports in each year)';
     /** Values of the "indicator" parameter (lists for the OpenAPI enums) */
     public const PUBLICATION_INDICATOR_VALUES = [
