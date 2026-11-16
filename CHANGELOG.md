@@ -88,6 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - Internal: the counting methods of `PapersRepository` and `PaperLogRepository` no longer used since the statistics are counted by submission (`countSubmissionsByYear`, `countSubmissionsByFlag`, `getSubmissionsAwaitingDecision`, `getAcceptedByYear`, `getAcceptedByJournal`, …), with their tests, and the unused `$excludeTmpVersions` parameter of `Stats::getSubmissionsStat()`. No change to the API responses.
+- Internal: `PaperLogRepository::getAccepted()`, `getRefused()`, the accepted, refused and accepted-not-yet-published lists of `getPaperIds()` (now `getPublishedPaperIds()`) and the integer `getSubmissions()`, no longer used since the accepted and refused submissions are counted by submission; the rates now require the accepted and refused totals instead of falling back to the history. `Stats::countByYearAndRepository()` moved to `SubmissionFigures`. No change to the API responses.
 - `GET /api/journals/` no longer exposes the `settings` field of the journals (a raw `REVIEW_SETTING` `{setting, value}` array, without external consumer), nor `GET /api/journals/{code}` publicly (see `settings` in Added). The settings still work internally via `Review::getSetting()`. They have no public equivalent: `GET /api/journals/front/configuration` returns the configuration of the front-end (`JOURNAL_SETTING`), not the settings of the journal.
 
 ### Fixed

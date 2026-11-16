@@ -258,7 +258,7 @@ class StatsTest extends TestCase
         $this->papersRepo->method('getSubmissionPaperIds')->willReturnCallback(
             static fn(array $f, ?string $flag = null, string $date = 'submissionDate'): array => $date === 'publicationDate' ? [5] : []
         );
-        $this->paperLogRepo->method('getPaperIds')->willReturnCallback(static fn(string $figure): array => $figure === 'published' ? [1] : []);
+        $this->paperLogRepo->method('getPublishedPaperIds')->willReturn([1]);
         $this->paperLogRepo->method('getSubmissionDelayPaperIds')->willReturnCallback(
             static fn(int $rvId, ?array $years, ?string $start, string $operation): array => $operation === 'median-submission-publication' ? [1] : [1, 2]
         );
@@ -280,7 +280,7 @@ class StatsTest extends TestCase
     public function testDashboardPaperIdsWithoutImportedPublishedWithAStartDateOnly(): void
     {
         $this->papersRepo->method('getSubmissionPaperIds')->willReturn([]);
-        $this->paperLogRepo->method('getPaperIds')->willReturn([]);
+        $this->paperLogRepo->method('getPublishedPaperIds')->willReturn([]);
         $this->paperLogRepo->method('getSubmissionDelayPaperIds')->willReturn([]);
 
         $papers = $this->stats->getDashboardPaperIds(['is' => ['rvid' => '8', 'startAfterDate' => '2025-01-01']]);

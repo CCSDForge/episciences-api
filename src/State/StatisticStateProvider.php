@@ -351,7 +351,6 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         /** @var PaperLogRepository $paperLogRepo */
         $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
         $common = array_intersect_key($filters, array_flip(['rvid', AppConstants::YEAR_PARAM, AppConstants::START_AFTER_DATE]));
-        $figures = PaperLogRepository::PAPER_IDS_FIGURES;
 
         foreach ($statistics as $statistic) {
             if (in_array($statistic->getName(), [Statistic::EVAL_INDICATORS['reviews-requested_get'], Statistic::EVAL_INDICATORS['reviews-received_get']], true)) {
@@ -371,7 +370,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
                 Statistic::NB_SUBMISSIONS_DETAILS => [
                     'nb-submitted-versions' => SubmissionFigures::papers($this->getSubmissions($common + ['flag' => PapersRepository::AVAILABLE_FLAG_VALUES['submitted']])),
                     'nb-imported-versions' => SubmissionFigures::papers($this->getSubmissions($common + array_intersect_key($filters, ['status' => true]) + ['flag' => PapersRepository::AVAILABLE_FLAG_VALUES['imported']])),
-                    Paper::STATUS_DICTIONARY[Paper::STATUS_PUBLISHED] => $paperLogRepo->getPaperIds($figures['published'], $rvId, $years, $startAfterDate),
+                    Paper::STATUS_DICTIONARY[Paper::STATUS_PUBLISHED] => $paperLogRepo->getPublishedPaperIds($rvId, $years, $startAfterDate),
                     Paper::STATUS_DICTIONARY[Paper::STATUS_REFUSED] => SubmissionFigures::papers($this->getDecidedSubmissions(SubmissionFigures::REFUSED, $filters)),
                     'accepted' => SubmissionFigures::papers($this->getDecidedSubmissions(SubmissionFigures::ACCEPTED, $filters)),
                     'being-to-publish.accepted' => SubmissionFigures::papers(SubmissionFigures::acceptedNotYetPublished($this->getJournalSubmissions($filters), $years)),

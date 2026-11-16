@@ -161,6 +161,29 @@ final class SubmissionFigures
     }
 
     /**
+     * Number of submissions by year of submission and by repository: the repository of the first version of the
+     * submission outside Episciences (the submissions with local versions only are not counted)
+     *
+     * @param list<Submission> $submissions
+     * @return array<int, array<int, int>> indexed by year, then by repository identifier
+     */
+    public static function countByYearAndRepository(array $submissions): array
+    {
+        $counts = [];
+
+        foreach ($submissions as $submission) {
+            if ($submission['repoid'] === null) {
+                continue;
+            }
+
+            $year = self::submissionYear($submission);
+            $counts[$year][$submission['repoid']] = ($counts[$year][$submission['repoid']] ?? 0) + 1;
+        }
+
+        return $counts;
+    }
+
+    /**
      * Number of submissions of a category (accepted or refused) decided the year of their first submission, by year:
      * the year of the decision is the one of inCategory() (last acceptance, or publication without acceptance in the
      * history; last refusal), so that, for a year, this number is at most the number of submissions of the category

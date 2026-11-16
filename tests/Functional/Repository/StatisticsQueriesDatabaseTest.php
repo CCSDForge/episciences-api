@@ -177,12 +177,12 @@ class StatisticsQueriesDatabaseTest extends TestCase
             'DOCID' => 30,
             'RVID' => self::RVID,
             'ACTION' => 'status',
-            'DETAIL' => json_encode(['status' => Paper::STATUS_STRICTLY_ACCEPTED], JSON_THROW_ON_ERROR),
+            'DETAIL' => json_encode(['status' => Paper::STATUS_PUBLISHED], JSON_THROW_ON_ERROR),
             'DATE' => '2025-04-01 10:00:00',
         ]));
 
-        $this->assertSame([30], $this->paperLogRepository->getPaperIds('accepted', self::RVID, [2025], '2025-03-01'));
-        $this->assertSame([], $this->paperLogRepository->getPaperIds('accepted', self::RVID, [2025], '2025-03-02'));
+        $this->assertSame([30], $this->paperLogRepository->getPublishedPaperIds(self::RVID, [2025], '2025-03-01'));
+        $this->assertSame([], $this->paperLogRepository->getPublishedPaperIds(self::RVID, [2025], '2025-03-02'));
     }
 
     /**

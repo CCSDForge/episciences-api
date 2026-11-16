@@ -165,6 +165,23 @@ class SubmissionFiguresTest extends TestCase
         }
     }
 
+    /**
+     * By year of submission and by repository of the first version outside Episciences; a submission with local
+     * versions only (no repository) is not counted
+     */
+    public function testCountByYearAndRepository(): void
+    {
+        $submissions = [
+            self::submission(1, '2024-05-01', repoId: 1),
+            self::submission(2, '2024-06-01', repoId: 1),
+            self::submission(3, '2024-07-01', repoId: 2),
+            self::submission(4, '2025-01-01', repoId: 1),
+            self::submission(5, '2025-01-01', repoId: null),
+        ];
+
+        $this->assertSame([2024 => [1 => 2, 2 => 1], 2025 => [1 => 1]], SubmissionFigures::countByYearAndRepository($submissions));
+    }
+
     public function testFilterOnTheCurrentStatusAndTheFlag(): void
     {
         $submissions = [

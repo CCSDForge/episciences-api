@@ -219,7 +219,6 @@ class Stats
         $paperLogRepo = $this->entityManager->getRepository(PaperLog::class);
         /** @var PapersRepository $paperRepo */
         $paperRepo = $this->entityManager->getRepository(Paper::class);
-        $figures = PaperLogRepository::PAPER_IDS_FIGURES;
         $submissions = $paperRepo->getSubmissions($rvId, $startAfterDate);
 
         $papers = [
@@ -233,7 +232,7 @@ class Stats
         }
 
         return $papers + [
-            'nbPublished' => $paperLogRepo->getPaperIds($figures['published'], $rvId, $years, $startAfterDate),
+            'nbPublished' => $paperLogRepo->getPublishedPaperIds($rvId, $years, $startAfterDate),
             'nbAccepted' => SubmissionFigures::papers(SubmissionFigures::inCategory($submissions, SubmissionFigures::ACCEPTED, $years)),
             'nbRefused' => SubmissionFigures::papers(SubmissionFigures::inCategory($submissions, SubmissionFigures::REFUSED, $years)),
             'nbAcceptedNotYetPublished' => SubmissionFigures::papers(SubmissionFigures::acceptedNotYetPublished($submissions, $years)),
@@ -551,7 +550,7 @@ class Stats
 
         $startAfterDate = $filters['is']['startAfterDate'] ?? null;
         $submissions ??= $papersRepository->getSubmissions($rvId ? (int)$rvId : null, $startAfterDate);
-        // the repositories of the papers, and those of the submissions counted by countByYearAndRepository()
+        // the repositories of the papers, and those of the submissions counted by SubmissionFigures::countByYearAndRepository()
         // (a resubmission may be the only one of its repository within the start date)
         $repositories = array_values(array_unique(array_merge(
             $papersRepository->getAvailableRepositories($filters),
@@ -580,7 +579,7 @@ class Stats
         $awaitingDecisionByYear = SubmissionFigures::countByYear($submissions, SubmissionFigures::OTHER);
         $acceptedNotYetPublishedByYear = SubmissionFigures::countByYear(SubmissionFigures::acceptedNotYetPublished($submissions), SubmissionFigures::ACCEPTED);
         $acceptedSameYearByYear = SubmissionFigures::countDecidedSameYear($submissions, SubmissionFigures::ACCEPTED);
-        $submissionsByYearAndRepo = self::countByYearAndRepository($submissions);
+        $submissionsByYearAndRepo = SubmissionFigures::countByYearAndRepository($submissions);
 
         foreach ($years as $year) { // Values are filled per year for the dashboard.
 
@@ -614,29 +613,6 @@ class Stats
             }
         }
 
-    }
-
-    /**
-     * Number of submissions by year of submission and by repository: the repository of the first version of the
-     * submission outside Episciences (the submissions with local versions only are not counted)
-     *
-     * @param list<array<string, mixed>> $submissions see PapersRepository::getSubmissions()
-     * @return array<int, array<int, int>> indexed by year, then by repository identifier
-     */
-    private static function countByYearAndRepository(array $submissions): array
-    {
-        $totals = [];
-
-        foreach ($submissions as $submission) {
-            if ($submission['repoid'] === null) {
-                continue;
-            }
-
-            $year = (int)substr($submission['firstSubmissionDate'], 0, 4);
-            $totals[$year][$submission['repoid']] = ($totals[$year][$submission['repoid']] ?? 0) + 1;
-        }
-
-        return $totals;
     }
 
     /**

@@ -9,6 +9,7 @@ use App\Entity\PaperLog;
 use App\Entity\Review;
 use App\Repository\PaperLogRepository;
 use App\Repository\PapersRepository;
+use App\Service\SubmissionFigures;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Tools\DsnParser;
 use Doctrine\ORM\EntityManager;
@@ -23,9 +24,9 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
 /**
- * Runs the figures read from the history (PaperLogRepository: accepted, refused, published, accepted not yet
- * published, delays) and their lists against a real MySQL database: an abandoned article, only paused, is still
- * counted. The submissions awaiting a decision are counted by submission, see PapersSubmissionsDatabaseTest.
+ * Runs the figures read from the history (PaperLogRepository: published, delays) and their lists against a real
+ * MySQL database, and the accepted papers not yet published, counted by submission (SubmissionFigures): an abandoned
+ * article, only paused, is still counted. The other submissions figures, see PapersSubmissionsDatabaseTest.
  *
  * Requires TEST_DATABASE_URL (set in CI, see docker-compose.ci.yml); skipped otherwise.
  * The test creates and drops the PAPERS, PAPER_LOG and REVIEW tables: it is skipped if one of them already exists,
@@ -101,7 +102,9 @@ class PaperLogFiguresDatabaseTest extends TestCase
      */
     public function testAcceptedNotYetPublishedIncludesTheAbandonedArticles(): void
     {
-        $this->assertSame([3, 11], $this->paperLogRepository->getPaperIds('accepted-not-yet-published', self::RVID));
+        $submissions = SubmissionFigures::acceptedNotYetPublished($this->repository->getSubmissions(self::RVID));
+
+        $this->assertSame([3, 11], array_column($submissions, 'paperid'));
     }
 
     /**
@@ -118,23 +121,8 @@ class PaperLogFiguresDatabaseTest extends TestCase
         $this->assertSame([8], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::RVID]], 'imported'));
 
         foreach ([[], [2024], [2023, 2024]] as $years) {
-            $this->assertSame($this->paperLogRepository->getAccepted(self::RVID, $years), count($this->paperLogRepository->getPaperIds('accepted', self::RVID, $years)));
-            $this->assertSame($this->paperLogRepository->getRefused(self::RVID, $years), count($this->paperLogRepository->getPaperIds('refused', self::RVID, $years)));
-            $this->assertSame($this->paperLogRepository->getPublished(self::RVID, $years), count($this->paperLogRepository->getPaperIds('published', self::RVID, $years)));
+            $this->assertSame($this->paperLogRepository->getPublished(self::RVID, $years), count($this->paperLogRepository->getPublishedPaperIds(self::RVID, $years)));
         }
-
-        $this->assertSame([3, 11], $this->paperLogRepository->getPaperIds('accepted', self::RVID));
-        $this->assertSame([4, 9], $this->paperLogRepository->getPaperIds('refused', self::RVID));
-    }
-
-    /**
-     * Paper 3 is accepted in 2023 and in 2024: it is counted once in the total of the two years.
-     */
-    public function testPaperDecidedInSeveralYearsIsCountedOnceInTheTotal(): void
-    {
-        $this->assertSame(1, $this->paperLogRepository->getAccepted(self::RVID, [2023]));
-        $this->assertSame(2, $this->paperLogRepository->getAccepted(self::RVID, [2024]));
-        $this->assertSame(2, $this->paperLogRepository->getAccepted(self::RVID, [2023, 2024]));
     }
 
     /**
