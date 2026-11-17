@@ -69,68 +69,6 @@ class PapersRepository extends ServiceEntityRepository
     }
 
     /**
-     * Submissions query
-     * @param array $filters
-     * @param bool $excludeTmpVersions
-     * @param string $fieldDateToBeUsed (default = submissionDate): l'année prise en compte est l'année de la première soumission
-     * @param bool $excludeImportedPapers
-     * @param string|null $flag
-     * @param bool $withoutObsolete
-     * @return QueryBuilder
-     */
-    public function submissionsQuery(array  $filters = [],
-                                     bool   $excludeTmpVersions = false,
-                                     string $fieldDateToBeUsed = 'submissionDate',
-                                     bool   $excludeImportedPapers = false,
-                                     ?string $flag = null,
-                                     bool   $withoutObsolete = false
-    ): QueryBuilder
-    {
-
-        $qb = $this
-            ->createQueryBuilder(self::PAPERS_ALIAS)
-            ->select('count(distinct p.paperid)');
-
-        $qb = $this->addQueryFilters($qb, $filters, $fieldDateToBeUsed);
-
-        if (empty($filters['is']['rvid'])) {
-            $this->andActiveJournals($qb, sprintf('%s.rvid', self::PAPERS_ALIAS));
-        }
-
-        if ($withoutObsolete) {
-
-            $qb->andWhere('p.status != :obsolete');
-            $qb->setParameter('obsolete', Paper::STATUS_OBSOLETE);
-        }
-
-        $qb->andWhere('p.status != :deleted');
-        $qb->setParameter('deleted', Paper::STATUS_DELETED);
-
-        $qb->andWhere('p.status != :removed');
-        $qb->setParameter('removed', Paper::STATUS_REMOVED);
-
-        if ($excludeTmpVersions) {
-            $qb
-                ->andWhere('p.repoid != :repoId')
-                ->setParameter('repoId', self::LOCAL_REPOSITORY);
-        }
-
-        if ($excludeImportedPapers) {
-            $qb
-                ->andWhere('p.flag = :flag')
-                ->setParameter('flag', self::AVAILABLE_FLAG_VALUES['submitted']);
-        } elseif ($flag && array_key_exists($flag, self::AVAILABLE_FLAG_VALUES)) {
-            $qb
-                ->andWhere('p.flag = :flag')
-                ->setParameter('flag', $flag);
-
-        }
-
-        return $qb;
-
-    }
-
-    /**
      * @param QueryBuilder $qb
      * @param array $filters
      * @param string $date
@@ -511,17 +449,6 @@ class PapersRepository extends ServiceEntityRepository
     }
 
     /**
-     * Identifiers (PAPERID) of the papers counted by submissionsQuery()
-     *
-     * @param array<string, mixed> $filters see submissionsQuery()
-     * @return list<int> sorted
-     */
-    public function getSubmissionPaperIds(array $filters = [], ?string $flag = null, string $fieldDateToBeUsed = 'submissionDate'): array
-    {
-        return $this->paperIds($this->submissionsQuery($filters, false, $fieldDateToBeUsed, false, $flag));
-    }
-
-    /**
      * The DOCID of the latest version of each paper
      *
      * @param int[] $paperIds
@@ -549,16 +476,6 @@ class PapersRepository extends ServiceEntityRepository
     }
 
     /**
-     * @return list<int> sorted
-     */
-    private function paperIds(QueryBuilder $qb): array
-    {
-        $qb->select(sprintf('DISTINCT %s.paperid AS paperid', self::PAPERS_ALIAS))->orderBy('paperid');
-
-        return array_map('intval', array_column($qb->getQuery()->getScalarResult(), 'paperid'));
-    }
-
-    /**
      * The submissions of a journal (of the active journals without journal), with what their category is computed
      * from (see SubmissionFigures).
      *
@@ -579,8 +496,11 @@ class PapersRepository extends ServiceEntityRepository
      * Native SQL: DQL has no window function. The decisions are joined to the versions by DOCID (not the other way
      * round): MySQL would otherwise look up the history of each version of the platform (seconds instead of a third).
      *
-     * @param string|null $startAfterDate the submissions first submitted on or after this date (YYYY-MM-DD)
-     * @return list<array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, publicationDate: string|null, category: string}> sorted by DOCID
+     * With a start date, the submissions having a date within the period (first submission, decision or publication),
+     * with this date as "periodStart": each figure only counts those whose own date is within it (see SubmissionFigures).
+     *
+     * @param string|null $startAfterDate the start of the period, included (YYYY-MM-DD)
+     * @return list<array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, publicationDate: string|null, category: string, periodStart: string|null}> sorted by DOCID
      */
     public function getSubmissions(?int $rvId = null, ?string $startAfterDate = null): array
     {
@@ -636,7 +556,9 @@ class PapersRepository extends ServiceEntityRepository
             Paper::TABLE,
             PaperLog::TABLE,
             $journal,
-            self::isValidDate($startAfterDate) ? 'AND s.FIRST_SUBMISSION_DATE >= :startAfterDate' : '',
+            self::isValidDate($startAfterDate)
+                ? 'AND (s.FIRST_SUBMISSION_DATE >= :startAfterDate OR s.ACCEPTANCE_DATE >= :startAfterDate OR s.REFUSAL_DATE >= :startAfterDate OR p.PUBLICATION_DATE >= :startAfterDate)'
+                : '',
             str_replace('p.RVID', 'l.RVID', $journal)
         );
 
@@ -665,7 +587,9 @@ class PapersRepository extends ServiceEntityRepository
 
         $rows = $this->getEntityManager()->getConnection()->executeQuery($sql, $parameters, $types)->fetchAllAssociative();
 
-        return array_map(static function (array $row): array {
+        $periodStart = self::isValidDate($startAfterDate) ? $startAfterDate : null;
+
+        return array_map(static function (array $row) use ($periodStart): array {
             $submission = [
                 'rvid' => (int)$row['rvid'],
                 'paperid' => (int)$row['paperid'],
@@ -677,6 +601,7 @@ class PapersRepository extends ServiceEntityRepository
                 'acceptanceDate' => $row['acceptanceDate'] === null ? null : (string)$row['acceptanceDate'],
                 'refusalDate' => $row['refusalDate'] === null ? null : (string)$row['refusalDate'],
                 'publicationDate' => $row['publicationDate'] === null ? null : (string)$row['publicationDate'],
+                'periodStart' => $periodStart,
             ];
             $submission['category'] = SubmissionFigures::category($submission);
 

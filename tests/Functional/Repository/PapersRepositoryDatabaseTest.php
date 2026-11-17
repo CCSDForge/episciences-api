@@ -20,8 +20,8 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
 /**
- * Runs the grouped submission counts of PapersRepository (dashboard statistics) against a
- * real MySQL database: they must give the same numbers as the per-year submissionsQuery().
+ * Runs the queries of PapersRepository used by the dashboard statistics (years, latest version, repositories)
+ * against a real MySQL database. The submissions themselves, see PapersSubmissionsDatabaseTest.
  *
  * Requires TEST_DATABASE_URL (set in CI, see docker-compose.ci.yml); skipped otherwise.
  * The test creates and drops the PAPERS table: it is skipped if the table already exists,
@@ -90,18 +90,6 @@ class PapersRepositoryDatabaseTest extends TestCase
     }
 
     /**
-     * Several years (year[]=2022&year[]=2023 on the dashboard), by first submission and by publication date.
-     */
-    public function testSeveralYearsAreCounted(): void
-    {
-        $filters = $this->filters(['submissionDate' => [2022, 2023]]);
-
-        $this->assertSame(4, (int)$this->repository->submissionsQuery($filters)->getQuery()->getSingleScalarResult());
-        // no publication date in the fixtures: the query runs and counts nothing
-        $this->assertSame(0, (int)$this->repository->submissionsQuery($filters, false, 'publicationDate')->getQuery()->getSingleScalarResult());
-    }
-
-    /**
      * A journal without any submission (e.g. a new one) has no year, without the deprecations of range(null, null)
      */
     public function testAJournalWithoutSubmissionHasNoYear(): void
@@ -134,26 +122,6 @@ class PapersRepositoryDatabaseTest extends TestCase
     }
 
     /**
-     * A paper is counted once, in the year of its first submission (paper 10: v1 in 2023, v2 in 2024).
-     */
-    public function testPaperIsCountedInTheYearOfItsFirstSubmission(): void
-    {
-        $filters = ['is' => ['rvid' => self::VERSIONS_RVID]];
-
-        $this->assertSame([10], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::VERSIONS_RVID, 'year' => [2023]]]));
-        $this->assertSame([11], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::VERSIONS_RVID, 'year' => [2024]]]));
-        $this->assertSame(1, (int)$this->repository->submissionsQuery(['is' => ['rvid' => self::VERSIONS_RVID, 'year' => [2024]]])->getQuery()->getSingleScalarResult());
-    }
-
-    /**
-     * The start date is compared to the first submission: paper 10, first submitted in 2023, is not counted after 2024-01-01.
-     */
-    public function testStartAfterDateComparesTheFirstSubmission(): void
-    {
-        $this->assertSame([11], $this->repository->getSubmissionPaperIds(['is' => ['rvid' => self::VERSIONS_RVID, 'startAfterDate' => '2024-01-01']]));
-    }
-
-    /**
      * The temporary versions (local repository) are not counted by repository; paper 11, moved from repository 2
      * to repository 1, is counted in the repository of its first version.
      */
@@ -162,15 +130,6 @@ class PapersRepositoryDatabaseTest extends TestCase
         $filters = ['is' => ['rvid' => self::VERSIONS_RVID]];
 
         $this->assertNotContains(PapersRepository::LOCAL_REPOSITORY, $this->repository->getAvailableRepositories($filters));
-    }
-
-    /**
-     * @param array<string, mixed> $filters
-     * @return array{is: array<string, mixed>}
-     */
-    private function filters(array $filters = []): array
-    {
-        return ['is' => ['rvid' => self::RVID] + $filters];
     }
 
     private function insertPapers(): void

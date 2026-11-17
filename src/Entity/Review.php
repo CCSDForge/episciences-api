@@ -162,7 +162,7 @@ use App\Entity\IndexingDatabase;
             openapi: new OpenApiOperation(
                 tags: [OpenApiFactory::OAF_TAGS['stats']],
                 summary: "Dashboard",
-                description: 'Dashboard of a journal: submissions, decisions, rates, delays and users (by year with `withDetails`). The figures count submissions, as the list of papers of the journal: a refused paper that the journal accepts to receive again is a new submission, with the same paper identifier; each submission is counted in a single category, from its last decision, so that `nbSubmissions` = `nbImported` + `nbAccepted` + `nbRefused` + `nbOtherStatus` without year (by year, the accepted and refused ones are those decided in the year). Follows the setting `displayStatistics` of the journal: hidden by default, public, or reserved for the editorial secretaries of the journal (JWT).',
+                description: 'Dashboard of a journal: submissions, decisions, rates, delays and users (by year with `withDetails`). The figures count submissions, as the list of papers of the journal: a refused paper that the journal accepts to receive again is a new submission, with the same paper identifier; each submission is counted in a single category, from its last decision, so that `nbSubmissions` = `nbImported` + `nbAccepted` + `nbRefused` + `nbOtherStatus` without `year` nor `startAfterDate`. These figures are those of `GET /api/statistics/` with `rvcode`, computed the same way: `nbSubmissions` = `nb-submissions`, `rates.acceptance` = `acceptance-rate`, and in `nb-submissions-details`: `nbSubmissions` - `nbImported` = `nb-submitted-versions`, `nbImported` = `nb-imported-versions`, `nbPublished` (imported ones excluded) = `published`, `nbAccepted` (published included) = `accepted`, `nbRefused` = `refused`, `nbAcceptedNotYetPublished` = `being-to-publish.accepted`, `nbOtherStatus` (awaiting an editorial decision) = `being-to-publish.other-status`. ' . Statistic::YEAR_RULE_DESCRIPTION . ' Follows the setting `displayStatistics` of the journal: hidden by default, public, or reserved for the editorial secretaries of the journal (JWT).',
                 responses: [
                     '403' => new OpenApiResponse(description: 'Statistics of the journal hidden, or reserved for its editorial secretaries (`displayStatistics` setting)'),
                 ],
@@ -181,7 +181,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: QueryParameters::START_AFTER_DATE_DESCRIPTION,
+                        description: Statistic::START_AFTER_DATE_FIGURES_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -247,7 +247,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: QueryParameters::START_AFTER_DATE_DESCRIPTION,
+                        description: Statistic::START_AFTER_DATE_FIGURES_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -475,7 +475,7 @@ class Review
     ];
     public const SETTINGS_SECURITY = "is_granted('ROLE_EPIADMIN') or (is_granted('ROLE_SECRETARY') and user !== null and user.getCurrentJournalID() === object.getRvid())";
     public const DASHBOARD_WITH_PAPERS_DESCRIPTION = 'Adds `papers` to the value, the papers counted by each figure, computed with the same queries as the figures: one DOCID by submission (the version it ends with) for the submissions, imported, accepted, refused and other ones; one DOCID by paper (its latest version) for the others (the delays: the papers of the average and median delays). For the administrators of the journal (JWT); the papers for which the user has declared a conflict of interest are not listed, their number by figure is in `hiddenPapers`';
-    public const DASHBOARD_YEAR_DESCRIPTION = 'Year of: submission for `nbSubmissions` and `nbImported`; decision (publication, acceptance, refusal) for `nbPublished`, `nbImportedPublished`, `nbAccepted`, `nbAcceptedNotYetPublished`, `nbRefused` and `rates`; publication or acceptance for the delays; both submission and decision for `total*SubmittedSameYear`. The users are not counted by year';
+    public const DASHBOARD_YEAR_DESCRIPTION = 'Year of: submission for `nbSubmissions` and `nbImported`; publication for `nbPublished` and `nbImportedPublished`; decision (acceptance, refusal) for `nbAccepted`, `nbAcceptedNotYetPublished`, `nbRefused` and `rates`; publication or acceptance for the delays; both submission and decision for `total*SubmittedSameYear`. The users are not counted by year';
 
     #[ORM\Column(name: 'RVID', type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: false, options: ['unsigned' => true])]
     #[ORM\Id]

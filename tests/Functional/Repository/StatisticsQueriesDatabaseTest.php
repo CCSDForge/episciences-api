@@ -153,33 +153,6 @@ class StatisticsQueriesDatabaseTest extends TestCase
     }
 
     /**
-     * The papers given a status the year of their first submission: the same rows as the reference SQL query
-     * (without journal, the active journals, as the other figures).
-     */
-    public function testSubmittedSameYearMatchesTheReferenceQuery(): void
-    {
-        $withRows = 0;
-
-        foreach ([Paper::STATUS_STRICTLY_ACCEPTED, Paper::STATUS_PUBLISHED, Paper::STATUS_REFUSED] as $status) {
-            $reference = $this->fetch(self::referenceSubmittedSameYearSql($status));
-
-            foreach ([null, self::RVID, self::OTHER_RVID, self::DISABLED_RVID] as $rvId) {
-                // the reference query gives all the journals: the rows of the journal, or of the active journals without journal
-                $expected = array_values(array_filter(
-                    $reference,
-                    static fn(array $row): bool => $rvId === null ? (int)$row['rvid'] !== self::DISABLED_RVID : (int)$row['rvid'] === $rvId
-                ));
-                $actual = $this->paperLogRepository->getSubmittedSameYear($status, $rvId);
-
-                $this->assertSame(self::normalizeCounts($expected), self::normalizeCounts($actual), sprintf('status %d, journal %s', $status, $rvId ?? '-'));
-                $withRows += $expected === [] ? 0 : 1;
-            }
-        }
-
-        $this->assertGreaterThan(5, $withRows);
-    }
-
-    /**
      * The start date is inclusive, as for the submissions: a paper first submitted at midnight of the start date is counted.
      */
     public function testStartAfterDateIncludesAPaperSubmittedAtMidnightOfThatDay(): void
@@ -199,17 +172,24 @@ class StatisticsQueriesDatabaseTest extends TestCase
         // WHEN is a reserved word
         $connection->insert(Paper::TABLE, array_combine(array_map($platform->quoteSingleIdentifier(...), array_keys($paper)), $paper));
 
-        $connection->insert(PaperLog::TABLE, array_merge($this->requiredColumnDefaults(PaperLog::TABLE), [
-            'PAPERID' => 30,
-            'DOCID' => 30,
-            'RVID' => self::RVID,
-            'ACTION' => 'status',
-            'DETAIL' => json_encode(['status' => Paper::STATUS_STRICTLY_ACCEPTED], JSON_THROW_ON_ERROR),
-            'DATE' => '2025-04-01 10:00:00',
-        ]));
+        foreach ([Paper::STATUS_SUBMITTED => '2025-03-01 00:00:00', Paper::STATUS_PUBLISHED => '2025-04-01 10:00:00'] as $status => $date) {
+            $connection->insert(PaperLog::TABLE, array_merge($this->requiredColumnDefaults(PaperLog::TABLE), [
+                'PAPERID' => 30,
+                'DOCID' => 30,
+                'RVID' => self::RVID,
+                'ACTION' => 'status',
+                'DETAIL' => json_encode(['status' => $status], JSON_THROW_ON_ERROR),
+                'DATE' => $date,
+            ]));
+        }
 
-        $this->assertSame([30], $this->paperLogRepository->getPaperIds('accepted', self::RVID, [2025], '2025-03-01'));
-        $this->assertSame([], $this->paperLogRepository->getPaperIds('accepted', self::RVID, [2025], '2025-03-02'));
+        $paperIds = fn(string $startDate): array => array_map('intval', array_column(
+            $this->paperLogRepository->getArticleDelays('DAY', Paper::STATUS_PUBLISHED, $startDate, [2025], self::RVID) ?? [],
+            'PAPERID'
+        ));
+
+        $this->assertSame([30], $paperIds('2025-03-01'));
+        $this->assertSame([], $paperIds('2025-03-02'));
     }
 
     /**
@@ -273,21 +253,6 @@ class StatisticsQueriesDatabaseTest extends TestCase
     }
 
     /**
-     * Reference: the SQL query of the papers given a status the year of their first submission, before its conversion to Doctrine.
-     */
-    private static function referenceSubmittedSameYearSql(int $status): string
-    {
-        $sql = 'SELECT PAPERS.RVID AS rvid, YEAR(pl.DATE) AS `year`, COUNT(DISTINCT(PAPERS.PAPERID)) AS total';
-        $sql .= ' FROM PAPER_LOG pl JOIN PAPERS ON PAPERS.DOCID = pl.DOCID';
-        $sql .= ' JOIN (SELECT PAPERID, MIN(SUBMISSION_DATE) AS SUBMISSION_DATE FROM PAPERS GROUP BY PAPERID) firstSubmission';
-        $sql .= ' ON firstSubmission.PAPERID = PAPERS.PAPERID AND YEAR(firstSubmission.SUBMISSION_DATE) = YEAR(pl.DATE)';
-        $sql .= " WHERE pl.status IS NOT NULL AND pl.status = $status AND PAPERS.FLAG = 'submitted'";
-        $sql .= ' GROUP BY rvid, `year` ORDER BY rvid, `year` DESC';
-
-        return $sql;
-    }
-
-    /**
      * @return list<array<string, mixed>>
      */
     private function fetch(string $sql): array
@@ -312,17 +277,6 @@ class StatisticsQueriesDatabaseTest extends TestCase
         sort($normalized);
 
         return $normalized;
-    }
-
-    /**
-     * The order of the rows is kept: by journal, then from the latest year
-     *
-     * @param array<int, array<string, mixed>>|null $rows
-     * @return list<array{int, int, int}>
-     */
-    private static function normalizeCounts(?array $rows): array
-    {
-        return array_map(static fn(array $row): array => [(int)$row['rvid'], (int)$row['year'], (int)$row['total']], $rows ?? []);
     }
 
     /**
