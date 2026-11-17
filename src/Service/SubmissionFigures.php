@@ -17,7 +17,7 @@ use App\Repository\PapersRepository;
  * was counted as accepted and as refused.
  *
  * Each submission falls into a single category, from its last decision, so that the figures add up:
- * submissions = imported + accepted + refused + other (without year; by year, see inCategory()).
+ * submissions = imported + accepted + refused + other (without year nor start date; by year, see inCategory()).
  *
  * The start date of the period ("periodStart", see PapersRepository::getSubmissions()) applies to the same date as the
  * years: the date of first submission for the submissions, imported and other ones, the date of the decision for the
