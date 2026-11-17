@@ -551,7 +551,7 @@ class Stats
         // (a resubmission may be the only one of its repository within the start date)
         $repositories = array_values(array_unique(array_merge(
             $papersRepository->getAvailableRepositories($filters),
-            array_filter(array_column($submissions, 'repoid'), static fn(mixed $repoId): bool => $repoId !== null)
+            array_filter(array_column(SubmissionFigures::submittedIn($submissions), 'repoid'), static fn(mixed $repoId): bool => $repoId !== null)
         )));
         // the years of submission and those of the decisions: a year with decisions but no new submission is listed,
         // so that the accepted and refused submissions by year add up to their totals

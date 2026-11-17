@@ -181,7 +181,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: QueryParameters::START_AFTER_DATE_DESCRIPTION,
+                        description: Statistic::START_AFTER_DATE_FIGURES_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,
@@ -247,7 +247,7 @@ use App\Entity\IndexingDatabase;
                     new Parameter(
                         name: AppConstants::START_AFTER_DATE,
                         in: 'query',
-                        description: QueryParameters::START_AFTER_DATE_DESCRIPTION,
+                        description: Statistic::START_AFTER_DATE_FIGURES_DESCRIPTION,
                         required: false,
                         deprecated: false,
                         allowEmptyValue: true,

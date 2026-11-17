@@ -93,7 +93,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                 parameters: [
                     new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
                     new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of the last decision (acceptance or refusal) of the submissions', schema: QueryParameters::INTEGERS),
-                    new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: self::START_AFTER_DATE_SUBMISSIONS_DESCRIPTION, schema: QueryParameters::DATE),
+                    new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: self::START_AFTER_DATE_RATE_DESCRIPTION, schema: QueryParameters::DATE),
                 ]
             ),
         ),
@@ -155,10 +155,13 @@ class Statistic
         self::EVAL_INDICATORS['reviews-received_get'],
         self::EVAL_INDICATORS['median-reviews-number_get'],
     ];
-    /** "startAfterDate": the date it applies to depends on the indicator */
-    public const START_AFTER_DATE_SUBMISSIONS_DESCRIPTION = 'Start date of the statistics, included [YYYY-MM-DD], on the date of the first submission (whatever the date of the decision): a wrong format is rejected (422)';
+    /** "startAfterDate": applied to the same date as the years, which depends on the figure */
+    public const START_AFTER_DATE_SUBMISSIONS_DESCRIPTION = 'Start date of the statistics, included [YYYY-MM-DD], on the date of the first submission: a wrong format is rejected (422)';
+    public const START_AFTER_DATE_RATE_DESCRIPTION = 'Start date of the statistics, included [YYYY-MM-DD], on the date of the decision (acceptance or refusal), as the years: a wrong format is rejected (422)';
     public const START_AFTER_DATE_MEDIAN_DESCRIPTION = 'Start date of the statistics, included [YYYY-MM-DD]: an article is counted only if all its versions were submitted from that date; a wrong format is rejected (422)';
-    public const START_AFTER_DATE_COLLECTION_DESCRIPTION = 'Start date of the statistics, included [YYYY-MM-DD]: on the date of the first submission for the submission figures and `acceptance-rate`; for the median delays, an article is counted only if all its versions were submitted from that date; on the date of the invitation or of the validation of the report for `evaluation`. A wrong format is rejected (422)';
+    public const START_AFTER_DATE_COLLECTION_DESCRIPTION = 'Start date of the statistics, included [YYYY-MM-DD], on the same date as the years for each figure: the first submission for `nb-submissions`, `nb-submitted-versions`, `nb-imported-versions` and `being-to-publish.other-status`; the decision for `acceptance-rate`, `accepted`, `refused` and `being-to-publish.accepted`; the publication for `published`; the invitation or the validation of the report for `evaluation`. For the median delays, an article is counted only if all its versions were submitted from that date. A wrong format is rejected (422)';
+    /** "startAfterDate" of the journal statistics (dashboard, submissions): applied to the same date as the years */
+    public const START_AFTER_DATE_FIGURES_DESCRIPTION = 'Start date of the statistics, included [YYYY-MM-DD], on the same date as the years for each figure: the first submission for the submissions, imported and awaiting-decision ones; the decision for the accepted and refused ones and the rates; the publication for the published ones. For the delays, an article is counted only if all its versions were submitted from that date. A wrong format is rejected (422)';
     public const UNIT_DESCRIPTION = 'The unit of the delays (difference of two timestamps in MySQL)';
     public const UNIT_SCHEMA = ['type' => 'string', 'enum' => StatisticStateProvider::AVAILABLE_UNITS, 'default' => 'week'];
     public const GROUP_BY_DESCRIPTION = 'Returns the statistics of each active journal: one item by journal and by indicator, with the journal code in `journal`, sorted by code. Every active journal is returned, a missing count being 0 and a missing rate or median null. Not with `rvcode`';

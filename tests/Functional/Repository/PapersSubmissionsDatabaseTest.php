@@ -154,9 +154,19 @@ class PapersSubmissionsDatabaseTest extends TestCase
         $this->assertNull($submissions[19]['repoid']);
     }
 
-    public function testStartAfterDateFiltersOnTheFirstSubmissionDate(): void
+    /**
+     * With a start date, the submissions having a date within the period: each figure counts those whose own date is
+     * within it (paper 8, submitted in 2022 and refused in 2023, is a refusal of the period, not a submission).
+     */
+    public function testStartAfterDateKeepsTheSubmissionsHavingADateWithinThePeriod(): void
     {
-        $this->assertSame([4, 19], array_column($this->repository->getSubmissions(self::RVID, '2023-01-01'), 'docid'));
+        $submissions = $this->repository->getSubmissions(self::RVID, '2023-01-01');
+
+        $this->assertSame([4, 9, 19], array_column($submissions, 'docid'));
+        $this->assertSame(['2023-01-01'], array_values(array_unique(array_column($submissions, 'periodStart'))));
+        $this->assertSame([4, 19], array_column(SubmissionFigures::submittedIn($submissions), 'docid'));
+        $this->assertSame([9], array_column(SubmissionFigures::inCategory($submissions, SubmissionFigures::REFUSED), 'docid'));
+        $this->assertNull($this->repository->getSubmissions(self::RVID)[0]['periodStart']);
     }
 
     /**

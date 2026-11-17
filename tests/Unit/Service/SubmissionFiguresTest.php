@@ -36,6 +36,48 @@ class SubmissionFiguresTest extends TestCase
         return $submission;
     }
 
+    /**
+     * @param list<array<string, mixed>> $submissions
+     * @return list<array<string, mixed>>
+     */
+    private static function from(string $periodStart, array $submissions): array
+    {
+        return array_map(static fn(array $submission): array => ['periodStart' => $periodStart] + $submission, $submissions);
+    }
+
+    /**
+     * The start of the period applies to the same date as the years: the first submission for the submissions, the
+     * decision for the accepted and refused ones, the publication for the published ones (start day included).
+     */
+    public function testPeriodStartAppliesToTheDateOfEachFigure(): void
+    {
+        $submissions = self::from('2025-01-01', [
+            // submitted before the period, decided within it: an acceptance and a refusal of the period, not submissions
+            self::submission(1, '2024-11-01 10:00:00', Paper::STATUS_PUBLISHED, '2025-01-01 09:00:00', published: '2025-02-01 10:00:00'),
+            self::submission(2, '2024-12-01 10:00:00', Paper::STATUS_REFUSED, null, '2025-01-10 10:00:00'),
+            // submitted before the period, decided before it: out of every figure
+            self::submission(3, '2024-02-01 10:00:00', Paper::STATUS_PUBLISHED, '2024-06-01 10:00:00', published: '2025-03-01 10:00:00'),
+            // submitted within the period
+            self::submission(4, '2025-01-01 00:00:00'),
+            self::submission(5, '2025-03-01 10:00:00', Paper::STATUS_STRICTLY_ACCEPTED, '2025-05-01 10:00:00'),
+        ]);
+
+        $this->assertSame([4, 5], array_column(SubmissionFigures::submittedIn($submissions), 'docid'));
+        $this->assertSame([1, 5], array_column(SubmissionFigures::inCategory($submissions, SubmissionFigures::ACCEPTED), 'docid'));
+        $this->assertSame([2], array_column(SubmissionFigures::inCategory($submissions, SubmissionFigures::REFUSED), 'docid'));
+        $this->assertSame([4], array_column(SubmissionFigures::inCategory($submissions, SubmissionFigures::OTHER), 'docid'));
+        // published within the period, whatever the date of submission or of acceptance
+        $this->assertSame([1, 3], array_column(SubmissionFigures::published($submissions), 'docid'));
+        $this->assertSame([5], array_column(SubmissionFigures::acceptedNotYetPublished($submissions), 'docid'));
+
+        $this->assertSame([2025 => 2], SubmissionFigures::countByYear($submissions));
+        $this->assertSame([2025 => 2], SubmissionFigures::countByYear($submissions, SubmissionFigures::ACCEPTED));
+        $this->assertSame([2025 => 2], SubmissionFigures::countPublishedByYear($submissions));
+        $this->assertSame([2025], SubmissionFigures::years($submissions));
+        $this->assertSame([2025], SubmissionFigures::activityYears($submissions));
+        $this->assertSame([2025 => 1], SubmissionFigures::countDecidedSameYear($submissions, SubmissionFigures::ACCEPTED));
+    }
+
     #[DataProvider('categoryProvider')]
     public function testCategory(array $submission, string $expected): void
     {

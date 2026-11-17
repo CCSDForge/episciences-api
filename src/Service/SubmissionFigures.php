@@ -19,7 +19,11 @@ use App\Repository\PapersRepository;
  * Each submission falls into a single category, from its last decision, so that the figures add up:
  * submissions = imported + accepted + refused + other (without year; by year, see inCategory()).
  *
- * @phpstan-type Submission array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, publicationDate: string|null, category: string}
+ * The start date of the period ("periodStart", see PapersRepository::getSubmissions()) applies to the same date as the
+ * years: the date of first submission for the submissions, imported and other ones, the date of the decision for the
+ * accepted and refused ones, the date of publication for the published ones.
+ *
+ * @phpstan-type Submission array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, publicationDate: string|null, category: string, periodStart?: string|null}
  */
 final class SubmissionFigures
 {
@@ -28,6 +32,8 @@ final class SubmissionFigures
     public const string REFUSED = 'refused';
     /** awaiting a decision */
     public const string OTHER = 'other';
+    /** the date of publication, see dateOf() */
+    private const string PUBLISHED = 'published';
 
     /**
      * The category of a submission:
@@ -85,7 +91,7 @@ final class SubmissionFigures
     }
 
     /**
-     * The submissions first submitted in one of $years (all if empty)
+     * The submissions first submitted in one of $years (all if empty), within the period
      *
      * @param list<Submission> $submissions
      * @param array<int|string> $years
@@ -93,7 +99,7 @@ final class SubmissionFigures
      */
     public static function submittedIn(array $submissions, array $years = []): array
     {
-        return self::inYears($submissions, $years, self::submissionYear(...));
+        return self::inYears($submissions, $years, self::dateOf(self::OTHER));
     }
 
     /**
@@ -113,7 +119,7 @@ final class SubmissionFigures
     {
         $inCategory = array_values(array_filter($submissions, static fn(array $submission): bool => $submission['category'] === $category));
 
-        return self::inYears($inCategory, $years, self::yearOf($category));
+        return self::inYears($inCategory, $years, self::dateOf($category));
     }
 
     /**
@@ -140,7 +146,7 @@ final class SubmissionFigures
      */
     public static function countByYear(array $submissions, ?string $category = null): array
     {
-        $yearOf = $category === null ? self::submissionYear(...) : self::yearOf($category);
+        $dateOf = self::dateOf($category ?? self::OTHER);
         $counts = [];
 
         foreach ($submissions as $submission) {
@@ -148,7 +154,7 @@ final class SubmissionFigures
                 continue;
             }
 
-            $year = $yearOf($submission);
+            $year = self::periodYear($submission, $dateOf($submission));
 
             if ($year !== null) {
                 $counts[$year] = ($counts[$year] ?? 0) + 1;
@@ -178,7 +184,7 @@ final class SubmissionFigures
                 static fn(array $submission): bool => $submission['category'] === $category && $submission['status'] === Paper::STATUS_PUBLISHED
             )),
             $years,
-            self::publicationYear(...)
+            self::dateOf(self::PUBLISHED)
         );
     }
 
@@ -217,7 +223,7 @@ final class SubmissionFigures
         $counts = [];
 
         foreach ($submissions as $submission) {
-            if ($submission['repoid'] === null) {
+            if ($submission['repoid'] === null || !self::inPeriod($submission, $submission['firstSubmissionDate'])) {
                 continue;
             }
 
@@ -238,11 +244,11 @@ final class SubmissionFigures
      */
     public static function countDecidedSameYear(array $submissions, string $category): array
     {
-        $yearOf = self::yearOf($category);
+        $dateOf = self::dateOf($category);
 
         return self::countSameYear(
             array_filter($submissions, static fn(array $submission): bool => $submission['category'] === $category),
-            static fn(array $submission): ?int => $yearOf($submission)
+            static fn(array $submission): ?int => self::dateYear($dateOf($submission))
         );
     }
 
@@ -282,7 +288,7 @@ final class SubmissionFigures
      */
     public static function years(array $submissions): array
     {
-        return self::fromReferenceYear(array_map(self::submissionYear(...), $submissions));
+        return self::fromReferenceYear(array_map(self::submissionYear(...), self::submittedIn($submissions)));
     }
 
     /**
@@ -296,13 +302,11 @@ final class SubmissionFigures
      */
     public static function activityYears(array $submissions): array
     {
-        $years = array_map(self::submissionYear(...), $submissions);
+        $years = array_map(self::submissionYear(...), self::submittedIn($submissions));
 
         foreach ([self::ACCEPTED, self::REFUSED] as $category) {
-            $yearOf = self::yearOf($category);
-
-            foreach ($submissions as $submission) {
-                if ($submission['category'] === $category && ($year = $yearOf($submission)) !== null) {
+            foreach (self::inCategory($submissions, $category) as $submission) {
+                if (($year = self::dateYear(self::dateOf($category)($submission))) !== null) {
                     $years[] = $year;
                 }
             }
@@ -349,16 +353,42 @@ final class SubmissionFigures
     }
 
     /**
-     * @return callable(Submission): (int|null)
+     * The date a figure is counted on, by year and from the start of the period
+     *
+     * @return callable(Submission): (string|null)
      */
-    private static function yearOf(string $category): callable
+    private static function dateOf(string $category): callable
     {
         return match ($category) {
             // without acceptance in the history, the publication (see inCategory())
-            self::ACCEPTED => static fn(array $submission): ?int => self::dateYear($submission['acceptanceDate'] ?? $submission['publicationDate'] ?? null),
-            self::REFUSED => static fn(array $submission): ?int => self::dateYear($submission['refusalDate']),
-            default => self::submissionYear(...),
+            self::ACCEPTED => static fn(array $submission): ?string => $submission['acceptanceDate'] ?? $submission['publicationDate'] ?? null,
+            self::REFUSED => static fn(array $submission): ?string => $submission['refusalDate'],
+            self::PUBLISHED => static fn(array $submission): ?string => $submission['publicationDate'],
+            default => static fn(array $submission): string => $submission['firstSubmissionDate'],
         };
+    }
+
+    /**
+     * Whether the date of a figure is within the period of the submissions (from its start date, included)
+     *
+     * @param array{periodStart?: string|null} $submission
+     */
+    private static function inPeriod(array $submission, ?string $date): bool
+    {
+        $start = $submission['periodStart'] ?? null;
+
+        // "2025-01-01 10:00:00" >= "2025-01-01": the start day is included
+        return $start === null || ($date !== null && $date >= $start);
+    }
+
+    /**
+     * The year of a date within the period, null otherwise
+     *
+     * @param array{periodStart?: string|null} $submission
+     */
+    private static function periodYear(array $submission, ?string $date): ?int
+    {
+        return self::inPeriod($submission, $date) ? self::dateYear($date) : null;
     }
 
     /**
@@ -373,7 +403,7 @@ final class SubmissionFigures
         foreach ($submissions as $submission) {
             $year = self::submissionYear($submission);
 
-            if ($yearOf($submission) === $year) {
+            if (self::inPeriod($submission, $submission['firstSubmissionDate']) && $yearOf($submission) === $year) {
                 $counts[$year] = ($counts[$year] ?? 0) + 1;
             }
         }
@@ -403,17 +433,17 @@ final class SubmissionFigures
     /**
      * @param list<Submission> $submissions
      * @param array<int|string> $years
-     * @param callable(Submission): (int|null) $yearOf
+     * @param callable(Submission): (string|null) $dateOf the date of the figure, within the period and in one of $years
      * @return list<Submission>
      */
-    private static function inYears(array $submissions, array $years, callable $yearOf): array
+    private static function inYears(array $submissions, array $years, callable $dateOf): array
     {
-        if ($years === []) {
-            return $submissions;
-        }
-
         $years = array_map('intval', $years);
 
-        return array_values(array_filter($submissions, static fn(array $submission): bool => in_array($yearOf($submission), $years, true)));
+        return array_values(array_filter(
+            $submissions,
+            static fn(array $submission): bool => self::inPeriod($submission, $dateOf($submission))
+                && ($years === [] || in_array(self::dateYear($dateOf($submission)), $years, true))
+        ));
     }
 }

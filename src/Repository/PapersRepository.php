@@ -496,8 +496,11 @@ class PapersRepository extends ServiceEntityRepository
      * Native SQL: DQL has no window function. The decisions are joined to the versions by DOCID (not the other way
      * round): MySQL would otherwise look up the history of each version of the platform (seconds instead of a third).
      *
-     * @param string|null $startAfterDate the submissions first submitted on or after this date (YYYY-MM-DD)
-     * @return list<array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, publicationDate: string|null, category: string}> sorted by DOCID
+     * With a start date, the submissions having a date within the period (first submission, decision or publication),
+     * with this date as "periodStart": each figure only counts those whose own date is within it (see SubmissionFigures).
+     *
+     * @param string|null $startAfterDate the start of the period, included (YYYY-MM-DD)
+     * @return list<array{rvid: int, paperid: int, docid: int, status: int, flag: string, repoid: int|null, firstSubmissionDate: string, acceptanceDate: string|null, refusalDate: string|null, publicationDate: string|null, category: string, periodStart: string|null}> sorted by DOCID
      */
     public function getSubmissions(?int $rvId = null, ?string $startAfterDate = null): array
     {
@@ -553,7 +556,9 @@ class PapersRepository extends ServiceEntityRepository
             Paper::TABLE,
             PaperLog::TABLE,
             $journal,
-            self::isValidDate($startAfterDate) ? 'AND s.FIRST_SUBMISSION_DATE >= :startAfterDate' : '',
+            self::isValidDate($startAfterDate)
+                ? 'AND (s.FIRST_SUBMISSION_DATE >= :startAfterDate OR s.ACCEPTANCE_DATE >= :startAfterDate OR s.REFUSAL_DATE >= :startAfterDate OR p.PUBLICATION_DATE >= :startAfterDate)'
+                : '',
             str_replace('p.RVID', 'l.RVID', $journal)
         );
 
@@ -582,7 +587,9 @@ class PapersRepository extends ServiceEntityRepository
 
         $rows = $this->getEntityManager()->getConnection()->executeQuery($sql, $parameters, $types)->fetchAllAssociative();
 
-        return array_map(static function (array $row): array {
+        $periodStart = self::isValidDate($startAfterDate) ? $startAfterDate : null;
+
+        return array_map(static function (array $row) use ($periodStart): array {
             $submission = [
                 'rvid' => (int)$row['rvid'],
                 'paperid' => (int)$row['paperid'],
@@ -594,6 +601,7 @@ class PapersRepository extends ServiceEntityRepository
                 'acceptanceDate' => $row['acceptanceDate'] === null ? null : (string)$row['acceptanceDate'],
                 'refusalDate' => $row['refusalDate'] === null ? null : (string)$row['refusalDate'],
                 'publicationDate' => $row['publicationDate'] === null ? null : (string)$row['publicationDate'],
+                'periodStart' => $periodStart,
             ];
             $submission['category'] = SubmissionFigures::category($submission);
 
