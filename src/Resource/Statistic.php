@@ -12,6 +12,7 @@ use ApiPlatform\OpenApi\Model\Parameter;
 use App\AppConstants;
 use App\OpenApi\OpenApiFactory;
 use App\OpenApi\QueryParameters;
+use App\Service\Stats;
 use App\State\StatisticStateProvider;
 use Symfony\Component\Serializer\Attribute\Context;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -29,7 +30,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                 parameters: [
                     new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
                     new Parameter(name: 'indicator[]', in: 'query', description: 'Indicator(s), returned in this order; all of them when omitted', schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => self::PUBLICATION_INDICATOR_VALUES]]),
-                    new Parameter(name: 'year[]', in: 'query', description: self::YEAR_COLLECTION_DESCRIPTION, schema: QueryParameters::INTEGERS),
+                    new Parameter(name: 'year[]', in: 'query', description: self::YEAR_COLLECTION_DESCRIPTION . ' ' . self::YEAR_RANGE_DESCRIPTION, schema: QueryParameters::INTEGERS),
                     new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: self::START_AFTER_DATE_COLLECTION_DESCRIPTION, schema: QueryParameters::DATE),
                     new Parameter(name: 'unit', in: 'query', description: 'The unit of the median delays (difference of two timestamps in MySQL)', schema: self::UNIT_SCHEMA),
                     new Parameter(name: self::WITH_PAPERS_PARAM, in: 'query', description: self::WITH_PAPERS_DESCRIPTION, schema: QueryParameters::BOOLEAN),
@@ -46,7 +47,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                 description: 'Total number of submissions, for all the journals or for one journal with `rvcode`. Filter by year(s) of submission, by status (current status of the submission) and by flag (`imported`: all the versions of the submission are imported); without flag, the imported submissions are included. A refused paper that the journal accepts to receive again is a new submission, with the same paper identifier, as in the list of papers of the journal.',
                 parameters: [
                     new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
-                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of submission', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of submission' . ' ' . self::YEAR_RANGE_DESCRIPTION, schema: QueryParameters::INTEGERS),
                     new Parameter(name: 'status[]', in: 'query', description: 'Current status of the submissions (e.g. `published`, `refused`, `accepted`); an unknown status is rejected (422) with the list of the available ones', schema: QueryParameters::STRINGS),
                     new Parameter(name: AppConstants::PAPER_FLAG, in: 'query', description: 'Flag of the submissions: `imported` (all its versions are imported) or `submitted`', schema: QueryParameters::STRING),
                     new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: self::START_AFTER_DATE_SUBMISSIONS_DESCRIPTION, schema: QueryParameters::DATE),
@@ -62,7 +63,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                 description: self::INDICATOR_DESCRIPTION . ' ' . self::MEDIAN_DELAY_DESCRIPTION,
                 parameters: [
                     new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
-                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of publication of the articles', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of publication of the articles' . ' ' . self::YEAR_RANGE_DESCRIPTION, schema: QueryParameters::INTEGERS),
                     new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: self::START_AFTER_DATE_MEDIAN_DESCRIPTION, schema: QueryParameters::DATE),
                     new Parameter(name: 'unit', in: 'query', description: self::UNIT_DESCRIPTION, schema: self::UNIT_SCHEMA),
                 ]
@@ -77,7 +78,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                 description: self::INDICATOR_DESCRIPTION . ' ' . self::MEDIAN_DELAY_DESCRIPTION,
                 parameters: [
                     new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
-                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of acceptance of the articles', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of acceptance of the articles' . ' ' . self::YEAR_RANGE_DESCRIPTION, schema: QueryParameters::INTEGERS),
                     new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: self::START_AFTER_DATE_MEDIAN_DESCRIPTION, schema: QueryParameters::DATE),
                     new Parameter(name: 'unit', in: 'query', description: self::UNIT_DESCRIPTION, schema: self::UNIT_SCHEMA),
                 ]
@@ -92,7 +93,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                 description: 'Accepted / (accepted + refused) submissions, in %, for all the journals or for one journal with `rvcode`; null without any decision. ' . self::INDICATOR_DESCRIPTION . ' ' . self::YEAR_RULE_DESCRIPTION,
                 parameters: [
                     new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
-                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of the last decision (acceptance or refusal) of the submissions', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of the last decision (acceptance or refusal) of the submissions' . ' ' . self::YEAR_RANGE_DESCRIPTION, schema: QueryParameters::INTEGERS),
                     new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: self::START_AFTER_DATE_RATE_DESCRIPTION, schema: QueryParameters::DATE),
                 ]
             ),
@@ -107,7 +108,7 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
                 parameters: [
                     new Parameter(name: 'rvcode', in: 'query', description: QueryParameters::JOURNAL_CODE_DESCRIPTION, schema: QueryParameters::STRING),
                     new Parameter(name: 'indicator[]', in: 'query', description: 'Indicator(s), returned in this order; all of them when omitted', schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => self::EVAL_INDICATOR_VALUES]]),
-                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of the invitation (reviews-requested) or of the validation of the report (reviews-received, median-reviews-number): for `median-reviews-number`, only the reports validated in the period are counted, so an article whose reports were validated in different years counts a part of its reports in each year', schema: QueryParameters::INTEGERS),
+                    new Parameter(name: 'year[]', in: 'query', description: 'Year(s) of the invitation (reviews-requested) or of the validation of the report (reviews-received, median-reviews-number): for `median-reviews-number`, only the reports validated in the period are counted, so an article whose reports were validated in different years counts a part of its reports in each year' . ' ' . self::YEAR_RANGE_DESCRIPTION, schema: QueryParameters::INTEGERS),
                     new Parameter(name: AppConstants::START_AFTER_DATE, in: 'query', description: 'Start date of the statistics, included [YYYY-MM-DD], on the date of the invitation or of the validation of the report (for `median-reviews-number`, only the reports validated from that date are counted): a wrong format is rejected (422)', schema: QueryParameters::DATE),
                     new Parameter(name: self::WITH_PAPERS_PARAM, in: 'query', description: self::WITH_REVIEWS_DESCRIPTION, schema: QueryParameters::BOOLEAN),
                     new Parameter(name: self::GROUP_BY_PARAM, in: 'query', description: self::GROUP_BY_DESCRIPTION, schema: ['type' => 'string', 'enum' => [self::GROUP_BY_JOURNAL]]),
@@ -141,6 +142,8 @@ class Statistic
     public const DASHBOARD_FIGURES_DESCRIPTION = 'With `rvcode`, these submission figures are those of the journal dashboard (`GET /api/journals/stats/dashboard/{code}`), computed the same way; its description gives the correspondence of each figure.';
     /** How the figures are distributed by year: the decisions in the year they are taken */
     public const YEAR_RULE_DESCRIPTION = 'By year, a decision is counted in the year it is taken, not in the year of submission: a submission of December accepted in January counts as a submission of the first year and as an acceptance of the second. So, for a year, the accepted, refused and awaiting-decision submissions do not add up to the submissions of that year, and the acceptance rate of a year is the share of the acceptances among the decisions taken that year (accepted / (accepted + refused)), not the outcome of the submissions of that year.';
+    /** The years accepted by "year": those of the papers of the journal (PapersRepository::getYearRange()) */
+    public const YEAR_RANGE_DESCRIPTION = 'Accepted years: from the first submission of the journal (or of all the journals without `rvcode`), imported articles included, as the years of the journal dashboard, and not before ' . Stats::REF_YEAR . ', to the last submission or publication; listed in `hydra:range`. Another year is rejected (422).';
     public const YEAR_COLLECTION_DESCRIPTION = 'Year of: submission for `nb-submissions` (and `nb-submitted-versions`, `nb-imported-versions` and `being-to-publish.other-status` of `nb-submissions-details`); publication for the `published` articles; decision for `acceptance-rate` (and the `accepted`, `refused` and `being-to-publish.accepted` articles), as `year` on the journal dashboard; publication or acceptance for the median delays; invitation or validation of the report for `evaluation` (the median number of reviews only counts the reports validated in the year: an article whose reports were validated in different years counts a part of its reports in each year)';
     /** Values of the "indicator" parameter (lists for the OpenAPI enums) */
     public const PUBLICATION_INDICATOR_VALUES = [
