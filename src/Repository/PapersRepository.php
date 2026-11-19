@@ -361,11 +361,12 @@ class PapersRepository extends ServiceEntityRepository
     /**
      * Generates a range of years between the date of first submission and the date of last submission.
      * @param int|null $rvId
-     * @param string $flag
-     * @return array
+     * @param string|null $flag 'submitted' or 'imported' (see AVAILABLE_FLAG_VALUES); null: all the papers, as the
+     * years of the dashboard (SubmissionFigures::years()), which count the imported papers too
+     * @return list<int>
      */
 
-    public function getYearRange(?int $rvId = null, string $flag = 'submitted'): array
+    public function getYearRange(?int $rvId = null, ?string $flag = 'submitted'): array
     {
 
         $years = [];
@@ -378,7 +379,9 @@ class PapersRepository extends ServiceEntityRepository
         ) as maxYear"
         );
 
-        $qb->andWhere("p.flag = :flag")->setParameter('flag', self::AVAILABLE_FLAG_VALUES[$flag]);
+        if ($flag !== null) {
+            $qb->andWhere("p.flag = :flag")->setParameter('flag', self::AVAILABLE_FLAG_VALUES[$flag]);
+        }
 
         if ($rvId) {
             $qb->andWhere("p.rvid = :rvId")->setParameter('rvId', $rvId);
