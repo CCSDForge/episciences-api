@@ -166,7 +166,7 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
 
         } elseif ($operationClass === Statistic::class) {
             $repo = $this->entityManager->getRepository(Paper::class);
-            $years = $repo->getYearRange($rvId);
+            $years = $repo->getYearRange($rvId, null);
             rsort($years);
             $range['years'] = $years;
 

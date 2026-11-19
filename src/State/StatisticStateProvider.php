@@ -78,7 +78,7 @@ class StatisticStateProvider extends AbstractStateDataProvider implements Provid
         $status = array_unique(self::scalarValues($filters, 'status'));
 
         $years = array_unique(self::scalarValues($filters, AppConstants::YEAR_PARAM));
-        $availableYears = $this->entityManager->getRepository(Paper::class)->getYearRange($rvId);
+        $availableYears = $this->entityManager->getRepository(Paper::class)->getYearRange($rvId, null);
 
         $yearsDiff = $this->checkArrayEquality($availableYears, $years);
 

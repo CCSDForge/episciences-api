@@ -33,6 +33,8 @@ class PapersRepositoryDatabaseTest extends TestCase
     private const int OTHER_RVID = 2;
     /** Papers with versions submitted in different years, a temporary version and a change of repository */
     private const int VERSIONS_RVID = 3;
+    /** Its first year has only imported papers */
+    private const int IMPORTED_RVID = 4;
 
     private EntityManagerInterface $entityManager;
     private PapersRepository $repository;
@@ -107,6 +109,16 @@ class PapersRepositoryDatabaseTest extends TestCase
     }
 
     /**
+     * The years of the statistics count the imported papers too (as those of the dashboard): a year with only
+     * imported papers is not refused
+     */
+    public function testTheYearsOfAllThePapersIncludeTheImportedOnes(): void
+    {
+        $this->assertSame([2022], $this->repository->getYearRange(self::IMPORTED_RVID));
+        $this->assertSame([2021, 2022], $this->repository->getYearRange(self::IMPORTED_RVID, null));
+    }
+
+    /**
      * Two versions of the same date: the latest is the one of the latest docid (as the paper lists), not an arbitrary one
      */
     public function testTheLatestVersionOfTheSameDateIsTheLatestDocid(): void
@@ -150,6 +162,9 @@ class PapersRepositoryDatabaseTest extends TestCase
             // paper 11: first in repository 2, then in repository 1
             [13, 11, self::VERSIONS_RVID, 2, Paper::STATUS_OBSOLETE, 'submitted', '2024-05-01'],
             [14, 11, self::VERSIONS_RVID, 1, Paper::STATUS_SUBMITTED, 'submitted', '2024-06-01'],
+            // imported in 2021, then a submission in 2022
+            [20, 20, self::IMPORTED_RVID, 1, Paper::STATUS_PUBLISHED, 'imported', '2021-09-01'],
+            [21, 21, self::IMPORTED_RVID, 1, Paper::STATUS_SUBMITTED, 'submitted', '2022-02-01'],
         ];
 
         $connection = $this->entityManager->getConnection();
