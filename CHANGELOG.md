@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -->
 # Unreleased
 
+## v1.4.0 - 2026-11-25
+
 ### Added
 - `GET /api/journals/{code}`: the settings of the journal (`settings`, `{setting, value}` as stored) are returned again, with the same access as the settings pages of Episciences: to the chief editors, the administrators and the editorial secretaries of the journal (JWT of this journal) and to the platform administrators, without the DOI settings, returned in `doiSettings` to the platform administrators only. Absent otherwise, and never in the collection (`GET /api/journals/`). The OpenAPI documentation declares the optional JWT of the route, so that Swagger UI sends the token once authorized.
 - Makefile: `make up-xdebug` starts the containers with Xdebug step-debugging enabled (`docker-compose.xdebug.yml`, port 9003), as in the other Episciences applications: every web request connects (PHP-FPM pool file `docker/php-fpm/xdebug-fpm.conf`), console commands only with `XDEBUG_TRIGGER=1`.
@@ -37,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Journal dashboard (`GET /api/journals/stats/dashboard/{code}`): with `withDetails`, `details` now also gives the median delays of each year (`submissionAcceptanceTimeMedian`, `submissionPublicationTimeMedian`), in the shape of the average delays.
 - Journal dashboard: the delays of each year in `details` (average and median) now give `count`, the number of articles the delay is computed from.
 - Added a kernel test (`tests/Functional/Wiring/DelegatedTokenRoutesTest.php`, without database) checking that the routes accepting the delegated token of Episciences exist, on their expected path.
+- Added `GET /api/journals/indexing-database/{code}` endpoint to expose indexing databases for journals ([#148](https://github.com/CCSDForge/episciences-api/pull/148)).
 
 ### Changed
 - Statistics and journal dashboard: `startAfterDate` applies to the same date as the years for each figure: the date of the decision for the accepted and refused submissions and the rates, the date of publication for the published ones (the date of first submission before), so that a decision taken within the period on a submission of an earlier date is counted. The submissions, imported and awaiting-decision ones are still counted from their first submission, and the delays are unchanged.
@@ -69,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated to API Platform 4.3: updated `api-platform/core` to `^4.3`, removed legacy config keys (`keep_legacy_inflector`, `item_Operations`, `collection_Operations`), switched `UrlGeneratorInterface` to the `ApiPlatform\Metadata` namespace, moved `ApiPlatform\Exception\RuntimeException` to `ApiPlatform\Metadata\Exception\RuntimeException`, and converted OpenAPI operation `output`/`responses` from arrays to proper `ApiPlatform\OpenApi\Model` objects.
 - Journal dashboard statistics (`withDetails`): the submissions are counted by year and by repository in grouped queries instead of one query per year and per repository (92 queries down to 29 for a journal with 11 years of activity).
 - Migrated to Doctrine ORM 3.7: updated `doctrine/orm` constraint from `^2.14` to `^3.7` and aligned unit test mocks (mocked `Doctrine\DBAL\Exception` and `Doctrine\ORM\Query` instances) with the new ORM/DBAL APIs.
+- Upgraded `doctrine/dbal` to `^4.4`.
 - CI runs the tests against MySQL 8.4 (was 8.0), with `DATABASE_SERVER_VERSION` set accordingly.
 - Journal dashboard and statistics: removed the dead `reformatSubmissionsData()` and `getPercentages()` helpers of `Stats`, and normalized the `$values` array-key spacing. No change in the computed figures.
 - `Stats` service: typed the parameters and return types of the public methods, documented them (English PHPDoc with array generics) and translated the remaining French comments into English; repository variables keep their `@var` annotations so that the custom repository methods remain type-resolvable. No change in the computed figures.
