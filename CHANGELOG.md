@@ -187,6 +187,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Harden the validation of the statistics and journal dashboard filters.
 - Upgraded `symfony/expression-language` from 7.4.18 to 7.4.21 (CVE-2026-109449: unbounded nesting in the expression parser lets untrusted expressions crash the process).
 - Raised the required PHP version to 8.4.27 (`require` and Composer platform), required by `roave/security-advisories`: an older PHP is now rejected at runtime, from the CLI and from PHP-FPM; upgraded `api-platform/core` to v4.4.6 and `composer/semver` to 3.5.2.
+- Raised the required PHP version to 8.4.28 (`require` and Composer platform), required by `roave/security-advisories`, and updated the dependencies (`api-platform/core` v4.4.10, Symfony 7.4.24, Twig 3.31.1, Monolog 3.13.0).
 
 ## v1.3.1 2026-09-22
 ### Fixed
