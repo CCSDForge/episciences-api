@@ -73,7 +73,11 @@ class SingleValueQueryParametersResourceMetadataCollectionFactoryTest extends Te
         $declared = new QueryParameter(key: 'only_accepted', schema: ['type' => 'boolean']);
         $operation = $this->operation(Paper::class, new GetCollection(name: 'collection', parameters: ['only_accepted' => $declared]));
 
-        $this->assertSame($declared, $operation->getParameters()?->get('only_accepted'));
+        // Cloning the parameters also clones each parameter (API Platform >= 4.4.10): compare the content
+        $parameter = $operation->getParameters()?->get('only_accepted');
+
+        $this->assertEquals($declared, $parameter);
+        $this->assertArrayNotHasKey(SingleValueQueryParametersResourceMetadataCollectionFactory::SINGLE_VALUE, $parameter?->getExtraProperties() ?? []);
     }
 
     public function testResourceOfApiPlatformIsUnchanged(): void
