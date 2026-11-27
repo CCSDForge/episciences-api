@@ -172,6 +172,29 @@ class PapersRepositoryDatabaseTest extends TestCase
         $this->assertSame([2024, 2015, 2014], $this->repository->getRange($journal + ['sid' => null, 'vid' => '']));
     }
 
+    /**
+     * The counts of each facet on the scope, restricted to the values of the other facet; the unpublished papers
+     * are not counted
+     */
+    public function testTheFacetCountsFollowTheScopeAndTheOtherFacet(): void
+    {
+        $this->insertFacetPapers();
+        $section = ['rvid' => self::FACETS_RVID, 'sid' => 66];
+
+        $this->assertSame(['article' => 1, 'conferenceobject' => 2], $this->repository->countByType($section));
+        $this->assertSame([2015 => 2, 2014 => 1], $this->repository->countByPublicationYear($section));
+
+        // year[]=2015: the types of 2015 only; type[]=conferenceobject: the years of the conference objects only
+        $this->assertSame(['article' => 1, 'conferenceobject' => 1], $this->repository->countByType($section, ['2015']));
+        $this->assertSame([2015 => 1, 2014 => 1], $this->repository->countByPublicationYear($section, ['conferenceobject']));
+        $this->assertSame([2015 => 1], $this->repository->countByPublicationYear($section, 'article'));
+
+        // several values, empty values ignored
+        $this->assertSame(['article' => 1, 'conferenceobject' => 2], $this->repository->countByType($section, ['2014', '2015', '']));
+        $this->assertSame([], $this->repository->countByType($section, ['2024']));
+        $this->assertSame([2024 => 1, 2015 => 2, 2014 => 1], $this->repository->countByPublicationYear(['rvid' => self::FACETS_RVID]));
+    }
+
     private function insertFacetPapers(): void
     {
         $papers = [

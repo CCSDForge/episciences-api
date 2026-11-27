@@ -314,6 +314,78 @@ class PapersRepository extends ServiceEntityRepository
 
     }
 
+    /**
+     * Number of papers by type (lowercase, as getTypes()) on the scope of $filters (see andWhere()),
+     * restricted to the given publication years, as the year[] filter of the list of papers.
+     *
+     * @param array<string, mixed> $filters
+     * @param string|array<mixed> $years
+     *
+     * @return array<string, int>
+     */
+    public function countByType(array $filters = [], string|array $years = []): array
+    {
+        $qb = $this->createQueryBuilder('p');
+        $qb->select("JSON_UNQUOTE(JSON_EXTRACT(p.type, '$.title')) AS type", 'COUNT(p.docid) AS total')
+            ->andWhere("JSON_EXTRACT(p.type, '$.title') IS NOT NULL")
+            ->groupBy('type');
+        $this->andWhere($qb, $filters);
+        $this->andOrExp($qb, 'YEAR(p.publicationDate)', $this->scalarValues($years));
+
+        $counts = [];
+
+        foreach ($qb->getQuery()->getArrayResult() as $row) {
+            $type = strtolower((string)$row['type']);
+            $counts[$type] = ($counts[$type] ?? 0) + (int)$row['total'];
+        }
+
+        ksort($counts);
+
+        return $counts;
+    }
+
+    /**
+     * Number of published papers by publication year on the scope of $filters (see andWhere()),
+     * restricted to the given types, as the type[] filter of the list of papers.
+     *
+     * @param array<string, mixed> $filters
+     * @param string|array<mixed> $types
+     *
+     * @return array<int, int> the most recent year first
+     */
+    public function countByPublicationYear(array $filters = [], string|array $types = []): array
+    {
+        $qb = $this->createQueryBuilder('p');
+        $qb->select('YEAR(p.publicationDate) AS year', 'COUNT(p.docid) AS total')
+            ->andWhere('p.publicationDate IS NOT NULL')
+            ->groupBy('year')
+            ->orderBy('year', \SortDirection::Descending);
+        $this->andWhere($qb, $filters);
+        $this->andOrExp($qb, "JSON_EXTRACT(p.type, '$.title')", $this->scalarValues($types));
+
+        $counts = [];
+
+        foreach ($qb->getQuery()->getArrayResult() as $row) {
+            $counts[(int)$row['year']] = (int)$row['total'];
+        }
+
+        return $counts;
+    }
+
+    /**
+     * The distinct, non-empty scalar values of a query parameter given once or several times (e.g. type[]).
+     *
+     * @param string|array<mixed> $values
+     *
+     * @return list<string>
+     */
+    private function scalarValues(string|array $values): array
+    {
+        $values = array_map(strval(...), array_filter((array)$values, is_scalar(...)));
+
+        return array_values(array_unique(array_filter($values, static fn(string $value): bool => $value !== '')));
+    }
+
     private function andWhere(QueryBuilder $qb, array $filters = [], bool $strict = true): QueryBuilder
     {
         $isOnlyAccepted = isset($filters['isOnlyAccepted']) && $filters['isOnlyAccepted'];

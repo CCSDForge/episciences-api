@@ -193,21 +193,32 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         } elseif ($operationClass === Paper::class) {
 
             $isOnlyAccepted = $filters['isOnlyAccepted'] ?? false;
-            // The requested year[] and type[] are ignored: choosing a value must not hide the other ones
+            // The lists ignore the requested year[] and type[]: choosing a value must not hide the other ones
             $scope = [
                 'rvid' => $rvId ?? $filters['rvid'] ?? null,
                 'sid' => $filters['sid'] ?? null,
                 'vid' => $filters['vid'] ?? null,
             ];
-            $rangeType = new RangeType()
-                ->setTypes($repo->getTypes($scope + ['isOnlyAccepted' => $isOnlyAccepted]));
+            $range = [];
+            $counts = [];
 
             if (!$isOnlyAccepted) {
-                $rangeType->setYears($repo->getRange($scope));
-                $range = ['publicationYears' => $rangeType->getYears()];
+                $range['publicationYears'] = $repo->getRange($scope);
+                // the number of papers by year among the requested types (what choosing the year returns)
+                $counts['publicationYears'] = $this->countsOf(
+                    $range['publicationYears'],
+                    $repo->countByPublicationYear($scope, $filters['type'] ?? [])
+                );
             }
 
-            $range['types'] = $rangeType->getTypes();
+            $range['types'] = $repo->getTypes($scope + ['isOnlyAccepted' => $isOnlyAccepted]);
+            // the number of papers by type in the requested years (ignored by the list of the accepted papers)
+            $counts['types'] = $this->countsOf(
+                $range['types'],
+                $repo->countByType($scope + ['isOnlyAccepted' => $isOnlyAccepted], $isOnlyAccepted ? [] : ($filters['year'] ?? []))
+            );
+
+            $range['counts'] = $counts;
             $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $range;
 
         } elseif ($operationClass === News::class) {
@@ -239,6 +250,25 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             $data[sprintf('hydra:%s', RangeInterface::RANGE)] = $this->search->getAllFacets($filters[Search::TERMS_PARAM]);
         }
 
+    }
+
+    /**
+     * The number of papers of each value of a facet, 0 for a value without paper; a JSON object, even when empty.
+     *
+     * @param array<int|string> $values
+     * @param array<int|string, int> $counts
+     *
+     * @return array<int|string, int>|\ArrayObject<int|string, int>
+     */
+    private function countsOf(array $values, array $counts): array|\ArrayObject
+    {
+        $result = [];
+
+        foreach ($values as $value) {
+            $result[$value] = $counts[$value] ?? 0;
+        }
+
+        return $result === [] ? new \ArrayObject() : $result;
     }
 
     public function setSerializer(SerializerInterface $serializer): void
