@@ -113,11 +113,12 @@ class BrowseStateProvider extends AbstractBrowseStateProvider implements Provide
             return $paginator;
         }
 
-        // Without pagination, a single page of the maximum size, with the total number of authors (as paginated)
-        $facetPage = $this->facetService->setJournal($journal)->getSolrFacetPage($facetParams, 0, $maxResults);
+        // Without pagination, the first authors up to the maximum, with their total number when Solr gives it
+        $facetPage = $this->facetService->setJournal($journal)->getSolrFacetFirstValues($facetParams, $maxResults);
         $authors = $this->toFacets($authorFs, $facetPage['values']);
+        $totalAuthors = $facetPage['total'];
 
-        $this->flagIfTruncated($context, $facetPage['total'], $maxResults);
+        $this->flagIfTruncated($context, $totalAuthors ?? $maxResults + 1, $maxResults, $totalAuthors !== null);
 
         $paginator = new ArrayPaginator($authors, $firstResult, $maxResults);
 

@@ -347,6 +347,65 @@ class SolrFacetServiceTest extends TestCase
         $this->assertSame(3, $page['total']);
     }
 
+    /**
+     * With a search filter, the first values are fetched with one more value only (no total beyond the limit).
+     */
+    public function testGetSolrFacetFirstValuesWithSearchFilterIsBounded(): void
+    {
+        $facetData = ['facet_counts' => ['facet_fields' => ['list' => ['Dupont, Jean', 25, 'Dupont, Marie', 4, 'Dupontel, Luc', 1]]]];
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getContent')->willReturn(json_encode($facetData));
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->logicalAnd($this->stringContains('facet.contains=Dupont'), $this->stringContains('facet.limit=3')))
+            ->willReturn($response);
+
+        $first = $this->facetService->getSolrFacetFirstValues([
+            'facetFieldName' => 'authorLastNameFirstNamePrefixed_fs',
+            'search' => 'Dupont',
+        ], 2);
+
+        $this->assertSame(['Dupont, Jean' => 25, 'Dupont, Marie' => 4], $first['values']);
+        $this->assertNull($first['total']);
+    }
+
+    public function testGetSolrFacetFirstValuesWithSearchFilterGivesTheTotalWhenComplete(): void
+    {
+        $facetData = ['facet_counts' => ['facet_fields' => ['list' => ['Dupont, Jean', 25, 'Dupont, Marie', 4]]]];
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getContent')->willReturn(json_encode($facetData));
+
+        $this->httpClient->expects($this->once())->method('request')->willReturn($response);
+
+        $first = $this->facetService->getSolrFacetFirstValues([
+            'facetFieldName' => 'authorLastNameFirstNamePrefixed_fs',
+            'search' => 'Dupont',
+        ], 2);
+
+        $this->assertCount(2, $first['values']);
+        $this->assertSame(2, $first['total']);
+    }
+
+    public function testGetSolrFacetFirstValuesWithoutFilterUsesTheJsonFacetTotal(): void
+    {
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getContent')->willReturn(json_encode(['facets' => ['list' => ['numBuckets' => 5, 'buckets' => [['val' => 'Ada', 'count' => 1]]]]]));
+
+        $this->httpClient
+            ->expects($this->once())
+            ->method('request')
+            ->with('GET', $this->stringContains('json.facet='))
+            ->willReturn($response);
+
+        $first = $this->facetService->getSolrFacetFirstValues(['facetFieldName' => 'authorLastNameFirstNamePrefixed_fs'], 1);
+
+        $this->assertSame(5, $first['total']);
+    }
+
     public function testSetAndGetJournal(): void
     {
         $mockJournal = $this->createMock(Review::class);

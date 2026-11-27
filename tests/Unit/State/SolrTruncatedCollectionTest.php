@@ -118,6 +118,20 @@ class SolrTruncatedCollectionTest extends TestCase
         $this->assertSame($max + 1, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
+    /**
+     * With a filter that Solr cannot count (search), the truncation is flagged without the total.
+     */
+    public function testUnpaginatedAuthorsWithAnUnknownTotalAreFlaggedWithoutTheTotal(): void
+    {
+        $max = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
+
+        $authors = $this->browseAuthors(facets: $max + 1, pagination: self::UNPAGINATED, isTotalKnown: false);
+
+        $this->assertCount($max, $authors);
+        $this->assertSame($max, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
+    }
+
     public function testCompleteUnpaginatedAuthorsAreNotFlagged(): void
     {
         $max = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
@@ -205,7 +219,7 @@ class SolrTruncatedCollectionTest extends TestCase
     /**
      * @return object[] the returned authors
      */
-    private function browseAuthors(int $facets, string $pagination, ?int $expectedTotal = null): array
+    private function browseAuthors(int $facets, string $pagination, ?int $expectedTotal = null, bool $isTotalKnown = true): array
     {
         $authors = array_fill_keys(array_map(static fn(int $i): string => 'author' . $i, range(1, $facets)), 1);
 
@@ -213,11 +227,14 @@ class SolrTruncatedCollectionTest extends TestCase
         $facetService->method('setJournal')->willReturnSelf();
         $facetService->expects($this->never())->method('getSolrFacet');
         $facetService->expects($this->once())
-            ->method('getSolrFacetPage')
-            ->willReturnCallback(function (array $params, int $offset, int $limit) use ($authors): array {
-                $this->facetPageArguments = [$offset, $limit];
+            ->method('getSolrFacetFirstValues')
+            ->willReturnCallback(function (array $params, int $limit) use ($authors, $isTotalKnown): array {
+                $this->facetPageArguments = [0, $limit];
 
-                return ['values' => array_slice($authors, $offset, $limit, true), 'total' => count($authors)];
+                return [
+                    'values' => array_slice($authors, 0, $limit, true),
+                    'total' => $isTotalKnown || count($authors) <= $limit ? count($authors) : null,
+                ];
             });
 
         $requestStack = new RequestStack();

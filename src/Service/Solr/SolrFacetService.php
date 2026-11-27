@@ -45,7 +45,7 @@ class SolrFacetService extends AbstractSolrService
 
         $letter = isset($params['letter']) ? $this->normalizeLetter($params['letter']) : SolrConstants::SOLR_ALL_PREFIX;
 
-        if (($params['search'] ?? '') !== '' || $this->isOthersExcluded($letter)) {
+        if ($this->needsClassicFacet($params)) {
             $values = $this->getSolrFacet(['facetLimit' => -1] + $params);
 
             return ['values' => array_slice($values, $offset, $limit, true), 'total' => count($values)];
@@ -80,6 +80,28 @@ class SolrFacetService extends AbstractSolrService
         }
 
         return ['values' => $this->parseFacetResults($values), 'total' => (int)($data['facets']['list']['numBuckets'] ?? 0)];
+    }
+
+    /**
+     * The first values of a facet, with their total number when it is known without fetching more values.
+     *
+     * Unlike getSolrFacetPage(), at most $limit + 1 values are fetched: with a search filter (or a letter
+     * whose prefix also matches the "others" values), the total is unknown (null) beyond $limit values.
+     *
+     * @param array<string, mixed> $params same parameters as getSolrFacet(), without facetLimit
+     * @return array{values: array<string, mixed>, total: ?int}
+     */
+    public function getSolrFacetFirstValues(array $params, int $limit): array
+    {
+        if (($params['facetFieldName'] ?? '') === '' || !$this->needsClassicFacet($params)) {
+            return $this->getSolrFacetPage($params, 0, $limit);
+        }
+
+        // one more value is requested to tell a truncated result
+        $values = $this->getSolrFacet(['facetLimit' => $limit + 1] + $params);
+        $isTruncated = count($values) > $limit;
+
+        return ['values' => array_slice($values, 0, $limit, true), 'total' => $isTruncated ? null : count($values)];
     }
 
     public function getLettersRange(): array
@@ -149,6 +171,19 @@ class SolrFacetService extends AbstractSolrService
         if ($this->isOthersExcluded($normalizedLetter)) {
             $params['facet.matches'] = sprintf('^(?!%s).*', preg_quote(SolrConstants::SOLR_OTHERS_FACET_SEPARATOR, '/'));
         }
+    }
+
+    /**
+     * The JSON Facet API has no equivalent of facet.contains nor facet.matches:
+     * these filters need the classic facets, which give no total.
+     *
+     * @param array<string, mixed> $params
+     */
+    private function needsClassicFacet(array $params): bool
+    {
+        $letter = isset($params['letter']) ? $this->normalizeLetter($params['letter']) : SolrConstants::SOLR_ALL_PREFIX;
+
+        return ($params['search'] ?? '') !== '' || $this->isOthersExcluded($letter);
     }
 
     /**

@@ -39,10 +39,11 @@ abstract class AbstractStateDataProvider
      * To be called after checkAndProcessFilters().
      *
      * @param array<string, mixed> $context
-     * @param int $totalItems number of items matching the request
+     * @param int $totalItems number of items matching the request (at least, if the total is not known)
      * @param int $maxItems number of items returned at most
+     * @param bool $isTotalKnown false: the collection is flagged without its total number of items
      */
-    protected function flagIfTruncated(array $context, int $totalItems, int $maxItems): void
+    protected function flagIfTruncated(array $context, int $totalItems, int $maxItems, bool $isTotalKnown = true): void
     {
         $request = $context['request'] ?? null;
 
@@ -51,7 +52,10 @@ abstract class AbstractStateDataProvider
         }
 
         $request->attributes->set(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE, $maxItems);
-        $request->attributes->set(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE, $totalItems);
+
+        if ($isTotalKnown) {
+            $request->attributes->set(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE, $totalItems);
+        }
     }
 
     /**
