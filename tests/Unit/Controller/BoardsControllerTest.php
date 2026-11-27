@@ -3,6 +3,7 @@
 namespace App\Tests\Unit\Controller;
 
 use ApiPlatform\State\Pagination\ArrayPaginator;
+use App\AppConstants;
 use App\Controller\BoardsController;
 use App\Entity\Review;
 use App\Entity\Section;
@@ -385,6 +386,19 @@ class BoardsControllerTest extends TestCase
         $result = $this->controller->__invoke($request);
 
         $this->assertInstanceOf(ArrayPaginator::class, $result);
+    }
+
+    public function testItemsPerPageAboveTheMaximumIsLoweredToTheMaximum(): void
+    {
+        $request = Request::create('/api/boards', Request::METHOD_GET, [
+            'page'         => '2',
+            'itemsPerPage' => (string)(AppConstants::MAXIMUM_ITEMS_PER_PAGE + 1),
+        ]);
+
+        $result = $this->controller->__invoke($request);
+
+        $this->assertSame((float)AppConstants::MAXIMUM_ITEMS_PER_PAGE, $result->getItemsPerPage());
+        $this->assertSame(2.0, $result->getCurrentPage()); // offset computed with the maximum
     }
 
     public function testAPageWhoseOffsetIsNotAnIntegerIsABadRequest(): void
