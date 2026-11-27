@@ -100,6 +100,50 @@ class OpenApiNormalizerTest extends TestCase
     }
 
     /**
+     * The facets of the papers (hydra:range) are documented on their JSON-LD collection only
+     */
+    public function testTheFacetsOfThePapersAreDocumented(): void
+    {
+        $collection = static fn(string $member): array => ['get' => ['responses' => ['200' => ['content' => [
+            'application/ld+json' => ['schema' => [
+                'type' => 'object',
+                'allOf' => [
+                    ['$ref' => '#/components/schemas/HydraCollectionBaseSchema'],
+                    ['type' => 'object', 'properties' => ['hydra:member' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/' . $member]]]],
+                ],
+            ]],
+        ]]]]];
+
+        $decorated = $this->createStub(NormalizerInterface::class);
+        $decorated->method('normalize')->willReturn([
+            'paths' => [
+                '/api/papers/' => $collection('Paper.jsonld-read.Papers'),
+                '/api/volumes' => $collection('Volume.jsonld-read.Volumes'),
+            ],
+            'components' => [
+                'schemas' => new \ArrayObject([
+                    'HydraCollectionBaseSchema' => ['type' => 'object'],
+                    'Paper.jsonld-read.Papers' => ['type' => 'object', 'properties' => ['docid' => ['type' => 'integer']]],
+                    'Volume.jsonld-read.Volumes' => ['type' => 'object', 'properties' => ['vid' => ['type' => 'integer']]],
+                ]),
+            ],
+        ]);
+
+        $openApi = (new OpenApiNormalizer($decorated))->normalize(new \stdClass());
+        $properties = static fn(string $path): array => $openApi['paths'][$path]['get']['responses']['200']['content']['application/ld+json']['schema']['allOf'][1]['properties'];
+
+        $range = $properties('/api/papers/')['hydra:range'];
+        $this->assertSame(['publicationYears', 'types', 'counts'], array_keys($range['properties']));
+        $this->assertSame(['publicationYears', 'types'], array_keys($range['properties']['counts']['properties']));
+        $this->assertArrayNotHasKey('hydra:totalPublishedArticles', $properties('/api/papers/'));
+        // the item schema of the papers is unchanged
+        $this->assertSame(['docid'], array_keys($openApi['components']['schemas']['Paper.jsonld-read.Papers']['properties']));
+
+        $this->assertArrayNotHasKey('hydra:range', $properties('/api/volumes'));
+        $this->assertArrayHasKey('hydra:totalPublishedArticles', $properties('/api/volumes'));
+    }
+
+    /**
      * Each method of a path is updated from the current path item: the previous updates are kept.
      */
     public function testJsonLdCollectionPropertiesAreAddedToEveryMethodOfAPath(): void

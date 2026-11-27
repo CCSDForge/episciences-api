@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `GET /api/papers/` (JSON-LD): `hydra:range.counts` gives the number of papers of each publication year and type of the facets (0 for a value without paper). The count of each facet follows the filter of the other one, as the list of papers: the years are counted among the requested `type[]`, the types in the requested `year[]` (except with `only_accepted`, whose list ignores the years). The lists `publicationYears` and `types` are unchanged (#156).
+- OpenAPI: `hydra:range` of `GET /api/papers/` is documented (publication years, types and their counts, computed on the public papers whoever the user) (#156).
 
 ### Fixed
 - `GET /api/papers/`: the facets (`hydra:range`: publication years and types) are computed on the requested section (`sid`) and volume (`vid`, one or several), and on the journal given by `rvid` without `rvcode` (they were computed on all the journals); also when no paper matches the other filters. The requested `year[]` and `type[]` are still ignored, so that choosing a value does not hide the other ones (#156).
