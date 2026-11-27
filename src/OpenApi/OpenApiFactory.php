@@ -17,6 +17,7 @@ use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use ApiPlatform\OpenApi\OpenApi;
 use App\AppConstants;
+use App\EventSubscriber\CollectionTotalCountSubscriber;
 use App\EventSubscriber\TruncatedCollectionSubscriber;
 use App\Metadata\SingleValueQueryParametersResourceMetadataCollectionFactory;
 use App\Resource\Statistic;
@@ -159,8 +160,10 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     /**
      * Documents, on the collections that can be requested without pagination, the cap
      * applied to ?pagination=false and the TRUNCATED_HEADER response header.
-     * They also return a 400 for an invalid pagination parameter and a 404 for a page after the last one.
-     * The collections served by a Symfony controller are not capped: they only get the 400 and the 404.
+     * They also return a 400 for an invalid pagination parameter and a 404 for a page after the last one,
+     * the total number of items in the TOTAL_COUNT_HEADER response header, and lower itemsPerPage to the maximum.
+     * The collections served by a Symfony controller are not capped: they only get the 400, the 404,
+     * the total and the maximum of itemsPerPage.
      */
     private function documentUnpaginatedCap(OpenApi $openApi): OpenApi
     {
@@ -174,7 +177,10 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
                     $get = $path->getGet();
 
                     if ($get !== null && $this->findPaginationParameter($get->getParameters() ?? []) !== null) {
-                        $paths->addPath($key, $path->withGet($get->withResponses($this->withInvalidPaginationResponse($get->getResponses() ?? []))));
+                        $paths->addPath($key, $path->withGet(
+                            $get->withParameters($this->withItemsPerPageCap($get->getParameters() ?? []))
+                                ->withResponses($this->withInvalidPaginationResponse($this->withTotalCountHeader($get->getResponses() ?? [])))
+                        ));
                     }
 
                     continue 2;
@@ -199,7 +205,8 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             ), '. '));
 
             $paths->addPath($key, $path->withGet(
-                $get->withParameters($parameters)->withResponses($this->withInvalidPaginationResponse($this->withTruncatedHeader($get->getResponses() ?? [])))
+                $get->withParameters($this->withItemsPerPageCap($parameters))
+                    ->withResponses($this->withInvalidPaginationResponse($this->withTotalCountHeader($this->withTruncatedHeader($get->getResponses() ?? []))))
             ));
         }
 
@@ -264,10 +271,58 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
     }
 
     /**
+     * A greater itemsPerPage is lowered to the maximum (API Platform): said in its description.
+     *
+     * @param array<int|string, mixed> $parameters
+     * @return array<int|string, mixed>
+     */
+    private function withItemsPerPageCap(array $parameters): array
+    {
+        foreach ($parameters as $index => $parameter) {
+            if ($parameter instanceof Parameter && $parameter->getName() === 'itemsPerPage' && $parameter->getIn() === 'query') {
+                $parameters[$index] = $parameter->withDescription(ltrim(sprintf(
+                    '%s. At most %d: a greater value is lowered to it (see the %s header for the total number of items).',
+                    rtrim($parameter->getDescription(), '. '),
+                    AppConstants::MAXIMUM_ITEMS_PER_PAGE,
+                    CollectionTotalCountSubscriber::TOTAL_COUNT_HEADER
+                ), '. '));
+            }
+        }
+
+        return $parameters;
+    }
+
+    /**
      * @param array<int|string, mixed> $responses
      * @return array<int|string, mixed>
      */
     private function withTruncatedHeader(array $responses): array
+    {
+        return $this->withIntegerHeader(
+            $responses,
+            TruncatedCollectionSubscriber::TRUNCATED_HEADER,
+            'Present only when the collection, requested without pagination, was truncated: maximum number of items returned.'
+        );
+    }
+
+    /**
+     * @param array<int|string, mixed> $responses
+     * @return array<int|string, mixed>
+     */
+    private function withTotalCountHeader(array $responses): array
+    {
+        return $this->withIntegerHeader(
+            $responses,
+            CollectionTotalCountSubscriber::TOTAL_COUNT_HEADER,
+            'Total number of items of the collection, whatever the page or the cap (absent when unknown).'
+        );
+    }
+
+    /**
+     * @param array<int|string, mixed> $responses
+     * @return array<int|string, mixed>
+     */
+    private function withIntegerHeader(array $responses, string $name, string $description): array
     {
         $response = $responses[Response::HTTP_OK] ?? $responses[(string)Response::HTTP_OK] ?? null;
 
@@ -276,8 +331,8 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
         }
 
         $headers = $response->getHeaders() ?? new \ArrayObject();
-        $headers[TruncatedCollectionSubscriber::TRUNCATED_HEADER] = new \ArrayObject([
-            'description' => 'Present only when the collection, requested without pagination, was truncated: maximum number of items returned.',
+        $headers[$name] = new \ArrayObject([
+            'description' => $description,
             'schema' => ['type' => 'integer'],
         ]);
 

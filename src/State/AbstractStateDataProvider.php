@@ -33,14 +33,16 @@ abstract class AbstractStateDataProvider
 
     /**
      * Without pagination, flags a capped collection like the Doctrine ones
-     * (X-Truncated-Max-Items header, see TruncatedCollectionSubscriber).
+     * (X-Truncated-Max-Items header, see TruncatedCollectionSubscriber), with its
+     * total number of items when it is known (X-Total-Count header, see CollectionTotalCountSubscriber).
      * To be called after checkAndProcessFilters().
      *
      * @param array<string, mixed> $context
      * @param int $totalItems number of items matching the request
      * @param int $maxItems number of items returned at most
+     * @param bool $isTotalKnown false when $totalItems only tells the truncation (e.g. one item more than $maxItems was requested)
      */
-    protected function flagIfTruncated(array $context, int $totalItems, int $maxItems): void
+    protected function flagIfTruncated(array $context, int $totalItems, int $maxItems, bool $isTotalKnown = true): void
     {
         $request = $context['request'] ?? null;
 
@@ -49,6 +51,10 @@ abstract class AbstractStateDataProvider
         }
 
         $request->attributes->set(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE, $maxItems);
+
+        if ($isTotalKnown) {
+            $request->attributes->set(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE, $totalItems);
+        }
     }
 
     /**

@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\State\Pagination\Pagination;
 use App\AppConstants;
+use App\Doctrine\CollectionItemCounter;
 use App\Doctrine\UnpaginatedCollectionLimitExtension;
 use App\Entity\News;
 use Doctrine\ORM\Query;
@@ -21,6 +22,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
 class UnpaginatedCollectionLimitExtensionTest extends TestCase
 {
     private const array WITHOUT_PAGINATION = ['filters' => ['pagination' => 'false']];
+    private const int TOTAL_ITEMS = 7;
 
     private Request $request;
 
@@ -59,6 +61,7 @@ class UnpaginatedCollectionLimitExtensionTest extends TestCase
 
         $this->assertSame(array_slice($items, 0, 2), $result);
         $this->assertSame(2, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $this->assertSame(self::TOTAL_ITEMS, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
     public function testResultWithinTheMaximumIsUnchanged(): void
@@ -69,6 +72,7 @@ class UnpaginatedCollectionLimitExtensionTest extends TestCase
 
         $this->assertSame($items, $result);
         $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
     public function testMaximumOfTheOperationIsIgnored(): void
@@ -86,7 +90,7 @@ class UnpaginatedCollectionLimitExtensionTest extends TestCase
     public function testResultIsTruncatedWithoutRequest(): void
     {
         $items = $this->createItems(3);
-        $extension = new UnpaginatedCollectionLimitExtension(new Pagination(['maximum_items_per_page' => 2]), $this->createStub(ManagerRegistry::class), new RequestStack());
+        $extension = new UnpaginatedCollectionLimitExtension(new Pagination(['maximum_items_per_page' => 2]), $this->createStub(ManagerRegistry::class), new RequestStack(), $this->itemCounter());
 
         $result = $extension->getResult($this->createQueryBuilder($items, 3), News::class, new GetCollection());
 
@@ -104,8 +108,20 @@ class UnpaginatedCollectionLimitExtensionTest extends TestCase
         return new UnpaginatedCollectionLimitExtension(
             new Pagination(['client_enabled' => true] + $paginationOptions),
             $this->createStub(ManagerRegistry::class),
-            $requestStack
+            $requestStack,
+            $this->itemCounter()
         );
+    }
+
+    /**
+     * Counter of the matching items: stands for the COUNT query of Doctrine's Paginator.
+     */
+    private function itemCounter(): CollectionItemCounter
+    {
+        $counter = $this->createStub(CollectionItemCounter::class);
+        $counter->method('count')->willReturn(self::TOTAL_ITEMS);
+
+        return $counter;
     }
 
     /**

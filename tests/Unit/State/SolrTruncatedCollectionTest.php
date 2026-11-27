@@ -60,6 +60,7 @@ class SolrTruncatedCollectionTest extends TestCase
         $this->assertCount($max, iterator_to_array($paginator));
         $this->assertSame((float)$max, $paginator->getTotalItems());
         $this->assertSame($max, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $this->assertSame($max + 1, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
     public function testUnpaginatedSearchCappedByItemsPerPageIsFlagged(): void
@@ -67,6 +68,7 @@ class SolrTruncatedCollectionTest extends TestCase
         $this->search(matches: 5, pagination: self::UNPAGINATED, itemsPerPage: 2);
 
         $this->assertSame(2, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $this->assertSame(5, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
     public function testCompleteUnpaginatedSearchIsNotFlagged(): void
@@ -111,6 +113,8 @@ class SolrTruncatedCollectionTest extends TestCase
 
         $this->assertCount($max, $authors);
         $this->assertSame($max, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        // only one author more than the maximum is requested: the total is unknown
+        $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
     public function testCompleteUnpaginatedAuthorsAreNotFlagged(): void
@@ -298,6 +302,7 @@ class SolrTruncatedCollectionTest extends TestCase
         $this->assertCount($max, iterator_to_array($paginator));
         $this->assertSame((float)$max, $paginator->getTotalItems());
         $this->assertSame($max, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $this->assertSame($max + 1, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
     public function testCompleteUnpaginatedAuthorPapersAreNotFlagged(): void

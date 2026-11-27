@@ -27,6 +27,7 @@ use App\AppConstants;
 use App\Controller\BoardsController;
 use App\Entity\Paper;
 use App\Entity\Review;
+use App\EventSubscriber\CollectionTotalCountSubscriber;
 use App\EventSubscriber\TruncatedCollectionSubscriber;
 use App\Metadata\SingleValueQueryParametersResourceMetadataCollectionFactory;
 use App\OpenApi\OpenApiFactory;
@@ -56,9 +57,20 @@ class OpenApiFactoryTest extends TestCase
             $pagination->getDescription()
         );
 
+        $this->assertSame(
+            sprintf(
+                'The number of items per page. At most %d: a greater value is lowered to it (see the %s header for the total number of items).',
+                AppConstants::MAXIMUM_ITEMS_PER_PAGE,
+                CollectionTotalCountSubscriber::TOTAL_COUNT_HEADER
+            ),
+            $get->getParameters()[1]->getDescription()
+        );
+
         $headers = $get->getResponses()[200]->getHeaders();
         $this->assertArrayHasKey(TruncatedCollectionSubscriber::TRUNCATED_HEADER, $headers);
         $this->assertSame(['type' => 'integer'], $headers[TruncatedCollectionSubscriber::TRUNCATED_HEADER]['schema']);
+        $this->assertArrayHasKey(CollectionTotalCountSubscriber::TOTAL_COUNT_HEADER, $headers);
+        $this->assertSame(['type' => 'integer'], $headers[CollectionTotalCountSubscriber::TOTAL_COUNT_HEADER]['schema']);
 
         $this->assertSame('Invalid pagination parameter (e.g. `page` that is not a positive integer)', $get->getResponses()[400]->getDescription());
         $this->assertSame('Page after the last one (the first page always exists, even empty)', $get->getResponses()[404]->getDescription());
@@ -67,15 +79,15 @@ class OpenApiFactoryTest extends TestCase
     }
 
     /**
-     * A collection served by a controller is not capped (no note, no header), but its page is checked
-     * (RequestedPageSubscriber): 400 and 404, the latter completing the 404 of the journal.
+     * A collection served by a controller is not capped (no note, no truncation header), but its page is checked
+     * (RequestedPageSubscriber): 400 and 404, the latter completing the 404 of the journal. Its total is given.
      */
     public function testCollectionServedByAControllerOnlyDocumentsThePageResponses(): void
     {
         $get = $this->createOpenApi()->getPaths()->getPath(self::CONTROLLER_PATH)->getGet();
 
         $this->assertSame('Enable or disable pagination', $get->getParameters()[0]->getDescription());
-        $this->assertNull($get->getResponses()[200]->getHeaders());
+        $this->assertSame([CollectionTotalCountSubscriber::TOTAL_COUNT_HEADER], array_keys($get->getResponses()[200]->getHeaders()->getArrayCopy()));
         $this->assertSame('Invalid pagination parameter (e.g. `page` that is not a positive integer)', $get->getResponses()[400]->getDescription());
         $this->assertSame('Journal not found, or page after the last one (the first page always exists, even empty)', $get->getResponses()[404]->getDescription());
     }
@@ -369,7 +381,7 @@ class OpenApiFactoryTest extends TestCase
         $paths = new Paths();
         $paths->addPath(self::COLLECTION_PATH, new PathItem(get: new Operation(
             responses: [200 => new Response('Paper collection')],
-            parameters: [new Parameter('pagination', 'query', 'Enable or disable pagination')]
+            parameters: [new Parameter('pagination', 'query', 'Enable or disable pagination'), new Parameter('itemsPerPage', 'query', 'The number of items per page')]
         )));
         $paths->addPath(self::CONTROLLER_PATH, new PathItem(get: new Operation(
             responses: [200 => new Response('Journal boards')],

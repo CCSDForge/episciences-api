@@ -23,7 +23,9 @@ use Symfony\Component\HttpFoundation\RequestStack;
  *
  * One item more than the maximum is fetched to tell a truncated result: it is
  * removed, and the maximum is stored in the request (TRUNCATED_ATTRIBUTE) so that
- * TruncatedCollectionSubscriber can flag the response with a header.
+ * TruncatedCollectionSubscriber can flag the response with a header. The total number
+ * of items is then counted (TOTAL_ITEMS_ATTRIBUTE, see CollectionTotalCountSubscriber):
+ * only for a truncated result, the count of a complete one being its size.
  *
  * Applied last (lowest priority): returning the result stops the other extensions.
  *
@@ -33,11 +35,13 @@ use Symfony\Component\HttpFoundation\RequestStack;
 final class UnpaginatedCollectionLimitExtension implements QueryResultCollectionExtensionInterface
 {
     public const string TRUNCATED_ATTRIBUTE = '_app_collection_truncated_max_items';
+    public const string TOTAL_ITEMS_ATTRIBUTE = '_app_collection_total_items';
 
     public function __construct(
         private readonly Pagination $pagination,
         private readonly ManagerRegistry $managerRegistry,
-        private readonly RequestStack $requestStack
+        private readonly RequestStack $requestStack,
+        private readonly CollectionItemCounter $itemCounter
     )
     {
     }
@@ -75,7 +79,11 @@ final class UnpaginatedCollectionLimitExtension implements QueryResultCollection
             return $items;
         }
 
-        $this->requestStack->getCurrentRequest()?->attributes->set(self::TRUNCATED_ATTRIBUTE, $maxItems);
+        $request = $this->requestStack->getCurrentRequest();
+        if ($request !== null) {
+            $request->attributes->set(self::TRUNCATED_ATTRIBUTE, $maxItems);
+            $request->attributes->set(self::TOTAL_ITEMS_ATTRIBUTE, $this->itemCounter->count($queryBuilder));
+        }
 
         return array_slice($items, 0, $maxItems);
     }
