@@ -6,6 +6,7 @@ namespace App\Tests\Functional\Doctrine;
 
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\State\Pagination\Pagination;
+use App\Doctrine\CollectionItemCounter;
 use App\Doctrine\UnpaginatedCollectionLimitExtension;
 use App\Tests\Fixtures\Doctrine\Entity\LimitChild;
 use App\Tests\Fixtures\Doctrine\Entity\LimitParent;
@@ -102,7 +103,8 @@ class UnpaginatedCollectionLimitExtensionDatabaseTest extends TestCase
         $extension = new UnpaginatedCollectionLimitExtension(
             new Pagination(['client_enabled' => true, 'maximum_items_per_page' => self::MAX_ITEMS]),
             $registry,
-            $requestStack
+            $requestStack,
+            new CollectionItemCounter()
         );
 
         $queryBuilder = $this->entityManager->createQueryBuilder()
@@ -124,5 +126,7 @@ class UnpaginatedCollectionLimitExtensionDatabaseTest extends TestCase
         }
 
         $this->assertSame(self::MAX_ITEMS, $request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        // the parents, not the joined rows
+        $this->assertSame(self::PARENTS, $request->attributes->get(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 }

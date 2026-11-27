@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use ApiPlatform\State\Pagination\ArrayPaginator;
+use App\AppConstants;
 use App\Entity\Review;
 use App\Entity\Section;
 use App\Entity\User;
@@ -61,9 +62,9 @@ class BoardsController extends AbstractController
         if ($request instanceof \Symfony\Component\HttpFoundation\Request) {
             $tags = [];
             // The page is validated (400) and checked against the last page (404) by RequestedPageSubscriber;
-            // only itemsPerPage needs a local floor (the subscriber does not guard it).
+            // only itemsPerPage needs local bounds (the subscriber does not guard it).
             $page = $request->query->getInt('page', 1);
-            $itemsPerPage = max(1, $request->query->getInt('itemsPerPage', 30));
+            $itemsPerPage = min(max(1, $request->query->getInt('itemsPerPage', 30)), AppConstants::MAXIMUM_ITEMS_PER_PAGE);
             $pagination = filter_var($request->query->get('pagination', true), FILTER_VALIDATE_BOOLEAN);
 
             $rolesByUid = [];

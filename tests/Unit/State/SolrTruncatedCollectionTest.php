@@ -60,6 +60,7 @@ class SolrTruncatedCollectionTest extends TestCase
         $this->assertCount($max, iterator_to_array($paginator));
         $this->assertSame((float)$max, $paginator->getTotalItems());
         $this->assertSame($max, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $this->assertSame($max + 1, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
     public function testUnpaginatedSearchCappedByItemsPerPageIsFlagged(): void
@@ -67,6 +68,7 @@ class SolrTruncatedCollectionTest extends TestCase
         $this->search(matches: 5, pagination: self::UNPAGINATED, itemsPerPage: 2);
 
         $this->assertSame(2, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $this->assertSame(5, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
     public function testCompleteUnpaginatedSearchIsNotFlagged(): void
@@ -107,20 +109,38 @@ class SolrTruncatedCollectionTest extends TestCase
     {
         $max = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
 
-        $authors = $this->browseAuthors(facets: $max + 1, pagination: self::UNPAGINATED, expectedFacetLimit: $max + 1);
+        $authors = $this->browseAuthors(facets: $max + 1, pagination: self::UNPAGINATED);
+
+        $this->assertSame([0, $max], $this->facetPageArguments);
+        $this->assertCount($max, $authors);
+        $this->assertSame($max, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        // the total number of authors of the facet page (numBuckets)
+        $this->assertSame($max + 1, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
+    }
+
+    /**
+     * With a filter that Solr cannot count (search), the truncation is flagged without the total.
+     */
+    public function testUnpaginatedAuthorsWithAnUnknownTotalAreFlaggedWithoutTheTotal(): void
+    {
+        $max = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
+
+        $authors = $this->browseAuthors(facets: $max + 1, pagination: self::UNPAGINATED, isTotalKnown: false);
 
         $this->assertCount($max, $authors);
         $this->assertSame($max, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
     public function testCompleteUnpaginatedAuthorsAreNotFlagged(): void
     {
         $max = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
 
-        $authors = $this->browseAuthors(facets: $max, pagination: self::UNPAGINATED, expectedFacetLimit: $max + 1);
+        $authors = $this->browseAuthors(facets: $max, pagination: self::UNPAGINATED);
 
         $this->assertCount($max, $authors);
         $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
     /**
@@ -185,24 +205,37 @@ class SolrTruncatedCollectionTest extends TestCase
         $this->assertSame(50.0, $paginator->getLastPage());
     }
 
-    public function testUnpaginatedAuthorsTotalExcludesTheExtraAuthor(): void
+    /**
+     * The paginator holds the returned authors only: no page after the first one (hydra:view) for a collection
+     * requested without pagination; the total number of authors is in the request attributes.
+     */
+    public function testUnpaginatedAuthorsPaginatorHoldsTheReturnedAuthors(): void
     {
         $max = SolrConstants::SOLR_MAX_RETURNED_FACETS_RESULTS;
 
-        $this->browseAuthors(facets: $max + 1, pagination: self::UNPAGINATED, expectedFacetLimit: $max + 1, expectedTotal: $max);
+        $this->browseAuthors(facets: $max + 1, pagination: self::UNPAGINATED, expectedTotal: $max);
     }
 
     /**
      * @return object[] the returned authors
      */
-    private function browseAuthors(int $facets, string $pagination, int $expectedFacetLimit, ?int $expectedTotal = null): array
+    private function browseAuthors(int $facets, string $pagination, ?int $expectedTotal = null, bool $isTotalKnown = true): array
     {
+        $authors = array_fill_keys(array_map(static fn(int $i): string => 'author' . $i, range(1, $facets)), 1);
+
         $facetService = $this->createMock(SolrFacetService::class);
         $facetService->method('setJournal')->willReturnSelf();
+        $facetService->expects($this->never())->method('getSolrFacet');
         $facetService->expects($this->once())
-            ->method('getSolrFacet')
-            ->with($this->callback(static fn(array $params): bool => $params['facetLimit'] === $expectedFacetLimit))
-            ->willReturn(array_fill_keys(array_map(static fn(int $i): string => 'author' . $i, range(1, $facets)), 1));
+            ->method('getSolrFacetFirstValues')
+            ->willReturnCallback(function (array $params, int $limit) use ($authors, $isTotalKnown): array {
+                $this->facetPageArguments = [0, $limit];
+
+                return [
+                    'values' => array_slice($authors, 0, $limit, true),
+                    'total' => $isTotalKnown || count($authors) <= $limit ? count($authors) : null,
+                ];
+            });
 
         $requestStack = new RequestStack();
         $requestStack->push($this->request);
@@ -298,6 +331,7 @@ class SolrTruncatedCollectionTest extends TestCase
         $this->assertCount($max, iterator_to_array($paginator));
         $this->assertSame((float)$max, $paginator->getTotalItems());
         $this->assertSame($max, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $this->assertSame($max + 1, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
     public function testCompleteUnpaginatedAuthorPapersAreNotFlagged(): void
