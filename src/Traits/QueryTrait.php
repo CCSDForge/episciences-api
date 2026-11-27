@@ -22,6 +22,20 @@ trait QueryTrait
             ->setParameter('activeJournalStatus', Review::STATUS_ENABLED);
     }
 
+    /**
+     * The distinct, non-empty scalar values of a query parameter given once or several times (e.g. type[]).
+     *
+     * @param string|array<mixed> $values
+     *
+     * @return list<string>
+     */
+    private function scalarValues(string|array $values): array
+    {
+        $values = array_map(strval(...), array_filter((array)$values, is_scalar(...)));
+
+        return array_values(array_unique(array_filter($values, static fn(string $value): bool => $value !== '')));
+    }
+
     final public function processOrExpression(QueryBuilder $qb, string $alias, array $values, string $resourceClass): QueryBuilder
     {
 

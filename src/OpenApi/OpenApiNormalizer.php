@@ -7,7 +7,8 @@ namespace App\OpenApi;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 /**
- * - Documents the properties added to the JSON-LD output by the custom serializer normalizers.
+ * - Documents the properties added to the JSON-LD output by the custom serializer normalizers
+ *   (volumes and sections, facets of the papers).
  * - Removes component schemas that are not referenced, directly or transitively, by any path
  *   (e.g. schemas generated for operations whose responses are documented manually).
  */
@@ -43,6 +44,59 @@ final readonly class OpenApiNormalizer implements NormalizerInterface
      */
     private const array VOLUME_SECTION_JSONLD_COLLECTION_PROPERTIES = [
         'hydra:totalPublishedArticles' => ['type' => ['integer', 'null']],
+    ];
+
+    /** JSON-LD schemas of the papers */
+    private const string PAPER_JSONLD_SCHEMA = '/^Paper\.jsonld-/';
+
+    /** Number of papers of each value of a facet (the value is the key) */
+    private const array FACET_COUNTS = [
+        'type' => 'object',
+        'additionalProperties' => ['type' => 'integer', 'minimum' => 0],
+    ];
+
+    /**
+     * Added to the collection of papers by App\Serializer\Normalizer\ApiCollectionNormalizer
+     */
+    private const array PAPER_JSONLD_COLLECTION_PROPERTIES = [
+        'hydra:range' => [
+            'type' => 'object',
+            'description' => 'Facets of the list, to build its filters: the publication years and the types of the papers of the requested journal, section (`sid`) and volume(s) (`vid`), whatever the requested `year[]` and `type[]`, so that choosing a value does not hide the other ones. They always describe the public papers (the published ones, or the accepted ones with `only_accepted`), whoever the user and whatever `scope`. Without the years with `only_accepted`.',
+            'properties' => [
+                'publicationYears' => [
+                    'type' => 'array',
+                    'items' => ['type' => 'integer'],
+                    'description' => 'The publication years, the most recent first.',
+                ],
+                'types' => [
+                    'type' => 'array',
+                    'items' => ['type' => 'string'],
+                    'description' => 'The types of the papers, lowercase, in alphabetical order.',
+                ],
+                'counts' => [
+                    'type' => 'object',
+                    'description' => 'The number of papers of each value of the lists (0 for a value without paper). The count of each facet follows the filter of the other one, as the list of papers: the years are counted among the requested `type[]`, the types in the requested `year[]` (except with `only_accepted`, whose list ignores the years).',
+                    'properties' => [
+                        'publicationYears' => self::FACET_COUNTS,
+                        'types' => self::FACET_COUNTS,
+                    ],
+                ],
+            ],
+            'example' => [
+                'publicationYears' => [2015, 2014],
+                'types' => ['article', 'conferenceobject'],
+                'counts' => [
+                    'publicationYears' => ['2015' => 85, '2014' => 81],
+                    'types' => ['article' => 2, 'conferenceobject' => 164],
+                ],
+            ],
+        ],
+    ];
+
+    /** The properties added to the JSON-LD collections, by pattern of the schema of their members */
+    private const array JSONLD_COLLECTION_PROPERTIES = [
+        self::VOLUME_SECTION_JSONLD_SCHEMA => self::VOLUME_SECTION_JSONLD_COLLECTION_PROPERTIES,
+        self::PAPER_JSONLD_SCHEMA => self::PAPER_JSONLD_COLLECTION_PROPERTIES,
     ];
 
     public function __construct(
@@ -85,8 +139,9 @@ final readonly class OpenApiNormalizer implements NormalizerInterface
         foreach ($openApi['paths'] ?? [] as $path => $pathItem) {
             foreach ($pathItem as $method => $operation) {
                 $memberRef = $this->collectionMemberRef($operation['responses']['200']['content'][self::JSONLD]['schema'] ?? null);
+                $properties = $memberRef === null ? null : $this->collectionProperties(substr($memberRef, strlen(self::SCHEMA_REF_PREFIX)));
 
-                if ($memberRef === null || !preg_match(self::VOLUME_SECTION_JSONLD_SCHEMA, substr($memberRef, strlen(self::SCHEMA_REF_PREFIX)))) {
+                if ($properties === null) {
                     continue;
                 }
 
@@ -94,12 +149,28 @@ final readonly class OpenApiNormalizer implements NormalizerInterface
                 $openApi['paths'][$path] = $this->updateIn(
                     $openApi['paths'][$path],
                     [$method, 'responses', '200', 'content', self::JSONLD, 'schema'],
-                    fn(array|\ArrayObject $schema): array|\ArrayObject => $this->addProperties($schema, self::VOLUME_SECTION_JSONLD_COLLECTION_PROPERTIES)
+                    fn(array|\ArrayObject $schema): array|\ArrayObject => $this->addProperties($schema, $properties)
                 );
             }
         }
 
         return $openApi;
+    }
+
+    /**
+     * The properties added to a JSON-LD collection whose members have the given schema, null when none
+     *
+     * @return array<string, mixed>|null
+     */
+    private function collectionProperties(string $memberSchema): ?array
+    {
+        foreach (self::JSONLD_COLLECTION_PROPERTIES as $pattern => $properties) {
+            if (preg_match($pattern, $memberSchema)) {
+                return $properties;
+            }
+        }
+
+        return null;
     }
 
     /**

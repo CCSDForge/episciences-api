@@ -142,7 +142,8 @@ class AppQueryItemCollectionExtension implements QueryItemExtensionInterface, Qu
         }
 
         if ($resourceClass === Paper::class) {
-            $types = isset($context['filters']['type']) ? (array)$context['filters']['type'] : [];
+            // empty values are ignored, as by the counts of the facets (hydra:range)
+            $types = $this->scalarValues($context['filters']['type'] ?? []);
             $this->andOrExp($queryBuilder, sprintf("JSON_EXTRACT(%s.type, '$.title')", $alias), $types);
         }
     }

@@ -8,6 +8,8 @@ use ApiPlatform\Metadata\GetCollection;
 use App\Doctrine\UnpaginatedCollectionLimitExtension;
 use App\Entity\Paper;
 use App\Entity\Review;
+use App\Repository\PapersRepository;
+use App\Repository\ReviewRepository;
 use App\Serializer\Normalizer\ApiCollectionNormalizer;
 use App\Service\Solarium\Client;
 use App\Service\Solr\SolrAuthorService;
@@ -110,6 +112,150 @@ class ApiCollectionNormalizerTest extends TestCase
         $this->assertIsArray($data);
 
         return $data;
+    }
+
+    /**
+     * The facets of the papers are computed on the requested section; the lists ignore the requested years and
+     * types, the counts of each facet follow the filter of the other one
+     */
+    public function testThePaperFacetsAreComputedOnTheRequestedSectionAndVolume(): void
+    {
+        $scope = ['rvid' => 1, 'sid' => '66', 'vid' => null];
+
+        $range = $this->normalizePapers('/api/papers/?rvcode=dev&sid=66&year[]=2015&type[]=article', $scope, requestedYears: ['2015'], requestedTypes: ['article']);
+
+        $this->assertSame([
+            'publicationYears' => [2015, 2014],
+            'types' => ['article', 'conferenceobject'],
+            'counts' => [
+                'publicationYears' => [2015 => 2, 2014 => 0],
+                'types' => ['article' => 2, 'conferenceobject' => 83],
+            ],
+        ], $range);
+    }
+
+    public function testThePaperFacetsOfAVolumeAreComputedOnTheVolume(): void
+    {
+        $this->normalizePapers('/api/papers/?rvcode=dev&vid[]=7&vid[]=8', ['rvid' => 1, 'sid' => null, 'vid' => ['7', '8']]);
+    }
+
+    /**
+     * No paper matches the filters (e.g. type[]=dataset in a section without dataset): the facets stay those of the scope
+     */
+    public function testThePaperFacetsKeepTheScopeWhenNoPaperMatches(): void
+    {
+        $scope = ['rvid' => 1, 'sid' => '66', 'vid' => null];
+
+        $this->normalizePapers('/api/papers/?rvcode=dev&sid=66&type[]=dataset', $scope, members: [], requestedTypes: ['dataset']);
+    }
+
+    /**
+     * The journal given by its identifier only (rvid, without rvcode) restricts the facets to the journal
+     */
+    public function testThePaperFacetsUseTheRvidWithoutJournalCode(): void
+    {
+        $this->normalizePapers('/api/papers/?rvid=1&sid=66', ['rvid' => '1', 'sid' => '66', 'vid' => null], withJournal: false);
+    }
+
+    public function testThePaperFacetsOfTheWholeJournalAreUnchanged(): void
+    {
+        $range = $this->normalizePapers('/api/papers/?rvcode=dev', ['rvid' => 1, 'sid' => null, 'vid' => null]);
+
+        $this->assertSame([2015, 2014], $range['publicationYears']);
+        $this->assertSame(['article', 'conferenceobject'], $range['types']);
+    }
+
+    /**
+     * Only the types of the accepted papers, counted whatever the requested years (ignored by their list),
+     * also when no paper matches the other filters
+     */
+    public function testTheAcceptedPaperFacetsKeepTheScopeWhenNoPaperMatches(): void
+    {
+        $scope = ['rvid' => 1, 'sid' => '66', 'vid' => null];
+
+        $range = $this->normalizePapers('/api/papers/?rvcode=dev&sid=66&only_accepted=true&year[]=2015&type[]=dataset', $scope, isOnlyAccepted: true, members: []);
+
+        $this->assertSame([
+            'types' => ['article', 'conferenceobject'],
+            'counts' => ['types' => ['article' => 2, 'conferenceobject' => 83]],
+        ], $range);
+    }
+
+    /**
+     * A scope without any paper: the counts are JSON objects, not empty lists
+     */
+    public function testTheCountsOfAnEmptyScopeAreObjects(): void
+    {
+        $range = $this->normalizePapers('/api/papers/?rvcode=dev&sid=99', ['rvid' => 1, 'sid' => '99', 'vid' => null], members: [], years: [], types: []);
+
+        $this->assertSame('{"publicationYears":{},"types":{}}', json_encode($range['counts'], JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @param array<string, mixed> $scope the expected scope of the facets
+     * @param list<array<string, mixed>> $members
+     * @param list<string> $requestedYears the expected years of the counts by type
+     * @param list<string> $requestedTypes the expected types of the counts by year
+     * @param list<int> $years
+     * @param list<string> $types
+     *
+     * @return mixed the hydra:range of the response
+     */
+    private function normalizePapers(
+        string $uri,
+        array $scope,
+        bool $isOnlyAccepted = false,
+        array $members = [['docid' => 1]],
+        bool $withJournal = true,
+        array $requestedYears = [],
+        array $requestedTypes = [],
+        array $years = [2015, 2014],
+        array $types = ['article', 'conferenceobject'],
+    ): mixed {
+        $journal = null;
+
+        if ($withJournal) {
+            $journal = $this->createStub(Review::class);
+            $journal->method('getRvid')->willReturn(1);
+        }
+
+        $decorated = $this->createStub(NormalizerInterface::class);
+        $decorated->method('normalize')->willReturn(['@id' => '/api/papers/', 'hydra:totalItems' => count($members), 'hydra:member' => $members]);
+
+        $typesScope = $scope + ['isOnlyAccepted' => $isOnlyAccepted];
+        $papersRepository = $this->createMock(PapersRepository::class);
+        $papersRepository->expects($this->once())->method('getTypes')->with($typesScope)->willReturn($types);
+        // dataset is not in the list of the scope: not in the counts
+        $papersRepository->expects($this->once())->method('countByType')->with($typesScope, $requestedYears)
+            ->willReturn($types === [] ? [] : ['article' => 2, 'conferenceobject' => 83, 'dataset' => 1]);
+
+        if ($isOnlyAccepted) {
+            $papersRepository->expects($this->never())->method('getRange');
+            $papersRepository->expects($this->never())->method('countByPublicationYear');
+        } else {
+            $papersRepository->expects($this->once())->method('getRange')->with($scope)->willReturn($years);
+            $papersRepository->expects($this->once())->method('countByPublicationYear')->with($scope, $requestedTypes)
+                ->willReturn($years === [] ? [] : [2015 => 2]);
+        }
+
+        $journalRepository = $this->createStub(ReviewRepository::class);
+        $journalRepository->method('getJournalByIdentifier')->willReturn($journal);
+
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturnMap([
+            [Review::class, $journalRepository],
+            [Paper::class, $papersRepository],
+        ]);
+
+        $context = [
+            'resource_class' => Paper::class,
+            'operation' => new GetCollection(class: Paper::class),
+            'uri' => $uri,
+        ];
+
+        $data = $this->createNormalizer($decorated, $entityManager)->normalize([], ApiCollectionNormalizer::FORMAT, $context);
+
+        return $data['hydra:range'] ?? null;
     }
 
     /**
