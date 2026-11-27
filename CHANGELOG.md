@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -->
 # Unreleased
 
+### Fixed
+- Paginated collections (`GET /api/papers/` and the other Doctrine collections) now have a stable order: the identifier of the item ends the sort (e.g. the papers sharing the same publication date are sorted by `docid`, in the direction of the sort). Walking the pages could return some items twice and never return others (#155).
+
 ## v1.4.0 - 2026-11-25
 
 ### Added
