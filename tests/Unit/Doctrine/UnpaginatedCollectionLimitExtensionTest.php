@@ -114,7 +114,7 @@ class UnpaginatedCollectionLimitExtensionTest extends TestCase
     }
 
     /**
-     * Counter of the matching items: stands for the COUNT query of Doctrine's Paginator.
+     * Counter of the matching items: stands for the COUNT query of Doctrine's OffsetPaginator.
      */
     private function itemCounter(): CollectionItemCounter
     {

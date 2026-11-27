@@ -10,7 +10,8 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\Pagination;
 use App\AppConstants;
 use Doctrine\ORM\QueryBuilder;
-use Doctrine\ORM\Tools\Pagination\Paginator as DoctrinePaginator;
+use Doctrine\ORM\Tools\Pagination\OffsetPaginator;
+use Doctrine\ORM\Tools\Pagination\Window;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -73,13 +74,14 @@ final class UnpaginatedCollectionLimitExtension implements QueryResultCollection
 
         $queryBuilder->setFirstResult(0)->setMaxResults($maxItems + 1);
 
-        $items = $this->fetch($queryBuilder);
+        $items = $this->fetch($queryBuilder, $maxItems + 1);
 
         if (count($items) <= $maxItems) {
             return $items;
         }
 
         $request = $this->requestStack->getCurrentRequest();
+
         if ($request !== null) {
             $request->attributes->set(self::TRUNCATED_ATTRIBUTE, $maxItems);
             $request->attributes->set(self::TOTAL_ITEMS_ATTRIBUTE, $this->itemCounter->count($queryBuilder));
@@ -96,7 +98,7 @@ final class UnpaginatedCollectionLimitExtension implements QueryResultCollection
     /**
      * @return object[]
      */
-    private function fetch(QueryBuilder $queryBuilder): array
+    private function fetch(QueryBuilder $queryBuilder, int $maxResults): array
     {
         if (!QueryChecker::hasJoinedToManyAssociation($queryBuilder, $this->managerRegistry)) {
             return $queryBuilder->getQuery()->getResult();
@@ -104,6 +106,6 @@ final class UnpaginatedCollectionLimitExtension implements QueryResultCollection
 
         // With a to-many join, a SQL LIMIT counts the joined rows, not the root entities
         // (truncated fetch-joined collections): limit the root entities instead.
-        return iterator_to_array(new DoctrinePaginator($queryBuilder->getQuery(), true), false);
+        return array_values(new OffsetPaginator(fetchJoinCollection: true)->paginate($queryBuilder, new Window(0, $maxResults))->getItems());
     }
 }
