@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -->
 # Unreleased
 
+### Fixed
+- `GET /api/papers/`: the facets (`hydra:range`: publication years and types) are computed on the requested section (`sid`) and volume (`vid`, one or several), and on the journal given by `rvid` without `rvcode` (they were computed on all the journals); also when no paper matches the other filters. The requested `year[]` and `type[]` are still ignored, so that choosing a value does not hide the other ones (#156).
+
 ## v1.4.0 - 2026-11-25
 
 ### Added

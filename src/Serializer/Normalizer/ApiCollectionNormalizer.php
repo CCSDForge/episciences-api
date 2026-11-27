@@ -81,15 +81,6 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
             $filters[Search::TERMS_PARAM] = $parsedUri[Search::TERMS_PARAM];
         }
 
-
-        if (empty($hydraMember)) {
-            $this->addHydraContext($data, $operationClass, $journal, [], $filters);
-            return $data;
-        }
-
-        $identifiers = [];
-        $rvId = $journal?->getRvid();
-
         if (isset($parsedUri['year'])) {
             $filters['year'] = $parsedUri['year'];
         }
@@ -105,6 +96,26 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         if ($isOnlyAccepted) {
             $filters['isOnlyAccepted'] = true;
         }
+
+        if ($operationClass === Paper::class) {
+            // The facets of the papers are computed on the requested scope (journal, section, volume),
+            // also when no paper matches the other filters
+            if (isset($parsedUri['sid'])) {
+                $filters['sid'] = $parsedUri['sid'];
+            }
+
+            if (!$journal && isset($parsedUri['rvid'])) {
+                $filters['rvid'] = $parsedUri['rvid'];
+            }
+        }
+
+        if (empty($hydraMember)) {
+            $this->addHydraContext($data, $operationClass, $journal, [], $filters);
+            return $data;
+        }
+
+        $identifiers = [];
+        $rvId = $journal?->getRvid();
 
         if (
             $filters !== [] &&
@@ -182,11 +193,17 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         } elseif ($operationClass === Paper::class) {
 
             $isOnlyAccepted = $filters['isOnlyAccepted'] ?? false;
+            // The requested year[] and type[] are ignored: choosing a value must not hide the other ones
+            $scope = [
+                'rvid' => $rvId ?? $filters['rvid'] ?? null,
+                'sid' => $filters['sid'] ?? null,
+                'vid' => $filters['vid'] ?? null,
+            ];
             $rangeType = new RangeType()
-                ->setTypes($repo->getTypes(['rvid' => $rvId, 'isOnlyAccepted' => $isOnlyAccepted]));
+                ->setTypes($repo->getTypes($scope + ['isOnlyAccepted' => $isOnlyAccepted]));
 
             if (!$isOnlyAccepted) {
-                $rangeType->setYears($repo->getRange(['rvid' => $rvId]));
+                $rangeType->setYears($repo->getRange($scope));
                 $range = ['publicationYears' => $rangeType->getYears()];
             }
 

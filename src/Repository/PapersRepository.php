@@ -320,27 +320,22 @@ class PapersRepository extends ServiceEntityRepository
 
         foreach ($filters as $key => $value) {
 
-            if (!in_array($key, ['rvid', 'sid', 'vid'], true)) {
+            if (!in_array($key, ['rvid', 'sid', 'vid'], true) || $value === null) {
                 continue;
             }
 
-            $value = (int)$value;
+            // a single value or a list (e.g. vid[]=1&vid[]=2), the empty and invalid values are ignored
+            $values = array_values(array_unique(array_filter(
+                array_map(intval(...), array_filter((array)$value, is_scalar(...)))
+            )));
 
-            if ($value !== 0) {
-                if ($key === 'rvid') {
-                    $qb->andWhere('p.rvid = :rvId');
-                    $qb->setParameter('rvId', $value);
-                } elseif ($key === 'vid') {
-
-                    $qb->andWhere('p.vid = :vId');
-                    $qb->setParameter('vId', $value);
-                } elseif ($key === 'sid') {
-                    $qb->andWhere('p.sid = :sId');
-                    $qb->setParameter('sId', $value);
-
-                }
-
+            if ($values === []) {
+                continue;
             }
+
+            $parameter = sprintf('%sScope', $key);
+            $qb->andWhere(sprintf('p.%s IN (:%s)', $key, $parameter))
+                ->setParameter($parameter, $values);
 
         }
 

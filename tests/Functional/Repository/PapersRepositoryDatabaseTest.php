@@ -18,6 +18,8 @@ use DoctrineExtensions\Query\Mysql\Greatest;
 use DoctrineExtensions\Query\Mysql\Year;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use Scienta\DoctrineJsonFunctions\Query\AST\Functions\Mysql\JsonExtract;
+use Scienta\DoctrineJsonFunctions\Query\AST\Functions\Mysql\JsonUnquote;
 
 /**
  * Runs the queries of PapersRepository used by the dashboard statistics (years, latest version, repositories)
@@ -35,6 +37,8 @@ class PapersRepositoryDatabaseTest extends TestCase
     private const int VERSIONS_RVID = 3;
     /** Its first year has only imported papers */
     private const int IMPORTED_RVID = 4;
+    /** Published papers in two sections and two volumes, for the facets (types and publication years) */
+    private const int FACETS_RVID = 5;
 
     private EntityManagerInterface $entityManager;
     private PapersRepository $repository;
@@ -56,6 +60,8 @@ class PapersRepositoryDatabaseTest extends TestCase
         $config->enableNativeLazyObjects(true);
         $config->addCustomStringFunction('YEAR', Year::class);
         $config->addCustomNumericFunction('GREATEST', Greatest::class);
+        $config->addCustomStringFunction('JSON_EXTRACT', JsonExtract::class);
+        $config->addCustomStringFunction('JSON_UNQUOTE', JsonUnquote::class);
 
         $connection = DriverManager::getConnection(new DsnParser(['mysql' => 'pdo_mysql'])->parse($url), $config);
 
@@ -142,6 +148,66 @@ class PapersRepositoryDatabaseTest extends TestCase
         $filters = ['is' => ['rvid' => self::VERSIONS_RVID]];
 
         $this->assertNotContains(PapersRepository::LOCAL_REPOSITORY, $this->repository->getAvailableRepositories($filters));
+    }
+
+    /**
+     * The facets of a section or a volume are computed on its own published papers, a list of values is accepted
+     */
+    public function testTheFacetsAreComputedOnTheRequestedScope(): void
+    {
+        $this->insertFacetPapers();
+        $journal = ['rvid' => self::FACETS_RVID];
+
+        $this->assertSame(['article', 'conferenceobject', 'dataset'], $this->repository->getTypes($journal));
+        $this->assertSame([2024, 2015, 2014], $this->repository->getRange($journal));
+
+        $this->assertSame(['article', 'conferenceobject'], $this->repository->getTypes($journal + ['sid' => 66]));
+        $this->assertSame([2015, 2014], $this->repository->getRange($journal + ['sid' => 66]));
+
+        $this->assertSame(['dataset'], $this->repository->getTypes($journal + ['vid' => 8]));
+        $this->assertSame([2024], $this->repository->getRange($journal + ['vid' => '8']));
+
+        $this->assertSame([2024, 2015, 2014], $this->repository->getRange($journal + ['vid' => ['7', '8']]));
+        // no scope value: the whole journal
+        $this->assertSame([2024, 2015, 2014], $this->repository->getRange($journal + ['sid' => null, 'vid' => '']));
+    }
+
+    private function insertFacetPapers(): void
+    {
+        $papers = [
+            // docid, sid, vid, status, type, publication date
+            [30, 66, 7, Paper::STATUS_PUBLISHED, 'conferenceobject', '2014-01-01'],
+            [31, 66, 7, Paper::STATUS_PUBLISHED, 'conferenceobject', '2015-01-01'],
+            [32, 66, 7, Paper::STATUS_PUBLISHED, 'article', '2015-01-01'],
+            [33, 67, 8, Paper::STATUS_PUBLISHED, 'dataset', '2024-05-01'],
+            // not published: ignored
+            [34, 66, 7, Paper::STATUS_SUBMITTED, 'software', '2016-01-01'],
+        ];
+
+        foreach ($papers as [$docId, $sid, $vid, $status, $type, $date]) {
+            $this->insertPaper([
+                'DOCID' => $docId,
+                'PAPERID' => $docId,
+                'RVID' => self::FACETS_RVID,
+                'SID' => $sid,
+                'VID' => $vid,
+                'STATUS' => $status,
+                'TYPE' => json_encode(['title' => $type], JSON_THROW_ON_ERROR),
+                'PUBLICATION_DATE' => $date . ' 10:00:00',
+            ]);
+        }
+    }
+
+    /**
+     * @param array<string, int|string> $values
+     */
+    private function insertPaper(array $values): void
+    {
+        $connection = $this->entityManager->getConnection();
+        $row = array_merge($this->requiredColumnDefaults(), $values);
+
+        // WHEN is a reserved word
+        $connection->insert(Paper::TABLE, array_combine(array_map($connection->getDatabasePlatform()->quoteSingleIdentifier(...), array_keys($row)), $row));
     }
 
     private function insertPapers(): void
