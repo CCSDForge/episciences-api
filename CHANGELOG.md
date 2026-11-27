@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Collections: the `X-Total-Count` response header gives the total number of items, whatever the format (a plain JSON collection holds no metadata), so that a client can tell that it received only part of the collection: a page, a capped collection requested without pagination (`pagination=false`, at most 1000 items, also flagged by `X-Truncated-Max-Items`), or an `itemsPerPage` above the maximum, lowered to 1000. Without pagination, the total is only counted when the collection is truncated, and the header is absent when it is unknown. Exposed through CORS and documented in OpenAPI, with the maximum of `itemsPerPage` (#204).
+- Collections requested without pagination and truncated: `hydra:totalItems` (JSON-LD) now gives the total number of items, as `X-Total-Count`, instead of the number of items returned (at most 1000), still without pagination links. `GET /api/browse/authors/?pagination=false` now gets the total number of authors from Solr, so these headers and `hydra:totalItems` are also correct there (#204).
 
 ## v1.4.0 - 2026-11-25
 

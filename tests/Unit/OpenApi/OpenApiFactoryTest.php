@@ -50,9 +50,10 @@ class OpenApiFactoryTest extends TestCase
         $pagination = $get->getParameters()[0];
         $this->assertSame(
             sprintf(
-                'Enable or disable pagination. Without pagination, at most %d items are returned: a truncated response holds the %s header.',
+                'Enable or disable pagination. Without pagination, at most %d items are returned: a truncated response holds the %s header, and the total number of items in the %s header (`hydra:totalItems` in JSON-LD).',
                 AppConstants::MAXIMUM_ITEMS_PER_PAGE,
-                TruncatedCollectionSubscriber::TRUNCATED_HEADER
+                TruncatedCollectionSubscriber::TRUNCATED_HEADER,
+                CollectionTotalCountSubscriber::TOTAL_COUNT_HEADER
             ),
             $pagination->getDescription()
         );

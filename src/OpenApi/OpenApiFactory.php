@@ -198,10 +198,11 @@ final readonly class OpenApiFactory implements OpenApiFactoryInterface
             $description = rtrim($parameters[$paginationIndex]->getDescription(), '. ');
 
             $parameters[$paginationIndex] = $parameters[$paginationIndex]->withDescription(ltrim(sprintf(
-                '%s. Without pagination, at most %d items are returned: a truncated response holds the %s header.',
+                '%s. Without pagination, at most %d items are returned: a truncated response holds the %s header, and the total number of items in the %s header (`hydra:totalItems` in JSON-LD).',
                 $description,
                 AppConstants::MAXIMUM_ITEMS_PER_PAGE,
-                TruncatedCollectionSubscriber::TRUNCATED_HEADER
+                TruncatedCollectionSubscriber::TRUNCATED_HEADER,
+                CollectionTotalCountSubscriber::TOTAL_COUNT_HEADER
             ), '. '));
 
             $paths->addPath($key, $path->withGet(
