@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Serializer\Normalizer;
 
 use ApiPlatform\Metadata\GetCollection;
+use App\Doctrine\UnpaginatedCollectionLimitExtension;
 use App\Entity\Paper;
 use App\Entity\Review;
 use App\Repository\PapersRepository;
@@ -15,6 +16,8 @@ use App\Service\Solr\SolrAuthorService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class ApiCollectionNormalizerTest extends TestCase
@@ -56,6 +59,59 @@ class ApiCollectionNormalizerTest extends TestCase
     public function testArrayWithoutResourceClassIsReturnedAsIs(): void
     {
         $this->assertSame(self::NESTED_DATA, $this->normalizeNested(['operation' => new GetCollection(class: Paper::class)]));
+    }
+
+    public function testTruncatedCollectionGetsTheTotalNumberOfItems(): void
+    {
+        $data = $this->normalizeCollection([
+            UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE => 2,
+            UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE => 9,
+        ]);
+
+        $this->assertSame(9, $data['hydra:totalItems']);
+        $this->assertArrayNotHasKey('hydra:view', $data);
+    }
+
+    public function testCompleteCollectionKeepsItsCount(): void
+    {
+        // the total of a complete collection is also set (X-Total-Count), and equals the count
+        $data = $this->normalizeCollection([UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE => 9]);
+
+        $this->assertSame(2, $data['hydra:totalItems']);
+    }
+
+    public function testTruncatedCollectionWithoutKnownTotalKeepsItsCount(): void
+    {
+        $data = $this->normalizeCollection([UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE => 2]);
+
+        $this->assertSame(2, $data['hydra:totalItems']);
+    }
+
+    /**
+     * Hydra collection of 2 members (as counted by the decorated normalizer), for the given request attributes.
+     *
+     * @param array<string, mixed> $attributes
+     * @return array<mixed>
+     */
+    private function normalizeCollection(array $attributes): array
+    {
+        $decorated = $this->createStub(NormalizerInterface::class);
+        $decorated->method('normalize')->willReturn(['@id' => '/api/journals/', 'hydra:totalItems' => 2, 'hydra:member' => []]);
+
+        $requestStack = new RequestStack();
+        $requestStack->push(new Request(attributes: $attributes));
+
+        $normalizer = $this->createNormalizer($decorated);
+        $normalizer->setRequestStack($requestStack);
+
+        $data = $normalizer->normalize([], ApiCollectionNormalizer::FORMAT, [
+            'resource_class' => Review::class,
+            'operation' => new GetCollection(class: Review::class),
+            'uri' => '/api/journals/?pagination=false',
+        ]);
+        $this->assertIsArray($data);
+
+        return $data;
     }
 
     /**

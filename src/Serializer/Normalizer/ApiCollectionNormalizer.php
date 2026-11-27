@@ -3,6 +3,7 @@
 namespace App\Serializer\Normalizer;
 
 use ApiPlatform\Metadata\HttpOperation;
+use App\Doctrine\UnpaginatedCollectionLimitExtension;
 use App\Entity\News;
 use App\Entity\Paper;
 use App\Entity\Review;
@@ -18,7 +19,9 @@ use App\Resource\RangeType;
 use App\Resource\Search;
 use App\Resource\Statistic;
 use App\Traits\QueryTrait;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Serializer\Normalizer\NormalizerAwareInterface;
+use Symfony\Contracts\Service\Attribute\Required;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Component\Serializer\SerializerAwareInterface;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -28,6 +31,14 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
     use QueryTrait;
 
     public const string FORMAT = 'jsonld';
+
+    private ?RequestStack $requestStack = null;
+
+    #[Required]
+    public function setRequestStack(RequestStack $requestStack): void
+    {
+        $this->requestStack = $requestStack;
+    }
 
     public function setNormalizer(NormalizerInterface $normalizer): void
     {
@@ -49,6 +60,8 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         if (!$operation) {
             return null;
         }
+
+        $this->setTruncatedTotalItems($data);
 
         $operationClass = $operation->getClass();
 
@@ -135,6 +148,28 @@ final class ApiCollectionNormalizer extends AbstractNormalizer implements Normal
         $data['hydra:member'] = $hydraMember;
         return $data;
 
+    }
+
+    /**
+     * Without pagination, a capped collection holds at most the maximum number of items, which the Hydra
+     * normalizer counts as its total. The total number of items found by the provider (TOTAL_ITEMS_ATTRIBUTE,
+     * also sent in the X-Total-Count header) replaces this count, so that comparing hydra:totalItems with the
+     * members tells the truncation. No hydra:view is added: the collection is still not paginated.
+     */
+    private function setTruncatedTotalItems(mixed &$data): void
+    {
+        $attributes = $this->requestStack?->getCurrentRequest()?->attributes;
+        $totalItems = $attributes?->get(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE);
+
+        if (!is_array($data) || !is_int($totalItems) || !$attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE)) {
+            return;
+        }
+
+        foreach (['hydra:totalItems', 'totalItems'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $data[$key] = $totalItems;
+            }
+        }
     }
 
     public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool

@@ -7,6 +7,7 @@ namespace App\Tests\Unit\State;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\State\Pagination\Pagination;
+use App\Doctrine\CollectionItemCounter;
 use App\Doctrine\UnpaginatedCollectionLimitExtension;
 use App\Entity\Volume;
 use App\Repository\VolumeRepository;
@@ -47,6 +48,7 @@ class VolumeStateProviderTest extends TestCase
 
         $this->assertSame(array_slice($volumes, 0, self::MAX_ITEMS), $result);
         $this->assertSame(self::MAX_ITEMS, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $this->assertSame(self::MAX_ITEMS + 1, $this->request->attributes->get(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
     public function testUnpaginatedVolumesWithinTheMaximumAreUnchanged(): void
@@ -55,6 +57,7 @@ class VolumeStateProviderTest extends TestCase
 
         $this->assertSame($volumes, $this->provide($volumes));
         $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TRUNCATED_ATTRIBUTE));
+        $this->assertFalse($this->request->attributes->has(UnpaginatedCollectionLimitExtension::TOTAL_ITEMS_ATTRIBUTE));
     }
 
     public function testVolumeIsSearchedInTheRequestedJournal(): void
@@ -82,7 +85,7 @@ class VolumeStateProviderTest extends TestCase
             $this->createStub(LoggerInterface::class),
             $pagination,
             $this->createStub(Security::class),
-            new UnpaginatedCollectionLimitExtension($pagination, $this->createStub(ManagerRegistry::class), new RequestStack())
+            new UnpaginatedCollectionLimitExtension($pagination, $this->createStub(ManagerRegistry::class), new RequestStack(), $this->createStub(CollectionItemCounter::class))
         );
 
         $operation = new GetCollection(class: Volume::class);
@@ -109,7 +112,7 @@ class VolumeStateProviderTest extends TestCase
             $this->createStub(LoggerInterface::class),
             $pagination,
             $this->createStub(Security::class),
-            new UnpaginatedCollectionLimitExtension($pagination, $this->createStub(ManagerRegistry::class), new RequestStack())
+            new UnpaginatedCollectionLimitExtension($pagination, $this->createStub(ManagerRegistry::class), new RequestStack(), $this->createStub(CollectionItemCounter::class))
         );
 
         $operation = new Get(class: Volume::class);
@@ -148,12 +151,20 @@ class VolumeStateProviderTest extends TestCase
             $this->createStub(LoggerInterface::class),
             $pagination,
             $this->createStub(Security::class),
-            new UnpaginatedCollectionLimitExtension($pagination, $this->createStub(ManagerRegistry::class), $requestStack)
+            new UnpaginatedCollectionLimitExtension($pagination, $this->createStub(ManagerRegistry::class), $requestStack, $this->itemCounter(count($volumes)))
         );
 
         $operation = new GetCollection(class: Volume::class);
 
         return $provider->provide($operation, [], ['operation' => $operation, 'filters' => ['pagination' => 'false']]);
+    }
+
+    private function itemCounter(int $total): CollectionItemCounter
+    {
+        $counter = $this->createStub(CollectionItemCounter::class);
+        $counter->method('count')->willReturn($total);
+
+        return $counter;
     }
 
     /**

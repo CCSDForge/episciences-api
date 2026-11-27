@@ -10,7 +10,8 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\Pagination;
 use App\AppConstants;
 use Doctrine\ORM\QueryBuilder;
-use Doctrine\ORM\Tools\Pagination\Paginator as DoctrinePaginator;
+use Doctrine\ORM\Tools\Pagination\OffsetPaginator;
+use Doctrine\ORM\Tools\Pagination\Window;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -23,7 +24,9 @@ use Symfony\Component\HttpFoundation\RequestStack;
  *
  * One item more than the maximum is fetched to tell a truncated result: it is
  * removed, and the maximum is stored in the request (TRUNCATED_ATTRIBUTE) so that
- * TruncatedCollectionSubscriber can flag the response with a header.
+ * TruncatedCollectionSubscriber can flag the response with a header. The total number
+ * of items is then counted (TOTAL_ITEMS_ATTRIBUTE, see CollectionTotalCountSubscriber):
+ * only for a truncated result, the count of a complete one being its size.
  *
  * Applied last (lowest priority): returning the result stops the other extensions.
  *
@@ -33,11 +36,13 @@ use Symfony\Component\HttpFoundation\RequestStack;
 final class UnpaginatedCollectionLimitExtension implements QueryResultCollectionExtensionInterface
 {
     public const string TRUNCATED_ATTRIBUTE = '_app_collection_truncated_max_items';
+    public const string TOTAL_ITEMS_ATTRIBUTE = '_app_collection_total_items';
 
     public function __construct(
         private readonly Pagination $pagination,
         private readonly ManagerRegistry $managerRegistry,
-        private readonly RequestStack $requestStack
+        private readonly RequestStack $requestStack,
+        private readonly CollectionItemCounter $itemCounter
     )
     {
     }
@@ -69,13 +74,18 @@ final class UnpaginatedCollectionLimitExtension implements QueryResultCollection
 
         $queryBuilder->setFirstResult(0)->setMaxResults($maxItems + 1);
 
-        $items = $this->fetch($queryBuilder);
+        $items = $this->fetch($queryBuilder, $maxItems + 1);
 
         if (count($items) <= $maxItems) {
             return $items;
         }
 
-        $this->requestStack->getCurrentRequest()?->attributes->set(self::TRUNCATED_ATTRIBUTE, $maxItems);
+        $request = $this->requestStack->getCurrentRequest();
+
+        if ($request !== null) {
+            $request->attributes->set(self::TRUNCATED_ATTRIBUTE, $maxItems);
+            $request->attributes->set(self::TOTAL_ITEMS_ATTRIBUTE, $this->itemCounter->count($queryBuilder));
+        }
 
         return array_slice($items, 0, $maxItems);
     }
@@ -88,7 +98,7 @@ final class UnpaginatedCollectionLimitExtension implements QueryResultCollection
     /**
      * @return object[]
      */
-    private function fetch(QueryBuilder $queryBuilder): array
+    private function fetch(QueryBuilder $queryBuilder, int $maxResults): array
     {
         if (!QueryChecker::hasJoinedToManyAssociation($queryBuilder, $this->managerRegistry)) {
             return $queryBuilder->getQuery()->getResult();
@@ -96,6 +106,6 @@ final class UnpaginatedCollectionLimitExtension implements QueryResultCollection
 
         // With a to-many join, a SQL LIMIT counts the joined rows, not the root entities
         // (truncated fetch-joined collections): limit the root entities instead.
-        return iterator_to_array(new DoctrinePaginator($queryBuilder->getQuery(), true), false);
+        return array_values(new OffsetPaginator(fetchJoinCollection: true)->paginate($queryBuilder, new Window(0, $maxResults))->getItems());
     }
 }
