@@ -382,6 +382,29 @@ class PaperPrivateCollectionTest extends TestCase
         self::assertStringContainsString("YEAR(o.publicationDate) = '2024'", $this->where($queryBuilder));
     }
 
+    public function testTypeFilterKeepsTheRequestedTypes(): void
+    {
+        $queryBuilder = $this->apply($this->security(null), ['type' => ['article', 'dataset']]);
+
+        self::assertStringContainsString("JSON_EXTRACT(o.type, '$.title') = 'article'", $this->where($queryBuilder));
+        self::assertStringContainsString("JSON_EXTRACT(o.type, '$.title') = 'dataset'", $this->where($queryBuilder));
+    }
+
+    /**
+     * An empty type (type[]=) is ignored, as by the counts of the facets: it does not empty the list
+     */
+    public function testEmptyTypeFilterAddsNoCondition(): void
+    {
+        foreach ([[''], '', ['', 'article'], [['nested']]] as $types) {
+            $where = $this->where($this->apply($this->security(null), ['type' => $types]));
+
+            self::assertStringNotContainsString("= ''", $where);
+            self::assertStringNotContainsString('nested', $where);
+        }
+
+        self::assertStringContainsString("JSON_EXTRACT(o.type, '$.title') = 'article'", $this->where($this->apply($this->security(null), ['type' => ['', 'article']])));
+    }
+
     public function testNoFilterAddsNoExtraCondition(): void
     {
         $queryBuilder = $this->apply($this->security($this->user(), ['ROLE_MEMBER']));
